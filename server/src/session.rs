@@ -1,8 +1,9 @@
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use chrono::{DateTime, Utc};
 use rand::RngCore;
 use sha2::{Digest, Sha256};
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 use tracing::warn;
 
 #[derive(Debug, Clone)]
@@ -17,6 +18,15 @@ pub struct SessionContext {
     pub user_id: String,
     pub device_id: Option<String>,
     pub expires_at: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct SessionInfo {
+    pub id: String,
+    pub device_id: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: DateTime<Utc>,
+    pub last_seen_at: Option<DateTime<Utc>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -96,6 +106,25 @@ pub async fn validate_session(
         None => return Ok(None),
     };
 
+    // Update last_seen_at best-effort on successful validation
+    let update_last_seen = sqlx::query(
+        r#"
+        UPDATE sessions
+        SET last_seen_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        "#,
+    )
+    .bind(&session_id)
+    .execute(pool)
+    .await;
+
+    if let Err(e) = update_last_seen {
+        warn!(
+            "best-effort last_seen_at update failed for session {}: {}",
+            session_id, e
+        );
+    }
+
     // Sliding expiry check
     let sliding = std::env::var("SESSION_SLIDING")
         .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
@@ -135,4 +164,95 @@ pub async fn validate_session(
         device_id,
         expires_at,
     }))
+}
+
+pub async fn list_sessions(
+    pool: &SqlitePool,
+    user_id: &str,
+) -> Result<Vec<SessionInfo>, SessionError> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, device_id, created_at, expires_at, last_seen_at
+        FROM sessions
+        WHERE user_id = ?
+          AND revoked_at IS NULL
+          AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY created_at DESC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await?;
+
+    let mut sessions = Vec::with_capacity(rows.len());
+    for row in rows {
+        let id: String = row.get("id");
+        let device_id: Option<String> = row.get("device_id");
+        let created_at: DateTime<Utc> = row.get("created_at");
+        let expires_at: DateTime<Utc> = row.get("expires_at");
+        let last_seen_at: Option<DateTime<Utc>> = row.get("last_seen_at");
+
+        sessions.push(SessionInfo {
+            id,
+            device_id,
+            created_at,
+            expires_at,
+            last_seen_at,
+        });
+    }
+
+    Ok(sessions)
+}
+
+pub async fn revoke_session(
+    pool: &SqlitePool,
+    user_id: &str,
+    session_id: &str,
+) -> Result<bool, SessionError> {
+    let res = sqlx::query(
+        r#"
+        UPDATE sessions
+        SET revoked_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND user_id = ? AND revoked_at IS NULL
+        "#,
+    )
+    .bind(session_id)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+
+    Ok(res.rows_affected() > 0)
+}
+
+pub async fn revoke_all_sessions(
+    pool: &SqlitePool,
+    user_id: &str,
+    except_session_id: Option<&str>,
+) -> Result<u64, SessionError> {
+    let res = if let Some(except_id) = except_session_id {
+        sqlx::query(
+            r#"
+            UPDATE sessions
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND id != ? AND revoked_at IS NULL
+            "#,
+        )
+        .bind(user_id)
+        .bind(except_id)
+        .execute(pool)
+        .await?
+    } else {
+        sqlx::query(
+            r#"
+            UPDATE sessions
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND revoked_at IS NULL
+            "#,
+        )
+        .bind(user_id)
+        .execute(pool)
+        .await?
+    };
+
+    Ok(res.rows_affected())
 }

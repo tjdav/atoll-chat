@@ -237,3 +237,96 @@ curl -X POST http://localhost:8080/api/v1/auth/login/finish \
 ```bash
 curl -H "Authorization: Bearer <session_token>" http://localhost:8080/api/v1/capabilities
 ```
+
+## Authentication & Session Management
+
+All protected endpoints require HTTP Bearer Token authentication via the `Authorization` header.
+
+### Bearer Token Scheme
+
+Requests to authenticated endpoints must include the standard header:
+```
+Authorization: Bearer <raw_session_token>
+```
+
+### `AuthUser` Extractor
+
+Handlers declare `auth: AuthUser` as a parameter to enforce authentication:
+
+```rust
+pub async fn my_handler(auth: AuthUser) -> Result<Json<MyResponse>, ApiError> {
+    // auth.user_id, auth.username, auth.session_id, auth.expires_at, etc.
+}
+```
+
+The `AuthUser` extractor:
+1. Extracts the Bearer token from the `Authorization` header. Missing or malformed headers return HTTP 401 (`{"error":"unauthorized"}`).
+2. Validates the session token hash against the database. Invalid or expired sessions return HTTP 401 (`{"error":"unauthorized"}`).
+3. Queries the user record. If the account is disabled (`disabled_at IS NOT NULL`), the session is immediately revoked and HTTP 401 (`{"error":"account_disabled"}`) is returned. Missing user records also trigger session revocation and HTTP 401 (`{"error":"unauthorized"}`).
+4. Never panics on malformed input or unexpected states. Database errors yield HTTP 500 (`{"error":"internal"}`).
+
+### Session Lifecycle
+
+- **Creation**: Upon successful login (`POST /api/v1/auth/login/finish`), a 32-byte cryptographically secure session token is generated. The client receives the raw token while the server stores only its SHA-256 hex digest (`token_hash`) in the `sessions` table.
+- **Validation & Sliding Expiry**: On each authenticated request, `session::validate_session` verifies the token hash and checks `expires_at > CURRENT_TIMESTAMP` and `revoked_at IS NULL`. On success, it updates `last_seen_at = CURRENT_TIMESTAMP` and (if `SESSION_SLIDING=true`) extends `expires_at`.
+- **Revocation**: Setting `revoked_at = CURRENT_TIMESTAMP` immediately invalidates the session for future requests.
+
+### User & Profile Endpoints
+
+- **`GET /api/v1/users/me`**: Returns the current user's profile, assigned roles, ownership status, and effective file size limits.
+- **`PATCH /api/v1/users/me`**: Updates `display_name` (1–64 characters after trimming, control characters prohibited) and `profile_blob` (valid base64 string). Attempts to modify `username` return HTTP 400 (`{"error":"username_immutable"}`). Successful updates increment `profile_version`.
+
+### Session Management Endpoints
+
+- **`GET /api/v1/users/me/sessions`**: Returns all active (non-revoked, non-expired) sessions for the authenticated user, ordered by creation date descending. Includes `is_current: true` for the requesting session.
+- **`DELETE /api/v1/users/me/sessions/:id`**: Revokes a specific active session by ID. Revoking the current active session via this endpoint is prohibited (HTTP 400 `{"error":"cannot_revoke_current_session"}`) — clients must use `/auth/logout`.
+- **`POST /api/v1/auth/logout`**: Revokes the current session. Accepts an optional JSON body `{"all_sessions": true}` to revoke all active sessions for the user across all devices.
+
+### Example `curl` Commands
+
+**Get User Profile:**
+```bash
+curl -s -H "Authorization: Bearer <session_token>" \
+  http://localhost:8080/api/v1/users/me
+```
+
+**Update Display Name:**
+```bash
+curl -s -X PATCH http://localhost:8080/api/v1/users/me \
+  -H "Authorization: Bearer <session_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"display_name": "Alice Smith"}'
+```
+
+**List Active Sessions:**
+```bash
+curl -s -H "Authorization: Bearer <session_token>" \
+  http://localhost:8080/api/v1/users/me/sessions
+```
+
+**Revoke a Specific Session:**
+```bash
+curl -s -X DELETE http://localhost:8080/api/v1/users/me/sessions/<session_id_to_revoke> \
+  -H "Authorization: Bearer <session_token>"
+```
+
+**Logout Current Device:**
+```bash
+curl -s -X POST http://localhost:8080/api/v1/auth/logout \
+  -H "Authorization: Bearer <session_token>"
+```
+
+**Logout All Devices:**
+```bash
+curl -s -X POST http://localhost:8080/api/v1/auth/logout \
+  -H "Authorization: Bearer <session_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"all_sessions": true}'
+```
+
+### Security Guarantees
+
+- **Token Hash Privacy**: Raw session tokens are never persisted in plaintext or logged.
+- **Immediate Revocation**: Session revocation is immediate and effective on the very next HTTP request.
+- **Disabled User Guard**: Disabled accounts are blocked instantly on every request, revoking active sessions on access attempt.
+- **Cross-User Isolation**: Revocation endpoints strictly enforce ownership checks, returning HTTP 404 for non-existent or other users' session IDs to prevent enumeration.

@@ -238,6 +238,7 @@ async fn hmac_secret_persisted_in_instance_config() {
         altcha_cost: 100,
         session_expiry_days: 30,
         session_sliding: true,
+        max_file_size_bytes: 104_857_600,
     };
 
     let altcha_config1 = AltchaConfig::from_env(&config, &pool).await.unwrap();

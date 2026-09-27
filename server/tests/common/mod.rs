@@ -71,6 +71,7 @@ pub async fn setup_test_app_with_config(
         altcha_cost: cost,
         session_expiry_days: 30,
         session_sliding: true,
+        max_file_size_bytes: 104_857_600,
     };
 
     let altcha_config = Arc::new(
@@ -110,6 +111,22 @@ pub async fn setup_test_app_with_config(
         .route(
             "/api/v1/auth/login/finish",
             axum::routing::post(routes::login::login_finish),
+        )
+        .route(
+            "/api/v1/users/me",
+            axum::routing::get(routes::users::get_me).patch(routes::users::patch_me),
+        )
+        .route(
+            "/api/v1/users/me/sessions",
+            axum::routing::get(routes::sessions::list),
+        )
+        .route(
+            "/api/v1/users/me/sessions/{id}",
+            axum::routing::delete(routes::sessions::revoke),
+        )
+        .route(
+            "/api/v1/auth/logout",
+            axum::routing::post(routes::sessions::logout),
         )
         .with_state(state);
 
