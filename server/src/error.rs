@@ -1,3 +1,4 @@
+use crate::devices::DeviceError;
 use crate::session::SessionError;
 use axum::{
     http::StatusCode,
@@ -64,6 +65,19 @@ impl From<SessionError> for ApiError {
         match err {
             SessionError::Database(e) => ApiError::Internal(e.into()),
             SessionError::TokenGeneration(msg) => ApiError::Internal(anyhow::anyhow!(msg)),
+        }
+    }
+}
+
+// Implement From<DeviceError> for ApiError
+impl From<DeviceError> for ApiError {
+    fn from(err: DeviceError) -> Self {
+        match err {
+            DeviceError::Database(e) => ApiError::Internal(e.into()),
+            DeviceError::DeviceLimitExceeded { .. } => {
+                ApiError::BadRequest("device_limit_exceeded".to_string())
+            }
+            DeviceError::NotFound => ApiError::NotFound("device_not_found".to_string()),
         }
     }
 }

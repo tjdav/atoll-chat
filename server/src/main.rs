@@ -119,6 +119,11 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/users/me/sessions/{id}",
             delete(routes::sessions::revoke),
         )
+        .route("/api/v1/users/me/devices", get(routes::devices::list))
+        .route(
+            "/api/v1/users/me/devices/{id}",
+            delete(routes::devices::revoke),
+        )
         .route("/api/v1/auth/logout", post(routes::sessions::logout))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

@@ -72,6 +72,7 @@ pub async fn setup_test_app_with_config(
         session_expiry_days: 30,
         session_sliding: true,
         max_file_size_bytes: 104_857_600,
+        server_max_devices_per_user: 20,
     };
 
     let altcha_config = Arc::new(
@@ -123,6 +124,14 @@ pub async fn setup_test_app_with_config(
         .route(
             "/api/v1/users/me/sessions/{id}",
             axum::routing::delete(routes::sessions::revoke),
+        )
+        .route(
+            "/api/v1/users/me/devices",
+            axum::routing::get(routes::devices::list),
+        )
+        .route(
+            "/api/v1/users/me/devices/{id}",
+            axum::routing::delete(routes::devices::revoke),
         )
         .route(
             "/api/v1/auth/logout",
@@ -258,6 +267,18 @@ pub async fn login_user(
     client_id: &str,
     identity_pubkey: Option<&str>,
 ) -> (StatusCode, Value) {
+    login_user_with_device_name(app, username, password, client_id, identity_pubkey, None).await
+}
+
+#[allow(dead_code)]
+pub async fn login_user_with_device_name(
+    app: &Router,
+    username: &str,
+    password: &str,
+    client_id: &str,
+    identity_pubkey: Option<&str>,
+    device_name: Option<&str>,
+) -> (StatusCode, Value) {
     let mut rng = OsRng;
     let client_start = ClientLogin::<DefaultCipherSuite>::start(&mut rng, password.as_bytes())
         .expect("ClientLogin::start failed");
@@ -321,6 +342,7 @@ pub async fn login_user(
                         "login_id": login_id,
                         "credential_finalization": dummy_finalization,
                         "identity_pubkey": identity_pubkey,
+                        "device_name": device_name,
                     })
                     .to_string(),
                 ))
@@ -347,6 +369,7 @@ pub async fn login_user(
                 "login_id": login_id,
                 "credential_finalization": cred_fin_b64,
                 "identity_pubkey": identity_pubkey,
+                "device_name": device_name,
             })
             .to_string(),
         ))
