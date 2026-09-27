@@ -1,3 +1,4 @@
+use crate::config_ops::ConfigOpsError;
 use crate::devices::DeviceError;
 use crate::invites::InviteError;
 use crate::limits::LimitsError;
@@ -76,6 +77,13 @@ impl IntoResponse for ApiError {
     }
 }
 
+// Implement From<ConfigOpsError> for ApiError
+impl From<ConfigOpsError> for ApiError {
+    fn from(err: ConfigOpsError) -> Self {
+        ApiError::Internal(err.into())
+    }
+}
+
 // Implement From<LimitsError> for ApiError
 impl From<LimitsError> for ApiError {
     fn from(err: LimitsError) -> Self {
@@ -103,6 +111,17 @@ impl From<RoomError> for ApiError {
             RoomError::RoomLimitReached => ApiError::Conflict("room_limit_reached".to_string()),
             RoomError::InvalidRetention => ApiError::BadRequest("invalid_retention".to_string()),
             RoomError::InvalidFileSize => ApiError::BadRequest("invalid_file_size".to_string()),
+            RoomError::TargetNotAMember => ApiError::NotFound("member_not_found".to_string()),
+            RoomError::CannotKickOwner => ApiError::BadRequest("cannot_kick_owner".to_string()),
+            RoomError::CannotKickSelf => ApiError::BadRequest("cannot_kick_self".to_string()),
+            RoomError::ModerationDisabled => ApiError::Conflict("moderation_disabled".to_string()),
+            RoomError::AlreadyModerator => ApiError::Conflict("already_moderator".to_string()),
+            RoomError::NotAModerator => ApiError::Conflict("not_a_moderator".to_string()),
+            RoomError::CannotModifyOwner => ApiError::BadRequest("cannot_modify_owner".to_string()),
+            RoomError::AlreadyOwner => ApiError::Conflict("already_owner".to_string()),
+            RoomError::CannotTransferToSelf => {
+                ApiError::BadRequest("cannot_transfer_to_self".to_string())
+            }
         }
     }
 }

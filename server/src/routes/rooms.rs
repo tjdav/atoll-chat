@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     auth::AuthUser,
+    config_ops,
     error::ApiError,
     limits,
     rooms::{self, CreateRoomOptions, LeaveOutcome, RoomError, RoomMember, RoomWithRole},
@@ -40,6 +41,11 @@ pub struct LeaveResponse {
     pub outcome: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub new_owner_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TransferOwnershipRequest {
+    pub user_id: String,
 }
 
 pub async fn create(
@@ -156,4 +162,65 @@ pub async fn add_member(
     .await?;
 
     Ok((StatusCode::CREATED, Json(member)))
+}
+
+pub async fn kick_member(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, uid)): Path<(String, String)>,
+) -> Result<StatusCode, ApiError> {
+    let config = config_ops::get_config(&state.pool).await?;
+    rooms::kick_member(
+        &state.pool,
+        &id,
+        &auth.user_id,
+        &uid,
+        &config.moderation_mode,
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn promote_member(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, uid)): Path<(String, String)>,
+) -> Result<StatusCode, ApiError> {
+    let config = config_ops::get_config(&state.pool).await?;
+    rooms::promote_member(
+        &state.pool,
+        &id,
+        &auth.user_id,
+        &uid,
+        &config.moderation_mode,
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn demote_member(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, uid)): Path<(String, String)>,
+) -> Result<StatusCode, ApiError> {
+    let config = config_ops::get_config(&state.pool).await?;
+    rooms::demote_member(
+        &state.pool,
+        &id,
+        &auth.user_id,
+        &uid,
+        &config.moderation_mode,
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn transfer_ownership(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+    Json(payload): Json<TransferOwnershipRequest>,
+) -> Result<StatusCode, ApiError> {
+    rooms::transfer_ownership(&state.pool, &id, &auth.user_id, &payload.user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
