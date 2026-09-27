@@ -15,6 +15,8 @@ pub struct Config {
     pub altcha_hmac_secret: String,
     pub altcha_algorithm: String,
     pub altcha_cost: u32,
+    pub session_expiry_days: u32,
+    pub session_sliding: bool,
 }
 
 impl Config {
@@ -54,6 +56,15 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(5000);
 
+        let session_expiry_days = env::var("SESSION_EXPIRY_DAYS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let session_sliding = env::var("SESSION_SLIDING")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
         Ok(Self {
             app_env,
             app_url,
@@ -67,6 +78,8 @@ impl Config {
             altcha_hmac_secret,
             altcha_algorithm,
             altcha_cost,
+            session_expiry_days,
+            session_sliding,
         })
     }
 }

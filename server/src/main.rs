@@ -5,6 +5,7 @@ use axum::{
 use server::altcha::AltchaConfig;
 use server::config::Config;
 use server::db;
+use server::login::LoginStore;
 use server::opaque::OpaqueServer;
 use server::registration::RegistrationStore;
 use server::roles;
@@ -34,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // 3. Load Config
-    let config = Config::from_env()?;
+    let config = Arc::new(Config::from_env()?);
 
     // 4. Log startup banner
     info!(
@@ -45,18 +46,21 @@ async fn main() -> anyhow::Result<()> {
     // 5. Initialize SQLite pool
     let pool = db::init_pool(&config).await?;
 
-    // Initialize OPAQUE server setup and ALTCHA config
+    // Initialize OPAQUE server setup, stores, and ALTCHA config
     let opaque_server = Arc::new(OpaqueServer::load_or_generate(Path::new(
         &config.opaque_oprf_key_path,
     ))?);
     let registration_store = Arc::new(RegistrationStore::new());
+    let login_store = Arc::new(LoginStore::new());
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await?);
 
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
         registration_store,
+        login_store,
         altcha_config,
+        config: config.clone(),
     };
 
     // CORS configuration
@@ -100,6 +104,11 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/api/v1/auth/register/finish",
             post(routes::register::register_finish),
+        )
+        .route("/api/v1/auth/login/start", post(routes::login::login_start))
+        .route(
+            "/api/v1/auth/login/finish",
+            post(routes::login::login_finish),
         )
         .layer(TraceLayer::new_for_http())
         .layer(cors)

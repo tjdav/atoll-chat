@@ -1,14 +1,8 @@
-#[path = "../src/error.rs"]
-mod error;
-#[path = "../src/permissions.rs"]
-mod permissions;
-#[path = "../src/roles.rs"]
-mod roles;
-
 mod common;
 
 use common::setup_test_db;
-use permissions::{perm, satisfies, Permissions};
+use server::permissions::{perm, satisfies, Permissions};
+use server::roles;
 
 #[tokio::test]
 async fn wildcard_grants_everything() {
