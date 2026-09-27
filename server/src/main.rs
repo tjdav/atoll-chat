@@ -2,6 +2,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use server::altcha::AltchaConfig;
 use server::config::Config;
 use server::db;
 use server::opaque::OpaqueServer;
@@ -44,16 +45,18 @@ async fn main() -> anyhow::Result<()> {
     // 5. Initialize SQLite pool
     let pool = db::init_pool(&config).await?;
 
-    // Initialize OPAQUE server setup
+    // Initialize OPAQUE server setup and ALTCHA config
     let opaque_server = Arc::new(OpaqueServer::load_or_generate(Path::new(
         &config.opaque_oprf_key_path,
     ))?);
     let registration_store = Arc::new(RegistrationStore::new());
+    let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await?);
 
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
         registration_store,
+        altcha_config,
     };
 
     // CORS configuration
@@ -86,6 +89,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(routes::health::handler))
         .route("/api/v1/capabilities", get(routes::capabilities::handler))
         .route("/api/v1/roles", get(routes::roles::handler))
+        .route(
+            "/api/v1/auth/register/challenge",
+            get(routes::register::register_challenge),
+        )
         .route(
             "/api/v1/auth/register/start",
             post(routes::register::register_start),

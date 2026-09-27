@@ -11,6 +11,10 @@ pub struct Config {
     pub db_path: String,
     pub db_busy_timeout_ms: u64,
     pub opaque_oprf_key_path: String,
+    pub altcha_enabled: bool,
+    pub altcha_hmac_secret: String,
+    pub altcha_algorithm: String,
+    pub altcha_cost: u32,
 }
 
 impl Config {
@@ -35,6 +39,21 @@ impl Config {
         let opaque_oprf_key_path =
             env::var("OPAQUE_OPRF_KEY_PATH").unwrap_or_else(|_| "./data/oprf.key".to_string());
 
+        let altcha_enabled = env::var("ALTCHA_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let altcha_hmac_secret =
+            env::var("ALTCHA_HMAC_SECRET").unwrap_or_else(|_| "auto".to_string());
+
+        let altcha_algorithm =
+            env::var("ALTCHA_ALGORITHM").unwrap_or_else(|_| "PBKDF2/SHA-256".to_string());
+
+        let altcha_cost = env::var("ALTCHA_COST")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(5000);
+
         Ok(Self {
             app_env,
             app_url,
@@ -44,6 +63,10 @@ impl Config {
             db_path,
             db_busy_timeout_ms,
             opaque_oprf_key_path,
+            altcha_enabled,
+            altcha_hmac_secret,
+            altcha_algorithm,
+            altcha_cost,
         })
     }
 }

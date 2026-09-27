@@ -1,3 +1,4 @@
+use crate::altcha::{verify_altcha_payload, AltchaConfig};
 use crate::error::ApiError;
 use crate::opaque::DefaultCipherSuite;
 use crate::registration::PendingRegistration;
@@ -16,6 +17,7 @@ use tracing::info;
 pub struct RegisterStartRequest {
     pub username: String,
     pub registration_request: String,
+    pub altcha: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -29,6 +31,7 @@ pub struct RegisterFinishRequest {
     pub registration_id: String,
     pub registration_upload: String,
     pub invite_code: Option<String>,
+    pub altcha: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -36,6 +39,46 @@ pub struct RegisterFinishResponse {
     pub user_id: String,
     pub username: String,
     pub is_owner: bool,
+}
+
+fn validate_altcha(
+    altcha_config: &AltchaConfig,
+    altcha_payload: Option<&str>,
+) -> Result<(), ApiError> {
+    if !altcha_config.enabled {
+        return Ok(());
+    }
+
+    let payload = match altcha_payload {
+        Some(p) if !p.trim().is_empty() => p,
+        _ => return Err(ApiError::BadRequest("altcha_required".to_string())),
+    };
+
+    match verify_altcha_payload(altcha_config, payload) {
+        Ok(true) => Ok(()),
+        _ => Err(ApiError::BadRequest("invalid_altcha".to_string())),
+    }
+}
+
+pub async fn register_challenge(
+    State(state): State<AppState>,
+) -> Result<Json<altcha::Challenge>, ApiError> {
+    if !state.altcha_config.enabled {
+        return Err(ApiError::NotFound("altcha_disabled".to_string()));
+    }
+
+    let options = altcha::CreateChallengeOptions {
+        algorithm: state.altcha_config.algorithm.clone(),
+        cost: state.altcha_config.cost,
+        hmac_signature_secret: Some(state.altcha_config.hmac_secret.clone()),
+        hmac_key_signature_secret: Some(state.altcha_config.hmac_secret.clone()),
+        ..Default::default()
+    };
+
+    let challenge = altcha::create_challenge(options)
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!("failed to create challenge: {e}")))?;
+
+    Ok(Json(challenge))
 }
 
 fn decode_base64(s: &str) -> Result<Vec<u8>, ApiError> {
@@ -49,6 +92,9 @@ pub async fn register_start(
     State(state): State<AppState>,
     Json(body): Json<RegisterStartRequest>,
 ) -> Result<Json<RegisterStartResponse>, ApiError> {
+    // 0. Validate ALTCHA
+    validate_altcha(&state.altcha_config, body.altcha.as_deref())?;
+
     // 1. Validate username
     let username = body.username.trim();
     if username.len() < 3
@@ -128,6 +174,9 @@ pub async fn register_finish(
     State(state): State<AppState>,
     Json(body): Json<RegisterFinishRequest>,
 ) -> Result<Json<RegisterFinishResponse>, ApiError> {
+    // 0. Validate ALTCHA
+    validate_altcha(&state.altcha_config, body.altcha.as_deref())?;
+
     // 1. Take pending registration from store
     let pending = state
         .registration_store
