@@ -236,6 +236,8 @@ async fn hmac_secret_persisted_in_instance_config() {
         altcha_hmac_secret: "auto".to_string(),
         altcha_algorithm: "PBKDF2/SHA-256".to_string(),
         altcha_cost: 100,
+        session_expiry_days: 30,
+        session_sliding: true,
     };
 
     let altcha_config1 = AltchaConfig::from_env(&config, &pool).await.unwrap();

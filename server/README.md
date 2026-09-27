@@ -172,3 +172,68 @@ ALTCHA_ENABLED=false
 ```
 
 When disabled, `GET /api/v1/auth/register/challenge` returns HTTP 404 (`{"error":"altcha_disabled"}`), and registration endpoints skip ALTCHA payload verification.
+
+## Login Flow
+
+User authentication uses the OPAQUE key exchange protocol to perform authenticated password validation without transmitting the raw password.
+
+### Handshake & Stateful Server Model
+
+Unlike registration (which is stateless on the server side in `opaque-ke` 4.0.1), **login is stateful**. The server must retain state between the two HTTP rounds because OPAQUE derives ephemeral key exchange material in round 1 that is required during round 2.
+
+The handshake consists of two HTTP steps:
+
+1. **Start (`POST /api/v1/auth/login/start`)**:
+   - The client sends its `username`, base64-encoded `credential_request`, and device `client_id`.
+   - The server looks up the user by domain-separated hash (`username-v1:`). Unknown users and disabled accounts are handled uniformly or with dedicated error codes (`invalid_credentials`, `account_disabled`).
+   - The server executes `ServerLogin::start`, creates a `PendingLogin` containing the ephemeral `ServerLogin` state, stores it in `LoginStore`, and returns a `login_id` and base64-encoded `credential_response`.
+
+2. **Finish (`POST /api/v1/auth/login/finish`)**:
+   - The client computes the OPAQUE `credential_finalization` and submits it with `login_id` and optional `identity_pubkey`.
+   - The server removes (`take`) the `PendingLogin` state from `LoginStore` (preventing second-round replays), executes `ServerLogin::finish`, verifies or stores the client's Ed25519 `identity_pubkey`, issues a bearer session token, and returns the authentication payload.
+
+### State Correlation & TTL
+
+- `LoginStore` persists the `ServerLogin` state in memory between rounds.
+- Correlation records expire automatically after **5 minutes** (`LOGIN_TTL`).
+
+### OPAQUE Session Key vs Bearer Tokens
+
+- The OPAQUE handshake produces a shared session key on both client and server. The client derives its local CoreCrypto database encryption key from this session key.
+- The server does **not** store or transmit the OPAQUE session key; it is discarded immediately after login completes.
+- Bearer tokens are issued by `session::create_session` for HTTP request authentication.
+
+### Session Token Format & Storage
+
+- **Raw Token**: 32 cryptographically secure random bytes from `OsRng`, base64url-encoded without padding (43 characters). Returned to the client.
+- **Database Storage**: The raw token is **never** stored in the database. The `sessions` table stores the SHA-256 hex digest (64 characters).
+- **Sliding Expiry**: When `SESSION_SLIDING=true` (default), active sessions automatically extend their `expires_at` timestamp on every valid call to `session::validate_session`.
+
+### Example `curl` Commands
+
+**Start Login:**
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login/start \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "alice",
+    "credential_request": "<base64_credential_request_bytes>",
+    "client_id": "client_device_identifier_12345"
+  }'
+```
+
+**Finish Login:**
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login/finish \
+  -H "Content-Type: application/json" \
+  -d '{
+    "login_id": "<login_id_from_start>",
+    "credential_finalization": "<base64_credential_finalization_bytes>",
+    "identity_pubkey": "<base64_ed25519_pubkey_bytes>"
+  }'
+```
+
+**Using the Session Token:**
+```bash
+curl -H "Authorization: Bearer <session_token>" http://localhost:8080/api/v1/capabilities
+```
