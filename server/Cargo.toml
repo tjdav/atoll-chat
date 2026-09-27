@@ -27,3 +27,4 @@ hex = "0.4"
 base64 = "0.22"
 altcha = "0.2.0"
 chrono = { version = "0.4", features = ["serde"] }
+ulid = "1.1"

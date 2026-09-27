@@ -53,6 +53,16 @@ async fn main() -> anyhow::Result<()> {
     let registration_store = Arc::new(RegistrationStore::new());
     let login_store = Arc::new(LoginStore::new());
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await?);
+    let server_hard_max = Arc::new(server::ServerHardMax {
+        file_size_bytes: config.max_file_size_bytes as i64,
+        room_size: 1000,
+        rooms_per_user: 500,
+        devices_per_user: config.server_max_devices_per_user as i64,
+        keypackages_per_device: 50,
+        message_size_bytes: 65536,
+        attachment_retention_days: 365,
+        call_max_participants: 50,
+    });
 
     let state = AppState {
         pool: pool.clone(),
@@ -61,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
         login_store,
         altcha_config,
         config: config.clone(),
+        server_hard_max,
     };
 
     // CORS configuration
@@ -91,6 +102,16 @@ async fn main() -> anyhow::Result<()> {
     // 7. Build Router
     let app = Router::new()
         .route("/health", get(routes::health::handler))
+        .route("/ready", get(routes::ready::handler))
+        .route(
+            "/api/v1/admin/config",
+            get(routes::admin::get_config_handler).patch(routes::admin::patch_config_handler),
+        )
+        .route(
+            "/api/v1/admin/limits",
+            get(routes::admin::get_limits_handler).patch(routes::admin::patch_limits_handler),
+        )
+        .route("/api/v1/admin/audit", get(routes::admin::get_audit_handler))
         .route("/api/v1/capabilities", get(routes::capabilities::handler))
         .route("/api/v1/roles", get(routes::roles::handler))
         .route(

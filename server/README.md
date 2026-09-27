@@ -411,3 +411,58 @@ When a rate limit is exceeded, the server returns HTTP 429 Too Many Requests wit
 ### Registration Integration
 
 During user registration (`POST /api/v1/auth/register/finish`), non-bootstrap registrations validate and consume the invite within an exclusive write transaction. Concurrent redemptions of a single-use invite are handled atomically so that exactly one registration succeeds and subsequent attempts fail with HTTP 403 (`{"error":"invalid or expired invite"}`).
+
+## Admin API
+
+Administrative configuration and limit management endpoints are guarded by the `config.edit` permission.
+
+### Instance Config
+
+Instance runtime configuration is stored as key-value pairs in the `instance_config` table.
+
+#### Key Categories
+
+- **Exposed Keys** (readable and editable via admin API):
+  - `moderation_mode`: `"messenger"` | `"discord"`
+  - `altcha_enabled`: `true` | `false`
+  - `safety_number_mode`: `"warn"` | `"block"` | `"off"`
+  - `push_enabled`: `true` | `false`
+- **Secret Keys** (stored in DB but strictly omitted from admin API):
+  - `altcha_hmac_secret`, `vapid_public_key`, `vapid_private_key`, `sockudo_app_key`, `sockudo_app_secret`
+
+#### Config Endpoints
+
+- **`GET /api/v1/admin/config`**: Returns non-secret exposed configuration options.
+- **`PATCH /api/v1/admin/config`**: Updates exposed configuration keys. Rejects attempts to modify secret keys or unknown fields with HTTP 400. Automatically logs `config.update` audit entries.
+
+### Instance Limits
+
+Instance limits represent the middle tier of the three-tier resource limit hierarchy (`user_override` -> `instance_limit` -> `server_hard_max`).
+
+#### Limits Endpoints
+
+- **`GET /api/v1/admin/limits`**: Returns current instance limits alongside `server_hard_max` bounds.
+- **`PATCH /api/v1/admin/limits`**: Accepts full `InstanceLimits` JSON payload. Rejects values exceeding `server_hard_max` or below key minimums with HTTP 400. Automatically logs `limits.update` audit entries.
+
+## Audit Log
+
+The audit logging system records administrative and operational events into the `audit_log` table using lexicographically sortable ULIDs for entry IDs.
+
+### Logging Principles
+
+- **Best-effort Execution**: Audit logging operations never block or fail primary requests. If an audit write fails, an error is logged and the operation continues.
+- **Secret Protection**: Secret key values are **never** stored in audit entries. For secret updates (`secret.update`), metadata records only the key name.
+- **Index Support**: Database indexes `idx_audit_actor_created`, `idx_audit_action_created`, and `idx_audit_created` optimize filtering and range queries.
+
+### Audit Endpoint
+
+- **`GET /api/v1/admin/audit`**: Returns paginated audit log entries ordered by creation date descending (`created_at DESC`).
+  - Query parameters: `actor_id`, `action`, `target_type`, `target_id`, `before` (ISO 8601), `after` (ISO 8601), `per_page` (default 50, max 100).
+  - Response includes `next_before` timestamp for cursor-based pagination.
+
+## Readiness Check
+
+- **`GET /ready`**: Public, unauthenticated endpoint for orchestrator and container readiness probes.
+  - Checks database connection (`SELECT 1`), OPRF key availability, and Sockudo server health (if `SOCKUDO_URL` is configured).
+  - Returns HTTP 200 with `{ "status": "ready", "checks": { "database": "ok", "oprf_key": "ok", "sockudo": "skipped" } }` when all active checks succeed.
+  - Returns HTTP 503 with `{ "status": "not_ready", "checks": { ... } }` if any check fails.

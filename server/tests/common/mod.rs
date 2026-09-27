@@ -97,6 +97,17 @@ pub async fn setup_test_app_with_config(
 
     let config_arc = Arc::new(config);
 
+    let server_hard_max = Arc::new(server::ServerHardMax {
+        file_size_bytes: config_arc.max_file_size_bytes as i64,
+        room_size: 1000,
+        rooms_per_user: 500,
+        devices_per_user: config_arc.server_max_devices_per_user as i64,
+        keypackages_per_device: 50,
+        message_size_bytes: 65536,
+        attachment_retention_days: 365,
+        call_max_participants: 50,
+    });
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -104,9 +115,25 @@ pub async fn setup_test_app_with_config(
         login_store,
         altcha_config: altcha_config.clone(),
         config: config_arc,
+        server_hard_max,
     };
 
     let app = Router::new()
+        .route("/ready", axum::routing::get(routes::ready::handler))
+        .route(
+            "/api/v1/admin/config",
+            axum::routing::get(routes::admin::get_config_handler)
+                .patch(routes::admin::patch_config_handler),
+        )
+        .route(
+            "/api/v1/admin/limits",
+            axum::routing::get(routes::admin::get_limits_handler)
+                .patch(routes::admin::patch_limits_handler),
+        )
+        .route(
+            "/api/v1/admin/audit",
+            axum::routing::get(routes::admin::get_audit_handler),
+        )
         .route(
             "/api/v1/auth/register/challenge",
             axum::routing::get(routes::register::register_challenge),

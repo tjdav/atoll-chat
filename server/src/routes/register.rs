@@ -268,6 +268,18 @@ pub async fn register_finish(
 
     tx.commit().await?;
 
+    if is_owner {
+        let _ = crate::audit::log(
+            &state.pool,
+            None,
+            crate::audit::action::BOOTSTRAP_OWNER,
+            Some("user"),
+            Some(&user_id),
+            None,
+        )
+        .await;
+    }
+
     Ok(Json(RegisterFinishResponse {
         user_id,
         username: pending.username,
