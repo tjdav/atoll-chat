@@ -3,6 +3,7 @@ use crate::devices::DeviceError;
 use crate::invites::InviteError;
 use crate::limits::LimitsError;
 use crate::rate_limit::RateLimitError;
+use crate::room_invites::RoomInviteError;
 use crate::rooms::RoomError;
 use crate::session::SessionError;
 use axum::{
@@ -21,6 +22,7 @@ pub enum ApiError {
     Unauthorized(String),
     Forbidden(String),
     Conflict(String),
+    Gone(String),
     TooManyRequests {
         message: String,
         reset_at: DateTime<Utc>,
@@ -56,6 +58,7 @@ impl IntoResponse for ApiError {
                     ApiError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
                     ApiError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
                     ApiError::Conflict(msg) => (StatusCode::CONFLICT, msg),
+                    ApiError::Gone(msg) => (StatusCode::GONE, msg),
                     ApiError::InternalCustom(status, msg) => (status, msg),
                     ApiError::Internal(err) => {
                         error!("Internal server error: {:#}", err);
@@ -72,6 +75,28 @@ impl IntoResponse for ApiError {
                 }));
 
                 (status, body).into_response()
+            }
+        }
+    }
+}
+
+// Implement From<RoomInviteError> for ApiError
+impl From<RoomInviteError> for ApiError {
+    fn from(err: RoomInviteError) -> Self {
+        match err {
+            RoomInviteError::Database(e) => ApiError::Internal(e.into()),
+            RoomInviteError::RoomNotFound | RoomInviteError::NotAMember => {
+                ApiError::NotFound("room_not_found".to_string())
+            }
+            RoomInviteError::InviteNotFound => ApiError::NotFound("invite_not_found".to_string()),
+            RoomInviteError::Revoked => ApiError::Gone("invite_revoked".to_string()),
+            RoomInviteError::Expired => ApiError::Gone("invite_expired".to_string()),
+            RoomInviteError::Exhausted => ApiError::Gone("invite_exhausted".to_string()),
+            RoomInviteError::RoomFull => ApiError::Conflict("room_full".to_string()),
+            RoomInviteError::InvalidMaxUses => ApiError::BadRequest("invalid_max_uses".to_string()),
+            RoomInviteError::InvalidExpiry => ApiError::BadRequest("invalid_expiry".to_string()),
+            RoomInviteError::CodeGenerationFailed => {
+                ApiError::Internal(anyhow::anyhow!("failed to generate room invite code"))
             }
         }
     }

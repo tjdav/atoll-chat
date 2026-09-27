@@ -737,8 +737,51 @@ Phase 7b adds moderation capabilities governed by instance-wide configuration (`
 - **Leave (`POST /api/v1/rooms/:id/leave`)**: Implicit handover triggered when the owner leaves the room. Ownership automatically passes to the longest-tenured moderator (or longest-tenured member), and the previous owner is removed from the room.
 - **Transfer (`POST /api/v1/rooms/:id/transfer`)**: Explicit handover designated by the owner. The previous owner remains in the room as a regular `member`.
 
-### Future Planned Features
+## Room Invites
 
-The following features are scheduled for subsequent phases:
-- **Phase 8**: Server and room invite links.
-- **Phase 9, 10, 11**: MLS group initialization, epoch commits, Welcome packets, KeyPackage exchanges.
+Room invite codes allow room members to grant room membership to other users via shareable tokens without needing to know the invitee's user ID.
+
+### Server Invites vs Room Invites
+
+- **Server Invites**: Grant the ability to create an account on the instance during onboarding.
+- **Room Invites**: Grant membership in a specific room. The recipient must already have an account on the instance.
+
+### Permission Model & Creation
+
+- **Any Room Member**: Unlike adding members directly (owner-only), any room member can create and revoke room invites.
+- **Code Return Security**: Invite codes are returned **only once** upon creation (`POST /api/v1/rooms/:id/invites`). Subsequent listing calls (`GET /api/v1/rooms/:id/invites`) omit the code field to prevent code scraping.
+- **Crockford Base32**: Codes are generated using uppercase Crockford Base32 characters (`0123456789ABCDEFGHJKMNPQRSTVWXYZ`) with configurable length (`ROOM_INVITE_CODE_LENGTH`, default `8`).
+- **Expiry & Uses**: Room invites do not expire by default unless `expires_in_days` (1–365) is explicitly requested. `max_uses` defaults to `ROOM_INVITE_DEFAULT_USES` (default `1`, `0` = unlimited).
+
+### Endpoints
+
+- **`POST /api/v1/rooms/:id/invites`**: Generates a new room invite code. Member-only (404 `room_not_found` for non-members).
+  - Body: `{"max_uses": 5, "expires_in_days": 30}` (optional).
+  - Returns HTTP 201 Created with full invite object including `code`.
+  - Errors: `invalid_max_uses` (400), `invalid_expiry` (400), `room_not_found` (404).
+- **`GET /api/v1/rooms/:id/invites`**: Lists room invites for a room. Member-only.
+  - Query parameter: `include_revoked=true|false` (default `false`).
+  - Returns HTTP 200 OK with `invites` array (**code field omitted**).
+- **`DELETE /api/v1/rooms/:id/invites/:invite_id`**: Revokes a room invite. Any member can revoke any invite in the room.
+  - Returns HTTP 204 No Content on success.
+  - Errors: `room_not_found` (404), `invite_not_found` (404, returned also if already revoked).
+- **`POST /api/v1/rooms/join`**: Publicly redeem a room invite code to join a room.
+  - Body: `{"code": "ABCD1234"}`
+  - Returns HTTP 200 OK with `{"room_id": "...", "member_role": "member", "already_member": false}`.
+  - If the user is already a member, returns `already_member: true` without consuming a use count.
+
+### Error Semantics & HTTP Status Codes
+
+- **HTTP 404 (`invite_not_found`)**: Code was never valid or does not exist.
+- **HTTP 410 Gone (`invite_revoked`, `invite_expired`, `invite_exhausted`)**: Code existed but is no longer usable. This distinguishes terminal state errors from non-existent codes for client UX messaging.
+- **HTTP 409 Conflict (`room_full`)**: The room capacity limit (`room_size`) has been reached. Does not consume an invite use.
+
+### Concurrency & Rate Limiting
+
+- **`BEGIN IMMEDIATE` Write Serialization**: Invite redemption uses `BEGIN IMMEDIATE` transactions to prevent write lock contention and race conditions on single-use invite redemptions.
+- **Rate Limiting**: Protected by the `InviteRedeem` rate limit (`RATE_INVITE_REDEEM_PER_MIN`, default 10 requests per minute per IP address). Exceeding limit returns HTTP 429 `rate_limited`.
+- **Case Sensitivity**: Codes are strictly case-sensitive uppercase. Clients must normalize user input to uppercase before submission.
+
+### Future Integration (Phase 10)
+
+Phase 8 handles the relational room membership and invite lifecycle. Phase 10 will extend `/rooms/join` to automatically trigger MLS Welcome packet generation for joining devices.

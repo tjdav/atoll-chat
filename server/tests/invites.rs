@@ -846,6 +846,8 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         invite_code_length: 8,
         invite_limited_max_uses: 10,
         invite_limited_max_open: 50,
+        room_invite_default_uses: 1,
+        room_invite_code_length: 8,
         rate_limits: server::config::RateLimitConfig {
             invite_create_hourly: 2,
             invite_create_daily: 200,

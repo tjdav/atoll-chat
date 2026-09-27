@@ -7,6 +7,7 @@ pub mod login;
 pub mod ready;
 pub mod register;
 pub mod roles;
+pub mod room_invites;
 pub mod rooms;
 pub mod sessions;
 pub mod r#static;
