@@ -1,3 +1,4 @@
+mod auth;
 mod config;
 mod db;
 mod routes;
@@ -18,7 +19,11 @@ async fn main() -> anyhow::Result<()> {
     let log_level_str = std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
     let log_level = Level::from_str(&log_level_str).unwrap_or(Level::INFO);
     tracing_subscriber::fmt()
-        .with_env_filter(format!("{},tower_http={}", log_level.as_str().to_lowercase(), log_level.as_str().to_lowercase()))
+        .with_env_filter(format!(
+            "{},tower_http={}",
+            log_level.as_str().to_lowercase(),
+            log_level.as_str().to_lowercase()
+        ))
         .init();
 
     // 3. Load Config
@@ -32,6 +37,9 @@ async fn main() -> anyhow::Result<()> {
 
     // 5. Initialize SQLite pool
     let pool = db::init_pool(&config).await?;
+
+    // Seed roles
+    auth::check::seed_roles(&pool).await?;
 
     // CORS configuration
     let cors = if config.app_env == "development" {
