@@ -11,6 +11,7 @@ use opaque_ke::ClientRegistration;
 use rand::rngs::OsRng;
 use serde_json::{json, Value};
 use server::altcha::AltchaConfig;
+use server::config::RateLimitConfig;
 use server::opaque::DefaultCipherSuite;
 use tower::ServiceExt;
 
@@ -240,6 +241,20 @@ async fn hmac_secret_persisted_in_instance_config() {
         session_sliding: true,
         max_file_size_bytes: 104_857_600,
         server_max_devices_per_user: 20,
+        invite_default_uses: 1,
+        invite_expiry_days: 0,
+        invite_code_length: 8,
+        invite_limited_max_uses: 10,
+        invite_limited_max_open: 50,
+        rate_limits: RateLimitConfig {
+            invite_create_hourly: 50,
+            invite_create_daily: 200,
+            invite_redeem_per_min: 10,
+            kp_claim_per_min: 30,
+            kp_claim_hourly: 200,
+            login_per_min: 10,
+            login_lockout_min: 15,
+        },
     };
 
     let altcha_config1 = AltchaConfig::from_env(&config, &pool).await.unwrap();

@@ -7,7 +7,7 @@ use axum::{
 use common::{login_user, login_user_with_device_name, register_user, setup_test_app};
 use serde_json::Value;
 use server::altcha::AltchaConfig;
-use server::config::Config;
+use server::config::{Config, RateLimitConfig};
 use server::login::LoginStore;
 use server::opaque::OpaqueServer;
 use server::registration::RegistrationStore;
@@ -146,6 +146,20 @@ async fn test_04_device_limit_is_enforced() {
         session_sliding: true,
         max_file_size_bytes: 104_857_600,
         server_max_devices_per_user: 3,
+        invite_default_uses: 1,
+        invite_expiry_days: 0,
+        invite_code_length: 8,
+        invite_limited_max_uses: 10,
+        invite_limited_max_open: 50,
+        rate_limits: RateLimitConfig {
+            invite_create_hourly: 50,
+            invite_create_daily: 200,
+            invite_redeem_per_min: 10,
+            kp_claim_per_min: 30,
+            kp_claim_hourly: 200,
+            login_per_min: 10,
+            login_lockout_min: 15,
+        },
     };
 
     let altcha_config = Arc::new(

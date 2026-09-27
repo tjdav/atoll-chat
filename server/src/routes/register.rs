@@ -1,5 +1,6 @@
 use crate::altcha::{verify_altcha_payload, AltchaConfig};
 use crate::error::ApiError;
+use crate::invites::{self, InviteError};
 use crate::opaque::DefaultCipherSuite;
 use crate::registration::PendingRegistration;
 use crate::AppState;
@@ -194,12 +195,9 @@ pub async fn register_finish(
     let server_registration = ServerRegistration::<DefaultCipherSuite>::finish(upload);
     let opaque_registration_bytes = server_registration.serialize().to_vec();
 
-    // 5. Begin DB Transaction
-    let mut tx = state.pool.begin().await?;
-
-    // Check if any users exist inside transaction
+    // Check user count to determine bootstrap/owner state
     let user_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
-        .fetch_one(&mut *tx)
+        .fetch_one(&state.pool)
         .await?;
 
     let is_owner = user_count == 0;
@@ -213,25 +211,25 @@ pub async fn register_finish(
             .filter(|s| !s.is_empty())
             .ok_or_else(|| ApiError::Forbidden("invalid or expired invite".to_string()))?;
 
-        // Validate and increment invite atomically
-        let updated = sqlx::query(
-            r#"
-            UPDATE server_invites
-            SET current_uses = current_uses + 1
-            WHERE code = ?
-              AND revoked_at IS NULL
-              AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-              AND (max_uses = 0 OR current_uses < max_uses)
-            "#,
-        )
-        .bind(invite_code)
-        .execute(&mut *tx)
-        .await?;
-
-        if updated.rows_affected() == 0 {
-            return Err(ApiError::Forbidden("invalid or expired invite".to_string()));
-        }
+        // Validate and consume invite using the invite module
+        invites::validate_and_consume_invite(&state.pool, invite_code)
+            .await
+            .map_err(|e| match e {
+                InviteError::NotFound
+                | InviteError::Revoked
+                | InviteError::Expired
+                | InviteError::Exhausted => {
+                    ApiError::Forbidden("invalid or expired invite".to_string())
+                }
+                InviteError::Database(err) => ApiError::Internal(err.into()),
+                InviteError::CodeGenerationFailed => {
+                    ApiError::Internal(anyhow::anyhow!("code generation failed"))
+                }
+            })?;
     }
+
+    // 5. Begin DB Transaction for user creation
+    let mut tx = state.pool.begin().await?;
 
     // Generate user_id (16 random bytes -> 22 char base64url string)
     let mut id_bytes = [0u8; 16];

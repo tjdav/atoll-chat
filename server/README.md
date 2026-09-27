@@ -367,3 +367,47 @@ Device revocation executes within an atomic SQLite database transaction:
 The `pending_mls_removes` queue serves as a coordination point for Phase 10:
 - When a device is revoked, MLS Remove proposals are queued per room.
 - Phase 10 consumes this queue to construct and broadcast actual MLS Remove commits for room members.
+
+## Invites
+
+Server invite codes manage user onboarding after system bootstrap.
+
+### Code Format & Security
+
+- Invite codes are generated using **Crockford Base32** (`0123456789ABCDEFGHJKMNPQRSTVWXYZ`, excluding `I`, `L`, `O`, `U` to avoid visual confusion and offensive words) with cryptographically secure random generation (`OsRng`).
+- Code length is configurable via `INVITE_CODE_LENGTH` (default `8`).
+- **One-time code return**: An invite code is returned **only once**, in the JSON response of `POST /api/v1/admin/invites` upon creation. Subsequent `GET /api/v1/admin/invites` calls omit the code field to prevent code scraping.
+
+### Permission Enforcement
+
+- **`invite.unlimited`** (Owner / Admin): Can create invites with any valid `max_uses` or expiry, list all invites across all users, and revoke any invite.
+- **`invite.limited`** (Inviter): Can create invites with `max_uses` bounded between `1` and `INVITE_LIMITED_MAX_USES` (default `10`), capped at `INVITE_LIMITED_MAX_OPEN` (default `50`) total active unredeemed invites. When listing invites, limited inviters see only invites created by themselves. Attempting to revoke another user's invite returns HTTP 404.
+
+### Endpoints
+
+- **`POST /api/v1/admin/invites`**: Creates a new invite code. Accepts optional `max_uses` (`0` = unlimited) and `expires_in_days` (`0` = never).
+- **`GET /api/v1/admin/invites`**: Lists invites ordered by creation date descending. Accepts query parameters `include_revoked=true|false` and `created_by_me=true|false`.
+- **`DELETE /api/v1/admin/invites/:id`**: Revokes an invite code (`revoked_at = CURRENT_TIMESTAMP`). Revoking an already revoked invite returns HTTP 409 Conflict.
+- **`GET /api/v1/invites/:code`**: Public endpoint to validate an invite code before starting registration. Returns `{ "valid": true, "remaining_uses": N, "expires_at": "..." }` or `{ "valid": false, "reason": "not_found" | "expired" | "revoked" | "exhausted" }` with HTTP 200.
+
+### Rate Limiting
+
+Invite creation and public redemption validation are rate-limited using fixed time windows:
+
+- `InviteCreate`: Hourly and daily limits per user ID (`RATE_INVITE_CREATE_HOURLY`, `RATE_INVITE_CREATE_DAILY`).
+- `InviteRedeem`: Per-minute limit per IP address (`RATE_INVITE_REDEEM_PER_MIN`).
+
+When a rate limit is exceeded, the server returns HTTP 429 Too Many Requests with a `Retry-After` header and response JSON body:
+```json
+{
+  "error": "rate_limited",
+  "message": "invite creation rate limit exceeded",
+  "details": {
+    "reset_at": "2026-09-27T15:00:00Z"
+  }
+}
+```
+
+### Registration Integration
+
+During user registration (`POST /api/v1/auth/register/finish`), non-bootstrap registrations validate and consume the invite within an exclusive write transaction. Concurrent redemptions of a single-use invite are handled atomically so that exactly one registration succeeds and subsequent attempts fail with HTTP 403 (`{"error":"invalid or expired invite"}`).

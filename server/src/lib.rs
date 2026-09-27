@@ -4,9 +4,11 @@ pub mod config;
 pub mod db;
 pub mod devices;
 pub mod error;
+pub mod invites;
 pub mod login;
 pub mod opaque;
 pub mod permissions;
+pub mod rate_limit;
 pub mod registration;
 pub mod roles;
 pub mod routes;
@@ -15,8 +17,13 @@ pub mod session;
 pub use altcha::{verify_altcha_payload, AltchaConfig, AltchaError};
 pub use auth::AuthUser;
 pub use config::Config;
+pub use invites::{
+    create_invite, get_invite_by_id, list_invites, revoke_invite, validate_and_consume_invite,
+    ConsumedInvite, CreateInviteOptions, InviteError, ServerInvite,
+};
 pub use login::LoginStore;
 pub use opaque::{DefaultCipherSuite, OpaqueServer};
+pub use rate_limit::{RateLimitConfig, RateLimitDecision, RateLimitError, RateLimitKey, Window};
 pub use registration::RegistrationStore;
 use sqlx::SqlitePool;
 use std::sync::Arc;
