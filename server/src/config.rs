@@ -17,6 +17,7 @@ pub struct Config {
     pub altcha_cost: u32,
     pub session_expiry_days: u32,
     pub session_sliding: bool,
+    pub max_file_size_bytes: u64,
 }
 
 impl Config {
@@ -65,6 +66,11 @@ impl Config {
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
             .unwrap_or(true);
 
+        let max_file_size_bytes = env::var("MAX_FILE_SIZE_BYTES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(104_857_600);
+
         Ok(Self {
             app_env,
             app_url,
@@ -80,6 +86,7 @@ impl Config {
             altcha_cost,
             session_expiry_days,
             session_sliding,
+            max_file_size_bytes,
         })
     }
 }

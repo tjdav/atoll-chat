@@ -1,4 +1,5 @@
 pub mod altcha;
+pub mod auth;
 pub mod config;
 pub mod db;
 pub mod error;
@@ -11,6 +12,7 @@ pub mod routes;
 pub mod session;
 
 pub use altcha::{verify_altcha_payload, AltchaConfig, AltchaError};
+pub use auth::AuthUser;
 pub use config::Config;
 pub use login::LoginStore;
 pub use opaque::{DefaultCipherSuite, OpaqueServer};

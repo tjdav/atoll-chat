@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use server::altcha::AltchaConfig;
@@ -110,6 +110,16 @@ async fn main() -> anyhow::Result<()> {
             "/api/v1/auth/login/finish",
             post(routes::login::login_finish),
         )
+        .route(
+            "/api/v1/users/me",
+            get(routes::users::get_me).patch(routes::users::patch_me),
+        )
+        .route("/api/v1/users/me/sessions", get(routes::sessions::list))
+        .route(
+            "/api/v1/users/me/sessions/{id}",
+            delete(routes::sessions::revoke),
+        )
+        .route("/api/v1/auth/logout", post(routes::sessions::logout))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);
