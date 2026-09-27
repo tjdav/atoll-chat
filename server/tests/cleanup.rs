@@ -45,11 +45,14 @@ fn test_config(audit_retention_days: u64) -> Config {
             kp_claim_hourly: 200,
             login_per_min: 10,
             login_lockout_min: 15,
+            export_rate_limit_hours: 24,
         },
         cleanup_enabled: true,
         cleanup_interval_minutes: 60,
         cleanup_startup_delay_secs: 0,
         audit_retention_days,
+        data_retention_days: 0,
+        export_rate_limit_hours: 24,
     }
 }
 

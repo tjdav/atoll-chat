@@ -9,6 +9,7 @@ pub struct RateLimitConfig {
     pub kp_claim_hourly: u32,
     pub login_per_min: u32,
     pub login_lockout_min: u32,
+    pub export_rate_limit_hours: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -40,6 +41,8 @@ pub struct Config {
     pub cleanup_interval_minutes: u64,
     pub cleanup_startup_delay_secs: u64,
     pub audit_retention_days: u64,
+    pub data_retention_days: u64,
+    pub export_rate_limit_hours: u64,
 }
 
 impl Config {
@@ -158,6 +161,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(15);
 
+        let export_rate_limit_hours = env::var("EXPORT_RATE_LIMIT_HOURS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(24);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -166,6 +174,7 @@ impl Config {
             kp_claim_hourly: rate_kp_claim_hourly,
             login_per_min: rate_login_per_min,
             login_lockout_min: rate_login_lockout_min,
+            export_rate_limit_hours,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -186,6 +195,11 @@ impl Config {
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(90);
+
+        let data_retention_days = env::var("DATA_RETENTION_DAYS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
 
         Ok(Self {
             app_env,
@@ -214,6 +228,8 @@ impl Config {
             cleanup_interval_minutes,
             cleanup_startup_delay_secs,
             audit_retention_days,
+            data_retention_days,
+            export_rate_limit_hours,
         })
     }
 }

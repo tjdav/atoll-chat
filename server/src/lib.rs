@@ -7,6 +7,7 @@ pub mod config_ops;
 pub mod db;
 pub mod devices;
 pub mod error;
+pub mod gdpr;
 pub mod invites;
 pub mod limits;
 pub mod login;
@@ -27,6 +28,7 @@ pub use cleanup::{
     CleanupReport, Scheduler,
 };
 pub use config::Config;
+pub use gdpr::{anonymise_user, build_export, DeletionSummary, GdprError};
 pub use invites::{
     create_invite, get_invite_by_id, list_invites, revoke_invite, validate_and_consume_invite,
     ConsumedInvite, CreateInviteOptions, InviteError, ServerInvite,

@@ -133,8 +133,11 @@ async fn main() -> anyhow::Result<()> {
         )
         .route(
             "/api/v1/users/me",
-            get(routes::users::get_me).patch(routes::users::patch_me),
+            get(routes::users::get_me)
+                .patch(routes::users::patch_me)
+                .delete(routes::users::delete_me),
         )
+        .route("/api/v1/users/me/export", get(routes::users::export_me))
         .route("/api/v1/users/me/sessions", get(routes::sessions::list))
         .route(
             "/api/v1/users/me/sessions/{id}",

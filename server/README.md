@@ -515,3 +515,70 @@ cleanup: job=memory_stores status=ok rows_deleted=0 duration_ms=0
 The following cleanup jobs are scheduled to be integrated in future phases:
 - **Attachment Pruning**: Prunes orphaned and expired file attachments (Phase 12).
 - **Message Retention Enforcement**: Prunes expired MLS message history according to room retention policies (Phase 10).
+
+## GDPR Endpoints
+
+The server provides endpoints to satisfy GDPR data subject rights for account deletion (Right to Erasure, Art. 17) and data portability (Right to Data Portability, Art. 20).
+
+### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `DATA_RETENTION_DAYS` | Data retention period in days. Reserved for future message/attachment cleanup enforcement. | `0` |
+| `EXPORT_RATE_LIMIT_HOURS` | Rate limit window in hours for `GET /api/v1/users/me/export`. | `24` |
+
+### Account Deletion (`DELETE /api/v1/users/me`)
+
+The deletion endpoint anonymises user personal data while maintaining referential integrity across shared conversation histories and system records.
+
+#### Re-Authentication Requirement
+- Account deletion is destructive and irreversible. To prevent unauthorized deletion via stale session tokens, the request session's `created_at` timestamp must be within the last **5 minutes** (300 seconds).
+- If the session is older than 5 minutes, the server returns HTTP 403 Forbidden with `{"error":"fresh_session_required"}`. The client must re-authenticate via the two-round OPAQUE login flow (`/auth/login/start` and `/auth/login/finish`) to obtain a fresh session before retrying.
+- The request body must explicitly contain `{"confirm": "DELETE"}`. Otherwise, the server returns HTTP 400 Bad Request with `{"error":"confirmation_required"}`.
+
+#### Last-Owner Safeguard
+- If the user has the `owner` role (`role_owner`) and is the **only remaining user with that role**, the deletion request is rejected with HTTP 409 Conflict (`{"error":"last_owner_cannot_delete"}`).
+- This prevents accidentally rendering an instance unadministered. The owner role must be granted to another user before the account can be deleted.
+
+#### Anonymisation Behavior
+Instead of hard-deleting the user row (which would cascade and destroy shared messages or corrupt conversation threads for remaining room members), the deletion operation executes atomically in a single SQLite transaction:
+1. Deletes all unconsumed KeyPackages (`consumed = 0`).
+2. Deletes all push subscriptions.
+3. Queues MLS Remove entries in `pending_mls_removes` for all rooms the user is a member of.
+4. Deletes `recovery_vault` entries if present.
+5. Deletes all devices, which cascades to delete active sessions.
+6. Anonymises the `users` table row:
+   - `username` is replaced with `deleted_<16_hex_chars>` to prevent collision while signaling deletion.
+   - `username_hash` is replaced with random hex bytes so the original handle can be reused by new registrants.
+   - `display_name` and `profile_blob` are set to `NULL`.
+   - `opaque_registration` is replaced with 32 random bytes to prevent future authentication.
+   - `identity_pubkey` is cleared (`""`).
+   - `disabled_at` and `deleted_at` are set to `CURRENT_TIMESTAMP`.
+7. Deletes `room_members` records for the user.
+8. Writes an audit entry with action `user.delete`.
+
+### Data Export (`GET /api/v1/users/me/export`)
+
+The export endpoint allows users to download a machine-readable ZIP archive of their personal data.
+
+#### Rate Limit
+- Data exports are rate-limited to **1 export per `EXPORT_RATE_LIMIT_HOURS` window** (default 24 hours).
+- Subsequent requests within the window return HTTP 429 Too Many Requests (`{"error":"rate_limited"}`).
+
+#### Export Contents
+The endpoint buffers and returns a synchronous ZIP file (`Content-Type: application/zip`) containing:
+- **`profile.json`**: Account ID, username, display name, profile blob, roles, and creation timestamp.
+- **`devices.json`**: Linked client devices and `last_seen` timestamps.
+- **`sessions.json`**: Session history including creation, expiration, and revocation dates.
+- **`rooms.json`**: Joined room IDs and membership dates.
+- **`messages.json`**: Encrypted message history metadata (base64-encoded `mls_data`). Note that message content is end-to-end encrypted; the server holds only ciphertext and cannot decrypt message payloads.
+- **`audit.json`**: Audit entries where the user was the actor (`actor_id = user_id`).
+- **`README.txt`**: Standard archive notice detailing contents and security guidelines.
+
+#### Audit Logging
+- Every data export logs an audit entry with action `user.export`.
+
+### Legal & Instance Controller Obligations
+
+- The software provides the technical mechanisms for data erasure and portability under GDPR Art. 17 and Art. 20.
+- Instance operators (data controllers) remain responsible for establishing appropriate legal bases, maintaining privacy notices, and adhering to local data protection regulation obligations.
