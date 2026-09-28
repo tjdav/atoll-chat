@@ -366,11 +366,6 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         hsts_max_age: 31536000,
         hsts_include_subdomains: true,
         client_static_dir: None,
-        sockudo_url: "http://localhost:6001".to_string(),
-        sockudo_app_id: "chat".to_string(),
-        sockudo_app_key: "auto".to_string(),
-        sockudo_app_secret: "auto".to_string(),
-        sockudo_public_url: None,
     };
 
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await.unwrap());
@@ -388,14 +383,6 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         call_max_participants: 50,
     });
 
-    let sockudo_config = Arc::new(server::SockudoConfig {
-        http_base: "http://localhost:6001".to_string(),
-        app_id: "chat".to_string(),
-        app_key: "test-app-key".to_string(),
-        app_secret: "test-app-secret".to_string(),
-    });
-    let sockudo_publisher = Arc::new(server::Publisher::new((*sockudo_config).clone()));
-
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -404,8 +391,6 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         altcha_config,
         config: config_arc,
         server_hard_max,
-        sockudo_config,
-        sockudo_publisher,
     };
 
     let app = axum::Router::new()
@@ -1586,23 +1571,10 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         hsts_max_age: 31536000,
         hsts_include_subdomains: true,
         client_static_dir: None,
-        sockudo_url: "http://localhost:6001".to_string(),
-        sockudo_app_id: "chat".to_string(),
-        sockudo_app_key: "auto".to_string(),
-        sockudo_app_secret: "auto".to_string(),
-        sockudo_public_url: None,
     };
 
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await.unwrap());
     let config_arc = Arc::new(config);
-
-    let sockudo_config = Arc::new(server::SockudoConfig {
-        http_base: "http://localhost:6001".to_string(),
-        app_id: "chat".to_string(),
-        app_key: "test-app-key".to_string(),
-        app_secret: "test-app-secret".to_string(),
-    });
-    let sockudo_publisher = Arc::new(server::Publisher::new((*sockudo_config).clone()));
 
     let state = AppState {
         pool: pool.clone(),
@@ -1612,8 +1584,6 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         altcha_config,
         config: config_arc,
         server_hard_max: Arc::new(server::ServerHardMax::default()),
-        sockudo_config,
-        sockudo_publisher,
     };
 
     let app = axum::Router::new()
@@ -1770,23 +1740,10 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         hsts_max_age: 31536000,
         hsts_include_subdomains: true,
         client_static_dir: None,
-        sockudo_url: "http://localhost:6001".to_string(),
-        sockudo_app_id: "chat".to_string(),
-        sockudo_app_key: "auto".to_string(),
-        sockudo_app_secret: "auto".to_string(),
-        sockudo_public_url: None,
     };
 
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await.unwrap());
     let config_arc = Arc::new(config);
-
-    let sockudo_config = Arc::new(server::SockudoConfig {
-        http_base: "http://localhost:6001".to_string(),
-        app_id: "chat".to_string(),
-        app_key: "test-app-key".to_string(),
-        app_secret: "test-app-secret".to_string(),
-    });
-    let sockudo_publisher = Arc::new(server::Publisher::new((*sockudo_config).clone()));
 
     let state = AppState {
         pool: pool.clone(),
@@ -1796,8 +1753,6 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         altcha_config,
         config: config_arc,
         server_hard_max: Arc::new(server::ServerHardMax::default()),
-        sockudo_config,
-        sockudo_publisher,
     };
 
     let app = axum::Router::new()

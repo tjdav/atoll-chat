@@ -49,11 +49,6 @@ pub struct Config {
     pub hsts_max_age: u64,
     pub hsts_include_subdomains: bool,
     pub client_static_dir: Option<String>,
-    pub sockudo_url: String,
-    pub sockudo_app_id: String,
-    pub sockudo_app_key: String,
-    pub sockudo_app_secret: String,
-    pub sockudo_public_url: Option<String>,
 }
 
 impl Config {
@@ -250,40 +245,6 @@ impl Config {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
 
-        let sockudo_url = match env::var("SOCKUDO_URL") {
-            Ok(val) if !val.trim().is_empty() => val.trim().to_string(),
-            _ => {
-                if app_env == "production" {
-                    anyhow::bail!("SOCKUDO_URL must be set in production mode");
-                } else {
-                    "http://localhost:6001".to_string()
-                }
-            }
-        };
-
-        let sockudo_app_id = env::var("SOCKUDO_APP_ID")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "chat".to_string());
-
-        let sockudo_app_key = env::var("SOCKUDO_APP_KEY")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "auto".to_string());
-
-        let sockudo_app_secret = env::var("SOCKUDO_APP_SECRET")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "auto".to_string());
-
-        let sockudo_public_url = env::var("SOCKUDO_PUBLIC_URL")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
-
         Ok(Self {
             app_env,
             app_url,
@@ -319,11 +280,6 @@ impl Config {
             hsts_max_age,
             hsts_include_subdomains,
             client_static_dir,
-            sockudo_url,
-            sockudo_app_id,
-            sockudo_app_key,
-            sockudo_app_secret,
-            sockudo_public_url,
         })
     }
 }
