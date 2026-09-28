@@ -22,6 +22,12 @@ cargo run
 
 Migrations will run automatically on startup. The SQLite database will be created at the path specified by `DB_PATH` in your `.env` file (by default, `./data/app.db`).
 
+### Migration history
+
+| Migration | Purpose |
+|---|---|
+| `0015_room_messages_deleted_at.sql` | Adds tombstone column for message deletion (Amendment 2) |
+
 ## Testing Endpoints
 
 Check the health of the server:
@@ -836,8 +842,8 @@ Phase 10 delivers messaging support, welcome packet routing, and MLS epoch linea
 ### Table Schema
 
 - **`room_messages`**: Stores committed MLS ciphertexts.
-  - Columns: `id` (ULID), `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type` (`application`, `commit`, `proposal`), `ciphertext` (BLOB), `created_at`.
-  - Indexes: `idx_room_messages_room_epoch_seq`, `idx_room_messages_room_created`, `idx_room_messages_sender`.
+  - Columns: `id` (ULID), `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type` (`application`, `commit`, `proposal`), `ciphertext` (BLOB), `created_at`, `deleted_at` (DATETIME).
+  - Indexes: `idx_room_messages_room_epoch_seq`, `idx_room_messages_room_created`, `idx_room_messages_sender`, `idx_room_messages_room_deleted`.
 - **`welcomes`**: Stores encrypted onboarding welcome packets for new room members.
   - Columns: `id` (ULID), `room_id`, `recipient_user_id`, `recipient_client_id`, `welcome_data` (BLOB), `consumed` (0 or 1), `created_at`.
   - Index: `idx_welcomes_recipient`.
