@@ -1,5 +1,4 @@
 pub mod altcha;
-pub mod attachments;
 pub mod audit;
 pub mod auth;
 pub mod cleanup;
@@ -26,7 +25,6 @@ pub mod rooms;
 pub mod routes;
 pub mod session;
 pub mod sockudo;
-pub mod storage;
 pub mod welcomes;
 
 use axum::{
@@ -37,10 +35,6 @@ use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 pub use altcha::{verify_altcha_payload, AltchaConfig, AltchaError};
-pub use attachments::{
-    delete_attachment, get_attachment, read_attachment_bytes, upload_attachment, AttachmentError,
-    AttachmentView, UploadRequest,
-};
 pub use auth::AuthUser;
 pub use cleanup::{
     audit::AuditJob, memory::MemoryStoresJob, rate_limits::RateLimitsJob, sessions::SessionsJob,
@@ -69,7 +63,6 @@ pub use room_messages::{
 pub use sockudo::{Publisher, SockudoConfig, SockudoError};
 use sqlx::SqlitePool;
 use std::sync::Arc;
-pub use storage::{build_storage, FsStorage, S3Storage, Storage, StorageError};
 pub use welcomes::{
     consume_welcome, create_welcome, get_welcome_data, list_pending, WelcomeError, WelcomeView,
 };
@@ -85,7 +78,6 @@ pub struct AppState {
     pub server_hard_max: Arc<ServerHardMax>,
     pub sockudo_config: Arc<SockudoConfig>,
     pub sockudo_publisher: Arc<Publisher>,
-    pub storage: Arc<dyn Storage>,
 }
 
 impl axum::extract::FromRef<AppState> for SqlitePool {
@@ -139,12 +131,6 @@ impl axum::extract::FromRef<AppState> for Arc<SockudoConfig> {
 impl axum::extract::FromRef<AppState> for Arc<Publisher> {
     fn from_ref(state: &AppState) -> Self {
         state.sockudo_publisher.clone()
-    }
-}
-
-impl axum::extract::FromRef<AppState> for Arc<dyn Storage> {
-    fn from_ref(state: &AppState) -> Self {
-        state.storage.clone()
     }
 }
 
@@ -260,11 +246,6 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/pending-removes/{remove_id}/consume",
             post(routes::pending_removes::consume),
-        )
-        .route("/rooms/{id}/attachments", post(routes::attachments::upload))
-        .route(
-            "/attachments/{id}",
-            get(routes::attachments::download).delete(routes::attachments::delete_attachment),
         );
 
     let cors = if state.config.app_env == "development" {

@@ -1,5 +1,4 @@
 use std::env;
-use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct RateLimitConfig {
@@ -55,18 +54,6 @@ pub struct Config {
     pub sockudo_app_key: String,
     pub sockudo_app_secret: String,
     pub sockudo_public_url: Option<String>,
-
-    pub storage_backend: String,
-    pub storage_fs_path: PathBuf,
-    pub s3_endpoint: Option<String>,
-    pub s3_region: String,
-    pub s3_bucket: Option<String>,
-    pub s3_access_key_id: Option<String>,
-    pub s3_secret_access_key: Option<String>,
-    pub s3_path_style: bool,
-    pub s3_presign_ttl_seconds: u64,
-    pub attachment_chunk_size: u64,
-    pub attachment_bucket_sizes: Vec<u64>,
 }
 
 impl Config {
@@ -297,117 +284,6 @@ impl Config {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
 
-        let storage_backend = env::var("STORAGE_BACKEND")
-            .unwrap_or_else(|_| "fs".to_string())
-            .trim()
-            .to_lowercase();
-
-        if storage_backend != "fs" && storage_backend != "s3" {
-            anyhow::bail!(
-                "STORAGE_BACKEND must be 'fs' or 's3' (got \"{}\")",
-                storage_backend
-            );
-        }
-
-        let storage_fs_path = PathBuf::from(
-            env::var("STORAGE_FS_PATH").unwrap_or_else(|_| "./data/attachments".to_string()),
-        );
-
-        let s3_endpoint = env::var("S3_ENDPOINT")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
-
-        let s3_region = env::var("S3_REGION")
-            .unwrap_or_else(|_| "us-east-1".to_string())
-            .trim()
-            .to_string();
-
-        let s3_bucket = env::var("S3_BUCKET")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
-
-        let s3_access_key_id = env::var("S3_ACCESS_KEY_ID")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
-
-        let s3_secret_access_key = env::var("S3_SECRET_ACCESS_KEY")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
-
-        let s3_path_style = env::var("S3_PATH_STYLE")
-            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
-            .unwrap_or(false);
-
-        let s3_presign_ttl_seconds = env::var("S3_PRESIGN_TTL_SECONDS")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(600);
-
-        if storage_backend == "s3"
-            && (s3_endpoint.is_none()
-                || s3_bucket.is_none()
-                || s3_access_key_id.is_none()
-                || s3_secret_access_key.is_none())
-        {
-            anyhow::bail!(
-                "When STORAGE_BACKEND is 's3', S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY must all be set"
-            );
-        }
-
-        let attachment_chunk_size = env::var("ATTACHMENT_CHUNK_SIZE")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(65536);
-
-        if attachment_chunk_size == 0 || attachment_chunk_size % 4096 != 0 {
-            anyhow::bail!(
-                "ATTACHMENT_CHUNK_SIZE must be greater than 0 and a multiple of 4096 (got {})",
-                attachment_chunk_size
-            );
-        }
-
-        let bucket_sizes_raw = env::var("ATTACHMENT_BUCKET_SIZES")
-            .unwrap_or_else(|_| "65536,524288,4194304,33554432".to_string());
-
-        let mut attachment_bucket_sizes = Vec::new();
-        for item in bucket_sizes_raw.split(',') {
-            let item_trimmed = item.trim();
-            if item_trimmed.is_empty() {
-                continue;
-            }
-            let val: u64 = item_trimmed.parse().map_err(|_| {
-                anyhow::anyhow!(
-                    "Invalid number in ATTACHMENT_BUCKET_SIZES: \"{}\"",
-                    item_trimmed
-                )
-            })?;
-            if val == 0 || val % 4096 != 0 {
-                anyhow::bail!(
-                    "Each size in ATTACHMENT_BUCKET_SIZES must be greater than 0 and a multiple of 4096 (got {})",
-                    val
-                );
-            }
-            attachment_bucket_sizes.push(val);
-        }
-
-        if attachment_bucket_sizes.is_empty() {
-            anyhow::bail!("ATTACHMENT_BUCKET_SIZES must not be empty");
-        }
-
-        for windows in attachment_bucket_sizes.windows(2) {
-            if windows[0] >= windows[1] {
-                anyhow::bail!(
-                    "ATTACHMENT_BUCKET_SIZES must be strictly increasing (got {} >= {})",
-                    windows[0],
-                    windows[1]
-                );
-            }
-        }
-
         Ok(Self {
             app_env,
             app_url,
@@ -448,17 +324,6 @@ impl Config {
             sockudo_app_key,
             sockudo_app_secret,
             sockudo_public_url,
-            storage_backend,
-            storage_fs_path,
-            s3_endpoint,
-            s3_region,
-            s3_bucket,
-            s3_access_key_id,
-            s3_secret_access_key,
-            s3_path_style,
-            s3_presign_ttl_seconds,
-            attachment_chunk_size,
-            attachment_bucket_sizes,
         })
     }
 }
