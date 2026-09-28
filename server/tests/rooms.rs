@@ -1428,3 +1428,390 @@ async fn test_29_file_size_clamp_applies() {
     // Assert stored value is 10000000
     assert_eq!(json_c["max_file_size_bytes"], 10000000);
 }
+
+#[tokio::test]
+async fn test_30_effective_limits_no_overrides() {
+    let (app, pool) = setup_test_app().await;
+    let (user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('file_size_bytes', '50000000', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('attachment_retention_days', '30', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+
+    assert_eq!(json_g["effective_max_file_size_bytes"], 50000000);
+    assert_eq!(json_g["effective_message_retention_days"], 30);
+}
+
+#[tokio::test]
+async fn test_31_effective_limits_override_below_instance_limit() {
+    let (app, pool) = setup_test_app().await;
+    let (user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('file_size_bytes', '50000000', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('attachment_retention_days', '30', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "retention_days": 10,
+                "max_file_size_bytes": 10000000
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+
+    assert_eq!(json_g["effective_max_file_size_bytes"], 10000000);
+    assert_eq!(json_g["effective_message_retention_days"], 10);
+}
+
+#[tokio::test]
+async fn test_32_effective_limits_override_above_instance_limit_is_clamped() {
+    let (app, pool) = setup_test_app().await;
+    let (user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    // First create a room with no overrides
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    // Insert high values directly via SQL to simulate a stale override
+    sqlx::query(
+        "UPDATE rooms SET retention_days = 300, max_file_size_bytes = 200000000 WHERE id = ?",
+    )
+    .bind(room_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('file_size_bytes', '50000000', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('attachment_retention_days', '30', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+
+    assert_eq!(json_g["effective_max_file_size_bytes"], 50000000);
+    assert_eq!(json_g["effective_message_retention_days"], 30);
+}
+
+#[tokio::test]
+async fn test_33_effective_limits_instance_above_server_max_is_clamped() {
+    let (app, pool) = setup_test_app().await;
+    let (user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('file_size_bytes', '999999999', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+
+    // Default ServerHardMax file_size_bytes is 104,857,600
+    assert_eq!(json_g["effective_max_file_size_bytes"], 104857600);
+}
+
+#[tokio::test]
+async fn test_34_effective_limits_retention_zero_is_absorbing() {
+    let (app, pool) = setup_test_app().await;
+    let (user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('attachment_retention_days', '0', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "retention_days": 30 }).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+
+    assert_eq!(json_g["effective_message_retention_days"], 0);
+}
+
+#[tokio::test]
+async fn test_35_effective_limits_room_zero_retention_wins() {
+    let (app, pool) = setup_test_app().await;
+    let (user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    sqlx::query("INSERT OR REPLACE INTO instance_limits (key, value, updated_by) VALUES ('attachment_retention_days', '30', ?)")
+        .bind(&user_a_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "retention_days": 0 }).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+
+    assert_eq!(json_g["effective_message_retention_days"], 0);
+}
+
+#[tokio::test]
+async fn test_36_effective_limits_returned_on_room_list() {
+    let (app, pool) = setup_test_app().await;
+    let (_user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    let req_create1 = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "max_file_size_bytes": 10000000 }).to_string(),
+        ))
+        .unwrap();
+    app.clone().oneshot(req_create1).await.unwrap();
+
+    let req_create2 = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "max_file_size_bytes": 20000000 }).to_string(),
+        ))
+        .unwrap();
+    app.clone().oneshot(req_create2).await.unwrap();
+
+    let req_list = Request::builder()
+        .method("GET")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_list = app.oneshot(req_list).await.unwrap();
+    assert_eq!(resp_list.status(), StatusCode::OK);
+
+    let body_l = axum::body::to_bytes(resp_list.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_l: Value = serde_json::from_slice(&body_l).unwrap();
+    let rooms = json_l["rooms"].as_array().unwrap();
+
+    assert_eq!(rooms.len(), 2);
+    assert!(rooms[0]["effective_max_file_size_bytes"].is_number());
+    assert!(rooms[0]["effective_message_retention_days"].is_number());
+    assert!(rooms[1]["effective_max_file_size_bytes"].is_number());
+    assert!(rooms[1]["effective_message_retention_days"].is_number());
+}
+
+#[tokio::test]
+async fn test_37_other_room_fields_unchanged() {
+    let (app, pool) = setup_test_app().await;
+    let (user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "name_encrypted": "test_room_name" }).to_string(),
+        ))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+
+    assert_eq!(json_g["id"], room_id);
+    assert_eq!(json_g["owner_id"], user_a_id);
+    assert_eq!(json_g["name_encrypted"], "test_room_name");
+    assert!(json_g["created_at"].is_string());
+    assert_eq!(json_g["current_user_role"], "owner");
+    assert_eq!(json_g["member_count"], 1);
+}

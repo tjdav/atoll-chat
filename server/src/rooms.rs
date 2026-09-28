@@ -25,6 +25,46 @@ pub struct RoomWithRole {
     pub room: Room,
     pub current_user_role: String,
     pub member_count: u32,
+    pub effective_max_file_size_bytes: i64,
+    pub effective_message_retention_days: i64,
+}
+
+/// Computes the effective file-size limit for a room.
+/// Effective = MIN(room_override, instance_limit, server_max).
+/// `room_override` is nullable; when None, the instance limit is used.
+pub fn effective_file_size_limit(
+    room_override: Option<i64>,
+    instance_limit: i64,
+    server_max: i64,
+) -> i64 {
+    let candidate = match room_override {
+        Some(r) => r.min(instance_limit),
+        None => instance_limit,
+    };
+    candidate.min(server_max)
+}
+
+/// Computes the effective message retention for a room, in days.
+/// Returns 0 when retention is "forever" (no pruning).
+/// Effective = MIN(room_override, instance_limit, server_max).
+/// `room_override` is nullable; when None, the instance limit is used.
+/// A value of 0 means "forever" and short-circuits the MIN — 0 is the
+/// least restrictive value, so it wins over any larger limit.
+pub fn effective_message_retention_days(
+    room_override: Option<i64>,
+    instance_limit: i64,
+    server_max: i64,
+) -> i64 {
+    let candidate = match room_override {
+        Some(r) if r > 0 => r.min(instance_limit),
+        _ if room_override == Some(0) => 0,
+        _ => instance_limit,
+    };
+    if candidate == 0 || instance_limit == 0 || server_max == 0 {
+        0
+    } else {
+        candidate.min(server_max)
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -244,6 +284,8 @@ pub async fn list_rooms_for_user(
             room,
             current_user_role,
             member_count: member_count as u32,
+            effective_max_file_size_bytes: 0,
+            effective_message_retention_days: 0,
         });
     }
 
@@ -287,6 +329,8 @@ pub async fn get_room_for_user(
             room,
             current_user_role,
             member_count: member_count as u32,
+            effective_max_file_size_bytes: 0,
+            effective_message_retention_days: 0,
         }))
     } else {
         Ok(None)

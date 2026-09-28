@@ -73,10 +73,26 @@ pub async fn create(
     )
     .await?;
 
+    // Message retention uses the same instance limit as attachments in V1.
+    // The spec (§4.4) does not define a separate `message_retention_days` instance limit —
+    // messages and attachments share the retention policy until a future revision introduces a separate key.
+    let effective_max_file_size_bytes = rooms::effective_file_size_limit(
+        room.max_file_size_bytes,
+        effective_limits.file_size_bytes,
+        state.server_hard_max.file_size_bytes,
+    );
+    let effective_message_retention_days = rooms::effective_message_retention_days(
+        room.retention_days,
+        effective_limits.attachment_retention_days,
+        state.server_hard_max.attachment_retention_days,
+    );
+
     let room_with_role = RoomWithRole {
         room,
         current_user_role: "owner".to_string(),
         member_count: 1,
+        effective_max_file_size_bytes,
+        effective_message_retention_days,
     };
 
     Ok((StatusCode::CREATED, Json(room_with_role)))
@@ -86,7 +102,23 @@ pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<RoomListResponse>, ApiError> {
-    let user_rooms = rooms::list_rooms_for_user(&state.pool, &auth.user_id).await?;
+    let limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
+    let mut user_rooms = rooms::list_rooms_for_user(&state.pool, &auth.user_id).await?;
+
+    for room_with_role in &mut user_rooms {
+        // Message retention uses the same instance limit as attachments in V1.
+        room_with_role.effective_max_file_size_bytes = rooms::effective_file_size_limit(
+            room_with_role.room.max_file_size_bytes,
+            limits.file_size_bytes,
+            state.server_hard_max.file_size_bytes,
+        );
+        room_with_role.effective_message_retention_days = rooms::effective_message_retention_days(
+            room_with_role.room.retention_days,
+            limits.attachment_retention_days,
+            state.server_hard_max.attachment_retention_days,
+        );
+    }
+
     Ok(Json(RoomListResponse { rooms: user_rooms }))
 }
 
@@ -97,7 +129,22 @@ pub async fn get(
 ) -> Result<Json<RoomWithRole>, ApiError> {
     let room_opt = rooms::get_room_for_user(&state.pool, &id, &auth.user_id).await?;
     match room_opt {
-        Some(room) => Ok(Json(room)),
+        Some(mut room_with_role) => {
+            let limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
+            // Message retention uses the same instance limit as attachments in V1.
+            room_with_role.effective_max_file_size_bytes = rooms::effective_file_size_limit(
+                room_with_role.room.max_file_size_bytes,
+                limits.file_size_bytes,
+                state.server_hard_max.file_size_bytes,
+            );
+            room_with_role.effective_message_retention_days =
+                rooms::effective_message_retention_days(
+                    room_with_role.room.retention_days,
+                    limits.attachment_retention_days,
+                    state.server_hard_max.attachment_retention_days,
+                );
+            Ok(Json(room_with_role))
+        }
         None => Err(ApiError::NotFound("room_not_found".to_string())),
     }
 }

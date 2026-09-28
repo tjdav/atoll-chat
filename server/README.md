@@ -693,6 +693,7 @@ Room creation and membership enforcement respects instance limits and server har
   - Errors: `room_limit_reached` (409), `invalid_retention` (400), `invalid_file_size` (400).
 - **`GET /api/v1/rooms`**: Lists all rooms joined by the authenticated user, ordered by `joined_at DESC`.
 - **`GET /api/v1/rooms/:id`**: Returns metadata and role for a joined room. Returns 404 if not a member.
+`GET /api/v1/rooms/:id` returns `effective_max_file_size_bytes` and `effective_message_retention_days`, computed as `MIN(room override, instance limit, server hard max)`. Clients use these values to pre-flight attachment uploads and display retention policy.
 - **`DELETE /api/v1/rooms/:id`**: Deletes a room. Owner-only (403 for regular members, 404 for non-members). Cascades to all child tables via foreign keys.
 - **`POST /api/v1/rooms/:id/leave`**: Leaves a room. Returns `{ "outcome": "left" | "transferred_ownership" | "room_deleted", "new_owner_id": "..." }`. Returns 400 `not_a_member` for non-members.
 - **`GET /api/v1/rooms/:id/members`**: Lists members in a room, ordered owner first, then moderators, then members by `joined_at ASC`. Member-only (404 for non-members).
