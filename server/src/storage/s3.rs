@@ -173,4 +173,18 @@ impl Storage for S3Storage {
     fn backend_name(&self) -> &'static str {
         "s3"
     }
+
+    async fn presign_get(
+        &self,
+        key: &str,
+        ttl_seconds: u64,
+    ) -> Result<Option<String>, StorageError> {
+        validate_key(key)?;
+        let result = self
+            .bucket
+            .presign_get(key, ttl_seconds as u32, None)
+            .await
+            .map_err(|e| StorageError::S3(e.to_string()))?;
+        Ok(Some(result))
+    }
 }

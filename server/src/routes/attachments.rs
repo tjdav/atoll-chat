@@ -1,18 +1,84 @@
 use axum::{
     extract::{FromRequest, Multipart, Path, State},
-    http::{header, HeaderMap, StatusCode},
+    http::{header, HeaderMap, HeaderName, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 
-use crate::attachments::{self, AttachmentError, UploadRequest};
+use crate::attachments::{self, AttachmentError, AttachmentView, UploadRequest};
 use crate::auth::AuthUser;
 use crate::config::Config;
 use crate::limits::{self, ServerHardMax};
+use crate::rate_limit::{self, RateLimitError, RateLimitKey};
 use crate::storage::Storage;
 use sqlx::SqlitePool;
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum RangeError {
+    Unsupported,   // multiple ranges, non-bytes unit
+    Malformed,     // bad syntax
+    Unsatisfiable, // start >= total_size
+}
+
+pub fn parse_range_header(
+    header: Option<&str>,
+    total_size: u64,
+) -> Result<Option<(u64, u64)>, RangeError> {
+    let header_str = match header {
+        Some(h) => h.trim(),
+        None => return Ok(None),
+    };
+
+    if header_str.is_empty() {
+        return Ok(None);
+    }
+
+    if !header_str.starts_with("bytes=") {
+        return Err(RangeError::Unsupported);
+    }
+
+    let spec = header_str["bytes=".len()..].trim();
+    if spec.contains(',') {
+        return Err(RangeError::Unsupported);
+    }
+
+    if let Some(suffix_str) = spec.strip_prefix('-') {
+        let suffix: u64 = suffix_str.parse().map_err(|_| RangeError::Malformed)?;
+        if suffix == 0 || total_size == 0 {
+            return Err(RangeError::Unsatisfiable);
+        }
+        let start = total_size.saturating_sub(suffix);
+        let end = total_size - 1;
+        Ok(Some((start, end)))
+    } else if let Some(dash_idx) = spec.find('-') {
+        let start_str = &spec[..dash_idx];
+        let end_str = &spec[dash_idx + 1..];
+
+        let start: u64 = start_str.parse().map_err(|_| RangeError::Malformed)?;
+
+        if start >= total_size {
+            return Err(RangeError::Unsatisfiable);
+        }
+
+        if end_str.is_empty() {
+            let end = total_size - 1;
+            Ok(Some((start, end)))
+        } else {
+            let end: u64 = end_str.parse().map_err(|_| RangeError::Malformed)?;
+            if start > end {
+                return Err(RangeError::Malformed);
+            }
+            let end_clipped = std::cmp::min(end, total_size - 1);
+            Ok(Some((start, end_clipped)))
+        }
+    } else {
+        Err(RangeError::Malformed)
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub async fn upload(
@@ -62,6 +128,105 @@ pub async fn upload(
     Ok((StatusCode::CREATED, Json(view)))
 }
 
+fn build_full_response(view: &AttachmentView, etag_val: String, bytes: Vec<u8>) -> Response {
+    let res_headers = [
+        (header::CONTENT_TYPE, "application/octet-stream".to_string()),
+        (header::CONTENT_LENGTH, view.padded_size.to_string()),
+        (header::CONTENT_DISPOSITION, "inline".to_string()),
+        (
+            header::CACHE_CONTROL,
+            "private, max-age=86400, immutable".to_string(),
+        ),
+        (header::ETAG, etag_val),
+        (header::ACCEPT_RANGES, "bytes".to_string()),
+        (header::X_CONTENT_TYPE_OPTIONS, "nosniff".to_string()),
+        (
+            HeaderName::from_static("x-attachment-content-type"),
+            view.content_type.clone(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-chunk-size"),
+            view.chunk_size.to_string(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-chunk-count"),
+            view.chunk_count.to_string(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-plaintext-size"),
+            view.plaintext_size.to_string(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-encrypted-size"),
+            view.encrypted_size.to_string(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-nonce-prefix"),
+            view.nonce_prefix.clone(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-base-counter"),
+            view.base_counter.to_string(),
+        ),
+    ];
+
+    (StatusCode::OK, res_headers, bytes).into_response()
+}
+
+fn build_range_response(
+    view: &AttachmentView,
+    etag_val: String,
+    bytes: Vec<u8>,
+    start: u64,
+    end: u64,
+) -> Response {
+    let range_length = bytes.len();
+    let content_range = format!("bytes {}-{}/{}", start, end, view.padded_size);
+
+    let res_headers = [
+        (header::CONTENT_TYPE, "application/octet-stream".to_string()),
+        (header::CONTENT_LENGTH, range_length.to_string()),
+        (header::CONTENT_RANGE, content_range),
+        (header::ACCEPT_RANGES, "bytes".to_string()),
+        (
+            header::CACHE_CONTROL,
+            "private, max-age=86400, immutable".to_string(),
+        ),
+        (header::ETAG, etag_val),
+        (header::X_CONTENT_TYPE_OPTIONS, "nosniff".to_string()),
+        (
+            HeaderName::from_static("x-attachment-content-type"),
+            view.content_type.clone(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-chunk-size"),
+            view.chunk_size.to_string(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-chunk-count"),
+            view.chunk_count.to_string(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-plaintext-size"),
+            view.plaintext_size.to_string(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-encrypted-size"),
+            view.encrypted_size.to_string(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-nonce-prefix"),
+            view.nonce_prefix.clone(),
+        ),
+        (
+            HeaderName::from_static("x-attachment-base-counter"),
+            view.base_counter.to_string(),
+        ),
+    ];
+
+    (StatusCode::PARTIAL_CONTENT, res_headers, bytes).into_response()
+}
+
 pub async fn download(
     State(pool): State<SqlitePool>,
     State(storage): State<Arc<dyn Storage>>,
@@ -69,27 +234,7 @@ pub async fn download(
     Path(id): Path<String>,
     headers: HeaderMap,
 ) -> Result<Response, AttachmentRouteError> {
-    if headers.contains_key(header::RANGE) {
-        // Range requests are not supported in Phase 12a
-        let view_opt = attachments::get_attachment(&pool, &id, &user_id).await;
-        let content_range = match view_opt {
-            Ok(v) => format!("bytes */{}", v.padded_size),
-            Err(_) => "bytes */*".to_string(),
-        };
-
-        return Ok((
-            StatusCode::RANGE_NOT_SATISFIABLE,
-            [
-                (header::CONTENT_RANGE, content_range),
-                (header::CONTENT_TYPE, "application/json".to_string()),
-            ],
-            Json(json!({
-                "error": "range_not_satisfiable",
-                "message": "Range requests are not supported in Phase 12a"
-            })),
-        )
-            .into_response());
-    }
+    let view = attachments::get_attachment(&pool, &id, &user_id).await?;
 
     let etag_val = format!("\"{}\"", id);
     if let Some(if_none_match) = headers
@@ -101,50 +246,107 @@ pub async fn download(
         }
     }
 
-    let (view, bytes) =
-        attachments::read_attachment_bytes(&pool, storage.as_ref(), &id, &user_id).await?;
+    let range_header = headers.get(header::RANGE).and_then(|v| v.to_str().ok());
+    let range = parse_range_header(range_header, view.padded_size as u64);
 
-    let res_headers = [
-        (header::CONTENT_TYPE, "application/octet-stream".to_string()),
-        (header::CONTENT_LENGTH, view.padded_size.to_string()),
-        (header::CONTENT_DISPOSITION, "inline".to_string()),
-        (
-            header::CACHE_CONTROL,
-            "private, max-age=86400, immutable".to_string(),
-        ),
-        (header::ETAG, etag_val),
-        (header::X_CONTENT_TYPE_OPTIONS, "nosniff".to_string()),
-        (
-            "X-Attachment-Content-Type".parse().unwrap(),
-            view.content_type,
-        ),
-        (
-            "X-Attachment-Chunk-Size".parse().unwrap(),
-            view.chunk_size.to_string(),
-        ),
-        (
-            "X-Attachment-Chunk-Count".parse().unwrap(),
-            view.chunk_count.to_string(),
-        ),
-        (
-            "X-Attachment-Plaintext-Size".parse().unwrap(),
-            view.plaintext_size.to_string(),
-        ),
-        (
-            "X-Attachment-Encrypted-Size".parse().unwrap(),
-            view.encrypted_size.to_string(),
-        ),
-        (
-            "X-Attachment-Nonce-Prefix".parse().unwrap(),
-            view.nonce_prefix,
-        ),
-        (
-            "X-Attachment-Base-Counter".parse().unwrap(),
-            view.base_counter.to_string(),
-        ),
-    ];
+    match range {
+        Ok(None) => {
+            let (view, bytes) =
+                attachments::read_attachment_bytes(&pool, storage.as_ref(), &id, &user_id).await?;
+            Ok(build_full_response(&view, etag_val, bytes))
+        }
+        Ok(Some((start, end))) => {
+            let (view, bytes) = attachments::read_attachment_range(
+                &pool,
+                storage.as_ref(),
+                &id,
+                &user_id,
+                start,
+                end,
+            )
+            .await?;
+            Ok(build_range_response(&view, etag_val, bytes, start, end))
+        }
+        Err(_err) => {
+            let content_range = format!("bytes */{}", view.padded_size);
+            Ok((
+                StatusCode::RANGE_NOT_SATISFIABLE,
+                [
+                    (header::CONTENT_RANGE, content_range),
+                    (header::ACCEPT_RANGES, "bytes".to_string()),
+                ],
+            )
+                .into_response())
+        }
+    }
+}
 
-    Ok((StatusCode::OK, res_headers, bytes).into_response())
+#[derive(Deserialize)]
+pub struct PresignRequest {
+    #[serde(default)]
+    pub expires_in_seconds: Option<u64>,
+}
+
+#[derive(Serialize)]
+pub struct PresignResponse {
+    pub url: String,
+    pub expires_at: DateTime<Utc>,
+}
+
+pub async fn presign(
+    State(pool): State<SqlitePool>,
+    State(storage): State<Arc<dyn Storage>>,
+    State(config): State<Arc<Config>>,
+    AuthUser { user_id, .. }: AuthUser,
+    Path(id): Path<String>,
+    req_res: Result<Json<PresignRequest>, axum::extract::rejection::JsonRejection>,
+) -> Result<impl IntoResponse, AttachmentRouteError> {
+    let req = match req_res {
+        Ok(Json(req)) => req,
+        Err(_) => return Err(AttachmentRouteError::InvalidExpiresIn),
+    };
+
+    // 1. Verify membership & fetch attachment
+    let view = attachments::get_attachment(&pool, &id, &user_id).await?;
+
+    // 2. Rate limit check
+    let decision = rate_limit::check(
+        &pool,
+        &config.rate_limits,
+        RateLimitKey::Presign {
+            user_id: user_id.clone(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(AttachmentRouteError::RateLimited {
+            reset_at: decision.reset_at,
+        });
+    }
+
+    // 3. Compute TTL
+    let default_ttl = config.s3_presign_ttl_seconds;
+    let max_ttl = default_ttl * 2;
+    let min_ttl = 30u64;
+
+    let requested_ttl = req.expires_in_seconds.unwrap_or(default_ttl);
+    let ttl = requested_ttl.clamp(min_ttl, max_ttl);
+
+    // 4. Call storage.presign_get
+    let presigned_opt = storage
+        .presign_get(&view.storage_key(), ttl)
+        .await
+        .map_err(AttachmentError::Storage)?;
+
+    let url = match presigned_opt {
+        Some(url) => url,
+        None => return Err(AttachmentRouteError::PresignNotSupported),
+    };
+
+    let expires_at = Utc::now() + chrono::Duration::seconds(ttl as i64);
+
+    Ok(Json(PresignResponse { url, expires_at }))
 }
 
 pub async fn delete_attachment(
@@ -383,6 +585,14 @@ pub enum AttachmentRouteError {
     RoomNotFound,
     #[error("file too large: limit {limit}, received {received}")]
     FileTooLarge { limit: u64, received: u64 },
+    #[error("invalid expires_in_seconds")]
+    InvalidExpiresIn,
+    #[error("presign not supported")]
+    PresignNotSupported,
+    #[error("rate limited")]
+    RateLimited { reset_at: DateTime<Utc> },
+    #[error("rate limit error: {0}")]
+    RateLimit(#[from] RateLimitError),
     #[error("attachment error: {0}")]
     Attachment(#[from] AttachmentError),
 }
@@ -433,6 +643,34 @@ impl IntoResponse for AttachmentRouteError {
                 })),
             )
                 .into_response(),
+            AttachmentRouteError::InvalidExpiresIn => (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"error": "invalid_expires_in", "message": "Invalid expires_in_seconds"})),
+            )
+                .into_response(),
+            AttachmentRouteError::PresignNotSupported => (
+                StatusCode::NOT_IMPLEMENTED,
+                Json(json!({"error": "presign_not_supported", "message": "Presigning not supported for this storage backend"})),
+            )
+                .into_response(),
+            AttachmentRouteError::RateLimited { reset_at } => (
+                StatusCode::TOO_MANY_REQUESTS,
+                [("Retry-After", reset_at.timestamp().to_string())],
+                Json(json!({
+                    "error": "rate_limited",
+                    "message": "Presign rate limit exceeded",
+                    "details": { "reset_at": reset_at }
+                })),
+            )
+                .into_response(),
+            AttachmentRouteError::RateLimit(e) => {
+                tracing::error!("Rate limit error in attachment route: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({"error": "internal", "message": "Internal server error"})),
+                )
+                    .into_response()
+            }
             AttachmentRouteError::Attachment(err) => match err {
                 AttachmentError::NotAMember | AttachmentError::RoomNotFound => (
                     StatusCode::NOT_FOUND,
@@ -479,6 +717,22 @@ impl IntoResponse for AttachmentRouteError {
                         "message": format!("Invalid manifest: {}", reason),
                         "details": { "reason": reason }
                     })),
+                )
+                    .into_response(),
+                AttachmentError::RangeOutOfBounds { size } => (
+                    StatusCode::RANGE_NOT_SATISFIABLE,
+                    [
+                        (header::CONTENT_RANGE, format!("bytes */{}", size)),
+                        (header::ACCEPT_RANGES, "bytes".to_string()),
+                    ],
+                )
+                    .into_response(),
+                AttachmentError::InvalidRange { .. } => (
+                    StatusCode::RANGE_NOT_SATISFIABLE,
+                    [
+                        (header::CONTENT_RANGE, "bytes */*".to_string()),
+                        (header::ACCEPT_RANGES, "bytes".to_string()),
+                    ],
                 )
                     .into_response(),
                 AttachmentError::Database(e) => {

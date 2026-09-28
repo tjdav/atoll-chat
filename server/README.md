@@ -982,13 +982,42 @@ All endpoints require room membership and authentication via `AuthUser`.
   - Hash Verification: The server computes SHA-256 of the binary payload before writing to storage. Mismatches return HTTP 400 (`{"error":"hash_mismatch"}`).
   - Idempotent Re-upload: Uploading an identical blob to the same room by the same uploader returns the existing attachment record without re-writing storage.
 - **`GET /api/v1/attachments/:id`**:
-  - Serves full encrypted blob with `Content-Type: application/octet-stream` and `X-Content-Type-Options: nosniff` to prevent browser content sniffing attacks.
-  - Returns metadata headers: `X-Attachment-Content-Type`, `X-Attachment-Chunk-Size`, `X-Attachment-Chunk-Count`, `X-Attachment-Plaintext-Size`, `X-Attachment-Encrypted-Size`, `X-Attachment-Nonce-Prefix`, `X-Attachment-Base-Counter`.
+  - Serves full encrypted blob or requested byte ranges with `Content-Type: application/octet-stream` and `X-Content-Type-Options: nosniff` to prevent browser content sniffing attacks.
+  - Returns metadata headers: `Accept-Ranges: bytes`, `X-Attachment-Content-Type`, `X-Attachment-Chunk-Size`, `X-Attachment-Chunk-Count`, `X-Attachment-Plaintext-Size`, `X-Attachment-Encrypted-Size`, `X-Attachment-Nonce-Prefix`, `X-Attachment-Base-Counter`.
   - Caching & ETag: Includes `Cache-Control: private, max-age=86400, immutable` and `ETag: "<id>"`. Requests with matching `If-None-Match` return `304 Not Modified`.
-  - Range Requests: Phase 12a returns `416 Range Not Satisfiable` with `Content-Range: bytes */<padded_size>` if a `Range` header is present. Range requests will be added in Phase 12b.
+  - **Range Requests**: Supports single byte-range requests via the `Range` header:
+    - `Range: bytes=0-1023` -> returns HTTP `206 Partial Content` with `Content-Range: bytes 0-1023/<padded_size>` and `Content-Length: 1024`.
+    - `Range: bytes=1024-` -> returns HTTP `206 Partial Content` with bytes from offset 1024 through the end of the blob.
+    - `Range: bytes=-1024` -> returns HTTP `206 Partial Content` with the last 1024 bytes.
+    - Ranges requested beyond total file size are clipped to `total_size - 1`.
+    - Out of bounds start positions (`start >= total_size`), malformed ranges, multiple ranges, or non-`bytes` units return HTTP `416 Range Not Satisfiable` with `Content-Range: bytes */<padded_size>`.
+- **`POST /api/v1/attachments/:id/presign`**:
+  - Generates a TTL-limited presigned URL for direct download from S3 backends (`storage_backend == "s3"`).
+  - Body: `{"expires_in_seconds": 300}` (optional; defaults to `S3_PRESIGN_TTL_SECONDS`).
+  - TTL Clamping: Requested TTL is clamped to a minimum of 30 seconds and a maximum of `2 × S3_PRESIGN_TTL_SECONDS` (default max 1200 seconds).
+  - Filesystem Backends: Returns HTTP `501 Not Implemented` (`{"error":"presign_not_supported"}`).
+  - Access & Limits: Requires room membership. Rate limited per user (`RATE_PRESIGN_PER_MIN`, default 60/min). Exceeding limit returns HTTP 429 `rate_limited`.
 - **`DELETE /api/v1/attachments/:id`**:
   - Uploader-only deletion. Returns HTTP 204 No Content on success, HTTP 403 Forbidden for non-uploaders, and HTTP 404 for missing attachments.
   - Database row deletion commits first; blob removal from disk/S3 occurs after commit best-effort.
+
+### Client-Side Range Translation
+
+The server serves opaque requested byte ranges without translating plaintext ranges. The client translates desired plaintext ranges into encrypted chunk byte ranges using manifest metadata:
+
+```
+plaintext_range = [p_start, p_end]  // e.g. [0, 1023]
+start_chunk = p_start / chunk_size
+end_chunk = p_end / chunk_size
+encrypted_start = start_chunk * (chunk_size + 16)
+encrypted_end = (end_chunk + 1) * (chunk_size + 16) - 1
+Range: bytes=encrypted_start-encrypted_end
+```
+
+### Media Streaming & Presign Handling
+
+- **MP4 Fast-Start Requirement**: Clients must encode MP4 video files with fast-start (`moov` atom placed before `mdat`) prior to upload. Fast-start allows video players to immediately parse index metadata and begin playback without downloading the entire file.
+- **Presign Refresh**: Clients should request fresh presigned URLs per seek or chunk batch to prevent expiry during playback.
 
 ### Capabilities Advertisement
 
@@ -1004,4 +1033,5 @@ All endpoints require room membership and authentication via `AuthUser`.
 ### Known Limitations
 
 - **Cryptographic Shredding**: Once a peer downloads and caches a blob, the server cannot force its deletion from peer devices.
+- **Presigned URL Scope**: Presigned URLs grant access to the entire encrypted object for the duration of the TTL rather than restricting to a specific byte range. Clients supply `Range` headers directly when fetching from S3. Leaked URLs grant access to encrypted bytes only.
 - **Orphaned Blobs on Room Deletion**: Room deletion cascades database attachment rows (`ON DELETE CASCADE`), but underlying storage blobs remain in filesystem/S3 storage until a background orphan-scan job is implemented.

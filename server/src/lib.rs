@@ -38,8 +38,8 @@ use tower_http::trace::TraceLayer;
 
 pub use altcha::{verify_altcha_payload, AltchaConfig, AltchaError};
 pub use attachments::{
-    delete_attachment, get_attachment, read_attachment_bytes, upload_attachment, AttachmentError,
-    AttachmentView, UploadRequest,
+    delete_attachment, get_attachment, read_attachment_bytes, read_attachment_range,
+    upload_attachment, AttachmentError, AttachmentView, UploadRequest,
 };
 pub use auth::AuthUser;
 pub use cleanup::{
@@ -265,6 +265,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/attachments/{id}",
             get(routes::attachments::download).delete(routes::attachments::delete_attachment),
+        )
+        .route(
+            "/attachments/{id}/presign",
+            post(routes::attachments::presign),
         );
 
     let cors = if state.config.app_env == "development" {
