@@ -165,6 +165,17 @@ pub async fn anonymise_user(
         Err(e) => return Err(GdprError::Database(e)),
     };
 
+    // 10. Delete all welcomes for the recipient user
+    match sqlx::query("DELETE FROM welcomes WHERE recipient_user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+    {
+        Ok(_) => {}
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => {}
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
     // 10. Commit transaction
     tx.commit().await?;
 

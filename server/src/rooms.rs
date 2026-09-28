@@ -91,6 +91,8 @@ pub enum RoomError {
     AlreadyOwner,
     #[error("cannot transfer ownership to yourself")]
     CannotTransferToSelf,
+    #[error("target user has no registered devices")]
+    TargetHasNoDevice,
 }
 
 pub async fn create_room(
@@ -506,6 +508,7 @@ pub async fn add_member(
     room_id: &str,
     requester_id: &str,
     target_user_id: &str,
+    welcome_data: Option<Vec<u8>>,
     limits: &InstanceLimits,
     server_max: &ServerHardMax,
 ) -> Result<RoomMember, RoomError> {
@@ -576,7 +579,29 @@ pub async fn add_member(
         return Err(RoomError::RoomFull);
     }
 
-    // 7. Insert into room_members
+    // 7. Handle welcome if provided
+    if let Some(blob) = welcome_data {
+        let client_row: Option<(String,)> = sqlx::query_as(
+            "SELECT client_id FROM devices WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+        )
+        .bind(target_user_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let client_id = match client_row {
+            Some((c,)) => c,
+            None => return Err(RoomError::TargetHasNoDevice),
+        };
+
+        crate::welcomes::create_welcome(&mut tx, room_id, target_user_id, &client_id, &blob)
+            .await
+            .map_err(|e| match e {
+                crate::welcomes::WelcomeError::Database(err) => RoomError::Database(err),
+                _ => RoomError::Database(sqlx::Error::RowNotFound),
+            })?;
+    }
+
+    // 8. Insert into room_members
     sqlx::query(
         r#"
         INSERT INTO room_members (room_id, user_id, role, joined_via)

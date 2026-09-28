@@ -20,9 +20,11 @@ pub mod rate_limit;
 pub mod registration;
 pub mod roles;
 pub mod room_invites;
+pub mod room_messages;
 pub mod rooms;
 pub mod routes;
 pub mod session;
+pub mod welcomes;
 
 use axum::{
     routing::{delete, get, post},
@@ -53,8 +55,15 @@ pub use login::LoginStore;
 pub use opaque::{DefaultCipherSuite, OpaqueServer};
 pub use rate_limit::{RateLimitConfig, RateLimitDecision, RateLimitError, RateLimitKey, Window};
 pub use registration::RegistrationStore;
+pub use room_messages::{
+    get_current_epoch, get_message_ciphertext, list_messages, submit_message, MessageContentType,
+    RoomMessageError, RoomMessageView, SubmitOutcome, SubmitRequest,
+};
 use sqlx::SqlitePool;
 use std::sync::Arc;
+pub use welcomes::{
+    consume_welcome, create_welcome, get_welcome_data, list_pending, WelcomeError, WelcomeView,
+};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -200,7 +209,19 @@ pub fn build_app(state: AppState) -> Router {
         )
         .route("/keypackages", post(routes::key_packages::upload))
         .route("/keypackages/count", get(routes::key_packages::count))
-        .route("/keypackages/claim", post(routes::key_packages::claim));
+        .route("/keypackages/claim", post(routes::key_packages::claim))
+        .route(
+            "/rooms/{id}/messages",
+            post(routes::room_messages::submit).get(routes::room_messages::list),
+        )
+        .route(
+            "/rooms/{id}/messages/{message_id}/ciphertext",
+            get(routes::room_messages::get_ciphertext),
+        )
+        .route("/rooms/{id}/epoch", get(routes::room_messages::get_epoch))
+        .route("/welcomes", get(routes::welcomes::list))
+        .route("/welcomes/{id}", get(routes::welcomes::get))
+        .route("/welcomes/{id}/consume", post(routes::welcomes::consume));
 
     let cors = if state.config.app_env == "development" {
         tracing::info!("CORS mode: permissive (development)");

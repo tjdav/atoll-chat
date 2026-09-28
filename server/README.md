@@ -828,3 +828,39 @@ KeyPackages are single-use, pre-generated credentials used in MLS (Message Layer
 ### Integration with Phase 10
 
 Phase 10 (epoch linearization and Welcome generation) will consume `pending_mls_removes` and claim KeyPackages to construct and deliver MLS Welcome packets to newly added devices.
+
+## Messages and Welcomes
+
+Phase 10 delivers messaging support, welcome packet routing, and MLS epoch linearization via compare-and-swap (CAS) semantics.
+
+### Table Schema
+
+- **`room_messages`**: Stores committed MLS ciphertexts.
+  - Columns: `id` (ULID), `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type` (`application`, `commit`, `proposal`), `ciphertext` (BLOB), `created_at`.
+  - Indexes: `idx_room_messages_room_epoch_seq`, `idx_room_messages_room_created`, `idx_room_messages_sender`.
+- **`welcomes`**: Stores encrypted onboarding welcome packets for new room members.
+  - Columns: `id` (ULID), `room_id`, `recipient_user_id`, `recipient_client_id`, `welcome_data` (BLOB), `consumed` (0 or 1), `created_at`.
+  - Index: `idx_welcomes_recipient`.
+- **`room_epochs`**: Extended with `confirmed_transcript_hash` (BLOB) and `updated_at`. Tracks room state epoch and current monotonic sequence number.
+
+### Messaging & MLS Epoch CAS Semantics
+
+- **Message Content Types**:
+  - `application`: Monotonically increments `sequence` within the current epoch.
+  - `proposal`: Sequenced identically to application messages within the current epoch.
+  - `commit`: Advances `epoch` to `current_epoch + 1`, resets `sequence` to `0`, and updates `confirmed_transcript_hash`. Requires a 32-byte base64-encoded `transcript_hash`.
+- **Epoch Linearization Guarantee**:
+  - Submissions execute within `BEGIN IMMEDIATE` transactions to prevent write races.
+  - If a message or commit is submitted at an outdated epoch, the server returns HTTP 409 Conflict with error `epoch_mismatch` and details `{"expected": <current_epoch>, "received": <stale_epoch>}`.
+  - **Re-merge Workflow**: When receiving 409 `epoch_mismatch`, the client fetches the latest epoch (`GET /api/v1/rooms/:id/epoch`), retrieves missed commits (`GET /api/v1/rooms/:id/messages?since_epoch=N`), downloads commit ciphertexts (`GET /api/v1/rooms/:id/messages/:message_id/ciphertext`), re-merges local proposals, and retries the commit at the new epoch.
+
+### Welcome Routing Flow
+
+- **Creation**: When adding a member (`POST /api/v1/rooms/:id/members`), providing optional `welcome_data` creates a welcome row targeted at the recipient's primary (most recently registered) device. If the target has no devices registered, returns HTTP 400 Bad Request (`{"error":"target_has_no_device"}`).
+- **Consumption**: Recipient lists unconsumed welcomes via `GET /api/v1/welcomes`, fetches the welcome ciphertext via `GET /api/v1/welcomes/:id`, and marks it consumed via `POST /api/v1/welcomes/:id/consume`. Attempting to consume an already-consumed welcome returns HTTP 409 Conflict (`{"error":"already_consumed"}`).
+- **Multi-Device Welcome Limitation**: Phase 10 attaches welcome packets to the target's most recent device. Multi-device welcome fanout is managed at the client / MLS layer in Phase 11.
+
+### Scope Boundaries
+
+- Phase 10 implements server-side persistence and CAS linearization.
+- Real-time Sockudo event delivery, WebSocket subscriptions, catch-up replay, and `pending_mls_removes` consumption are deferred to Phase 11.

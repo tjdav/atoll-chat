@@ -3,6 +3,8 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -34,6 +36,7 @@ pub struct MemberListResponse {
 #[derive(Debug, Deserialize)]
 pub struct AddMemberRequest {
     pub user_id: String,
+    pub welcome_data: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -151,11 +154,22 @@ pub async fn add_member(
 ) -> Result<(StatusCode, Json<RoomMember>), ApiError> {
     let effective_limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
 
+    let welcome_bytes = match payload.welcome_data {
+        Some(s) if !s.trim().is_empty() => {
+            let bytes = BASE64
+                .decode(s.trim())
+                .map_err(|_| ApiError::BadRequest("invalid_welcome_data".to_string()))?;
+            Some(bytes)
+        }
+        _ => None,
+    };
+
     let member = rooms::add_member(
         &state.pool,
         &id,
         &auth.user_id,
         &payload.user_id,
+        welcome_bytes,
         &effective_limits,
         &state.server_hard_max,
     )

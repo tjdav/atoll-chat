@@ -299,14 +299,19 @@ async fn test_07_welcome_expiry_removes_stale_welcomes() {
         .await
         .unwrap();
 
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r1', 'u1')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
     // 10 days ago
-    sqlx::query("INSERT INTO welcomes (id, user_id, created_at) VALUES ('w10', 'u1', datetime('now', '-10 days'))")
+    sqlx::query("INSERT INTO welcomes (id, room_id, recipient_user_id, recipient_client_id, welcome_data, created_at) VALUES ('w10', 'r1', 'u1', 'c1', 'data', datetime('now', '-10 days'))")
         .execute(&pool)
         .await
         .unwrap();
 
     // 1 day ago
-    sqlx::query("INSERT INTO welcomes (id, user_id, created_at) VALUES ('w1', 'u1', datetime('now', '-1 day'))")
+    sqlx::query("INSERT INTO welcomes (id, room_id, recipient_user_id, recipient_client_id, welcome_data, created_at) VALUES ('w1', 'r1', 'u1', 'c1', 'data', datetime('now', '-1 day'))")
         .execute(&pool)
         .await
         .unwrap();
