@@ -873,7 +873,19 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         sockudo_app_key: "auto".to_string(),
         sockudo_app_secret: "auto".to_string(),
         sockudo_public_url: None,
+        storage_backend: "fs".to_string(),
+        storage_fs_path: std::path::PathBuf::from("./data/attachments"),
+        s3_endpoint: None,
+        s3_region: "us-east-1".to_string(),
+        s3_bucket: None,
+        s3_access_key_id: None,
+        s3_secret_access_key: None,
+        s3_path_style: false,
+        s3_presign_ttl_seconds: 600,
+        attachment_chunk_size: 65536,
+        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     };
+    let storage = server::build_storage(&cfg).expect("Failed to build test storage");
     let cfg_arc = std::sync::Arc::new(cfg);
     let server_hard_max = std::sync::Arc::new(server::ServerHardMax {
         file_size_bytes: 104_857_600,
@@ -904,6 +916,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         server_hard_max,
         sockudo_config,
         sockudo_publisher,
+        storage,
     };
 
     let app = axum::Router::new()

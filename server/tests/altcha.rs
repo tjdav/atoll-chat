@@ -273,6 +273,17 @@ async fn hmac_secret_persisted_in_instance_config() {
         sockudo_app_key: "auto".to_string(),
         sockudo_app_secret: "auto".to_string(),
         sockudo_public_url: None,
+        storage_backend: "fs".to_string(),
+        storage_fs_path: std::path::PathBuf::from("./data/attachments"),
+        s3_endpoint: None,
+        s3_region: "us-east-1".to_string(),
+        s3_bucket: None,
+        s3_access_key_id: None,
+        s3_secret_access_key: None,
+        s3_path_style: false,
+        s3_presign_ttl_seconds: 600,
+        attachment_chunk_size: 65536,
+        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     };
 
     let altcha_config1 = AltchaConfig::from_env(&config, &pool).await.unwrap();

@@ -104,6 +104,17 @@ pub async fn setup_test_app_with_config(
         sockudo_app_key: "auto".to_string(),
         sockudo_app_secret: "auto".to_string(),
         sockudo_public_url: None,
+        storage_backend: "fs".to_string(),
+        storage_fs_path: temp_dir.path().join("attachments"),
+        s3_endpoint: None,
+        s3_region: "us-east-1".to_string(),
+        s3_bucket: None,
+        s3_access_key_id: None,
+        s3_secret_access_key: None,
+        s3_path_style: false,
+        s3_presign_ttl_seconds: 600,
+        attachment_chunk_size: 65536,
+        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     };
 
     let altcha_config = Arc::new(
@@ -112,6 +123,7 @@ pub async fn setup_test_app_with_config(
             .expect("Failed to init AltchaConfig"),
     );
 
+    let storage = server::build_storage(&config).expect("Failed to build test storage");
     let config_arc = Arc::new(config);
 
     let server_hard_max = Arc::new(server::ServerHardMax {
@@ -143,6 +155,7 @@ pub async fn setup_test_app_with_config(
         server_hard_max,
         sockudo_config,
         sockudo_publisher,
+        storage,
     };
 
     let app = server::build_app(state);
