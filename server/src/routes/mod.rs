@@ -3,6 +3,7 @@ pub mod capabilities;
 pub mod devices;
 pub mod health;
 pub mod invites;
+pub mod key_packages;
 pub mod login;
 pub mod ready;
 pub mod register;
