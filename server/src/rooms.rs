@@ -68,6 +68,15 @@ pub fn effective_message_retention_days(
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct PendingRemove {
+    pub id: String,
+    pub room_id: String,
+    pub target_user_id: String,
+    pub target_client_id: String,
+    pub queued_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct RoomMember {
     pub user_id: String,
     pub username: String,
@@ -133,6 +142,8 @@ pub enum RoomError {
     CannotTransferToSelf,
     #[error("target user has no registered devices")]
     TargetHasNoDevice,
+    #[error("pending remove not found")]
+    RemoveNotFound,
 }
 
 pub async fn create_room(
@@ -377,6 +388,91 @@ pub async fn delete_room(pool: &SqlitePool, room_id: &str, user_id: &str) -> Res
     tx.commit().await?;
 
     Ok(())
+}
+
+pub async fn list_pending_removes(
+    pool: &SqlitePool,
+    room_id: &str,
+    requester_id: &str,
+) -> Result<Vec<PendingRemove>, RoomError> {
+    let is_member: Option<(i32,)> =
+        sqlx::query_as("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(pool)
+            .await?;
+
+    if is_member.is_none() {
+        return Err(RoomError::NotAMember);
+    }
+
+    let rows = sqlx::query(
+        r#"
+        SELECT id, room_id, target_user_id, target_client_id, queued_at
+        FROM pending_mls_removes
+        WHERE room_id = ? AND consumed_at IS NULL
+        ORDER BY queued_at ASC
+        "#,
+    )
+    .bind(room_id)
+    .fetch_all(pool)
+    .await?;
+
+    let mut removes = Vec::new();
+    for row in rows {
+        removes.push(PendingRemove {
+            id: row.get("id"),
+            room_id: row.get("room_id"),
+            target_user_id: row.get("target_user_id"),
+            target_client_id: row.get("target_client_id"),
+            queued_at: row.get("queued_at"),
+        });
+    }
+
+    Ok(removes)
+}
+
+pub async fn consume_pending_remove(
+    pool: &SqlitePool,
+    room_id: &str,
+    remove_id: &str,
+    requester_id: &str,
+) -> Result<(), RoomError> {
+    let mut tx = pool.begin().await?;
+
+    let is_member: Option<(i32,)> =
+        sqlx::query_as("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    if is_member.is_none() {
+        return Err(RoomError::NotAMember);
+    }
+
+    let row: Option<(Option<DateTime<Utc>>,)> =
+        sqlx::query_as("SELECT consumed_at FROM pending_mls_removes WHERE id = ? AND room_id = ?")
+            .bind(remove_id)
+            .bind(room_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    match row {
+        Some((None,)) => {
+            sqlx::query(
+                "UPDATE pending_mls_removes SET consumed_at = CURRENT_TIMESTAMP WHERE id = ? AND room_id = ?",
+            )
+            .bind(remove_id)
+            .bind(room_id)
+            .execute(&mut *tx)
+            .await?;
+
+            tx.commit().await?;
+            Ok(())
+        }
+        _ => Err(RoomError::RemoveNotFound),
+    }
 }
 
 pub async fn leave_room(

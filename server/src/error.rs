@@ -175,6 +175,7 @@ impl From<RoomError> for ApiError {
             RoomError::TargetHasNoDevice => {
                 ApiError::BadRequest("target_has_no_device".to_string())
             }
+            RoomError::RemoveNotFound => ApiError::NotFound("remove_not_found".to_string()),
         }
     }
 }

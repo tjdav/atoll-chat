@@ -871,3 +871,69 @@ Phase 10 delivers messaging support, welcome packet routing, and MLS epoch linea
 
 - Phase 10 implements server-side persistence and CAS linearization.
 - Real-time Sockudo event delivery, WebSocket subscriptions, catch-up replay, and `pending_mls_removes` consumption are deferred to Phase 11.
+
+## Sockudo Integration
+
+Sockudo is a Pusher-compatible WebSocket server used for advisory real-time event distribution across room channels.
+
+### Pusher Protocol and Channel Naming
+
+- **Channel Naming Convention**: Room event channels follow the `private-room-{room_id}` pattern. All room channels require Pusher private channel authorization via HMAC signature validation.
+- **Client Events Flag**: The `SOCKUDO_ENABLE_CLIENT_EVENTS` flag (default `true`) controls whether clients are advertised permission to trigger peer client events on room channels (`sockudo_client_events` in `/capabilities`).
+
+### App Credential Initialization
+
+- **Automatic Mode (`auto`)**: On first startup with `SOCKUDO_APP_KEY=auto` and `SOCKUDO_APP_SECRET=auto`, the server generates a 32-character Base64URL app key (24 random bytes) and 43-character Base64URL app secret (32 random bytes), persisting them in the `instance_config` SQLite table. On subsequent restarts, existing credentials are loaded from `instance_config`.
+- **External Mode**: Operators can explicitly provide external credentials via `SOCKUDO_APP_KEY` and `SOCKUDO_APP_SECRET`. External credentials are used as-is and never persisted in `instance_config`. Mixed modes (one `auto` and one explicit) fail startup validation.
+- **Secret Protection**: App secrets are never logged, returned in API responses, or exposed via `/capabilities`.
+
+### Channel Auth Endpoint (`POST /api/v1/sockudo/auth`)
+
+Authenticates WebSocket channel subscription requests from authenticated room members.
+
+- **Request**:
+  ```json
+  {
+    "socket_id": "1234.5678",
+    "channel_name": "private-room-<room_id>"
+  }
+  ```
+- **Validation**:
+  - `socket_id` must match `^\d+\.\d+$` (400 `invalid_socket_id`).
+  - `channel_name` must start with `private-room-` (400 `invalid_channel_name`).
+  - Requesting user must be a member of the room (403 `forbidden`).
+- **Response**: HTTP 200 OK with `{ "auth": "<app_key>:<signature>" }`.
+- **Signature Algorithm**:
+  ```
+  string_to_sign = "{socket_id}:{channel_name}"
+  auth_signature = hex(hmac_sha256(app_secret, string_to_sign))
+  result = "{app_key}:{auth_signature}"
+  ```
+
+### Pending MLS Removes Endpoints
+
+The pending removes queue coordinates MLS Remove proposals for revoked devices or kicked members.
+
+- **`GET /api/v1/rooms/:id/pending-removes`**:
+  - Lists unconsumed remove entries (`consumed_at IS NULL`) for a room, ordered by `queued_at ASC`.
+  - Member-only (404 `room_not_found` for non-members or non-existent rooms).
+  - Response: `{ "removes": [{ "id": "...", "room_id": "...", "target_user_id": "...", "target_client_id": "...", "queued_at": "..." }] }`.
+- **`POST /api/v1/rooms/:id/pending-removes/:remove_id/consume`**:
+  - Marks a pending remove entry as consumed (`consumed_at = CURRENT_TIMESTAMP`).
+  - Member-only (404 `room_not_found` for non-members).
+  - Returns HTTP 204 No Content. Attempting to consume an already-consumed or non-existent remove returns HTTP 404 `remove_not_found`.
+
+### Capabilities Fields
+
+`GET /api/v1/capabilities` exposes Sockudo connection parameters to clients:
+
+- **`websocket_url`**: WebSocket endpoint URL.
+  - Production (`APP_ENV=production`): Derived from `APP_URL` (`https://` -> `wss://`) appending `/realtime` (e.g. `wss://chat.example.com/realtime`).
+  - Development (`APP_ENV=development`): Derived from `SOCKUDO_URL` (`http://` -> `ws://`) appending `/app/{app_key}` (e.g. `ws://localhost:6001/app/{app_key}`).
+- **`sockudo_app_key`**: Public application key.
+- **`sockudo_channel_prefix`**: Constant `"private-room-"`.
+- **`sockudo_client_events`**: Boolean flag indicating client events capability.
+
+### Advisory Real-Time Delivery
+
+Real-time notification via Sockudo is **advisory and best-effort**. HTTP endpoints and database transactions complete independently of WebSocket publishing outcomes. If Sockudo is unreachable or event publishing fails, errors are logged at `warn` level and ignored. Clients fall back to HTTP polling to catch up on missed state changes.
