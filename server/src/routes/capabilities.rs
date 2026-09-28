@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::env;
 use std::sync::Arc;
 
+use crate::config::Config;
 use crate::sockudo::SockudoConfig;
 
 #[derive(Serialize)]
@@ -15,9 +16,15 @@ pub struct CapabilitiesResponse {
     pub sockudo_channel_prefix: String,
     pub safety_number_mode: String,
     pub moderation_mode: String,
+    pub storage_backend: String,
+    pub attachment_chunk_size: u64,
+    pub attachment_bucket_sizes: Vec<u64>,
 }
 
-pub async fn handler(State(sockudo_config): State<Arc<SockudoConfig>>) -> impl IntoResponse {
+pub async fn handler(
+    State(sockudo_config): State<Arc<SockudoConfig>>,
+    State(config): State<Arc<Config>>,
+) -> impl IntoResponse {
     let safety_number_mode = env::var("SAFETY_NUMBER_MODE").unwrap_or_else(|_| "warn".to_string());
     let moderation_mode = env::var("MODERATION_MODE").unwrap_or_else(|_| "messenger".to_string());
     let app_env = env::var("APP_ENV").unwrap_or_else(|_| "production".to_string());
@@ -47,5 +54,8 @@ pub async fn handler(State(sockudo_config): State<Arc<SockudoConfig>>) -> impl I
         sockudo_channel_prefix: "private-room-".to_string(),
         safety_number_mode,
         moderation_mode,
+        storage_backend: config.storage_backend.clone(),
+        attachment_chunk_size: config.attachment_chunk_size,
+        attachment_bucket_sizes: config.attachment_bucket_sizes.clone(),
     })
 }

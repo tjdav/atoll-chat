@@ -46,7 +46,25 @@ async fn main() -> anyhow::Result<()> {
         info!("SPA serving disabled (CLIENT_STATIC_DIR unset)");
     }
 
-    // 5. Initialize SQLite pool
+    // 5. Initialize Storage Backend
+    let storage = server::build_storage(&config)?;
+    if config.storage_backend == "s3" {
+        info!(
+            "storage backend: s3 (bucket={} endpoint={})",
+            config.s3_bucket.as_deref().unwrap_or(""),
+            config
+                .s3_endpoint
+                .as_deref()
+                .unwrap_or("https://s3.amazonaws.com")
+        );
+    } else {
+        info!(
+            "storage backend: fs (root={})",
+            config.storage_fs_path.display()
+        );
+    }
+
+    // 6. Initialize SQLite pool
     let pool = db::init_pool(&config).await?;
 
     // Initialize OPAQUE server setup, stores, and ALTCHA config
@@ -80,19 +98,20 @@ async fn main() -> anyhow::Result<()> {
         server_hard_max,
         sockudo_config,
         sockudo_publisher,
+        storage,
     };
 
-    // 6. Check bootstrap state
+    // 7. Check bootstrap state
     if roles::has_any_users(&pool).await? {
         info!("bootstrap: users exist — owner role already assigned");
     } else {
         info!("bootstrap: no users exist — first registration will become owner");
     }
 
-    // 7. Build Router
+    // 8. Build Router
     let app = server::build_app(state);
 
-    // 8. Setup Cleanup Scheduler
+    // 9. Setup Cleanup Scheduler
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
 
     if config.cleanup_enabled {
@@ -120,10 +139,10 @@ async fn main() -> anyhow::Result<()> {
         info!("cleanup: scheduler disabled");
     }
 
-    // 9. Bind to address
+    // 10. Bind to address
     let listener = tokio::net::TcpListener::bind(&config.server_bind).await?;
 
-    // 10. Serve with graceful shutdown
+    // 11. Serve with graceful shutdown
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal(shutdown_tx))
         .await?;

@@ -915,3 +915,93 @@ The server queues remove intentions in `pending_mls_removes` when members or dev
 3. Client receives `message` events in real time.
 4. Client fetches ciphertexts on demand and periodically polls `GET /api/v1/rooms/:id/messages?since_epoch=N` on reconnect or network interruption.
 5. Client lists and processes `GET /api/v1/rooms/:id/pending-removes` to complete room membership removals.
+
+## Attachments
+
+Phase 12a provides the storage layer for encrypted attachments, supporting chunked AES-GCM encryption, full-file downloads, and uploader deletions.
+
+### Client-Side Encryption & Wire Format
+
+The server stores opaque padded ciphertext and never sees plaintext or encryption keys. File encryption is performed client-side using chunked AES-GCM:
+
+```
++-------------------------------------------------------------------------+
+|                              Blob (Total Bytes)                        |
++-------------------+--------------------+------------------+-------------+
+| Header (23 bytes) | Chunk 0 (64 KB+16) | Chunk 1 (64 KB+16) | Tail Chunk  |
++-------------------+--------------------+------------------+-------------+
+```
+
+1. **Header (23 bytes)**:
+   - `version` (1 byte, `0x01`)
+   - `nonce_prefix` (7 bytes)
+   - `chunk_size` (4 bytes, big-endian `u32`, e.g. 65536)
+   - `chunk_count` (4 bytes, big-endian `u32`)
+   - `reserved` (7 bytes, zero-padded)
+2. **Chunk Derivation**:
+   - Each chunk contains 64 KB of plaintext plus a 16-byte AES-GCM tag (65,552 bytes total ciphertext per chunk).
+   - IV for chunk $i$: `nonce_prefix || (base_counter XOR i)`.
+   - AAD for chunk $i$: `version || chunk_count || i || is_last`.
+   - Independent chunk encryption enables random-access seeking and partial decryption in Phase 12b.
+
+### Content-Addressing & Manifest Metadata
+
+- **Storage Key**: Attachments are content-addressed by SHA-256 hex digest of the padded ciphertext: `attachments/{id[0..2]}/{id[2..4]}/{id}`.
+- **MLS Application Message**: The client embeds the encryption key and attachment `id` in the MLS application message payload.
+- **Manifest Fields**:
+  - `chunk_size`: Fixed chunk size (64 KB default).
+  - `chunk_count`: Total chunks including any padding tail.
+  - `nonce_prefix`: Base64-encoded 7-byte nonce prefix.
+  - `base_counter`: 32-bit counter for IV derivation.
+  - `plaintext_size`: Original unpadded file size.
+  - `encrypted_size`: Total padded ciphertext size.
+
+### Storage Backends
+
+Storage is selected at startup via `STORAGE_BACKEND`:
+
+- **Filesystem (`fs`)**: Default backend storing files at `STORAGE_FS_PATH` (default `./data/attachments`) using two-level subfolder sharding (`attachments/ab/cd/abcd...`). Writes are made to temporary files (`.tmp`) and atomically renamed.
+- **S3 (`s3`)**: Object storage backend via `rust-s3`. Requires `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`. Set `S3_PATH_STYLE=true` for MinIO or self-hosted S3 endpoints.
+
+### Bucket Sizes
+
+To prevent metadata side-channel leaks about exact file sizes, uploaded file data must pad to one of the configured strictly increasing bucket sizes:
+```env
+ATTACHMENT_BUCKET_SIZES=65536,524288,4194304,33554432
+```
+Each bucket size must be a positive multiple of 4096 bytes.
+
+### Endpoints & Upload Paths
+
+All endpoints require room membership and authentication via `AuthUser`.
+
+- **`POST /api/v1/rooms/:id/attachments`**:
+  - Supports two upload paths:
+    - **Multipart (`multipart/form-data`)**: `file` binary part alongside manifest fields (`claimed_id`, `plaintext_size`, `encrypted_size`, `chunk_size`, `chunk_count`, `nonce_prefix`, `base_counter`, `content_type`, `uploader_client_id`).
+    - **Octet-stream (`application/octet-stream`)**: Binary payload in HTTP request body with manifest metadata in custom headers (`X-Claimed-Id`, `X-Plaintext-Size`, `X-Encrypted-Size`, `X-Chunk-Size`, `X-Chunk-Count`, `X-Nonce-Prefix`, `X-Base-Counter`, `X-Content-Type`, `X-Uploader-Client-Id`).
+  - Hash Verification: The server computes SHA-256 of the binary payload before writing to storage. Mismatches return HTTP 400 (`{"error":"hash_mismatch"}`).
+  - Idempotent Re-upload: Uploading an identical blob to the same room by the same uploader returns the existing attachment record without re-writing storage.
+- **`GET /api/v1/attachments/:id`**:
+  - Serves full encrypted blob with `Content-Type: application/octet-stream` and `X-Content-Type-Options: nosniff` to prevent browser content sniffing attacks.
+  - Returns metadata headers: `X-Attachment-Content-Type`, `X-Attachment-Chunk-Size`, `X-Attachment-Chunk-Count`, `X-Attachment-Plaintext-Size`, `X-Attachment-Encrypted-Size`, `X-Attachment-Nonce-Prefix`, `X-Attachment-Base-Counter`.
+  - Caching & ETag: Includes `Cache-Control: private, max-age=86400, immutable` and `ETag: "<id>"`. Requests with matching `If-None-Match` return `304 Not Modified`.
+  - Range Requests: Phase 12a returns `416 Range Not Satisfiable` with `Content-Range: bytes */<padded_size>` if a `Range` header is present. Range requests will be added in Phase 12b.
+- **`DELETE /api/v1/attachments/:id`**:
+  - Uploader-only deletion. Returns HTTP 204 No Content on success, HTTP 403 Forbidden for non-uploaders, and HTTP 404 for missing attachments.
+  - Database row deletion commits first; blob removal from disk/S3 occurs after commit best-effort.
+
+### Capabilities Advertisement
+
+`GET /api/v1/capabilities` advertises attachment settings:
+```json
+{
+  "storage_backend": "fs",
+  "attachment_chunk_size": 65536,
+  "attachment_bucket_sizes": [65536, 524288, 4194304, 33554432]
+}
+```
+
+### Known Limitations
+
+- **Cryptographic Shredding**: Once a peer downloads and caches a blob, the server cannot force its deletion from peer devices.
+- **Orphaned Blobs on Room Deletion**: Room deletion cascades database attachment rows (`ON DELETE CASCADE`), but underlying storage blobs remain in filesystem/S3 storage until a background orphan-scan job is implemented.

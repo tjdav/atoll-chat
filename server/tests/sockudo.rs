@@ -65,6 +65,17 @@ async fn test_01_first_startup_generates_app_credentials() {
         sockudo_app_key: "auto".to_string(),
         sockudo_app_secret: "auto".to_string(),
         sockudo_public_url: None,
+        storage_backend: "fs".to_string(),
+        storage_fs_path: std::path::PathBuf::from("./data/attachments"),
+        s3_endpoint: None,
+        s3_region: "us-east-1".to_string(),
+        s3_bucket: None,
+        s3_access_key_id: None,
+        s3_secret_access_key: None,
+        s3_path_style: false,
+        s3_presign_ttl_seconds: 600,
+        attachment_chunk_size: 65536,
+        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     });
 
     config.sockudo_app_key = "auto".to_string();
@@ -147,6 +158,17 @@ async fn test_02_subsequent_startup_loads_existing_credentials() {
         sockudo_app_key: "auto".to_string(),
         sockudo_app_secret: "auto".to_string(),
         sockudo_public_url: None,
+        storage_backend: "fs".to_string(),
+        storage_fs_path: std::path::PathBuf::from("./data/attachments"),
+        s3_endpoint: None,
+        s3_region: "us-east-1".to_string(),
+        s3_bucket: None,
+        s3_access_key_id: None,
+        s3_secret_access_key: None,
+        s3_path_style: false,
+        s3_presign_ttl_seconds: 600,
+        attachment_chunk_size: 65536,
+        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     });
 
     config.sockudo_app_key = "auto".to_string();
@@ -216,6 +238,17 @@ async fn test_03_externally_configured_credentials_are_used_as_is() {
         sockudo_app_key: "fixed-key".to_string(),
         sockudo_app_secret: "fixed-secret".to_string(),
         sockudo_public_url: None,
+        storage_backend: "fs".to_string(),
+        storage_fs_path: std::path::PathBuf::from("./data/attachments"),
+        s3_endpoint: None,
+        s3_region: "us-east-1".to_string(),
+        s3_bucket: None,
+        s3_access_key_id: None,
+        s3_secret_access_key: None,
+        s3_path_style: false,
+        s3_presign_ttl_seconds: 600,
+        attachment_chunk_size: 65536,
+        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     });
 
     config.sockudo_app_key = "fixed-key".to_string();
