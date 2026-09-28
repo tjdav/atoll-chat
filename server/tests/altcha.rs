@@ -257,6 +257,7 @@ async fn hmac_secret_persisted_in_instance_config() {
             login_per_min: 10,
             login_lockout_min: 15,
             export_rate_limit_hours: 24,
+            presign_per_min: 60,
         },
         cleanup_enabled: true,
         cleanup_interval_minutes: 60,

@@ -11,6 +11,7 @@ pub struct RateLimitConfig {
     pub login_per_min: u32,
     pub login_lockout_min: u32,
     pub export_rate_limit_hours: u64,
+    pub presign_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -210,6 +211,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(24);
 
+        let rate_presign_per_min = env::var("RATE_PRESIGN_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(60);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -219,6 +225,7 @@ impl Config {
             login_per_min: rate_login_per_min,
             login_lockout_min: rate_login_lockout_min,
             export_rate_limit_hours,
+            presign_per_min: rate_presign_per_min,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")

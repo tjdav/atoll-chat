@@ -24,6 +24,17 @@ pub struct AttachmentView {
     pub created_at: DateTime<Utc>,
 }
 
+impl AttachmentView {
+    pub fn storage_key(&self) -> String {
+        format!(
+            "attachments/{}/{}/{}",
+            &self.id[0..2],
+            &self.id[2..4],
+            &self.id
+        )
+    }
+}
+
 pub struct UploadRequest {
     pub room_id: String,
     pub uploader_id: String,
@@ -61,6 +72,10 @@ pub enum AttachmentError {
     AlreadyExists,
     #[error("invalid manifest field: {0}")]
     InvalidManifest(String),
+    #[error("range out of bounds: file size {size}")]
+    RangeOutOfBounds { size: i64 },
+    #[error("invalid range: start {start} > end {end}")]
+    InvalidRange { start: u64, end: u64 },
 }
 
 fn storage_key_for_id(id: &str) -> String {
@@ -275,6 +290,42 @@ pub async fn read_attachment_bytes(
         }
         Err(e) => Err(AttachmentError::Storage(e)),
     }
+}
+
+pub async fn read_attachment_range(
+    pool: &SqlitePool,
+    storage: &dyn Storage,
+    attachment_id: &str,
+    requester_id: &str,
+    start: u64,
+    end: u64,
+) -> Result<(AttachmentView, Vec<u8>), AttachmentError> {
+    let view = get_attachment(pool, attachment_id, requester_id).await?;
+    let padded_size = view.padded_size as u64;
+
+    if end >= padded_size {
+        return Err(AttachmentError::RangeOutOfBounds {
+            size: view.padded_size,
+        });
+    }
+
+    if start > end {
+        return Err(AttachmentError::InvalidRange { start, end });
+    }
+
+    let storage_key = storage_key_for_id(&view.id);
+    let bytes = storage
+        .read_range(&storage_key, start, end)
+        .await
+        .map_err(|e| match e {
+            StorageError::NotFound(_) => {
+                tracing::error!(attachment_id = %attachment_id, storage_key = %storage_key, "Attachment missing in storage but present in database");
+                AttachmentError::NotFound
+            }
+            other => AttachmentError::Storage(other),
+        })?;
+
+    Ok((view, bytes))
 }
 
 pub async fn delete_attachment(
