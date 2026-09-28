@@ -1,6 +1,7 @@
 use crate::config_ops::ConfigOpsError;
 use crate::devices::DeviceError;
 use crate::invites::InviteError;
+use crate::key_packages::KeyPackageError;
 use crate::limits::LimitsError;
 use crate::rate_limit::RateLimitError;
 use crate::room_invites::RoomInviteError;
@@ -76,6 +77,22 @@ impl IntoResponse for ApiError {
 
                 (status, body).into_response()
             }
+        }
+    }
+}
+
+// Implement From<KeyPackageError> for ApiError
+impl From<KeyPackageError> for ApiError {
+    fn from(err: KeyPackageError) -> Self {
+        match err {
+            KeyPackageError::Database(e) => ApiError::Internal(e.into()),
+            KeyPackageError::QuotaExceeded { .. } => {
+                ApiError::Conflict("quota_exceeded".to_string())
+            }
+            KeyPackageError::NoPackagesAvailable => {
+                ApiError::NotFound("no_packages_available".to_string())
+            }
+            KeyPackageError::UserNotFound => ApiError::NotFound("user_not_found".to_string()),
         }
     }
 }

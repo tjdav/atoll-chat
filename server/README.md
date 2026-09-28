@@ -785,3 +785,46 @@ Room invite codes allow room members to grant room membership to other users via
 ### Future Integration (Phase 10)
 
 Phase 8 handles the relational room membership and invite lifecycle. Phase 10 will extend `/rooms/join` to automatically trigger MLS Welcome packet generation for joining devices.
+
+## KeyPackages
+
+KeyPackages are single-use, pre-generated credentials used in MLS (Message Layer Security) to add users to group conversations. The server operates as a blind mailbox — storing opaque KeyPackage payloads and serving them when requested by peers.
+
+### Endpoints
+
+- **`POST /api/v1/keypackages`**: Uploads a batch of KeyPackages for devices owned by the authenticated user.
+  - Body: `{"packages": [{"client_id": "...", "cipher_suite": 1, "key_package_data": "<base64>", "is_last_resort": false}]}`
+  - Validation: Batch size 1–50. `client_id` must match a device registered to the user. `cipher_suite` 1–255. `key_package_data` base64 decoding to 1 byte – 64 KB.
+  - Returns HTTP 201 Created with `{ "uploaded": N, "unconsumed_count": M }`.
+- **`GET /api/v1/keypackages/count`**: Returns unconsumed KeyPackage counts for the authenticated user.
+  - Returns HTTP 200 OK with `{ "total": M, "by_client": { "client_id_1": count, ... } }`.
+- **`POST /api/v1/keypackages/claim`**: Claims an unconsumed KeyPackage for a target user.
+  - Body: `{"user_id": "<target_user_id>"}`
+  - Returns HTTP 200 OK with the claimed package fields.
+  - Errors: `no_packages_available` (404), `user_not_found` (404), `rate_limited` (429).
+
+### Quota Enforcement
+
+- Upload quota is checked per `(user_id, client_id)` pair inside a `BEGIN IMMEDIATE` SQLite transaction.
+- Quota limit is calculated from instance setting `keypackages_per_device` (default 20), clamped to server hard max `SERVER_MAX_KEYPACKAGES_PER_DEVICE` (50).
+- Exceeding the quota returns HTTP 409 Conflict (`{"error":"quota_exceeded"}`).
+
+### Claim Preference & Last-Resort Semantics
+
+- Claims execute atomically using `BEGIN IMMEDIATE` transactions to prevent concurrent claims from receiving the same KeyPackage.
+- Claims always select the **oldest unconsumed non-last-resort package** first.
+- Non-last-resort packages are marked consumed (`consumed = 1`, `consumed_at = CURRENT_TIMESTAMP`) upon claim.
+- If no normal packages exist, claim falls back to the **oldest unconsumed last-resort package** (`is_last_resort = 1`).
+- Last-resort packages remain unconsumed when claimed and can be claimed multiple times (per RFC 9420 last-resort fallback semantics).
+- V1 stores `is_last_resort` flags and respects claim preference, but does **not** enforce exhaustion fallback tracking or last-resort package replenishment logic.
+
+### Rate Limiting
+
+- KeyPackage claims are rate-limited per claiming user using fixed time windows:
+  - `RATE_KP_CLAIM_PER_MIN` (default 30 claims/min)
+  - `RATE_KP_CLAIM_HOURLY` (default 200 claims/hour)
+- Exceeding either limit returns HTTP 429 Too Many Requests (`{"error":"rate_limited"}`).
+
+### Integration with Phase 10
+
+Phase 10 (epoch linearization and Welcome generation) will consume `pending_mls_removes` and claim KeyPackages to construct and deliver MLS Welcome packets to newly added devices.

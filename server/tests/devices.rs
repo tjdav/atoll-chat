@@ -394,7 +394,7 @@ async fn test_09_revocation_cascade_deletes_unconsumed_key_packages() {
     // Insert 3 unconsumed key packages for (user_id, CLIENT_A)
     for i in 1..=3 {
         sqlx::query(
-            "INSERT INTO key_packages (id, user_id, client_id, key_package, consumed) VALUES (?, ?, ?, ?, 0)",
+            "INSERT INTO key_packages (id, user_id, client_id, key_package_data, consumed) VALUES (?, ?, ?, ?, 0)",
         )
         .bind(format!("kp_{}", i))
         .bind(&user_a_id)

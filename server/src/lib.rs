@@ -9,6 +9,7 @@ pub mod devices;
 pub mod error;
 pub mod gdpr;
 pub mod invites;
+pub mod key_packages;
 pub mod limits;
 pub mod login;
 pub mod middleware;
@@ -42,6 +43,10 @@ pub use gdpr::{anonymise_user, build_export, DeletionSummary, GdprError};
 pub use invites::{
     create_invite, get_invite_by_id, list_invites, revoke_invite, validate_and_consume_invite,
     ConsumedInvite, CreateInviteOptions, InviteError, ServerInvite,
+};
+pub use key_packages::{
+    claim_key_package, count_unconsumed, upload_key_packages, ClaimedKeyPackage, KeyPackageError,
+    KeyPackageSummary, UnconsumedCount, UploadedKeyPackage,
 };
 pub use limits::ServerHardMax;
 pub use login::LoginStore;
@@ -192,7 +197,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/transfer",
             post(routes::rooms::transfer_ownership),
-        );
+        )
+        .route("/keypackages", post(routes::key_packages::upload))
+        .route("/keypackages/count", get(routes::key_packages::count))
+        .route("/keypackages/claim", post(routes::key_packages::claim));
 
     let cors = if state.config.app_env == "development" {
         tracing::info!("CORS mode: permissive (development)");
