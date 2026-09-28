@@ -1,5 +1,4 @@
 pub mod admin;
-pub mod attachments;
 pub mod capabilities;
 pub mod devices;
 pub mod health;

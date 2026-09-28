@@ -371,21 +371,9 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         sockudo_app_key: "auto".to_string(),
         sockudo_app_secret: "auto".to_string(),
         sockudo_public_url: None,
-        storage_backend: "fs".to_string(),
-        storage_fs_path: temp_dir.path().join("attachments"),
-        s3_endpoint: None,
-        s3_region: "us-east-1".to_string(),
-        s3_bucket: None,
-        s3_access_key_id: None,
-        s3_secret_access_key: None,
-        s3_path_style: false,
-        s3_presign_ttl_seconds: 600,
-        attachment_chunk_size: 65536,
-        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     };
 
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await.unwrap());
-    let storage = server::build_storage(&config).expect("Failed to build test storage");
     let config_arc = Arc::new(config);
 
     // Set server hard max = 50 for keypackages_per_device
@@ -418,7 +406,6 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         server_hard_max,
         sockudo_config,
         sockudo_publisher,
-        storage,
     };
 
     let app = axum::Router::new()
@@ -1604,21 +1591,9 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         sockudo_app_key: "auto".to_string(),
         sockudo_app_secret: "auto".to_string(),
         sockudo_public_url: None,
-        storage_backend: "fs".to_string(),
-        storage_fs_path: temp_dir.path().join("attachments"),
-        s3_endpoint: None,
-        s3_region: "us-east-1".to_string(),
-        s3_bucket: None,
-        s3_access_key_id: None,
-        s3_secret_access_key: None,
-        s3_path_style: false,
-        s3_presign_ttl_seconds: 600,
-        attachment_chunk_size: 65536,
-        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     };
 
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await.unwrap());
-    let storage = server::build_storage(&config).expect("Failed to build test storage");
     let config_arc = Arc::new(config);
 
     let sockudo_config = Arc::new(server::SockudoConfig {
@@ -1639,7 +1614,6 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         server_hard_max: Arc::new(server::ServerHardMax::default()),
         sockudo_config,
         sockudo_publisher,
-        storage,
     };
 
     let app = axum::Router::new()
@@ -1801,21 +1775,9 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         sockudo_app_key: "auto".to_string(),
         sockudo_app_secret: "auto".to_string(),
         sockudo_public_url: None,
-        storage_backend: "fs".to_string(),
-        storage_fs_path: temp_dir.path().join("attachments"),
-        s3_endpoint: None,
-        s3_region: "us-east-1".to_string(),
-        s3_bucket: None,
-        s3_access_key_id: None,
-        s3_secret_access_key: None,
-        s3_path_style: false,
-        s3_presign_ttl_seconds: 600,
-        attachment_chunk_size: 65536,
-        attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432],
     };
 
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await.unwrap());
-    let storage = server::build_storage(&config).expect("Failed to build test storage");
     let config_arc = Arc::new(config);
 
     let sockudo_config = Arc::new(server::SockudoConfig {
@@ -1836,7 +1798,6 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         server_hard_max: Arc::new(server::ServerHardMax::default()),
         sockudo_config,
         sockudo_publisher,
-        storage,
     };
 
     let app = axum::Router::new()
