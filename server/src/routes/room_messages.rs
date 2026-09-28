@@ -112,14 +112,10 @@ pub async fn submit(
         _ => None,
     };
 
-    let room_id = id;
-    let sender_user_id = auth.user_id.clone();
-    let sender_client_id = payload.sender_client_id.clone();
-
     let req = SubmitRequest {
-        room_id: room_id.clone(),
-        sender_user_id: sender_user_id.clone(),
-        sender_client_id: sender_client_id.clone(),
+        room_id: id,
+        sender_user_id: auth.user_id,
+        sender_client_id: payload.sender_client_id,
         epoch: payload.epoch,
         content_type,
         ciphertext: ciphertext_bytes,
@@ -147,62 +143,6 @@ pub async fn submit(
             RoomMessageError::Database(err) => ApiError::Internal(err.into()),
             _ => ApiError::BadRequest("invalid_request".to_string()),
         })?;
-
-    // Publish event to Sockudo after transaction commits
-    let (message_id, event_data) = match &outcome {
-        SubmitOutcome::Commit {
-            message_id,
-            new_epoch,
-            ..
-        } => (
-            message_id.clone(),
-            serde_json::json!({
-                "type": "commit",
-                "message_id": message_id,
-                "sender_user_id": sender_user_id,
-                "sender_client_id": sender_client_id,
-                "new_epoch": new_epoch,
-            }),
-        ),
-        SubmitOutcome::Application {
-            message_id,
-            epoch,
-            seq,
-        } => (
-            message_id.clone(),
-            serde_json::json!({
-                "type": content_type.as_str(),
-                "message_id": message_id,
-                "sender_user_id": sender_user_id,
-                "sender_client_id": sender_client_id,
-                "epoch": epoch,
-                "seq": seq,
-            }),
-        ),
-    };
-
-    let created_at: Option<chrono::DateTime<chrono::Utc>> =
-        sqlx::query_scalar("SELECT created_at FROM room_messages WHERE id = ?")
-            .bind(&message_id)
-            .fetch_optional(&state.pool)
-            .await
-            .unwrap_or(None);
-
-    let created_at_str = created_at.unwrap_or_else(chrono::Utc::now).to_rfc3339();
-
-    let mut final_event_data = event_data;
-    if let Some(obj) = final_event_data.as_object_mut() {
-        obj.insert(
-            "created_at".to_string(),
-            serde_json::Value::String(created_at_str),
-        );
-    }
-
-    let channel = format!("private-room-{}", room_id);
-    let _ = state
-        .sockudo_publisher
-        .publish(&channel, "message", final_event_data)
-        .await;
 
     Ok((StatusCode::CREATED, Json(outcome)))
 }
