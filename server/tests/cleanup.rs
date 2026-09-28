@@ -59,6 +59,11 @@ fn test_config(audit_retention_days: u64) -> Config {
         hsts_max_age: 31536000,
         hsts_include_subdomains: true,
         client_static_dir: None,
+        sockudo_url: "http://localhost:6001".to_string(),
+        sockudo_app_id: "chat".to_string(),
+        sockudo_app_key: "auto".to_string(),
+        sockudo_app_secret: "auto".to_string(),
+        sockudo_public_url: None,
     }
 }
 

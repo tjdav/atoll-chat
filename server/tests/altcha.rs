@@ -268,6 +268,11 @@ async fn hmac_secret_persisted_in_instance_config() {
         hsts_max_age: 31536000,
         hsts_include_subdomains: true,
         client_static_dir: None,
+        sockudo_url: "http://localhost:6001".to_string(),
+        sockudo_app_id: "chat".to_string(),
+        sockudo_app_key: "auto".to_string(),
+        sockudo_app_secret: "auto".to_string(),
+        sockudo_public_url: None,
     };
 
     let altcha_config1 = AltchaConfig::from_env(&config, &pool).await.unwrap();

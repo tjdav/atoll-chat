@@ -67,6 +67,9 @@ async fn main() -> anyhow::Result<()> {
         call_max_participants: 50,
     });
 
+    let sockudo_config = Arc::new(server::SockudoConfig::load_or_initialize(&pool, &config).await?);
+    let sockudo_publisher = Arc::new(server::Publisher::new((*sockudo_config).clone()));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -75,6 +78,8 @@ async fn main() -> anyhow::Result<()> {
         altcha_config,
         config: config.clone(),
         server_hard_max,
+        sockudo_config,
+        sockudo_publisher,
     };
 
     // 6. Check bootstrap state
