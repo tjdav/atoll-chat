@@ -23,6 +23,7 @@ pub enum ApiError {
     Unauthorized(String),
     Forbidden(String),
     Conflict(String),
+    ConflictWithDetails(String, serde_json::Value),
     Gone(String),
     TooManyRequests {
         message: String,
@@ -59,6 +60,13 @@ impl IntoResponse for ApiError {
                     ApiError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
                     ApiError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
                     ApiError::Conflict(msg) => (StatusCode::CONFLICT, msg),
+                    ApiError::ConflictWithDetails(msg, details) => {
+                        let body = Json(json!({
+                            "error": msg,
+                            "details": details,
+                        }));
+                        return (StatusCode::CONFLICT, body).into_response();
+                    }
                     ApiError::Gone(msg) => (StatusCode::GONE, msg),
                     ApiError::InternalCustom(status, msg) => (status, msg),
                     ApiError::Internal(err) => {
@@ -163,6 +171,9 @@ impl From<RoomError> for ApiError {
             RoomError::AlreadyOwner => ApiError::Conflict("already_owner".to_string()),
             RoomError::CannotTransferToSelf => {
                 ApiError::BadRequest("cannot_transfer_to_self".to_string())
+            }
+            RoomError::TargetHasNoDevice => {
+                ApiError::BadRequest("target_has_no_device".to_string())
             }
         }
     }
