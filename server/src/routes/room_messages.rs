@@ -6,13 +6,15 @@ use axum::{
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::{
+    audit,
     auth::AuthUser,
-    devices,
+    config_ops, devices,
     error::ApiError,
     room_messages::{
-        self, MessageContentType, RoomMessageError, RoomMessageView, SubmitOutcome, SubmitRequest,
+        self, DeleteRequest, MessageContentType, RoomMessageView, SubmitOutcome, SubmitRequest,
     },
     AppState,
 };
@@ -113,36 +115,82 @@ pub async fn submit(
     };
 
     let req = SubmitRequest {
-        room_id: id,
-        sender_user_id: auth.user_id,
-        sender_client_id: payload.sender_client_id,
+        room_id: id.clone(),
+        sender_user_id: auth.user_id.clone(),
+        sender_client_id: payload.sender_client_id.clone(),
         epoch: payload.epoch,
         content_type,
         ciphertext: ciphertext_bytes,
         transcript_hash: transcript_hash_bytes,
     };
 
-    let outcome = room_messages::submit_message(&state.pool, req)
-        .await
-        .map_err(|e| match e {
-            RoomMessageError::EpochMismatch { expected, received } => {
-                ApiError::ConflictWithDetails(
-                    "epoch_mismatch".to_string(),
-                    serde_json::json!({
-                        "expected": expected,
-                        "received": received,
-                    }),
-                )
+    let outcome = room_messages::submit_message(&state.pool, req).await?;
+
+    // Publish event after commit
+    let channel = format!("private-room-{}", id);
+    match &outcome {
+        SubmitOutcome::Application {
+            message_id,
+            epoch,
+            seq,
+            created_at,
+        } => {
+            let msg_payload = json!({
+                "id": message_id,
+                "room_id": id,
+                "sender_user_id": auth.user_id,
+                "sender_client_id": payload.sender_client_id,
+                "epoch": epoch,
+                "seq": seq,
+                "content_type": content_type.as_str(),
+                "created_at": created_at.to_rfc3339(),
+            });
+            if let Err(e) = state
+                .publisher
+                .publish(&channel, "message.new", msg_payload)
+                .await
+            {
+                tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
             }
-            RoomMessageError::MissingTranscriptHash => {
-                ApiError::BadRequest("missing_transcript_hash".to_string())
+        }
+        SubmitOutcome::Commit {
+            message_id,
+            new_epoch,
+            created_at,
+            ..
+        } => {
+            let msg_payload = json!({
+                "id": message_id,
+                "room_id": id,
+                "sender_user_id": auth.user_id,
+                "sender_client_id": payload.sender_client_id,
+                "epoch": new_epoch,
+                "seq": 0,
+                "content_type": "commit",
+                "created_at": created_at.to_rfc3339(),
+            });
+            if let Err(e) = state
+                .publisher
+                .publish(&channel, "message.new", msg_payload)
+                .await
+            {
+                tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
             }
-            RoomMessageError::RoomNotFound | RoomMessageError::NotAMember => {
-                ApiError::NotFound("room_not_found".to_string())
+
+            let epoch_payload = json!({
+                "room_id": id,
+                "epoch": new_epoch,
+                "sequence": 0,
+            });
+            if let Err(e) = state
+                .publisher
+                .publish(&channel, "epoch.updated", epoch_payload)
+                .await
+            {
+                tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
             }
-            RoomMessageError::Database(err) => ApiError::Internal(err.into()),
-            _ => ApiError::BadRequest("invalid_request".to_string()),
-        })?;
+        }
+    }
 
     Ok((StatusCode::CREATED, Json(outcome)))
 }
@@ -152,15 +200,8 @@ pub async fn get_epoch(
     auth: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<EpochResponse>, ApiError> {
-    let (epoch, sequence) = room_messages::get_current_epoch(&state.pool, &id, &auth.user_id)
-        .await
-        .map_err(|e| match e {
-            RoomMessageError::RoomNotFound | RoomMessageError::NotAMember => {
-                ApiError::NotFound("room_not_found".to_string())
-            }
-            RoomMessageError::Database(err) => ApiError::Internal(err.into()),
-            _ => ApiError::BadRequest("invalid_request".to_string()),
-        })?;
+    let (epoch, sequence) =
+        room_messages::get_current_epoch(&state.pool, &id, &auth.user_id).await?;
 
     Ok(Json(EpochResponse { epoch, sequence }))
 }
@@ -175,14 +216,7 @@ pub async fn list(
 
     let messages =
         room_messages::list_messages(&state.pool, &id, &auth.user_id, query.since_epoch, limit)
-            .await
-            .map_err(|e| match e {
-                RoomMessageError::RoomNotFound | RoomMessageError::NotAMember => {
-                    ApiError::NotFound("room_not_found".to_string())
-                }
-                RoomMessageError::Database(err) => ApiError::Internal(err.into()),
-                _ => ApiError::BadRequest("invalid_request".to_string()),
-            })?;
+            .await?;
 
     Ok(Json(ListMessagesResponse { messages }))
 }
@@ -193,18 +227,7 @@ pub async fn get_ciphertext(
     Path((id, message_id)): Path<(String, String)>,
 ) -> Result<Json<MessageCiphertextResponse>, ApiError> {
     let ciphertext_bytes =
-        room_messages::get_message_ciphertext(&state.pool, &id, &auth.user_id, &message_id)
-            .await
-            .map_err(|e| match e {
-                RoomMessageError::RoomNotFound | RoomMessageError::NotAMember => {
-                    ApiError::NotFound("room_not_found".to_string())
-                }
-                RoomMessageError::MessageNotFound => {
-                    ApiError::NotFound("message_not_found".to_string())
-                }
-                RoomMessageError::Database(err) => ApiError::Internal(err.into()),
-                _ => ApiError::BadRequest("invalid_request".to_string()),
-            })?;
+        room_messages::get_message_ciphertext(&state.pool, &id, &auth.user_id, &message_id).await?;
 
     let ciphertext_b64 = BASE64.encode(ciphertext_bytes);
 
@@ -212,4 +235,47 @@ pub async fn get_ciphertext(
         id: message_id,
         ciphertext: ciphertext_b64,
     }))
+}
+
+pub async fn delete_message(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, message_id)): Path<(String, String)>,
+) -> Result<StatusCode, ApiError> {
+    let config = config_ops::get_config(&state.pool).await?;
+
+    let req = DeleteRequest {
+        room_id: id.clone(),
+        message_id: message_id.clone(),
+        requester_id: auth.user_id.clone(),
+        moderation_mode: config.moderation_mode,
+    };
+
+    room_messages::delete_message(&state.pool, req).await?;
+
+    let _ = audit::log(
+        &state.pool,
+        Some(&auth.user_id),
+        audit::action::MESSAGE_DELETE,
+        Some("room_message"),
+        Some(&message_id),
+        Some(json!({ "room_id": id })),
+    )
+    .await;
+
+    let channel = format!("private-room-{}", id);
+    let payload = json!({
+        "id": message_id,
+        "room_id": id,
+    });
+
+    if let Err(e) = state
+        .publisher
+        .publish(&channel, "message.deleted", payload)
+        .await
+    {
+        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+    }
+
+    Ok(StatusCode::NO_CONTENT)
 }

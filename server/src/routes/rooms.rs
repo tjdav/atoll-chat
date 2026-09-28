@@ -6,6 +6,7 @@ use axum::{
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::{
     auth::AuthUser,
@@ -163,24 +164,40 @@ pub async fn leave(
     auth: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<LeaveResponse>, ApiError> {
-    match rooms::leave_room(&state.pool, &id, &auth.user_id).await {
-        Ok(outcome) => match outcome {
-            LeaveOutcome::Left => Ok(Json(LeaveResponse {
-                outcome: "left".to_string(),
-                new_owner_id: None,
-            })),
-            LeaveOutcome::TransferredOwnership { new_owner_id } => Ok(Json(LeaveResponse {
-                outcome: "transferred_ownership".to_string(),
-                new_owner_id: Some(new_owner_id),
-            })),
-            LeaveOutcome::RoomDeleted => Ok(Json(LeaveResponse {
-                outcome: "room_deleted".to_string(),
-                new_owner_id: None,
-            })),
-        },
-        Err(RoomError::NotAMember) => Err(ApiError::BadRequest("not_a_member".to_string())),
-        Err(RoomError::RoomNotFound) => Err(ApiError::NotFound("room_not_found".to_string())),
-        Err(e) => Err(e.into()),
+    let outcome = rooms::leave_room(&state.pool, &id, &auth.user_id)
+        .await
+        .map_err(|e| match e {
+            RoomError::NotAMember => ApiError::BadRequest("not_a_member".to_string()),
+            RoomError::RoomNotFound => ApiError::NotFound("room_not_found".to_string()),
+            other => other.into(),
+        })?;
+
+    let channel = format!("private-room-{}", id);
+    let payload = json!({
+        "room_id": id,
+        "user_id": auth.user_id,
+    });
+    if let Err(e) = state
+        .publisher
+        .publish(&channel, "room.member_removed", payload)
+        .await
+    {
+        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+    }
+
+    match outcome {
+        LeaveOutcome::Left => Ok(Json(LeaveResponse {
+            outcome: "left".to_string(),
+            new_owner_id: None,
+        })),
+        LeaveOutcome::TransferredOwnership { new_owner_id } => Ok(Json(LeaveResponse {
+            outcome: "transferred_ownership".to_string(),
+            new_owner_id: Some(new_owner_id),
+        })),
+        LeaveOutcome::RoomDeleted => Ok(Json(LeaveResponse {
+            outcome: "room_deleted".to_string(),
+            new_owner_id: None,
+        })),
     }
 }
 
@@ -222,6 +239,21 @@ pub async fn add_member(
     )
     .await?;
 
+    let channel = format!("private-room-{}", id);
+    let event_payload = json!({
+        "room_id": id,
+        "user_id": member.user_id,
+        "role": member.role,
+        "joined_at": member.joined_at.to_rfc3339(),
+    });
+    if let Err(e) = state
+        .publisher
+        .publish(&channel, "room.member_added", event_payload)
+        .await
+    {
+        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+    }
+
     Ok((StatusCode::CREATED, Json(member)))
 }
 
@@ -239,6 +271,20 @@ pub async fn kick_member(
         &config.moderation_mode,
     )
     .await?;
+
+    let channel = format!("private-room-{}", id);
+    let payload = json!({
+        "room_id": id,
+        "user_id": uid,
+    });
+    if let Err(e) = state
+        .publisher
+        .publish(&channel, "room.member_removed", payload)
+        .await
+    {
+        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+    }
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -282,6 +328,7 @@ pub async fn transfer_ownership(
     Path(id): Path<String>,
     Json(payload): Json<TransferOwnershipRequest>,
 ) -> Result<StatusCode, ApiError> {
+    // TODO: Publish room.updated when room metadata fields (e.g. name_encrypted) are updated by an endpoint.
     rooms::transfer_ownership(&state.pool, &id, &auth.user_id, &payload.user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

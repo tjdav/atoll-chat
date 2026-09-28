@@ -20,6 +20,7 @@ pub mod action {
     pub const ALTCHA_ROTATE: &str = "altcha.rotate";
     pub const USER_DELETE: &str = "user.delete";
     pub const USER_EXPORT: &str = "user.export";
+    pub const MESSAGE_DELETE: &str = "message.delete";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

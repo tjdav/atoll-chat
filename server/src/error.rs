@@ -5,6 +5,7 @@ use crate::key_packages::KeyPackageError;
 use crate::limits::LimitsError;
 use crate::rate_limit::RateLimitError;
 use crate::room_invites::RoomInviteError;
+use crate::room_messages::RoomMessageError;
 use crate::rooms::RoomError;
 use crate::session::SessionError;
 use axum::{
@@ -84,6 +85,39 @@ impl IntoResponse for ApiError {
                 }));
 
                 (status, body).into_response()
+            }
+        }
+    }
+}
+
+// Implement From<RoomMessageError> for ApiError
+impl From<RoomMessageError> for ApiError {
+    fn from(err: RoomMessageError) -> Self {
+        match err {
+            RoomMessageError::Database(e) => ApiError::Internal(e.into()),
+            RoomMessageError::RoomNotFound | RoomMessageError::NotAMember => {
+                ApiError::NotFound("room_not_found".to_string())
+            }
+            RoomMessageError::MessageNotFound => {
+                ApiError::NotFound("message_not_found".to_string())
+            }
+            RoomMessageError::AlreadyDeleted => ApiError::Conflict("already_deleted".to_string()),
+            RoomMessageError::Forbidden => ApiError::Forbidden("forbidden".to_string()),
+            RoomMessageError::MessageDeleted => ApiError::NotFound("message_deleted".to_string()),
+            RoomMessageError::EpochMismatch { expected, received } => {
+                ApiError::ConflictWithDetails(
+                    "epoch_mismatch".to_string(),
+                    serde_json::json!({
+                        "expected": expected,
+                        "received": received,
+                    }),
+                )
+            }
+            RoomMessageError::MissingTranscriptHash => {
+                ApiError::BadRequest("missing_transcript_hash".to_string())
+            }
+            RoomMessageError::NoEpochEstablished => {
+                ApiError::BadRequest("no_epoch_established".to_string())
             }
         }
     }

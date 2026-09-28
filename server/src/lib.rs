@@ -225,6 +225,10 @@ pub fn build_app(state: AppState) -> Router {
             post(routes::room_messages::submit).get(routes::room_messages::list),
         )
         .route(
+            "/rooms/{id}/messages/{message_id}",
+            delete(routes::room_messages::delete_message),
+        )
+        .route(
             "/rooms/{id}/messages/{message_id}/ciphertext",
             get(routes::room_messages::get_ciphertext),
         )
