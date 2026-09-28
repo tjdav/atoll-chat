@@ -24,6 +24,7 @@ pub mod room_messages;
 pub mod rooms;
 pub mod routes;
 pub mod session;
+pub mod sockudo;
 pub mod welcomes;
 
 use axum::{
@@ -59,6 +60,7 @@ pub use room_messages::{
     get_current_epoch, get_message_ciphertext, list_messages, submit_message, MessageContentType,
     RoomMessageError, RoomMessageView, SubmitOutcome, SubmitRequest,
 };
+pub use sockudo::{Publisher, SockudoConfig, SockudoError};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 pub use welcomes::{
@@ -74,6 +76,8 @@ pub struct AppState {
     pub altcha_config: Arc<AltchaConfig>,
     pub config: Arc<Config>,
     pub server_hard_max: Arc<ServerHardMax>,
+    pub sockudo_config: Arc<SockudoConfig>,
+    pub sockudo_publisher: Arc<Publisher>,
 }
 
 impl axum::extract::FromRef<AppState> for SqlitePool {
@@ -115,6 +119,18 @@ impl axum::extract::FromRef<AppState> for Arc<Config> {
 impl axum::extract::FromRef<AppState> for Arc<ServerHardMax> {
     fn from_ref(state: &AppState) -> Self {
         state.server_hard_max.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<SockudoConfig> {
+    fn from_ref(state: &AppState) -> Self {
+        state.sockudo_config.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<Publisher> {
+    fn from_ref(state: &AppState) -> Self {
+        state.sockudo_publisher.clone()
     }
 }
 
@@ -221,7 +237,16 @@ pub fn build_app(state: AppState) -> Router {
         .route("/rooms/{id}/epoch", get(routes::room_messages::get_epoch))
         .route("/welcomes", get(routes::welcomes::list))
         .route("/welcomes/{id}", get(routes::welcomes::get))
-        .route("/welcomes/{id}/consume", post(routes::welcomes::consume));
+        .route("/welcomes/{id}/consume", post(routes::welcomes::consume))
+        .route("/sockudo/auth", post(routes::sockudo::auth))
+        .route(
+            "/rooms/{id}/pending-removes",
+            get(routes::pending_removes::list),
+        )
+        .route(
+            "/rooms/{id}/pending-removes/{remove_id}/consume",
+            post(routes::pending_removes::consume),
+        );
 
     let cors = if state.config.app_env == "development" {
         tracing::info!("CORS mode: permissive (development)");
