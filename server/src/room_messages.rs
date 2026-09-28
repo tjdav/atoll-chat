@@ -12,6 +12,7 @@ pub struct RoomMessageView {
     pub epoch: i64,
     pub seq: i64,
     pub content_type: String,
+    pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -22,12 +23,14 @@ pub enum SubmitOutcome {
         message_id: String,
         epoch: i64,
         seq: i64,
+        created_at: DateTime<Utc>,
     },
     Commit {
         message_id: String,
         new_epoch: i64,
         #[serde(skip_serializing_if = "Option::is_none")]
         transcript_hash: Option<Vec<u8>>,
+        created_at: DateTime<Utc>,
     },
 }
 
@@ -40,6 +43,14 @@ pub struct SubmitRequest {
     pub content_type: MessageContentType,
     pub ciphertext: Vec<u8>,
     pub transcript_hash: Option<Vec<u8>>,
+}
+
+#[derive(Debug)]
+pub struct DeleteRequest {
+    pub room_id: String,
+    pub message_id: String,
+    pub requester_id: String,
+    pub moderation_mode: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -75,6 +86,12 @@ pub enum RoomMessageError {
     NoEpochEstablished,
     #[error("message not found")]
     MessageNotFound,
+    #[error("message already deleted")]
+    AlreadyDeleted,
+    #[error("forbidden")]
+    Forbidden,
+    #[error("message deleted")]
+    MessageDeleted,
 }
 
 pub async fn submit_message(
@@ -156,10 +173,17 @@ pub async fn submit_message(
                 .execute(&mut *conn)
                 .await?;
 
+                let (created_at,): (DateTime<Utc>,) =
+                    sqlx::query_as("SELECT created_at FROM room_messages WHERE id = ?")
+                        .bind(&message_id)
+                        .fetch_one(&mut *conn)
+                        .await?;
+
                 Ok(SubmitOutcome::Commit {
                     message_id,
                     new_epoch,
                     transcript_hash: Some(transcript_hash),
+                    created_at,
                 })
             }
             MessageContentType::Application | MessageContentType::Proposal => {
@@ -196,10 +220,17 @@ pub async fn submit_message(
                     .execute(&mut *conn)
                     .await?;
 
+                let (created_at,): (DateTime<Utc>,) =
+                    sqlx::query_as("SELECT created_at FROM room_messages WHERE id = ?")
+                        .bind(&message_id)
+                        .fetch_one(&mut *conn)
+                        .await?;
+
                 Ok(SubmitOutcome::Application {
                     message_id,
                     epoch: current_epoch,
                     seq: next_sequence,
+                    created_at,
                 })
             }
         }
@@ -266,7 +297,7 @@ pub async fn list_messages(
 
     let rows = sqlx::query(
         r#"
-        SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, created_at
+        SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, deleted_at, created_at
         FROM room_messages
         WHERE room_id = ?
           AND (? IS NULL OR epoch >= ?)
@@ -291,6 +322,7 @@ pub async fn list_messages(
             epoch: row.get("epoch"),
             seq: row.get("seq"),
             content_type: row.get("content_type"),
+            deleted_at: row.get("deleted_at"),
             created_at: row.get("created_at"),
         })
         .collect();
@@ -315,15 +347,87 @@ pub async fn get_message_ciphertext(
         return Err(RoomMessageError::NotAMember);
     }
 
-    let row_opt: Option<(Vec<u8>,)> =
-        sqlx::query_as("SELECT ciphertext FROM room_messages WHERE id = ? AND room_id = ?")
-            .bind(message_id)
-            .bind(room_id)
-            .fetch_optional(pool)
-            .await?;
+    let row_opt: Option<(Vec<u8>, Option<DateTime<Utc>>)> = sqlx::query_as(
+        "SELECT ciphertext, deleted_at FROM room_messages WHERE id = ? AND room_id = ?",
+    )
+    .bind(message_id)
+    .bind(room_id)
+    .fetch_optional(pool)
+    .await?;
 
     match row_opt {
-        Some((ct,)) => Ok(ct),
+        Some((_, Some(_))) => Err(RoomMessageError::MessageDeleted),
+        Some((ct, None)) => Ok(ct),
         None => Err(RoomMessageError::MessageNotFound),
+    }
+}
+
+pub async fn delete_message(pool: &SqlitePool, req: DeleteRequest) -> Result<(), RoomMessageError> {
+    let mut conn = pool.acquire().await?;
+    sqlx::query("BEGIN IMMEDIATE").execute(&mut *conn).await?;
+
+    let result = async {
+        // 1. Verify requester is member
+        let member_role: Option<(String,)> =
+            sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+                .bind(&req.room_id)
+                .bind(&req.requester_id)
+                .fetch_optional(&mut *conn)
+                .await?;
+
+        let role = match member_role {
+            Some((r,)) => r,
+            None => return Err(RoomMessageError::NotAMember),
+        };
+
+        // 2. Fetch message
+        let msg_row: Option<(String, Option<DateTime<Utc>>)> = sqlx::query_as(
+            "SELECT sender_user_id, deleted_at FROM room_messages WHERE id = ? AND room_id = ?",
+        )
+        .bind(&req.message_id)
+        .bind(&req.room_id)
+        .fetch_optional(&mut *conn)
+        .await?;
+
+        let (sender_user_id, deleted_at) = match msg_row {
+            Some(row) => row,
+            None => return Err(RoomMessageError::MessageNotFound),
+        };
+
+        if deleted_at.is_some() {
+            return Err(RoomMessageError::AlreadyDeleted);
+        }
+
+        // 3. Verify authorization
+        let authorized = req.requester_id == sender_user_id
+            || role == "owner"
+            || (role == "moderator" && req.moderation_mode == "discord");
+
+        if !authorized {
+            return Err(RoomMessageError::Forbidden);
+        }
+
+        // 4. Tombstone message
+        sqlx::query(
+            "UPDATE room_messages SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND room_id = ?",
+        )
+        .bind(&req.message_id)
+        .bind(&req.room_id)
+        .execute(&mut *conn)
+        .await?;
+
+        Ok(())
+    }
+    .await;
+
+    match result {
+        Ok(()) => {
+            sqlx::query("COMMIT").execute(&mut *conn).await?;
+            Ok(())
+        }
+        Err(err) => {
+            let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
+            Err(err)
+        }
     }
 }

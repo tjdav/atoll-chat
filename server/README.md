@@ -937,3 +937,26 @@ The pending removes queue coordinates MLS Remove proposals for revoked devices o
 ### Advisory Real-Time Delivery
 
 Real-time notification via Sockudo is **advisory and best-effort**. HTTP endpoints and database transactions complete independently of WebSocket publishing outcomes. If Sockudo is unreachable or event publishing fails, errors are logged at `warn` level and ignored. Clients fall back to HTTP polling to catch up on missed state changes.
+
+### Event Catalog
+
+The following six events are published to `private-room-{room_id}` channels upon successful operations (after database transactions commit):
+
+| Event | Payload | Trigger |
+|---|---|---|
+| `message.new` | `{ id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, created_at }` | Published whenever a new message (application, proposal, or commit) is submitted to a room. |
+| `epoch.updated` | `{ room_id, epoch, sequence }` | Published alongside `message.new` whenever a commit message advances the room epoch. |
+| `message.deleted` | `{ id, room_id }` | Published when a message is tombstoned via `DELETE /api/v1/rooms/:id/messages/:msg_id`. |
+| `room.updated` | `{ room_id, name_encrypted, retention_days, max_file_size_bytes }` | Published when room metadata is modified. |
+| `room.member_added` | `{ room_id, user_id, role, joined_at }` | Published when a new member is added to a room. |
+| `room.member_removed` | `{ room_id, user_id }` | Published when a member is kicked from or leaves a room. |
+
+### Message Deletion & Ciphertext Gating
+
+- **Endpoint**: `DELETE /api/v1/rooms/:id/messages/:msg_id` tombstones a message by setting `deleted_at = CURRENT_TIMESTAMP`.
+- **Authorization**:
+  - Senders can delete their own messages.
+  - Room owners can delete any message in the room.
+  - Room moderators can delete any message in the room when `moderation_mode` is set to `"discord"`.
+- **Tombstone Semantics**: Deleted messages remain in `list_messages` with a non-null `deleted_at` timestamp.
+- **Ciphertext Gating**: Requests to `GET /api/v1/rooms/:id/messages/:msg_id/ciphertext` for a deleted message return HTTP 404 Not Found (`{"error":"message_deleted"}`).
