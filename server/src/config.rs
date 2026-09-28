@@ -49,6 +49,11 @@ pub struct Config {
     pub hsts_max_age: u64,
     pub hsts_include_subdomains: bool,
     pub client_static_dir: Option<String>,
+    pub sockudo_url: String,
+    pub sockudo_app_id: String,
+    pub sockudo_app_key: String,
+    pub sockudo_app_secret: String,
+    pub sockudo_enable_client_events: bool,
 }
 
 impl Config {
@@ -245,6 +250,20 @@ impl Config {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
 
+        let sockudo_url =
+            env::var("SOCKUDO_URL").unwrap_or_else(|_| "http://localhost:6001".to_string());
+        if app_env == "production" && sockudo_url.trim().is_empty() {
+            anyhow::bail!("FATAL: SOCKUDO_URL must be set and non-empty in production mode");
+        }
+
+        let sockudo_app_id = env::var("SOCKUDO_APP_ID").unwrap_or_else(|_| "chat".to_string());
+        let sockudo_app_key = env::var("SOCKUDO_APP_KEY").unwrap_or_else(|_| "auto".to_string());
+        let sockudo_app_secret =
+            env::var("SOCKUDO_APP_SECRET").unwrap_or_else(|_| "auto".to_string());
+        let sockudo_enable_client_events = env::var("SOCKUDO_ENABLE_CLIENT_EVENTS")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
         Ok(Self {
             app_env,
             app_url,
@@ -280,6 +299,11 @@ impl Config {
             hsts_max_age,
             hsts_include_subdomains,
             client_static_dir,
+            sockudo_url,
+            sockudo_app_id,
+            sockudo_app_key,
+            sockudo_app_secret,
+            sockudo_enable_client_events,
         })
     }
 }

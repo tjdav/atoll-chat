@@ -868,6 +868,11 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         hsts_max_age: 31536000,
         hsts_include_subdomains: true,
         client_static_dir: None,
+        sockudo_url: "http://localhost:6001".to_string(),
+        sockudo_app_id: "chat".to_string(),
+        sockudo_app_key: "auto".to_string(),
+        sockudo_app_secret: "auto".to_string(),
+        sockudo_enable_client_events: true,
     };
     let cfg_arc = std::sync::Arc::new(cfg);
     let server_hard_max = std::sync::Arc::new(server::ServerHardMax {
@@ -881,6 +886,15 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         call_max_participants: 50,
     });
 
+    let sockudo_config = server::SockudoConfig {
+        http_base: "http://localhost:6001".to_string(),
+        app_id: "chat".to_string(),
+        app_key: "test-key".to_string(),
+        app_secret: "test-secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = std::sync::Arc::new(server::Publisher::new(sockudo_config));
+
     let state = server::AppState {
         pool: pool.clone(),
         opaque_server,
@@ -889,6 +903,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         altcha_config,
         config: cfg_arc,
         server_hard_max,
+        publisher,
     };
 
     let app = axum::Router::new()

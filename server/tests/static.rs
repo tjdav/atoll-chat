@@ -68,6 +68,11 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
         hsts_max_age: 31536000,
         hsts_include_subdomains: true,
         client_static_dir: static_dir.map(|s| s.to_string()),
+        sockudo_url: "http://localhost:6001".to_string(),
+        sockudo_app_id: "chat".to_string(),
+        sockudo_app_key: "auto".to_string(),
+        sockudo_app_secret: "auto".to_string(),
+        sockudo_enable_client_events: true,
     };
 
     let altcha_config = Arc::new(
@@ -89,6 +94,15 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
         call_max_participants: 50,
     });
 
+    let sockudo_config = server::SockudoConfig {
+        http_base: "http://localhost:6001".to_string(),
+        app_id: "chat".to_string(),
+        app_key: "test-key".to_string(),
+        app_secret: "test-secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+
     let state = AppState {
         pool,
         opaque_server,
@@ -97,6 +111,7 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
         altcha_config,
         config: config_arc,
         server_hard_max,
+        publisher,
     };
 
     server::build_app(state)

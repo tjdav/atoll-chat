@@ -73,6 +73,11 @@ async fn setup_app_with_custom_config(
         hsts_max_age,
         hsts_include_subdomains,
         client_static_dir: None,
+        sockudo_url: "http://localhost:6001".to_string(),
+        sockudo_app_id: "chat".to_string(),
+        sockudo_app_key: "auto".to_string(),
+        sockudo_app_secret: "auto".to_string(),
+        sockudo_enable_client_events: true,
     };
 
     let altcha_config = Arc::new(
@@ -94,6 +99,15 @@ async fn setup_app_with_custom_config(
         call_max_participants: 50,
     });
 
+    let sockudo_config = server::SockudoConfig {
+        http_base: "http://localhost:6001".to_string(),
+        app_id: "chat".to_string(),
+        app_key: "test-key".to_string(),
+        app_secret: "test-secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+
     let state = AppState {
         pool,
         opaque_server,
@@ -102,6 +116,7 @@ async fn setup_app_with_custom_config(
         altcha_config,
         config: config_arc,
         server_hard_max,
+        publisher,
     };
 
     server::build_app(state)
