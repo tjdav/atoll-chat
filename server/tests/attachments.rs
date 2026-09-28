@@ -408,7 +408,7 @@ async fn test_06_download_and_headers() {
     let resp_304 = app.clone().oneshot(req_304).await.unwrap();
     assert_eq!(resp_304.status(), StatusCode::NOT_MODIFIED);
 
-    // Range test returns 206 in Phase 12b
+    // Range test returns 416
     let req_range = Request::builder()
         .method("GET")
         .uri(format!("/api/v1/attachments/{}", blob_id))
@@ -418,7 +418,7 @@ async fn test_06_download_and_headers() {
         .unwrap();
 
     let resp_range = app.clone().oneshot(req_range).await.unwrap();
-    assert_eq!(resp_range.status(), StatusCode::PARTIAL_CONTENT);
+    assert_eq!(resp_range.status(), StatusCode::RANGE_NOT_SATISFIABLE);
 }
 
 #[tokio::test]

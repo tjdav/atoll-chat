@@ -16,7 +16,6 @@ pub enum RateLimitKey {
     KpClaim { user_id: String, window: Window },
     Login { ip: String },
     DataExport { user_id: String },
-    Presign { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -146,15 +145,6 @@ pub async fn check(
                 start,
                 reset,
                 1,
-            )
-        }
-        RateLimitKey::Presign { user_id } => {
-            let (start, reset) = compute_window(now, Window::Minute);
-            (
-                format!("presign:{user_id}:min"),
-                start,
-                reset,
-                config.presign_per_min,
             )
         }
     };

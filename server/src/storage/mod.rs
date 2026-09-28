@@ -16,16 +16,6 @@ pub trait Storage: Send + Sync {
     async fn delete(&self, key: &str) -> Result<(), StorageError>;
     async fn exists(&self, key: &str) -> Result<bool, StorageError>;
     fn backend_name(&self) -> &'static str;
-
-    /// Returns a presigned URL for a GET request, or `None` if the backend
-    /// does not support presigning.
-    async fn presign_get(
-        &self,
-        _key: &str,
-        _ttl_seconds: u64,
-    ) -> Result<Option<String>, StorageError> {
-        Ok(None)
-    }
 }
 
 #[derive(Debug, thiserror::Error)]
