@@ -67,6 +67,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         app_secret: "test-app-secret".to_string(),
         enable_client_events: true,
     };
+    let storage = server::build_storage(&config).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_cfg));
 
     let state = server::AppState {
@@ -78,6 +79,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         config: Arc::new(config),
         server_hard_max,
         publisher,
+        storage,
     };
 
     let app = server::build_app(state);
@@ -411,6 +413,7 @@ async fn test_09_publish_failures_do_not_affect_http_response() {
         app_secret: "test-app-secret".to_string(),
         enable_client_events: true,
     };
+    let storage = server::build_storage(&config).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_cfg));
 
     let state = server::AppState {
@@ -422,6 +425,7 @@ async fn test_09_publish_failures_do_not_affect_http_response() {
         config: Arc::new(config),
         server_hard_max,
         publisher,
+        storage,
     };
 
     let app = server::build_app(state);

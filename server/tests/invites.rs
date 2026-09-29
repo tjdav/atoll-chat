@@ -856,6 +856,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         app_secret: "test-secret".to_string(),
         enable_client_events: true,
     };
+    let storage = server::build_storage(&cfg_arc).expect("Failed to build storage");
     let publisher = std::sync::Arc::new(server::Publisher::new(sockudo_config));
 
     let state = server::AppState {
@@ -867,6 +868,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         config: cfg_arc,
         server_hard_max,
         publisher,
+        storage,
     };
 
     let app = axum::Router::new()
