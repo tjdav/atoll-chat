@@ -62,8 +62,11 @@ pub async fn setup_test_app_with_config(
         altcha_cost: cost,
         cleanup_enabled: true,
         cleanup_startup_delay_secs: 30,
+        storage_fs_path: temp_dir.path().join("attachments"),
         ..Config::test_default()
     };
+
+    let storage = server::build_storage(&config).expect("Failed to build test storage");
 
     let altcha_config = Arc::new(
         AltchaConfig::from_env(&config, &pool)
@@ -102,6 +105,7 @@ pub async fn setup_test_app_with_config(
         config: config_arc,
         server_hard_max,
         publisher,
+        storage,
     };
 
     let app = server::build_app(state);

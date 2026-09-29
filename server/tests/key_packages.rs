@@ -354,6 +354,7 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         app_secret: "test-secret".to_string(),
         enable_client_events: true,
     };
+    let storage = server::build_storage(&config_arc).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
 
     let state = AppState {
@@ -365,6 +366,7 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         config: config_arc,
         server_hard_max,
         publisher,
+        storage,
     };
 
     let app = axum::Router::new()
@@ -1525,6 +1527,7 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         app_secret: "test-secret".to_string(),
         enable_client_events: true,
     };
+    let storage = server::build_storage(&config_arc).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
 
     let state = AppState {
@@ -1536,6 +1539,7 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         config: config_arc,
         server_hard_max: Arc::new(server::ServerHardMax::default()),
         publisher,
+        storage,
     };
 
     let app = axum::Router::new()
@@ -1672,6 +1676,7 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         app_secret: "test-secret".to_string(),
         enable_client_events: true,
     };
+    let storage = server::build_storage(&config_arc).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
 
     let state = AppState {
@@ -1683,6 +1688,7 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         config: config_arc,
         server_hard_max: Arc::new(server::ServerHardMax::default()),
         publisher,
+        storage,
     };
 
     let app = axum::Router::new()

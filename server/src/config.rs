@@ -1,4 +1,5 @@
 use std::env;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct RateLimitConfig {
@@ -10,6 +11,7 @@ pub struct RateLimitConfig {
     pub login_per_min: u32,
     pub login_lockout_min: u32,
     pub export_rate_limit_hours: u64,
+    pub presign_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +56,19 @@ pub struct Config {
     pub sockudo_app_key: String,
     pub sockudo_app_secret: String,
     pub sockudo_enable_client_events: bool,
+    pub sockudo_public_url: Option<String>,
+
+    pub storage_backend: String,
+    pub storage_fs_path: PathBuf,
+    pub s3_endpoint: Option<String>,
+    pub s3_region: String,
+    pub s3_bucket: Option<String>,
+    pub s3_access_key_id: Option<String>,
+    pub s3_secret_access_key: Option<String>,
+    pub s3_path_style: bool,
+    pub s3_presign_ttl_seconds: u64,
+    pub attachment_chunk_size: u64,
+    pub attachment_bucket_sizes: Vec<u64>,
 }
 
 impl Config {
@@ -197,6 +212,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(24);
 
+        let rate_presign_per_min = env::var("RATE_PRESIGN_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(60);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -206,6 +226,7 @@ impl Config {
             login_per_min: rate_login_per_min,
             login_lockout_min: rate_login_lockout_min,
             export_rate_limit_hours,
+            presign_per_min: rate_presign_per_min,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -250,19 +271,151 @@ impl Config {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
 
-        let sockudo_url =
-            env::var("SOCKUDO_URL").unwrap_or_else(|_| "http://localhost:6001".to_string());
-        if app_env == "production" && sockudo_url.trim().is_empty() {
-            anyhow::bail!("FATAL: SOCKUDO_URL must be set and non-empty in production mode");
-        }
+        let sockudo_url = match env::var("SOCKUDO_URL") {
+            Ok(val) if !val.trim().is_empty() => val.trim().to_string(),
+            _ => {
+                if app_env == "production" {
+                    anyhow::bail!("SOCKUDO_URL must be set in production mode");
+                } else {
+                    "http://localhost:6001".to_string()
+                }
+            }
+        };
 
-        let sockudo_app_id = env::var("SOCKUDO_APP_ID").unwrap_or_else(|_| "chat".to_string());
-        let sockudo_app_key = env::var("SOCKUDO_APP_KEY").unwrap_or_else(|_| "auto".to_string());
-        let sockudo_app_secret =
-            env::var("SOCKUDO_APP_SECRET").unwrap_or_else(|_| "auto".to_string());
+        let sockudo_app_id = env::var("SOCKUDO_APP_ID")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "chat".to_string());
+
+        let sockudo_app_key = env::var("SOCKUDO_APP_KEY")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "auto".to_string());
+
+        let sockudo_app_secret = env::var("SOCKUDO_APP_SECRET")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "auto".to_string());
+
         let sockudo_enable_client_events = env::var("SOCKUDO_ENABLE_CLIENT_EVENTS")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
             .unwrap_or(true);
+
+        let sockudo_public_url = env::var("SOCKUDO_PUBLIC_URL")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let storage_backend = env::var("STORAGE_BACKEND")
+            .unwrap_or_else(|_| "fs".to_string())
+            .trim()
+            .to_lowercase();
+
+        if storage_backend != "fs" && storage_backend != "s3" {
+            anyhow::bail!(
+                "STORAGE_BACKEND must be 'fs' or 's3' (got \"{}\")",
+                storage_backend
+            );
+        }
+
+        let storage_fs_path = PathBuf::from(
+            env::var("STORAGE_FS_PATH").unwrap_or_else(|_| "./data/attachments".to_string()),
+        );
+
+        let s3_endpoint = env::var("S3_ENDPOINT")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let s3_region = env::var("S3_REGION")
+            .unwrap_or_else(|_| "us-east-1".to_string())
+            .trim()
+            .to_string();
+
+        let s3_bucket = env::var("S3_BUCKET")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let s3_access_key_id = env::var("S3_ACCESS_KEY_ID")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let s3_secret_access_key = env::var("S3_SECRET_ACCESS_KEY")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let s3_path_style = env::var("S3_PATH_STYLE")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(false);
+
+        let s3_presign_ttl_seconds = env::var("S3_PRESIGN_TTL_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(600);
+
+        if storage_backend == "s3"
+            && (s3_bucket.is_none() || s3_access_key_id.is_none() || s3_secret_access_key.is_none())
+        {
+            anyhow::bail!(
+                "When STORAGE_BACKEND is 's3', S3_BUCKET, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY must all be set"
+            );
+        }
+
+        let attachment_chunk_size = env::var("ATTACHMENT_CHUNK_SIZE")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(16384);
+
+        if attachment_chunk_size == 0 || attachment_chunk_size % 4096 != 0 {
+            anyhow::bail!(
+                "ATTACHMENT_CHUNK_SIZE must be greater than 0 and a multiple of 4096 (got {})",
+                attachment_chunk_size
+            );
+        }
+
+        let bucket_sizes_raw = env::var("ATTACHMENT_BUCKET_SIZES")
+            .unwrap_or_else(|_| "65536,524288,4194304,33554432,268435456".to_string());
+
+        let mut attachment_bucket_sizes = Vec::new();
+        for item in bucket_sizes_raw.split(',') {
+            let item_trimmed = item.trim();
+            if item_trimmed.is_empty() {
+                continue;
+            }
+            let val: u64 = item_trimmed.parse().map_err(|_| {
+                anyhow::anyhow!(
+                    "Invalid number in ATTACHMENT_BUCKET_SIZES: \"{}\"",
+                    item_trimmed
+                )
+            })?;
+            if val == 0 || val % 4096 != 0 {
+                anyhow::bail!(
+                    "Each size in ATTACHMENT_BUCKET_SIZES must be greater than 0 and a multiple of 4096 (got {})",
+                    val
+                );
+            }
+            attachment_bucket_sizes.push(val);
+        }
+
+        if attachment_bucket_sizes.is_empty() {
+            anyhow::bail!("ATTACHMENT_BUCKET_SIZES must not be empty");
+        }
+
+        for windows in attachment_bucket_sizes.windows(2) {
+            if windows[0] >= windows[1] {
+                anyhow::bail!(
+                    "ATTACHMENT_BUCKET_SIZES must be strictly increasing (got {} >= {})",
+                    windows[0],
+                    windows[1]
+                );
+            }
+        }
 
         Ok(Self {
             app_env,
@@ -304,25 +457,21 @@ impl Config {
             sockudo_app_key,
             sockudo_app_secret,
             sockudo_enable_client_events,
+            sockudo_public_url,
+            storage_backend,
+            storage_fs_path,
+            s3_endpoint,
+            s3_region,
+            s3_bucket,
+            s3_access_key_id,
+            s3_secret_access_key,
+            s3_path_style,
+            s3_presign_ttl_seconds,
+            attachment_chunk_size,
+            attachment_bucket_sizes,
         })
     }
 
-    /// Returns a `Config` populated with safe defaults for tests.
-    ///
-    /// Integration tests live in `tests/` and are compiled as separate
-    /// crates. They cannot use `#[cfg(test)]` items from the main crate.
-    /// This function is therefore `pub`, but it is intended for test use
-    /// only. Production code obtains `Config` from `Config::from_env()`.
-    ///
-    /// All paths point to in-memory or temporary locations by default.
-    /// Override specific fields using struct update syntax:
-    ///
-    /// ```ignore
-    /// let config = Config {
-    ///     sockudo_url: "http://localhost:9000".into(),
-    ///     ..Config::test_default()
-    /// };
-    /// ```
     pub fn test_default() -> Self {
         Self {
             app_env: "development".to_string(),
@@ -357,6 +506,7 @@ impl Config {
                 login_per_min: 10,
                 login_lockout_min: 15,
                 export_rate_limit_hours: 24,
+                presign_per_min: 60,
             },
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,
@@ -373,6 +523,18 @@ impl Config {
             sockudo_app_key: "test-key".to_string(),
             sockudo_app_secret: "test-secret".to_string(),
             sockudo_enable_client_events: true,
+            sockudo_public_url: None,
+            storage_backend: "fs".to_string(),
+            storage_fs_path: PathBuf::from("/tmp/test-attachments"),
+            s3_endpoint: None,
+            s3_region: "us-east-1".to_string(),
+            s3_bucket: None,
+            s3_access_key_id: None,
+            s3_secret_access_key: None,
+            s3_path_style: false,
+            s3_presign_ttl_seconds: 600,
+            attachment_chunk_size: 16384,
+            attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432, 268435456],
         }
     }
 }

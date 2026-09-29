@@ -67,6 +67,7 @@ async fn setup_app_with_custom_config(
         app_secret: "test-secret".to_string(),
         enable_client_events: true,
     };
+    let storage = server::build_storage(&config_arc).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
 
     let state = AppState {
@@ -78,6 +79,7 @@ async fn setup_app_with_custom_config(
         config: config_arc,
         server_hard_max,
         publisher,
+        storage,
     };
 
     server::build_app(state)

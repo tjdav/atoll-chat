@@ -22,12 +22,6 @@ cargo run
 
 Migrations will run automatically on startup. The SQLite database will be created at the path specified by `DB_PATH` in your `.env` file (by default, `./data/app.db`).
 
-### Migration history
-
-| Migration | Purpose |
-|---|---|
-| `0015_room_messages_deleted_at.sql` | Adds tombstone column for message deletion (Amendment 2) |
-
 ## Testing Endpoints
 
 Check the health of the server:
@@ -71,22 +65,6 @@ You can run the unit and integration tests using:
 ```bash
 cargo test
 ```
-
-### Test config
-
-Integration tests should construct `Config` using the `test_default()` helper:
-
-```rust
-let config = Config {
-    // only the fields the test cares about
-    storage_backend: "s3".into(),
-    ..Config::test_default()
-};
-```
-
-Do not construct `Config` with a full struct literal. Every new field
-added to `Config` would break every test file that does. The helper
-keeps test files robust to schema evolution.
 
 ## Registration Flow
 
@@ -709,7 +687,6 @@ Room creation and membership enforcement respects instance limits and server har
   - Errors: `room_limit_reached` (409), `invalid_retention` (400), `invalid_file_size` (400).
 - **`GET /api/v1/rooms`**: Lists all rooms joined by the authenticated user, ordered by `joined_at DESC`.
 - **`GET /api/v1/rooms/:id`**: Returns metadata and role for a joined room. Returns 404 if not a member.
-`GET /api/v1/rooms/:id` returns `effective_max_file_size_bytes` and `effective_message_retention_days`, computed as `MIN(room override, instance limit, server hard max)`. Clients use these values to pre-flight attachment uploads and display retention policy.
 - **`DELETE /api/v1/rooms/:id`**: Deletes a room. Owner-only (403 for regular members, 404 for non-members). Cascades to all child tables via foreign keys.
 - **`POST /api/v1/rooms/:id/leave`**: Leaves a room. Returns `{ "outcome": "left" | "transferred_ownership" | "room_deleted", "new_owner_id": "..." }`. Returns 400 `not_a_member` for non-members.
 - **`GET /api/v1/rooms/:id/members`**: Lists members in a room, ordered owner first, then moderators, then members by `joined_at ASC`. Member-only (404 for non-members).
@@ -859,8 +836,8 @@ Phase 10 delivers messaging support, welcome packet routing, and MLS epoch linea
 ### Table Schema
 
 - **`room_messages`**: Stores committed MLS ciphertexts.
-  - Columns: `id` (ULID), `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type` (`application`, `commit`, `proposal`), `ciphertext` (BLOB), `created_at`, `deleted_at` (DATETIME).
-  - Indexes: `idx_room_messages_room_epoch_seq`, `idx_room_messages_room_created`, `idx_room_messages_sender`, `idx_room_messages_room_deleted`.
+  - Columns: `id` (ULID), `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type` (`application`, `commit`, `proposal`), `ciphertext` (BLOB), `created_at`.
+  - Indexes: `idx_room_messages_room_epoch_seq`, `idx_room_messages_room_created`, `idx_room_messages_sender`.
 - **`welcomes`**: Stores encrypted onboarding welcome packets for new room members.
   - Columns: `id` (ULID), `room_id`, `recipient_user_id`, `recipient_client_id`, `welcome_data` (BLOB), `consumed` (0 or 1), `created_at`.
   - Index: `idx_welcomes_recipient`.
@@ -883,132 +860,183 @@ Phase 10 delivers messaging support, welcome packet routing, and MLS epoch linea
 - **Consumption**: Recipient lists unconsumed welcomes via `GET /api/v1/welcomes`, fetches the welcome ciphertext via `GET /api/v1/welcomes/:id`, and marks it consumed via `POST /api/v1/welcomes/:id/consume`. Attempting to consume an already-consumed welcome returns HTTP 409 Conflict (`{"error":"already_consumed"}`).
 - **Multi-Device Welcome Limitation**: Phase 10 attaches welcome packets to the target's most recent device. Multi-device welcome fanout is managed at the client / MLS layer in Phase 11.
 
-### Delta Sync Cursor & Sync Ordering
+### Scope Boundaries
 
-Phase 11c enhances `GET /api/v1/rooms/:id/messages` to support incremental fetching via composite cursors and linear message synchronization:
-
-- **Query Parameters**:
-  - `since_epoch` & `since_seq`: Optional composite cursor `(epoch, seq)`. Must be provided together and must be non-negative integer values (`>= 0`).
-  - `limit`: Optional page size (default `50`, maximum `500`). Values outside 1–500 are clamped.
-- **Initial Sync (`since_epoch` and `since_seq` omitted)**:
-  - Fetches the **most recent** N messages using `ORDER BY epoch DESC, seq DESC`.
-  - Reverses the fetched records in memory prior to responding so the client receives messages in ascending order (`ASC`).
-- **Delta Sync (`since_epoch` and `since_seq` provided)**:
-  - Fetches messages strictly newer than the cursor `(epoch, seq)` using row value comparison `(epoch, seq) > (?, ?)` with `ORDER BY epoch ASC, seq ASC`.
-- **Response Shape**:
-  ```json
-  {
-    "messages": [
-      {
-        "id": "01J...",
-        "room_id": "...",
-        "sender_user_id": "...",
-        "sender_client_id": "...",
-        "epoch": 0,
-        "seq": 1,
-        "content_type": "application",
-        "deleted_at": null,
-        "created_at": "2026-10-01T12:00:00Z"
-      }
-    ],
-    "next_cursor": {
-      "epoch": 0,
-      "seq": 1
-    },
-    "has_more": false
-  }
-  ```
-- **Cursor and Response Invariants**:
-  - `next_cursor` matches the `(epoch, seq)` of the **last message** in the ascending response. If `messages` is empty, `next_cursor` is `null`.
-  - `has_more` uses the `limit + 1` query pattern to signal whether more messages exist after the current batch without an extra count query.
-  - Both initial and delta sync responses strictly maintain ascending `(epoch, seq)` order.
-  - Deleted messages are included in list responses with `deleted_at` set to an ISO 8601 timestamp (non-null tombstones are not filtered).
+- Phase 10 implements server-side persistence and CAS linearization.
+- Real-time Sockudo event delivery, WebSocket subscriptions, catch-up replay, and `pending_mls_removes` consumption are deferred to Phase 11.
 
 ## Sockudo Integration
 
-Sockudo is a Pusher-compatible WebSocket server used for advisory real-time event distribution across room channels.
+Phase 11 integrates Sockudo for push-based real-time event delivery and exposes pending MLS removes for client-side processing.
 
-### Pusher Protocol and Channel Naming
+### Overview & Pusher Protocol
 
-- **Channel Naming Convention**: Room event channels follow the `private-room-{room_id}` pattern. All room channels require Pusher private channel authorization via HMAC signature validation.
-- **Client Events Flag**: The `SOCKUDO_ENABLE_CLIENT_EVENTS` flag (default `true`) controls whether clients are advertised permission to trigger peer client events on room channels (`sockudo_client_events` in `/capabilities`).
+- **Protocol**: Clients connect directly to Sockudo via WebSocket using the Pusher protocol.
+- **App Credentials**: On first startup with default settings (`SOCKUDO_APP_KEY=auto`, `SOCKUDO_APP_SECRET=auto`), the server generates 24-byte random app keys and 32-byte random secrets, persisting them in `instance_config`. External credentials can be provided via environment variables.
+- **Private Channels**: Public channels are not used. All room channels follow the naming convention `private-room-<room_id>`.
 
-### App Credential Initialization
+### Channel Authentication (`POST /api/v1/sockudo/auth`)
 
-- **Automatic Mode (`auto`)**: On first startup with `SOCKUDO_APP_KEY=auto` and `SOCKUDO_APP_SECRET=auto`, the server generates a 32-character Base64URL app key (24 random bytes) and 43-character Base64URL app secret (32 random bytes), persisting them in the `instance_config` SQLite table. On subsequent restarts, existing credentials are loaded from `instance_config`.
-- **External Mode**: Operators can explicitly provide external credentials via `SOCKUDO_APP_KEY` and `SOCKUDO_APP_SECRET`. External credentials are used as-is and never persisted in `instance_config`. Mixed modes (one `auto` and one explicit) fail startup validation.
-- **Secret Protection**: App secrets are never logged, returned in API responses, or exposed via `/capabilities`.
+Before Sockudo allows a WebSocket client to subscribe to a private channel, the client requests a signature from the server:
+- Body: `{"socket_id": "1234.5678", "channel_name": "private-room-<room_id>"}`
+- Validation:
+  - `socket_id` must match `^\d+\.\d+$` (HTTP 400 `invalid_socket_id`).
+  - `channel_name` must start with `private-room-` (HTTP 400 `invalid_channel_name`).
+  - Requesting user must be an active member of the room. Rejects non-members and non-existent rooms uniformly with HTTP 403 `forbidden` to prevent room enumeration.
+- Response: `{ "auth": "<app_key>:<signature_hex>" }` computed via `HMAC-SHA256(app_secret, "socket_id:channel_name")`.
 
-### Channel Auth Endpoint (`POST /api/v1/sockudo/auth`)
+### Realtime Publish Flow
 
-Authenticates WebSocket channel subscription requests from authenticated room members.
+When a client submits a message or commit (`POST /api/v1/rooms/:id/messages`):
+1. The message transaction completes and commits to `room_messages` / `room_epochs`.
+2. After transaction commit, the server asynchronously publishes a Pusher event named `message` to `private-room-<room_id>`.
+3. Event Payloads (Metadata only — **no ciphertext**):
+   - Commit: `{ "type": "commit", "message_id": "...", "sender_user_id": "...", "sender_client_id": "...", "new_epoch": N, "created_at": "..." }`
+   - Application / Proposal: `{ "type": "application", "message_id": "...", "sender_user_id": "...", "sender_client_id": "...", "epoch": N, "seq": M, "created_at": "..." }`
+4. Delivery is **advisory**: If publishing fails or Sockudo is down, message submission still succeeds (HTTP 201). Clients catch up on missed events via polling `GET /api/v1/rooms/:id/messages?since_epoch=N`.
 
-- **Request**:
-  ```json
-  {
-    "socket_id": "1234.5678",
-    "channel_name": "private-room-<room_id>"
-  }
-  ```
-- **Validation**:
-  - `socket_id` must match `^\d+\.\d+$` (400 `invalid_socket_id`).
-  - `channel_name` must start with `private-room-` (400 `invalid_channel_name`).
-  - Requesting user must be a member of the room (403 `forbidden`).
-- **Response**: HTTP 200 OK with `{ "auth": "<app_key>:<signature>" }`.
-- **Signature Algorithm**:
-  ```
-  string_to_sign = "{socket_id}:{channel_name}"
-  auth_signature = hex(hmac_sha256(app_secret, string_to_sign))
-  result = "{app_key}:{auth_signature}"
-  ```
+### Why Ciphertext is Omitted from Events
 
-### Pending MLS Removes Endpoints
+Ciphertexts are intentionally omitted from event payloads to prevent network fanout amplification (e.g. broadcasting 64 KB to 100 members produces 6.4 MB of traffic) and preserve database-backed message list durable storage as the single source of truth. Subscribed clients fetch ciphertexts on demand via `GET /api/v1/rooms/:id/messages/:message_id/ciphertext`.
 
-The pending removes queue coordinates MLS Remove proposals for revoked devices or kicked members.
+### Pending MLS Removes Workflow
 
-- **`GET /api/v1/rooms/:id/pending-removes`**:
-  - Lists unconsumed remove entries (`consumed_at IS NULL`) for a room, ordered by `queued_at ASC`.
-  - Member-only (404 `room_not_found` for non-members or non-existent rooms).
-  - Response: `{ "removes": [{ "id": "...", "room_id": "...", "target_user_id": "...", "target_client_id": "...", "queued_at": "..." }] }`.
-- **`POST /api/v1/rooms/:id/pending-removes/:remove_id/consume`**:
-  - Marks a pending remove entry as consumed (`consumed_at = CURRENT_TIMESTAMP`).
-  - Member-only (404 `room_not_found` for non-members).
-  - Returns HTTP 204 No Content. Attempting to consume an already-consumed or non-existent remove returns HTTP 404 `remove_not_found`.
+The server queues remove intentions in `pending_mls_removes` when members or devices are removed, but never generates MLS commits server-side (as MLS state is held strictly client-side):
+1. A member is kicked or a device is revoked.
+2. `pending_mls_removes` queues an entry for each target device.
+3. Active room members list pending removes via `GET /api/v1/rooms/:id/pending-removes`.
+4. The client constructs an MLS Remove commit and submits it via `POST /api/v1/rooms/:id/messages`.
+5. Upon successful commit submission, the client marks the remove consumed via `POST /api/v1/rooms/:id/pending-removes/:remove_id/consume` (HTTP 204). Consuming twice returns HTTP 404 (`remove_not_found`).
 
-### Capabilities Fields
+### Client Catch-Up & Realtime Architecture
 
-`GET /api/v1/capabilities` exposes Sockudo connection parameters to clients:
+1. Client fetches capabilities (`GET /api/v1/capabilities`) to get `websocket_url`, `sockudo_app_key`, and `sockudo_channel_prefix`.
+2. Client connects to Sockudo WebSocket and requests channel auth for `private-room-<room_id>`.
+3. Client receives `message` events in real time.
+4. Client fetches ciphertexts on demand and periodically polls `GET /api/v1/rooms/:id/messages?since_epoch=N` on reconnect or network interruption.
+5. Client lists and processes `GET /api/v1/rooms/:id/pending-removes` to complete room membership removals.
 
-- **`websocket_url`**: WebSocket endpoint URL.
-  - Production (`APP_ENV=production`): Derived from `APP_URL` (`https://` -> `wss://`) appending `/realtime` (e.g. `wss://chat.example.com/realtime`).
-  - Development (`APP_ENV=development`): Derived from `SOCKUDO_URL` (`http://` -> `ws://`) appending `/app/{app_key}` (e.g. `ws://localhost:6001/app/{app_key}`).
-- **`sockudo_app_key`**: Public application key.
-- **`sockudo_channel_prefix`**: Constant `"private-room-"`.
-- **`sockudo_client_events`**: Boolean flag indicating client events capability.
+## Attachments
 
-### Advisory Real-Time Delivery
+Phase 12 delivers encrypted attachment storage, HTTP Range streaming support, and S3 presigned URLs.
 
-Real-time notification via Sockudo is **advisory and best-effort**. HTTP endpoints and database transactions complete independently of WebSocket publishing outcomes. If Sockudo is unreachable or event publishing fails, errors are logged at `warn` level and ignored. Clients fall back to HTTP polling to catch up on missed state changes.
+### Client-Side Encryption & Wire Format
 
-### Event Catalog
+The server stores opaque padded ciphertext and never sees plaintext or encryption keys. File encryption is performed client-side using C2SP chunked AES-256-GCM:
 
-The following six events are published to `private-room-{room_id}` channels upon successful operations (after database transactions commit):
+```
++-------------------------------------------------------------------------+
+|                              Blob (Total Bytes)                        |
++-------------------+--------------------+------------------+-------------+
+| Header (56 bytes) | Chunk 0 (16 KB+16) | Chunk 1 (16 KB+16) | Tail Chunk  |
++-------------------+--------------------+------------------+-------------+
+```
 
-| Event | Payload | Trigger |
-|---|---|---|
-| `message.new` | `{ id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, created_at }` | Published whenever a new message (application, proposal, or commit) is submitted to a room. |
-| `epoch.updated` | `{ room_id, epoch, sequence }` | Published alongside `message.new` whenever a commit message advances the room epoch. |
-| `message.deleted` | `{ id, room_id }` | Published when a message is tombstoned via `DELETE /api/v1/rooms/:id/messages/:msg_id`. |
-| `room.updated` | `{ room_id, name_encrypted, retention_days, max_file_size_bytes }` | Published when room metadata is modified. |
-| `room.member_added` | `{ room_id, user_id, role, joined_at }` | Published when a new member is added to a room. |
-| `room.member_removed` | `{ room_id, user_id }` | Published when a member is kicked from or leaves a room. |
+1. **Header Offset (56 bytes)**:
+   - `salt` (24 bytes)
+   - `commitment` (32 bytes)
+2. **Chunk Derivation**:
+   - Fixed protocol chunk size: 16 KiB (16,384 bytes plaintext).
+   - Each chunk contains 16 KiB of plaintext plus a 16-byte AES-256-GCM authentication tag (16,400 bytes ciphertext per chunk).
+   - Independent chunk encryption enables random-access seeking and partial decryption in Phase 12b.
 
-### Message Deletion & Ciphertext Gating
+### Content-Addressing & Manifest Metadata
 
-- **Endpoint**: `DELETE /api/v1/rooms/:id/messages/:msg_id` tombstones a message by setting `deleted_at = CURRENT_TIMESTAMP`.
-- **Authorization**:
-  - Senders can delete their own messages.
-  - Room owners can delete any message in the room.
-  - Room moderators can delete any message in the room when `moderation_mode` is set to `"discord"`.
-- **Tombstone Semantics**: Deleted messages remain in `list_messages` with a non-null `deleted_at` timestamp.
-- **Ciphertext Gating**: Requests to `GET /api/v1/rooms/:id/messages/:msg_id/ciphertext` for a deleted message return HTTP 404 Not Found (`{"error":"message_deleted"}`).
+- **Storage Key**: Attachments are content-addressed by SHA-256 hex digest of the padded ciphertext: `attachments/{id[0..2]}/{id[2..4]}/{id}`.
+- **MLS Application Message**: The client embeds the encryption key and attachment `id` in the MLS application message payload.
+- **Manifest Fields**:
+  - `chunk_size`: Fixed protocol chunk size (16,384 bytes).
+  - `chunk_count`: Total chunks including padding tail.
+  - `nonce_prefix`: Base64-encoded 7-byte nonce prefix.
+  - `base_counter`: 32-bit counter for IV derivation.
+  - `plaintext_size`: Original unpadded file size.
+  - `encrypted_size`: Total padded ciphertext size.
+
+### Storage Backends
+
+Storage is selected at startup via `STORAGE_BACKEND`:
+
+- **Filesystem (`fs`)**: Default backend storing files at `STORAGE_FS_PATH` (default `./data/attachments`) using two-level subfolder sharding (`attachments/ab/cd/abcd...`). Writes are made to temporary files (`.tmp`) and atomically renamed.
+- **S3 (`s3`)**: Object storage backend via `rust-s3`. Requires `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`. Set `S3_PATH_STYLE=true` for MinIO or self-hosted S3 endpoints.
+
+### Bucket Sizes
+
+To prevent metadata side-channel leaks about exact file sizes, uploaded file data must pad to one of the configured strictly increasing bucket sizes:
+```env
+ATTACHMENT_BUCKET_SIZES=65536,524288,4194304,33554432,268435456
+```
+Each bucket size must be a positive multiple of 4096 bytes.
+
+### Endpoints & Upload Paths
+
+All endpoints require room membership and authentication via `AuthUser`.
+
+- **`POST /api/v1/rooms/:id/attachments`**:
+  - Supports two upload paths:
+    - **Multipart (`multipart/form-data`)**: `file` binary part alongside manifest fields (`claimed_id`, `plaintext_size`, `encrypted_size`, `chunk_size`, `chunk_count`, `nonce_prefix`, `base_counter`, `content_type`, `uploader_client_id`).
+    - **Octet-stream (`application/octet-stream`)**: Binary payload in HTTP request body with manifest metadata in custom headers (`X-Claimed-Id`, `X-Plaintext-Size`, `X-Encrypted-Size`, `X-Chunk-Size`, `X-Chunk-Count`, `X-Nonce-Prefix`, `X-Base-Counter`, `X-Content-Type`, `X-Uploader-Client-Id`).
+  - Hash Verification: The server computes SHA-256 of the binary payload before writing to storage. Mismatches return HTTP 400 (`{"error":"hash_mismatch"}`).
+  - Idempotent Re-upload: Uploading an identical blob to the same room by the same uploader returns the existing attachment record without re-writing storage.
+- **`GET /api/v1/attachments/:id`**:
+  - Serves full encrypted blob or requested byte ranges with `Content-Type: application/octet-stream` and `X-Content-Type-Options: nosniff`.
+  - Headers: Includes `Accept-Ranges: bytes` on both 200 OK and 206 Partial Content responses so video/audio players know seeking is supported. Includes metadata headers (`X-Attachment-Content-Type`, `X-Attachment-Chunk-Size`, `X-Attachment-Chunk-Count`, `X-Attachment-Plaintext-Size`, `X-Attachment-Encrypted-Size`, `X-Attachment-Nonce-Prefix`, `X-Attachment-Base-Counter`).
+  - Caching & ETag: Includes `Cache-Control: private, max-age=86400, immutable` and `ETag: "<id>"`. Requests with matching `If-None-Match` return `304 Not Modified` (ETag validation takes precedence over range requests per RFC 7233).
+  - **Range Requests**: Supports single byte-range requests via the `Range` header:
+    - `Range: bytes=0-1023` -> returns HTTP `206 Partial Content` with `Content-Range: bytes 0-1023/<padded_size>` and `Content-Length: 1024`.
+    - `Range: bytes=1024-` -> returns HTTP `206 Partial Content` with bytes from offset 1024 through the end of the blob.
+    - `Range: bytes=-1024` -> returns HTTP `206 Partial Content` with the last 1024 bytes.
+    - Ranges extending beyond total file size are clipped to `total_size - 1`.
+    - Out-of-bounds start positions (`start >= total_size`), malformed syntax, multiple ranges, or non-`bytes` units return HTTP `416 Range Not Satisfiable` with no body and `Content-Range: bytes */<padded_size>`.
+- **`POST /api/v1/attachments/:id/presign`**:
+  - Generates a TTL-limited presigned URL for direct download from S3 backends (`storage_backend == "s3"`).
+  - Body: `{"expires_in_seconds": 300}` (optional; defaults to `S3_PRESIGN_TTL_SECONDS`).
+  - TTL Clamping: Requested TTL is clamped to `[30, 2 × S3_PRESIGN_TTL_SECONDS]` (default clamping window 30s to 1200s).
+  - Filesystem Backends: Returns HTTP `501 Not Implemented` (`{"error":"presign_not_supported"}`).
+  - Access & Rate Limiting: Requires room membership. Rate limited per user (`RATE_PRESIGN_PER_MIN`, default 60/min). Exceeding limit returns HTTP 429 `rate_limited` with `details: { reset_at }`.
+- **`DELETE /api/v1/attachments/:id`**:
+  - Uploader-only deletion. Returns HTTP 204 No Content on success, HTTP 403 Forbidden for non-uploaders, and HTTP 404 for missing attachments.
+  - Database row deletion commits first; blob removal from disk/S3 occurs post-commit best-effort.
+
+### Client-Side Range Translation & Batching
+
+The server serves requested raw byte offsets without interpreting plaintext semantics. The client translates desired plaintext byte ranges into encrypted C2SP byte bounds using manifest metadata:
+
+```
+plaintext_range = [p_start, p_end]   // e.g. [60000, 70000]
+start_chunk = p_start / 16384
+end_chunk   = p_end / 16384
+
+encrypted_start = 56 + start_chunk * (16384 + 16)
+encrypted_end   = 56 + (end_chunk + 1) * (16384 + 16) - 1
+
+Header: Range: bytes=encrypted_start-encrypted_end
+```
+
+**Range Batching Guidance**:
+Clients can batch multiple consecutive chunks in a single HTTP `Range` request spanning `start_chunk` through `end_chunk`. The maximum batch size equals the largest bucket size configured on the server.
+
+### Media Streaming & Presigned URL Expiry
+
+- **MP4 Fast-Start Requirement**: Clients must validate/re-encode MP4 video files with fast-start (`moov` atom placed before `mdat`) prior to upload. Fast-start allows video players to immediately parse index metadata and begin playback without downloading the entire file.
+- **Presign URL Expiry Handling**: Clients should not cache presigned URLs beyond their `expires_at` timestamp. A fresh presigned URL should be requested per seek or per chunk batch to avoid 403 errors from S3.
+
+### Capabilities Advertisement
+
+`GET /api/v1/capabilities` advertises attachment and storage capabilities:
+```json
+{
+  "storage_backend": "fs",
+  "storage_presign_supported": false,
+  "storage_presign_max_ttl_seconds": 0,
+  "attachment_accept_ranges": true,
+  "attachment_format": "c2sp-chunked-aes256gcm-v1",
+  "attachment_chunk_size": 16384,
+  "attachment_bucket_sizes": [65536, 524288, 4194304, 33554432, 268435456]
+}
+```
+
+### Known Limitations
+
+- **Cryptographic Shredding**: Once a peer downloads and caches a blob, the server cannot force its deletion from peer devices.
+- **Presigned URL Scope**: Presigned URLs grant access to the entire encrypted object for the duration of the TTL. Clients attach a `Range` header directly when fetching from S3.
+- **Orphaned Blobs on Room Deletion**: Room deletion cascades database attachment rows (`ON DELETE CASCADE`), but underlying storage blobs remain in filesystem/S3 storage until a background orphan-scan job is implemented.

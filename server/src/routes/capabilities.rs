@@ -15,6 +15,13 @@ pub struct CapabilitiesResponse {
     pub sockudo_app_key: String,
     pub sockudo_channel_prefix: String,
     pub sockudo_client_events: bool,
+    pub storage_backend: String,
+    pub storage_presign_supported: bool,
+    pub storage_presign_max_ttl_seconds: u64,
+    pub attachment_accept_ranges: bool,
+    pub attachment_format: String,
+    pub attachment_chunk_size: u64,
+    pub attachment_bucket_sizes: Vec<u64>,
 }
 
 pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -51,6 +58,14 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         )
     };
 
+    let is_s3 = state.config.storage_backend == "s3";
+    let storage_presign_supported = is_s3;
+    let storage_presign_max_ttl_seconds = if is_s3 {
+        state.config.s3_presign_ttl_seconds.saturating_mul(2)
+    } else {
+        0
+    };
+
     Json(CapabilitiesResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         calling: false,
@@ -61,5 +76,12 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         sockudo_app_key: state.publisher.app_key().to_string(),
         sockudo_channel_prefix: "private-room-".to_string(),
         sockudo_client_events: state.publisher.enable_client_events(),
+        storage_backend: state.config.storage_backend.clone(),
+        storage_presign_supported,
+        storage_presign_max_ttl_seconds,
+        attachment_accept_ranges: true,
+        attachment_format: "c2sp-chunked-aes256gcm-v1".to_string(),
+        attachment_chunk_size: state.config.attachment_chunk_size,
+        attachment_bucket_sizes: state.config.attachment_bucket_sizes.clone(),
     })
 }
