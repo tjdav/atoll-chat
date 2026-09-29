@@ -2,7 +2,9 @@ pub mod altcha;
 pub mod attachments;
 pub mod audit;
 pub mod auth;
+pub mod backup;
 pub mod cleanup;
+pub mod cli;
 pub mod config;
 pub mod config_ops;
 pub mod db;
@@ -86,6 +88,13 @@ pub struct AppState {
     pub server_hard_max: Arc<ServerHardMax>,
     pub publisher: Arc<Publisher>,
     pub storage: Arc<dyn Storage>,
+    pub backup_lock: Arc<tokio::sync::Mutex<()>>,
+}
+
+impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
+    fn from_ref(state: &AppState) -> Self {
+        state.backup_lock.clone()
+    }
 }
 
 impl axum::extract::FromRef<AppState> for SqlitePool {
@@ -153,6 +162,10 @@ pub fn build_app(state: AppState) -> Router {
             get(routes::admin::get_limits_handler).patch(routes::admin::patch_limits_handler),
         )
         .route("/admin/audit", get(routes::admin::get_audit_handler))
+        .route(
+            "/admin/backups",
+            get(routes::admin_backups::list).post(routes::admin_backups::trigger),
+        )
         .route("/capabilities", get(routes::capabilities::handler))
         .route("/roles", get(routes::roles::handler))
         .route(

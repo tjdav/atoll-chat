@@ -71,6 +71,7 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
         server_hard_max,
         publisher,
         storage,
+        backup_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     server::build_app(state)

@@ -19,6 +19,7 @@ use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::sync::Arc;
 use tower::ServiceExt;
 
+#[allow(dead_code)]
 pub async fn setup_test_db() -> SqlitePool {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
@@ -46,23 +47,37 @@ pub async fn setup_test_app_with_config(
     hmac_secret: &str,
     cost: u32,
 ) -> (Router, SqlitePool, Arc<AltchaConfig>) {
-    let pool = setup_test_db().await;
+    let temp_dir = std::env::temp_dir().join(format!("test_run_{}", ulid::Ulid::new()));
+    let _ = std::fs::create_dir_all(&temp_dir);
+    let db_path = temp_dir.join("app.db");
+    let key_path = temp_dir.join("oprf.key");
 
-    let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
-    let key_path = temp_dir.path().join("oprf.key");
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&format!("sqlite:{}?mode=rwc", db_path.display()))
+        .await
+        .expect("Failed to connect to test DB");
+
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Failed to run migrations on test DB");
+
     let opaque_server =
         Arc::new(OpaqueServer::load_or_generate(&key_path).expect("Failed to create OpaqueServer"));
     let registration_store = Arc::new(RegistrationStore::new());
     let login_store = Arc::new(LoginStore::new());
 
     let config = Config {
+        db_path: db_path.to_string_lossy().to_string(),
         opaque_oprf_key_path: key_path.to_str().unwrap().to_string(),
         altcha_enabled: enabled,
         altcha_hmac_secret: hmac_secret.to_string(),
         altcha_cost: cost,
         cleanup_enabled: true,
         cleanup_startup_delay_secs: 30,
-        storage_fs_path: temp_dir.path().join("attachments"),
+        storage_fs_path: temp_dir.join("attachments"),
+        backup_path: temp_dir.join("backups"),
         ..Config::test_default()
     };
 
@@ -106,6 +121,7 @@ pub async fn setup_test_app_with_config(
         server_hard_max,
         publisher,
         storage,
+        backup_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     let app = server::build_app(state);

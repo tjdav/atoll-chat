@@ -80,6 +80,7 @@ async fn setup_app_with_custom_config(
         server_hard_max,
         publisher,
         storage,
+        backup_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     server::build_app(state)

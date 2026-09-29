@@ -26,6 +26,8 @@ pub enum ApiError {
     Conflict(String),
     ConflictWithDetails(String, serde_json::Value),
     Gone(String),
+    NotImplemented(String),
+    InternalWithDetails(StatusCode, String, serde_json::Value),
     TooManyRequests {
         message: String,
         reset_at: DateTime<Utc>,
@@ -69,6 +71,14 @@ impl IntoResponse for ApiError {
                         return (StatusCode::CONFLICT, body).into_response();
                     }
                     ApiError::Gone(msg) => (StatusCode::GONE, msg),
+                    ApiError::NotImplemented(msg) => (StatusCode::NOT_IMPLEMENTED, msg),
+                    ApiError::InternalWithDetails(status, msg, details) => {
+                        let body = Json(json!({
+                            "error": msg,
+                            "details": details,
+                        }));
+                        return (status, body).into_response();
+                    }
                     ApiError::InternalCustom(status, msg) => (status, msg),
                     ApiError::Internal(err) => {
                         error!("Internal server error: {:#}", err);

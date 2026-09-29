@@ -34,6 +34,11 @@ impl Permission for InviteLimited {
     const NAME: &'static str = perm::INVITE_LIMITED;
 }
 
+pub struct BackupManage;
+impl Permission for BackupManage {
+    const NAME: &'static str = perm::BACKUP_MANAGE;
+}
+
 pub struct RequirePermission<P: Permission>(pub PhantomData<P>);
 
 impl<P: Permission, S> FromRequestParts<S> for RequirePermission<P>

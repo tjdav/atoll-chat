@@ -80,6 +80,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         server_hard_max,
         publisher,
         storage,
+        backup_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     let app = server::build_app(state);
@@ -426,6 +427,7 @@ async fn test_09_publish_failures_do_not_affect_http_response() {
         server_hard_max,
         publisher,
         storage,
+        backup_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     let app = server::build_app(state);
