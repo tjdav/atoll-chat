@@ -169,6 +169,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         server_hard_max,
         publisher,
         storage,
+        backup_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     let app = server::build_app(state);

@@ -1,4 +1,6 @@
+use clap::Parser;
 use server::altcha::AltchaConfig;
+use server::cli::{Cli, Command};
 use server::config::Config;
 use server::db;
 use server::login::LoginStore;
@@ -26,6 +28,19 @@ async fn main() -> anyhow::Result<()> {
             log_level.as_str().to_lowercase()
         ))
         .init();
+
+    // Parse CLI arguments
+    let cli = Cli::parse();
+    if let Some(Command::Restore { from, confirm }) = cli.command {
+        let config = Config::from_env()?;
+        let options = server::backup::RestoreOptions { from, confirm };
+        if let Err(e) = server::backup::restore_backup(&config, options).await {
+            eprintln!("Error: {}", e);
+            std::process::exit(1);
+        }
+        println!("Restore completed successfully.");
+        return Ok(());
+    }
 
     // 3. Load Config
     let config = Arc::new(Config::from_env()?);
@@ -87,6 +102,7 @@ async fn main() -> anyhow::Result<()> {
 
     let sockudo_config = server::SockudoConfig::load_or_initialize(&pool, &config).await?;
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
+    let backup_lock = Arc::new(tokio::sync::Mutex::new(()));
 
     let state = AppState {
         pool: pool.clone(),
@@ -98,6 +114,7 @@ async fn main() -> anyhow::Result<()> {
         server_hard_max: server_hard_max.clone(),
         publisher,
         storage: storage.clone(),
+        backup_lock,
     };
 
     // 7. Check bootstrap state
@@ -112,6 +129,21 @@ async fn main() -> anyhow::Result<()> {
 
     // 9. Setup Cleanup Scheduler
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+    if config.backup_enabled {
+        let backup_job = server::backup::BackupJob::new(config.clone());
+        let backup_pool = pool.clone();
+        let backup_shutdown = shutdown_rx.clone();
+        tokio::spawn(async move {
+            backup_job.run_loop(backup_pool, backup_shutdown).await;
+        });
+        info!(
+            "backup scheduler started interval_hours={}",
+            config.backup_interval_hours
+        );
+    } else {
+        info!("backup scheduler disabled");
+    }
 
     if config.cleanup_enabled {
         let mut scheduler = server::cleanup::Scheduler::new(std::time::Duration::from_secs(

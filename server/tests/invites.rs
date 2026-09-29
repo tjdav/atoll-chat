@@ -8,6 +8,7 @@ use common::{login_user, register_user, setup_test_app, setup_test_app_with_conf
 use serde_json::{json, Value};
 use server::routes;
 use sqlx::SqlitePool;
+use std::sync::Arc;
 use tower::ServiceExt;
 
 const OWNER_CLIENT: &str = "client_owner_1234567";
@@ -869,6 +870,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         server_hard_max,
         publisher,
         storage,
+        backup_lock: Arc::new(tokio::sync::Mutex::new(())),
     };
 
     let app = axum::Router::new()

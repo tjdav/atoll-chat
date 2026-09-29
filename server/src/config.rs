@@ -69,6 +69,12 @@ pub struct Config {
     pub s3_presign_ttl_seconds: u64,
     pub attachment_chunk_size: u64,
     pub attachment_bucket_sizes: Vec<u64>,
+
+    pub backup_enabled: bool,
+    pub backup_path: PathBuf,
+    pub backup_interval_hours: u64,
+    pub backup_retention_count: u64,
+    pub backup_include_attachments: bool,
 }
 
 impl Config {
@@ -417,6 +423,33 @@ impl Config {
             }
         }
 
+        let backup_enabled = env::var("BACKUP_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let backup_path =
+            PathBuf::from(env::var("BACKUP_PATH").unwrap_or_else(|_| "./data/backups".to_string()));
+
+        let backup_interval_hours = env::var("BACKUP_INTERVAL_HOURS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(24);
+
+        let backup_retention_count = env::var("BACKUP_RETENTION_COUNT")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let backup_include_attachments = env::var("BACKUP_INCLUDE_ATTACHMENTS")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(false);
+
+        if backup_enabled && storage_backend == "s3" && backup_include_attachments {
+            anyhow::bail!(
+                "FATAL: BACKUP_INCLUDE_ATTACHMENTS=true is not supported with STORAGE_BACKEND=s3.\nS3 attachment blobs are not backed up by the server. Use S3 versioning\nand lifecycle policies, or set BACKUP_INCLUDE_ATTACHMENTS=false."
+            );
+        }
+
         Ok(Self {
             app_env,
             app_url,
@@ -469,6 +502,11 @@ impl Config {
             s3_presign_ttl_seconds,
             attachment_chunk_size,
             attachment_bucket_sizes,
+            backup_enabled,
+            backup_path,
+            backup_interval_hours,
+            backup_retention_count,
+            backup_include_attachments,
         })
     }
 
@@ -535,6 +573,11 @@ impl Config {
             s3_presign_ttl_seconds: 600,
             attachment_chunk_size: 16384,
             attachment_bucket_sizes: vec![65536, 524288, 4194304, 33554432, 268435456],
+            backup_enabled: true,
+            backup_path: PathBuf::from("/tmp/test-backups"),
+            backup_interval_hours: 24,
+            backup_retention_count: 30,
+            backup_include_attachments: false,
         }
     }
 }

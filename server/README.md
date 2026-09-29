@@ -1069,3 +1069,64 @@ retention policy governs both.
 - **Cryptographic Shredding**: Once a peer downloads and caches a blob, the server cannot force its deletion from peer devices.
 - **Presigned URL Scope**: Presigned URLs grant access to the entire encrypted object for the duration of the TTL. Clients attach a `Range` header directly when fetching from S3.
 - **Orphaned Blobs on Room Deletion**: Room deletion cascades database attachment rows (`ON DELETE CASCADE`), but underlying storage blobs remain in filesystem/S3 storage until a background orphan-scan job is implemented.
+
+## Backups
+
+The server includes an automated backup mechanism that snapshots the SQLite database and OPRF key file on a configurable interval.
+
+### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `BACKUP_ENABLED` | Enable or disable the backup job scheduler (`true` or `false`). | `true` |
+| `BACKUP_PATH` | Path where backup files are stored on disk. | `./data/backups` |
+| `BACKUP_INTERVAL_HOURS` | Interval in hours between automated backups. | `24` |
+| `BACKUP_RETENTION_COUNT` | Number of backups to retain. `0` keeps all backups. | `30` |
+| `BACKUP_INCLUDE_ATTACHMENTS` | Whether to include filesystem attachment files in backups. | `false` |
+
+### Encryption Scheme & Key Derivation
+
+Backups are encrypted at rest using **AES-256-GCM**:
+- **Key Derivation**: The 32-byte backup encryption key is derived via `HKDF-Expand` (SHA-256) from the OPRF key file contents (`OPAQUE_OPRF_KEY_PATH`) using the info string `"backup-encryption-v1"`.
+- **Nonce & Tag**: A random 12-byte nonce is generated per backup file using `OsRng`. The 16-byte GCM authentication tag is appended to the ciphertext.
+- **On-Disk Format**: `[12 bytes: nonce] [ciphertext] [16 bytes: tag]` (extension `.cbak`).
+
+### Archive Format
+
+Each decrypted backup is an uncompressed POSIX `tar` archive containing:
+1. `manifest.json`: Metadata including ISO 8601 creation timestamp, server version, original database path, OPRF key path, storage backend, and attachment count. Written as the first entry in the archive.
+2. `app.db`: A consistent snapshot of the SQLite database file, taken after performing `PRAGMA wal_checkpoint(TRUNCATE)`.
+3. `oprf.key`: The OPRF key file contents.
+4. `attachments/`: (Optional) Filesystem attachment blobs when `BACKUP_INCLUDE_ATTACHMENTS=true` and `STORAGE_BACKEND=fs`.
+
+### Admin API Endpoints
+
+Backups are managed via the Admin API, requiring the `backup.manage` permission (granted to `owner` and `admin` roles):
+
+- **`GET /api/v1/admin/backups`**: Lists existing backup files ordered by creation date descending (`created_at DESC`).
+  - Returns HTTP 200 with `{ "backups": [ { "filename": "backup-2026-09-29T14-30-00Z.cbak", "size_bytes": 1048576, "created_at": "..." } ] }`.
+  - Returns HTTP 501 `{"error":"backup_disabled"}` if `BACKUP_ENABLED=false`.
+- **`POST /api/v1/admin/backups`**: Synchronously triggers a manual backup.
+  - Returns HTTP 201 Created with `{ "filename": "...", "size_bytes": N, "created_at": "..." }`.
+  - Concurrent manual or scheduled backups are locked via a mutex (`backup_lock`). Returns HTTP 409 Conflict (`{"error":"backup_in_progress"}`) if another backup is running.
+  - Returns HTTP 501 `{"error":"backup_disabled"}` if `BACKUP_ENABLED=false`.
+
+### Restore Procedure (`server restore`)
+
+Restoring from a backup is **CLI-only** and requires shell access to the host machine. It is intentionally omitted from the HTTP API.
+
+1. **Stop the server process** to release database file locks.
+2. **Ensure the OPRF key file is present** at `OPAQUE_OPRF_KEY_PATH`. The OPRF key file is required to derive the backup decryption key.
+3. **Execute the restore command**:
+   ```bash
+   ./target/release/server restore --from ./data/backups/backup-2026-09-29T14-30-00Z.cbak --confirm
+   ```
+4. **Start the server process**.
+
+> **Note**: Restoring without `--confirm` will abort with an error.
+
+### Constraints & Limitations
+
+- **S3 Attachment Blobs**: Attachment blobs stored on S3 are **not** backed up by the server. Operators should rely on S3 bucket versioning and lifecycle policies. Setting `BACKUP_INCLUDE_ATTACHMENTS=true` when `STORAGE_BACKEND=s3` causes a fatal startup error.
+- **OPRF Key Dependency**: Moving a backup file to a fresh server deployment requires copying the original OPRF key file first, as the backup key is derived from it.
+- **First Backup Delay**: The backup scheduler runs its first cycle after a **60-second** initial startup delay to allow the server to settle before taking snapshots.
