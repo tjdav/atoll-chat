@@ -74,6 +74,7 @@ async fn test_end_to_end_backup_and_restore() {
         publisher,
         storage,
         backup_lock,
+        vapid_keys: None,
     };
 
     let app = server::build_app(state);

@@ -19,6 +19,8 @@ pub struct Device {
 pub enum DeviceError {
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
+    #[error("Push error: {0}")]
+    Push(#[from] crate::push::PushError),
     #[error("Device limit exceeded: current {current}, max {max}")]
     DeviceLimitExceeded { current: u32, max: u32 },
     #[error("Device not found")]
@@ -232,7 +234,10 @@ pub async fn revoke_device(
         mls_removes_queued += 1;
     }
 
-    // 4. Delete the device row (cascades to sessions)
+    // 4. Delete push subscriptions tied to this device
+    crate::push::subscriptions::delete_for_device(&mut tx, device_id).await?;
+
+    // 5. Delete the device row (cascades to sessions)
     sqlx::query("DELETE FROM devices WHERE id = ? AND user_id = ?")
         .bind(device_id)
         .bind(user_id)

@@ -170,6 +170,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        vapid_keys: None,
     };
 
     let app = server::build_app(state);

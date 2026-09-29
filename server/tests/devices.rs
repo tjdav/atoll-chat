@@ -179,6 +179,7 @@ async fn test_04_device_limit_is_enforced() {
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        vapid_keys: None,
     };
 
     let app = axum::Router::new()

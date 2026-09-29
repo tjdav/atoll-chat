@@ -368,6 +368,7 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        vapid_keys: None,
     };
 
     let app = axum::Router::new()
@@ -1542,6 +1543,7 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        vapid_keys: None,
     };
 
     let app = axum::Router::new()
@@ -1692,6 +1694,7 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        vapid_keys: None,
     };
 
     let app = axum::Router::new()

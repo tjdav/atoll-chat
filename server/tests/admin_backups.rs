@@ -178,6 +178,7 @@ async fn test_04_trigger_fails_when_backup_disabled() {
         publisher,
         storage,
         backup_lock,
+        vapid_keys: None,
     };
 
     let app = server::build_app(state);

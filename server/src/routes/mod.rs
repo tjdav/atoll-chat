@@ -8,6 +8,7 @@ pub mod invites;
 pub mod key_packages;
 pub mod login;
 pub mod pending_removes;
+pub mod push_subscriptions;
 pub mod ready;
 pub mod register;
 pub mod roles;
