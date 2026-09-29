@@ -1130,3 +1130,83 @@ Restoring from a backup is **CLI-only** and requires shell access to the host ma
 - **S3 Attachment Blobs**: Attachment blobs stored on S3 are **not** backed up by the server. Operators should rely on S3 bucket versioning and lifecycle policies. Setting `BACKUP_INCLUDE_ATTACHMENTS=true` when `STORAGE_BACKEND=s3` causes a fatal startup error.
 - **OPRF Key Dependency**: Moving a backup file to a fresh server deployment requires copying the original OPRF key file first, as the backup key is derived from it.
 - **First Backup Delay**: The backup scheduler runs its first cycle after a **60-second** initial startup delay to allow the server to settle before taking snapshots.
+
+## Push Subscriptions
+
+The server supports Web Push (VAPID) and native push notification subscription management for clients.
+
+### Overview & VAPID Key Management
+
+VAPID (Voluntary Application Server Identification) key pairs allow web browsers to verify the application server sending push notifications.
+
+- **`PUSH_ENABLED`**: Default `true`. Controls whether push subscription functionality is active.
+- **`PUSH_VAPID_PUBLIC_KEY`** and **`PUSH_VAPID_PRIVATE_KEY`**: Default `"auto"`.
+  - In `"auto"` mode, the server generates a P-256 key pair on first startup and persists both keys in `instance_config`. Subsequent restarts load the persisted key pair.
+  - In explicit mode, both env vars must provide base64url-encoded keys (public key 65 bytes starting with `0x04`, private key 32 bytes). Mixed auto/explicit configurations fail startup validation.
+- **Security**: The private key is kept strictly secret in `instance_config` and memory, and is never logged or exposed in API responses. The public key is exposed via `GET /api/v1/capabilities` so clients can subscribe.
+
+### Endpoints
+
+1. **`POST /api/v1/users/me/push-subscriptions`**
+   - Registers or updates a push subscription.
+   - **Web / Desktop Payload**: Requires `platform` (`"web"` or `"desktop"`), `endpoint`, `p256dh`, `auth`, and `browser_id`.
+   - **iOS / Android Payload**: Requires `platform` (`"ios"` or `"android"`), `push_token`, and optional `device_id`.
+   - **Web Reregistration**: Keyed by `(user_id, browser_id)`. Re-registering with the same `browser_id` updates the existing subscription row in-place rather than creating duplicates.
+   - **Response**: HTTP 201 Created returning `PushSubscriptionView` (`id`, `platform`, `browser_id`, `device_id`, `created_at`, `last_used_at`). Secret fields (`endpoint`, `p256dh`, `auth`, `push_token`) are omitted.
+2. **`GET /api/v1/users/me/push-subscriptions`**
+   - Lists active subscriptions for the authenticated user (`revoked_at IS NULL`).
+   - Returns `{ "subscriptions": [...] }`. Secrets are omitted.
+3. **`DELETE /api/v1/users/me/push-subscriptions/:id`**
+   - Revokes a subscription by setting `revoked_at = CURRENT_TIMESTAMP`.
+   - Returns HTTP 204 No Content. Returns HTTP 404 if not found or owned by another user.
+
+### Device Revocation Cascade
+
+When a user revokes a device (`DELETE /api/v1/users/me/devices/:id`), all push subscriptions associated with that `device_id` are hard-deleted inside the revocation transaction. Subscriptions without a `device_id` are preserved.
+
+### Capabilities Advertisement
+
+`GET /api/v1/capabilities` includes:
+- `push_enabled`: boolean indicating if push is enabled.
+- `push_vapid_public_key`: base64url string when `push_enabled == true`, or `null` when disabled.
+
+### Push Delivery
+
+When an application message is submitted to a room (`POST /api/v1/rooms/:id/messages`), the server composes a notification and dispatches it in the background to all subscribed devices of other room members.
+
+#### Trigger & Detached Dispatch
+- Delivery is triggered solely on application messages (`SubmitOutcome::Application`). Commits and proposals do not trigger push notifications.
+- Push delivery runs in a detached `tokio::spawn` task so that HTTP responses are returned immediately to the message sender.
+- Push delivery is **advisory**: delivery failures are logged and do not affect message submission.
+
+#### Per-Device Suppression
+- Push notifications are suppressed on a per-device basis. If a device has sent a session heartbeat within `PUSH_SUPPRESSION_WINDOW_SECS` (default 30 seconds, evaluated against `sessions.last_seen_at`), the WebSocket connection for that device is considered active and the push notification for that device is skipped.
+- A user with multiple devices (e.g. phone and laptop) will still receive a push on their phone even if their laptop has an active session.
+
+#### Concurrency & Timeout Controls
+- **Concurrency**: Fanout is bounded by `PUSH_MAX_CONCURRENT_DELIVERIES` (default 32) using `buffer_unordered`.
+- **Timeout**: Individual delivery requests time out after `PUSH_DELIVERY_TIMEOUT_SECS` (default 10 seconds). Timeouts are treated as transient failures.
+
+#### V1 Web Push Payload Schema
+The payload contains metadata only:
+```json
+{
+  "type": "message",
+  "room_id": "<room_id>",
+  "sender_user_id": "<user_id>",
+  "encrypted_payload": "",
+  "notification_id": "<ulid>",
+  "priority": "high",
+  "collapse_key": "<room_id>",
+  "timestamp": "<ISO_8601_UTC>"
+}
+```
+- `encrypted_payload` is empty in V1. The client receives the push, fetches the message ciphertext via `GET /rooms/:id/messages/:message_id/ciphertext`, and decrypts locally using the room key.
+- `collapse_key` is set to the room ID so push services collapse multiple unread messages into a single conversation notification.
+
+#### 410 Gone Cleanup & Success Updates
+- **Expired Subscriptions**: When a push service returns `410 Gone` (or `404 Not Found`), the subscription is immediately hard-deleted from `push_subscriptions`.
+- **Transient Failures**: Status codes like 500 or delivery timeouts leave the subscription intact for future attempts.
+- **`last_used_at` Update**: On successful delivery (201 Created), `push_subscriptions.last_used_at` is updated to `CURRENT_TIMESTAMP`.
+
+> **Note**: Native push senders for APNs (`"ios"`) and FCM (`"android"`) are implemented in Phase 16. Subscriptions for these platforms are skipped during Phase 15b dispatch.
