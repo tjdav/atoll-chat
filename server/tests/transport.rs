@@ -5,7 +5,7 @@ use axum::{
     http::{header, Request, StatusCode},
 };
 use server::altcha::AltchaConfig;
-use server::config::{Config, RateLimitConfig};
+use server::config::Config;
 use server::login::LoginStore;
 use server::opaque::OpaqueServer;
 use server::registration::RegistrationStore;
@@ -32,52 +32,13 @@ async fn setup_app_with_custom_config(
     let config = Config {
         app_env: app_env.to_string(),
         app_url: app_url.map(|s| s.to_string()),
-        app_name: "Test".to_string(),
-        log_level: "info".to_string(),
-        server_bind: "127.0.0.1:0".to_string(),
-        db_path: ":memory:".to_string(),
-        db_busy_timeout_ms: 5000,
         opaque_oprf_key_path: key_path.to_str().unwrap().to_string(),
-        altcha_enabled: false,
-        altcha_hmac_secret: "auto".to_string(),
-        altcha_algorithm: "PBKDF2/SHA-256".to_string(),
-        altcha_cost: 100,
-        session_expiry_days: 30,
-        session_sliding: true,
-        max_file_size_bytes: 104_857_600,
-        server_max_devices_per_user: 20,
-        invite_default_uses: 1,
-        invite_expiry_days: 0,
-        invite_code_length: 8,
-        invite_limited_max_uses: 10,
-        invite_limited_max_open: 50,
-        room_invite_default_uses: 1,
-        room_invite_code_length: 8,
-        rate_limits: RateLimitConfig {
-            invite_create_hourly: 50,
-            invite_create_daily: 200,
-            invite_redeem_per_min: 10,
-            kp_claim_per_min: 30,
-            kp_claim_hourly: 200,
-            login_per_min: 10,
-            login_lockout_min: 15,
-            export_rate_limit_hours: 24,
-        },
         cleanup_enabled: true,
-        cleanup_interval_minutes: 60,
         cleanup_startup_delay_secs: 30,
-        audit_retention_days: 90,
-        data_retention_days: 0,
-        export_rate_limit_hours: 24,
         trust_proxy,
         hsts_max_age,
         hsts_include_subdomains,
-        client_static_dir: None,
-        sockudo_url: "http://localhost:6001".to_string(),
-        sockudo_app_id: "chat".to_string(),
-        sockudo_app_key: "auto".to_string(),
-        sockudo_app_secret: "auto".to_string(),
-        sockudo_enable_client_events: true,
+        ..Config::test_default()
     };
 
     let altcha_config = Arc::new(

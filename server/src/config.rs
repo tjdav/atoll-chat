@@ -306,4 +306,73 @@ impl Config {
             sockudo_enable_client_events,
         })
     }
+
+    /// Returns a `Config` populated with safe defaults for tests.
+    ///
+    /// Integration tests live in `tests/` and are compiled as separate
+    /// crates. They cannot use `#[cfg(test)]` items from the main crate.
+    /// This function is therefore `pub`, but it is intended for test use
+    /// only. Production code obtains `Config` from `Config::from_env()`.
+    ///
+    /// All paths point to in-memory or temporary locations by default.
+    /// Override specific fields using struct update syntax:
+    ///
+    /// ```ignore
+    /// let config = Config {
+    ///     sockudo_url: "http://localhost:9000".into(),
+    ///     ..Config::test_default()
+    /// };
+    /// ```
+    pub fn test_default() -> Self {
+        Self {
+            app_env: "development".to_string(),
+            app_url: Some("http://localhost:8080".to_string()),
+            app_name: "Test".to_string(),
+            log_level: "error".to_string(),
+            server_bind: "127.0.0.1:0".to_string(),
+            db_path: ":memory:".to_string(),
+            db_busy_timeout_ms: 5000,
+            opaque_oprf_key_path: "/tmp/test-oprf.key".to_string(),
+            altcha_enabled: false,
+            altcha_hmac_secret: "auto".to_string(),
+            altcha_algorithm: "PBKDF2/SHA-256".to_string(),
+            altcha_cost: 100,
+            session_expiry_days: 30,
+            session_sliding: true,
+            max_file_size_bytes: 104_857_600,
+            server_max_devices_per_user: 20,
+            invite_default_uses: 1,
+            invite_expiry_days: 0,
+            invite_code_length: 8,
+            invite_limited_max_uses: 10,
+            invite_limited_max_open: 50,
+            room_invite_default_uses: 1,
+            room_invite_code_length: 8,
+            rate_limits: RateLimitConfig {
+                invite_create_hourly: 50,
+                invite_create_daily: 200,
+                invite_redeem_per_min: 10,
+                kp_claim_per_min: 30,
+                kp_claim_hourly: 200,
+                login_per_min: 10,
+                login_lockout_min: 15,
+                export_rate_limit_hours: 24,
+            },
+            cleanup_enabled: false,
+            cleanup_interval_minutes: 60,
+            cleanup_startup_delay_secs: 0,
+            audit_retention_days: 90,
+            data_retention_days: 0,
+            export_rate_limit_hours: 24,
+            trust_proxy: false,
+            hsts_max_age: 0,
+            hsts_include_subdomains: false,
+            client_static_dir: None,
+            sockudo_url: "http://localhost:6001".to_string(),
+            sockudo_app_id: "chat".to_string(),
+            sockudo_app_key: "test-key".to_string(),
+            sockudo_app_secret: "test-secret".to_string(),
+            sockudo_enable_client_events: true,
+        }
+    }
 }

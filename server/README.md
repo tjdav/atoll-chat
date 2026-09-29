@@ -72,6 +72,22 @@ You can run the unit and integration tests using:
 cargo test
 ```
 
+### Test config
+
+Integration tests should construct `Config` using the `test_default()` helper:
+
+```rust
+let config = Config {
+    // only the fields the test cares about
+    storage_backend: "s3".into(),
+    ..Config::test_default()
+};
+```
+
+Do not construct `Config` with a full struct literal. Every new field
+added to `Config` would break every test file that does. The helper
+keeps test files robust to schema evolution.
+
 ## Registration Flow
 
 User onboarding uses the OPAQUE asymmetric password-authenticated key exchange protocol (`opaque-ke` 4.0.1).
