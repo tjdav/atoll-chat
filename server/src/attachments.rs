@@ -4,6 +4,7 @@ use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 
 use crate::config::Config;
+use crate::limits::{InstanceLimits, ServerHardMax};
 use crate::storage::{Storage, StorageError};
 
 #[derive(Debug, Clone, Serialize)]
@@ -396,6 +397,98 @@ pub async fn delete_attachment(
     }
 
     Ok(())
+}
+
+#[derive(Debug, Default)]
+pub struct PruneReport {
+    pub rooms_scanned: u64,
+    pub attachments_deleted: u64,
+    pub blobs_deleted: u64,
+    pub blob_errors: u64,
+}
+
+pub async fn prune_expired(
+    pool: &SqlitePool,
+    storage: &dyn Storage,
+    limits: &InstanceLimits,
+    server_max: &ServerHardMax,
+) -> Result<PruneReport, AttachmentError> {
+    let mut report = PruneReport::default();
+
+    let rooms: Vec<(String, Option<i64>)> = sqlx::query_as(
+        r#"
+        SELECT DISTINCT r.id, r.retention_days
+        FROM rooms r
+        JOIN attachments a ON a.room_id = r.id
+        "#,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    for (room_id, room_retention_days) in rooms {
+        report.rooms_scanned += 1;
+
+        let effective = crate::rooms::effective_message_retention_days(
+            room_retention_days,
+            limits.attachment_retention_days,
+            server_max.attachment_retention_days,
+        );
+
+        if effective == 0 {
+            continue;
+        }
+
+        let expired_rows: Vec<(String, String)> = sqlx::query_as(
+            r#"
+            SELECT id, storage_key FROM attachments
+            WHERE room_id = ?
+              AND created_at < datetime('now', '-' || ? || ' days')
+            "#,
+        )
+        .bind(&room_id)
+        .bind(effective)
+        .fetch_all(pool)
+        .await?;
+
+        for chunk in expired_rows.chunks(500) {
+            let mut tx = pool.begin().await?;
+
+            let mut query_str = String::from("DELETE FROM attachments WHERE id IN (");
+            for i in 0..chunk.len() {
+                if i > 0 {
+                    query_str.push_str(", ");
+                }
+                query_str.push('?');
+            }
+            query_str.push(')');
+
+            let mut query = sqlx::query(&query_str);
+            for (id, _) in chunk {
+                query = query.bind(id);
+            }
+
+            let res = query.execute(&mut *tx).await?;
+            tx.commit().await?;
+
+            report.attachments_deleted += res.rows_affected();
+
+            for (_id, storage_key) in chunk {
+                match storage.delete(storage_key).await {
+                    Ok(()) => report.blobs_deleted += 1,
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            key = %storage_key,
+                            "failed to delete orphaned blob"
+                        );
+                        report.blob_errors += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(report)
 }
 
 #[derive(Debug, sqlx::FromRow)]

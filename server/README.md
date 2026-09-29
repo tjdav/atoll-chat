@@ -1020,6 +1020,35 @@ Clients can batch multiple consecutive chunks in a single HTTP `Range` request s
 - **MP4 Fast-Start Requirement**: Clients must validate/re-encode MP4 video files with fast-start (`moov` atom placed before `mdat`) prior to upload. Fast-start allows video players to immediately parse index metadata and begin playback without downloading the entire file.
 - **Presign URL Expiry Handling**: Clients should not cache presigned URLs beyond their `expires_at` timestamp. A fresh presigned URL should be requested per seek or per chunk batch to avoid 403 errors from S3.
 
+### Retention
+
+Attachments are pruned by a scheduled job that runs as part of the cleanup
+scheduler. The retention window is computed per room as:
+
+    effective_retention = MIN(
+        room.retention_days,
+        instance.attachment_retention_days,
+        server_max.attachment_retention_days
+    )
+
+A value of `0` at any tier means "retain forever." Because `0` is the least
+restrictive value, if any tier specifies `0`, the effective retention is `0`
+and nothing is pruned.
+
+The pruning job runs hourly. It queries rooms with attachments, computes
+each room's effective retention, and deletes attachments whose `created_at`
+is older than the cutoff.
+
+**Blob deletion is best-effort.** The database row is deleted first, then
+the blob. If the blob delete fails, the blob becomes orphaned but harmless.
+Orphaned blobs are logged at `warn` and counted in the job's report. A
+future orphan-scan job can clean them up.
+
+**Retention does not accelerate deletion.** Deleting an attachment explicitly
+(via `DELETE /attachments/:id`) removes the row immediately, but a message
+tombstone (Phase 11b) does not accelerate the attachment's pruning. The
+retention policy governs both.
+
 ### Capabilities Advertisement
 
 `GET /api/v1/capabilities` advertises attachment and storage capabilities:

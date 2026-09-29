@@ -1,6 +1,8 @@
 use crate::config::Config;
+use crate::limits::ServerHardMax;
 use crate::login::LoginStore;
 use crate::registration::RegistrationStore;
+use crate::storage::Storage;
 use async_trait::async_trait;
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -17,6 +19,8 @@ pub struct CleanupContext<'a> {
     pub config: &'a Config,
     pub registration_store: &'a Arc<RegistrationStore>,
     pub login_store: &'a Arc<LoginStore>,
+    pub storage: &'a Arc<dyn Storage>,
+    pub server_max: &'a Arc<ServerHardMax>,
 }
 
 #[derive(Clone)]
@@ -25,6 +29,8 @@ pub struct CleanupContextOwned {
     pub config: Arc<Config>,
     pub registration_store: Arc<RegistrationStore>,
     pub login_store: Arc<LoginStore>,
+    pub storage: Arc<dyn Storage>,
+    pub server_max: Arc<ServerHardMax>,
 }
 
 impl CleanupContextOwned {
@@ -34,6 +40,8 @@ impl CleanupContextOwned {
             config: &self.config,
             registration_store: &self.registration_store,
             login_store: &self.login_store,
+            storage: &self.storage,
+            server_max: &self.server_max,
         }
     }
 }
@@ -129,6 +137,7 @@ async fn wait_for_shutdown(
     }
 }
 
+pub mod attachments;
 pub mod audit;
 pub mod memory;
 pub mod rate_limits;

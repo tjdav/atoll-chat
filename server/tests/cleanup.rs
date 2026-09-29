@@ -23,11 +23,26 @@ fn test_config(audit_retention_days: u64) -> Config {
 }
 
 fn build_ctx(pool: SqlitePool, config: Config) -> CleanupContextOwned {
+    let config_arc = Arc::new(config);
+    let storage = server::build_storage(&config_arc).unwrap();
+    let server_max = Arc::new(server::ServerHardMax {
+        file_size_bytes: config_arc.max_file_size_bytes as i64,
+        room_size: 1000,
+        rooms_per_user: 500,
+        devices_per_user: config_arc.server_max_devices_per_user as i64,
+        keypackages_per_device: 50,
+        message_size_bytes: 65536,
+        attachment_retention_days: 365,
+        call_max_participants: 50,
+    });
+
     CleanupContextOwned {
         pool,
-        config: Arc::new(config),
+        config: config_arc,
         registration_store: Arc::new(RegistrationStore::new()),
         login_store: Arc::new(LoginStore::new()),
+        storage,
+        server_max,
     }
 }
 

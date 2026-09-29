@@ -95,9 +95,9 @@ async fn main() -> anyhow::Result<()> {
         login_store: login_store.clone(),
         altcha_config,
         config: config.clone(),
-        server_hard_max,
+        server_hard_max: server_hard_max.clone(),
         publisher,
-        storage,
+        storage: storage.clone(),
     };
 
     // 7. Check bootstrap state
@@ -121,6 +121,7 @@ async fn main() -> anyhow::Result<()> {
         scheduler.register(Box::new(server::cleanup::rate_limits::RateLimitsJob));
         scheduler.register(Box::new(server::cleanup::audit::AuditJob));
         scheduler.register(Box::new(server::cleanup::welcomes::WelcomesJob));
+        scheduler.register(Box::new(server::cleanup::attachments::AttachmentsJob));
         scheduler.register(Box::new(server::cleanup::memory::MemoryStoresJob));
 
         let ctx = server::cleanup::CleanupContextOwned {
@@ -128,6 +129,8 @@ async fn main() -> anyhow::Result<()> {
             config: config.clone(),
             registration_store: registration_store.clone(),
             login_store: login_store.clone(),
+            storage: storage.clone(),
+            server_max: server_hard_max.clone(),
         };
         let scheduler_shutdown = shutdown_rx.clone();
 
