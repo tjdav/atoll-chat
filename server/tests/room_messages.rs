@@ -593,7 +593,7 @@ async fn test_15_since_epoch_filters() {
 
     let (_, body) = do_get(
         &app,
-        &format!("/api/v1/rooms/{room_id}/messages?since_epoch=1"),
+        &format!("/api/v1/rooms/{room_id}/messages?since_epoch=1&since_seq=0"),
         &token_a,
     )
     .await;
