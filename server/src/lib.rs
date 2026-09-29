@@ -19,6 +19,7 @@ pub mod middleware;
 pub mod opaque;
 pub mod permission_check;
 pub mod permissions;
+pub mod push;
 pub mod rate_limit;
 pub mod registration;
 pub mod roles;
@@ -89,6 +90,8 @@ pub struct AppState {
     pub publisher: Arc<Publisher>,
     pub storage: Arc<dyn Storage>,
     pub backup_lock: Arc<tokio::sync::Mutex<()>>,
+    pub vapid_keys: Option<Arc<push::vapid::VapidKeys>>,
+    pub push_delivery: Option<Arc<push::delivery::DeliveryCoordinator>>,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -151,6 +154,12 @@ impl axum::extract::FromRef<AppState> for Arc<dyn Storage> {
     }
 }
 
+impl axum::extract::FromRef<AppState> for Option<Arc<push::delivery::DeliveryCoordinator>> {
+    fn from_ref(state: &AppState) -> Self {
+        state.push_delivery.clone()
+    }
+}
+
 pub fn build_app(state: AppState) -> Router {
     let api_routes = Router::new()
         .route(
@@ -193,6 +202,14 @@ pub fn build_app(state: AppState) -> Router {
         .route("/users/me/sessions/{id}", delete(routes::sessions::revoke))
         .route("/users/me/devices", get(routes::devices::list))
         .route("/users/me/devices/{id}", delete(routes::devices::revoke))
+        .route(
+            "/users/me/push-subscriptions",
+            get(routes::push_subscriptions::list).post(routes::push_subscriptions::register),
+        )
+        .route(
+            "/users/me/push-subscriptions/{id}",
+            delete(routes::push_subscriptions::revoke),
+        )
         .route("/auth/logout", post(routes::sessions::logout))
         .route(
             "/admin/invites",
