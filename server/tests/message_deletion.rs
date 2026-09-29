@@ -450,11 +450,24 @@ async fn test_13_deletion_does_not_accelerate_retention() {
     let config = std::sync::Arc::new(server::Config::from_env().unwrap());
     let reg_store = std::sync::Arc::new(server::RegistrationStore::new());
     let login_store = std::sync::Arc::new(server::LoginStore::new());
+    let storage = server::build_storage(&config).unwrap();
+    let server_max = std::sync::Arc::new(server::ServerHardMax {
+        file_size_bytes: config.max_file_size_bytes as i64,
+        room_size: 1000,
+        rooms_per_user: 500,
+        devices_per_user: config.server_max_devices_per_user as i64,
+        keypackages_per_device: 50,
+        message_size_bytes: 65536,
+        attachment_retention_days: 365,
+        call_max_participants: 50,
+    });
     let ctx = server::CleanupContext {
         pool: &pool,
         config: &config,
         registration_store: &reg_store,
         login_store: &login_store,
+        storage: &storage,
+        server_max: &server_max,
     };
     let job = server::cleanup::welcomes::WelcomesJob;
     let _ = job.run(&ctx).await;
