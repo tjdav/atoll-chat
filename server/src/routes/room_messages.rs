@@ -14,7 +14,8 @@ use crate::{
     config_ops, devices,
     error::ApiError,
     room_messages::{
-        self, DeleteRequest, MessageContentType, RoomMessageView, SubmitOutcome, SubmitRequest,
+        self, DeleteRequest, ListMessagesQuery, ListMessagesResult, MessageContentType,
+        MessageCursor, SubmitOutcome, SubmitRequest,
     },
     AppState,
 };
@@ -31,8 +32,9 @@ pub struct SubmitMessageRequest {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ListMessagesQuery {
+pub struct ListQuery {
     pub since_epoch: Option<i64>,
+    pub since_seq: Option<i64>,
     pub limit: Option<i64>,
 }
 
@@ -40,11 +42,6 @@ pub struct ListMessagesQuery {
 pub struct EpochResponse {
     pub epoch: i64,
     pub sequence: i64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ListMessagesResponse {
-    pub messages: Vec<RoomMessageView>,
 }
 
 #[derive(Debug, Serialize)]
@@ -210,15 +207,31 @@ pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<String>,
-    Query(query): Query<ListMessagesQuery>,
-) -> Result<Json<ListMessagesResponse>, ApiError> {
-    let limit = query.limit.unwrap_or(100).clamp(1, 500);
+    Query(query): Query<ListQuery>,
+) -> Result<Json<ListMessagesResult>, ApiError> {
+    let since = match (query.since_epoch, query.since_seq) {
+        (Some(epoch), Some(seq)) => {
+            if epoch < 0 || seq < 0 {
+                return Err(ApiError::BadRequest("invalid_cursor".to_string()));
+            }
+            Some(MessageCursor { epoch, seq })
+        }
+        (None, None) => None,
+        _ => return Err(ApiError::BadRequest("invalid_cursor".to_string())),
+    };
 
-    let messages =
-        room_messages::list_messages(&state.pool, &id, &auth.user_id, query.since_epoch, limit)
-            .await?;
+    let limit = query.limit.unwrap_or(50);
 
-    Ok(Json(ListMessagesResponse { messages }))
+    let list_query = ListMessagesQuery {
+        room_id: id,
+        requester_id: auth.user_id,
+        since,
+        limit,
+    };
+
+    let result = room_messages::list_messages(&state.pool, list_query).await?;
+
+    Ok(Json(result))
 }
 
 pub async fn get_ciphertext(

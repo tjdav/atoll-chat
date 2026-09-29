@@ -867,10 +867,46 @@ Phase 10 delivers messaging support, welcome packet routing, and MLS epoch linea
 - **Consumption**: Recipient lists unconsumed welcomes via `GET /api/v1/welcomes`, fetches the welcome ciphertext via `GET /api/v1/welcomes/:id`, and marks it consumed via `POST /api/v1/welcomes/:id/consume`. Attempting to consume an already-consumed welcome returns HTTP 409 Conflict (`{"error":"already_consumed"}`).
 - **Multi-Device Welcome Limitation**: Phase 10 attaches welcome packets to the target's most recent device. Multi-device welcome fanout is managed at the client / MLS layer in Phase 11.
 
-### Scope Boundaries
+### Delta Sync Cursor & Sync Ordering
 
-- Phase 10 implements server-side persistence and CAS linearization.
-- Real-time Sockudo event delivery, WebSocket subscriptions, catch-up replay, and `pending_mls_removes` consumption are deferred to Phase 11.
+Phase 11c enhances `GET /api/v1/rooms/:id/messages` to support incremental fetching via composite cursors and linear message synchronization:
+
+- **Query Parameters**:
+  - `since_epoch` & `since_seq`: Optional composite cursor `(epoch, seq)`. Must be provided together and must be non-negative integer values (`>= 0`).
+  - `limit`: Optional page size (default `50`, maximum `500`). Values outside 1–500 are clamped.
+- **Initial Sync (`since_epoch` and `since_seq` omitted)**:
+  - Fetches the **most recent** N messages using `ORDER BY epoch DESC, seq DESC`.
+  - Reverses the fetched records in memory prior to responding so the client receives messages in ascending order (`ASC`).
+- **Delta Sync (`since_epoch` and `since_seq` provided)**:
+  - Fetches messages strictly newer than the cursor `(epoch, seq)` using row value comparison `(epoch, seq) > (?, ?)` with `ORDER BY epoch ASC, seq ASC`.
+- **Response Shape**:
+  ```json
+  {
+    "messages": [
+      {
+        "id": "01J...",
+        "room_id": "...",
+        "sender_user_id": "...",
+        "sender_client_id": "...",
+        "epoch": 0,
+        "seq": 1,
+        "content_type": "application",
+        "deleted_at": null,
+        "created_at": "2026-10-01T12:00:00Z"
+      }
+    ],
+    "next_cursor": {
+      "epoch": 0,
+      "seq": 1
+    },
+    "has_more": false
+  }
+  ```
+- **Cursor and Response Invariants**:
+  - `next_cursor` matches the `(epoch, seq)` of the **last message** in the ascending response. If `messages` is empty, `next_cursor` is `null`.
+  - `has_more` uses the `limit + 1` query pattern to signal whether more messages exist after the current batch without an extra count query.
+  - Both initial and delta sync responses strictly maintain ascending `(epoch, seq)` order.
+  - Deleted messages are included in list responses with `deleted_at` set to an ISO 8601 timestamp (non-null tombstones are not filtered).
 
 ## Sockudo Integration
 

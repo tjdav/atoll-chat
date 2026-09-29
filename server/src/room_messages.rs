@@ -1,7 +1,27 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MessageCursor {
+    pub epoch: i64,
+    pub seq: i64,
+}
+
+pub struct ListMessagesQuery {
+    pub room_id: String,
+    pub requester_id: String,
+    pub since: Option<MessageCursor>,
+    pub limit: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ListMessagesResult {
+    pub messages: Vec<RoomMessageView>,
+    pub next_cursor: Option<MessageCursor>,
+    pub has_more: bool,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct RoomMessageView {
@@ -279,15 +299,12 @@ pub async fn get_current_epoch(
 
 pub async fn list_messages(
     pool: &SqlitePool,
-    room_id: &str,
-    user_id: &str,
-    since_epoch: Option<i64>,
-    limit: i64,
-) -> Result<Vec<RoomMessageView>, RoomMessageError> {
+    query: ListMessagesQuery,
+) -> Result<ListMessagesResult, RoomMessageError> {
     let is_member: Option<(i32,)> =
         sqlx::query_as("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
-            .bind(room_id)
-            .bind(user_id)
+            .bind(&query.room_id)
+            .bind(&query.requester_id)
             .fetch_optional(pool)
             .await?;
 
@@ -295,39 +312,103 @@ pub async fn list_messages(
         return Err(RoomMessageError::NotAMember);
     }
 
-    let rows = sqlx::query(
-        r#"
-        SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, deleted_at, created_at
-        FROM room_messages
-        WHERE room_id = ?
-          AND (? IS NULL OR epoch >= ?)
-        ORDER BY epoch ASC, seq ASC
-        LIMIT ?
-        "#,
-    )
-    .bind(room_id)
-    .bind(since_epoch)
-    .bind(since_epoch)
-    .bind(limit)
-    .fetch_all(pool)
-    .await?;
+    let limit = if query.limit <= 0 {
+        50
+    } else {
+        query.limit.clamp(1, 500)
+    };
 
-    let messages = rows
-        .into_iter()
-        .map(|row| RoomMessageView {
-            id: row.get("id"),
-            room_id: row.get("room_id"),
-            sender_user_id: row.get("sender_user_id"),
-            sender_client_id: row.get("sender_client_id"),
-            epoch: row.get("epoch"),
-            seq: row.get("seq"),
-            content_type: row.get("content_type"),
-            deleted_at: row.get("deleted_at"),
-            created_at: row.get("created_at"),
-        })
-        .collect();
+    let fetch_limit = limit + 1;
 
-    Ok(messages)
+    let (messages, has_more) = match query.since {
+        Some(since) => {
+            let rows = sqlx::query(
+                r#"
+                SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, deleted_at, created_at
+                FROM room_messages
+                WHERE room_id = ?
+                  AND (epoch, seq) > (?, ?)
+                ORDER BY epoch ASC, seq ASC
+                LIMIT ?
+                "#,
+            )
+            .bind(&query.room_id)
+            .bind(since.epoch)
+            .bind(since.seq)
+            .bind(fetch_limit)
+            .fetch_all(pool)
+            .await?;
+
+            let mut msgs: Vec<RoomMessageView> = rows
+                .into_iter()
+                .map(|row| RoomMessageView {
+                    id: row.get("id"),
+                    room_id: row.get("room_id"),
+                    sender_user_id: row.get("sender_user_id"),
+                    sender_client_id: row.get("sender_client_id"),
+                    epoch: row.get("epoch"),
+                    seq: row.get("seq"),
+                    content_type: row.get("content_type"),
+                    deleted_at: row.get("deleted_at"),
+                    created_at: row.get("created_at"),
+                })
+                .collect();
+
+            let has_more = msgs.len() as i64 > limit;
+            if has_more {
+                msgs.pop();
+            }
+            (msgs, has_more)
+        }
+        None => {
+            let rows = sqlx::query(
+                r#"
+                SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, deleted_at, created_at
+                FROM room_messages
+                WHERE room_id = ?
+                ORDER BY epoch DESC, seq DESC
+                LIMIT ?
+                "#,
+            )
+            .bind(&query.room_id)
+            .bind(fetch_limit)
+            .fetch_all(pool)
+            .await?;
+
+            let mut msgs: Vec<RoomMessageView> = rows
+                .into_iter()
+                .map(|row| RoomMessageView {
+                    id: row.get("id"),
+                    room_id: row.get("room_id"),
+                    sender_user_id: row.get("sender_user_id"),
+                    sender_client_id: row.get("sender_client_id"),
+                    epoch: row.get("epoch"),
+                    seq: row.get("seq"),
+                    content_type: row.get("content_type"),
+                    deleted_at: row.get("deleted_at"),
+                    created_at: row.get("created_at"),
+                })
+                .collect();
+
+            let has_more = msgs.len() as i64 > limit;
+            if has_more {
+                msgs.pop();
+            }
+            msgs.reverse();
+            (msgs, has_more)
+        }
+    };
+
+    let next_cursor = messages.last().map(|m| MessageCursor {
+        epoch: m.epoch,
+        seq: m.seq,
+    });
+
+    Ok(ListMessagesResult {
+        messages,
+        next_cursor,
+        has_more,
+    })
 }
 
 pub async fn get_message_ciphertext(
