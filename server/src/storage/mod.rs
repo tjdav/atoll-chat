@@ -3,9 +3,14 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 pub mod fs;
+pub mod migrate;
 pub mod s3;
 
 pub use fs::FsStorage;
+pub use migrate::{
+    migrate_storage, migrate_storage_with_backends, MigrationFailure, MigrationOptions,
+    MigrationProgress, MigrationReport,
+};
 pub use s3::S3Storage;
 
 #[async_trait]
@@ -80,8 +85,8 @@ pub fn validate_key(key: &str) -> Result<(), StorageError> {
     Ok(())
 }
 
-pub fn build_storage(config: &Config) -> Result<Arc<dyn Storage>, StorageError> {
-    match config.storage_backend.as_str() {
+pub fn build_storage_for(config: &Config, backend: &str) -> Result<Arc<dyn Storage>, StorageError> {
+    match backend {
         "fs" => {
             let storage = FsStorage::new(config.storage_fs_path.clone())?;
             Ok(Arc::new(storage))
@@ -95,4 +100,8 @@ pub fn build_storage(config: &Config) -> Result<Arc<dyn Storage>, StorageError> 
             other
         ))),
     }
+}
+
+pub fn build_storage(config: &Config) -> Result<Arc<dyn Storage>, StorageError> {
+    build_storage_for(config, &config.storage_backend)
 }

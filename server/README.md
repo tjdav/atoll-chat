@@ -1352,7 +1352,7 @@ the HTTP server.
 | `server rotate-vapid` | Regenerate VAPID keys and revoke all push subscriptions |
 | `server rotate-altcha` | Regenerate the ALTCHA HMAC secret |
 | `server rotate-oprf --confirm` | Resample the OPRF seed (destructive) |
-| `server storage migrate --from <src> --to <dst>` | Migrate attachment blobs (not yet implemented) |
+| `server storage migrate --from <src> --to <dst>` | Migrate attachment blobs |
 
 **Rotation commands require the server to be stopped.** They write to the
 database and the OPRF key file. Concurrent access can corrupt state.
@@ -1365,3 +1365,61 @@ restoring from the backup does not restore the flag on users.
 **Existing sessions survive rotation.** A user with an active session remains
 authenticated until the session expires or is revoked. Only new logins and
 re-registrations are affected.
+
+### Migrating between storage backends
+
+The `server storage migrate` subcommand moves attachment blobs from one
+backend to another and updates the database rows that reference them.
+
+```bash
+server storage migrate \
+    --from fs \
+    --to s3 \
+    --batch-size 100 \
+    --concurrency 4 \
+    [--delete-source] \
+    [--dry-run]
+```
+
+**The server must be stopped.** The migration operates on the assumption
+that no reads or writes are occurring. Concurrent access can produce
+inconsistent state.
+
+**Migration is resumable.** Each row is updated immediately after its
+blob is transferred and verified. Rerunning the command after a crash
+skips rows that already point at the destination.
+
+**Verification.** Every blob is verified after writing to the destination.
+The SHA-256 of the read-back bytes must match the row's `id`. Mismatches
+are recorded as failures and the row is left at the source.
+
+**Source deletion.** By default, the source blob is left intact. Pass
+`--delete-source` to remove source blobs after successful transfer. Do
+not use this until you have confirmed the destination is working.
+
+**After migration:**
+
+1. Confirm the migration reports zero failures.
+2. Update `STORAGE_BACKEND` in your environment to the destination.
+3. Restart the server.
+
+If you forget step 2, the server continues to use the source backend.
+New uploads go to the source, and downloads read from the source. This
+is not a data-loss scenario — just a configuration mistake.
+
+If `--delete-source` was used and you forget step 2, reads fail. Update
+the environment variable and restart.
+
+**Supported combinations:** fs ↔ s3. Same-to-same combinations (fs → fs,
+s3 → s3) are rejected at the CLI layer. S3 → S3 with different buckets
+would be supported in a future revision.
+
+**Limitations:**
+
+- The migration reads every blob into memory. For attachments up to
+  256 MiB, `--concurrency` should be tuned to fit available memory.
+- Progress is not displayed in a live TUI; the command prints one line
+  per batch and a final summary.
+- The migration does not validate that the destination backend is
+  configured correctly before starting. A misconfigured S3 destination
+  fails on the first write and reports failures.
