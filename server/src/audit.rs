@@ -18,6 +18,7 @@ pub mod action {
     pub const BOOTSTRAP_OWNER: &str = "bootstrap.owner";
     pub const VAPID_ROTATE: &str = "vapid.rotate";
     pub const ALTCHA_ROTATE: &str = "altcha.rotate";
+    pub const OPRF_ROTATE: &str = "oprf.rotate";
     pub const USER_DELETE: &str = "user.delete";
     pub const USER_EXPORT: &str = "user.export";
     pub const MESSAGE_DELETE: &str = "message.delete";

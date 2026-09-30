@@ -102,17 +102,22 @@ pub async fn login_start(
     let username_hash = hex::encode(hasher.finalize());
 
     // 5. Query user by username_hash
-    let user_row: Option<(String, Vec<u8>, Option<String>)> = sqlx::query_as(
-        "SELECT id, opaque_registration, disabled_at FROM users WHERE username_hash = ?",
+    let user_row: Option<(String, Vec<u8>, Option<String>, i64)> = sqlx::query_as(
+        "SELECT id, opaque_registration, disabled_at, requires_reregistration FROM users WHERE username_hash = ?",
     )
     .bind(&username_hash)
     .fetch_optional(&state.pool)
     .await?;
 
-    let (user_id, opaque_registration_bytes, disabled_at) = match user_row {
+    let (user_id, opaque_registration_bytes, disabled_at, requires_reregistration) = match user_row
+    {
         Some(row) => row,
         None => return Err(ApiError::Unauthorized("invalid_credentials".to_string())),
     };
+
+    if requires_reregistration == 1 {
+        return Err(ApiError::Conflict("reregistration_required".to_string()));
+    }
 
     if disabled_at.is_some() {
         return Err(ApiError::Unauthorized("account_disabled".to_string()));

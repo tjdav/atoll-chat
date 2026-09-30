@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN requires_reregistration INTEGER NOT NULL DEFAULT 0;

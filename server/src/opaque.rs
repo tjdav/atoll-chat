@@ -1,9 +1,12 @@
 use opaque_ke::{CipherSuite, Ristretto255, ServerSetup, TripleDh};
 use rand::rngs::OsRng;
 use sha2::Sha512;
+use sqlx::SqlitePool;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tracing::info;
+
+use crate::config::Config;
 
 /// The OPAQUE cipher suite for this project.
 /// Uses ristretto255 for the OPRF and key exchange groups,
@@ -24,6 +27,8 @@ pub enum OpaqueError {
     Serialization(String),
     #[error("Deserialization error: {0}")]
     Deserialization(String),
+    #[error("Database error: {0}")]
+    Database(#[from] sqlx::Error),
 }
 
 pub struct OpaqueServer {
@@ -58,4 +63,61 @@ impl OpaqueServer {
             Ok(Self { setup })
         }
     }
+}
+
+pub struct RotationResult {
+    pub backup_path: PathBuf,
+    pub users_affected: u64,
+}
+
+pub async fn rotate_oprf_key(
+    pool: &SqlitePool,
+    config: &Config,
+    actor_id: Option<&str>,
+) -> Result<RotationResult, OpaqueError> {
+    let key_path = Path::new(&config.opaque_oprf_key_path);
+    let timestamp = chrono::Utc::now().timestamp();
+    let backup_path = PathBuf::from(format!("{}.bak.{}", config.opaque_oprf_key_path, timestamp));
+
+    if key_path.exists() {
+        fs::copy(key_path, &backup_path)?;
+    }
+
+    let res = sqlx::query("UPDATE users SET requires_reregistration = 1")
+        .execute(pool)
+        .await?;
+    let users_affected = res.rows_affected();
+
+    if let Some(parent) = key_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let setup = ServerSetup::<DefaultCipherSuite>::new(&mut OsRng);
+    let bytes = setup.serialize();
+    fs::write(key_path, bytes)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let permissions = fs::Permissions::from_mode(0o600);
+        fs::set_permissions(key_path, permissions)?;
+    }
+
+    let _ = crate::audit::log(
+        pool,
+        actor_id,
+        crate::audit::action::OPRF_ROTATE,
+        None,
+        None,
+        Some(serde_json::json!({
+            "backup_path": backup_path.to_string_lossy(),
+            "users_affected": users_affected
+        })),
+    )
+    .await;
+
+    Ok(RotationResult {
+        backup_path,
+        users_affected,
+    })
 }

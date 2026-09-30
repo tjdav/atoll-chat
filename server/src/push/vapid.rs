@@ -150,3 +150,72 @@ impl VapidKeys {
         }))
     }
 }
+
+pub struct RotationResult {
+    pub public_key: String,
+    pub subscriptions_revoked: u64,
+}
+
+pub async fn rotate_vapid_keys(
+    pool: &SqlitePool,
+    actor_id: Option<&str>,
+) -> Result<RotationResult, PushError> {
+    let secret = SecretKey::random(&mut OsRng);
+    let public = secret.public_key().to_encoded_point(false);
+    let public_bytes = public.as_bytes(); // 65 bytes, 0x04 prefix
+    let private_bytes = secret.to_bytes(); // 32 bytes
+
+    let public_b64 = URL_SAFE_NO_PAD.encode(public_bytes);
+    let private_b64 = URL_SAFE_NO_PAD.encode(private_bytes);
+
+    let mut tx = pool.begin().await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO instance_config (key, value, updated_at)
+        VALUES ('push_vapid_public_key', ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        "#,
+    )
+    .bind(&public_b64)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO instance_config (key, value, updated_at)
+        VALUES ('push_vapid_private_key', ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        "#,
+    )
+    .bind(&private_b64)
+    .execute(&mut *tx)
+    .await?;
+
+    let result = sqlx::query(
+        "UPDATE push_subscriptions SET revoked_at = CURRENT_TIMESTAMP WHERE revoked_at IS NULL",
+    )
+    .execute(&mut *tx)
+    .await?;
+
+    let subscriptions_revoked = result.rows_affected();
+
+    tx.commit().await?;
+
+    let _ = crate::audit::log(
+        pool,
+        actor_id,
+        crate::audit::action::VAPID_ROTATE,
+        None,
+        None,
+        Some(serde_json::json!({
+            "subscriptions_revoked": subscriptions_revoked
+        })),
+    )
+    .await;
+
+    Ok(RotationResult {
+        public_key: public_b64,
+        subscriptions_revoked,
+    })
+}

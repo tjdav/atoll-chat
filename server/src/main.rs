@@ -31,15 +31,50 @@ async fn main() -> anyhow::Result<()> {
 
     // Parse CLI arguments
     let cli = Cli::parse();
-    if let Some(Command::Restore { from, confirm }) = cli.command {
-        let config = Config::from_env()?;
-        let options = server::backup::RestoreOptions { from, confirm };
-        if let Err(e) = server::backup::restore_backup(&config, options).await {
-            eprintln!("Error: {}", e);
+    match cli.command.unwrap_or(Command::Serve) {
+        Command::Serve => {}
+        Command::Migrate => {
+            if let Err(e) = server::cli::run_migrate().await {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            return Ok(());
+        }
+        Command::RotateVapid => {
+            if let Err(e) = server::cli::run_rotate_vapid().await {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            return Ok(());
+        }
+        Command::RotateAltcha => {
+            if let Err(e) = server::cli::run_rotate_altcha().await {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            return Ok(());
+        }
+        Command::RotateOprf { confirm } => {
+            if let Err(e) = server::cli::run_rotate_oprf(confirm).await {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            return Ok(());
+        }
+        Command::Restore { from, confirm } => {
+            let config = Config::from_env()?;
+            let options = server::backup::RestoreOptions { from, confirm };
+            if let Err(e) = server::backup::restore_backup(&config, options).await {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            println!("Restore completed successfully.");
+            return Ok(());
+        }
+        Command::StorageMigrate { .. } => {
+            eprintln!("storage migrate is not yet implemented");
             std::process::exit(1);
         }
-        println!("Restore completed successfully.");
-        return Ok(());
     }
 
     // 3. Load Config
