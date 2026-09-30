@@ -1,6 +1,13 @@
 use std::sync::Arc;
 use web_push::WebPushClient;
 
+pub mod platform {
+    pub const WEB: &str = "web";
+    pub const DESKTOP: &str = "desktop";
+    pub const IOS: &str = "ios";
+    pub const ANDROID: &str = "android";
+}
+
 use crate::config::Config;
 use crate::push::payload::NotificationPayload;
 use crate::push::subscriptions::PushSubscription;
@@ -70,7 +77,7 @@ impl WebPushSender {
 #[async_trait::async_trait]
 impl PushSender for WebPushSender {
     fn platform(&self) -> &'static str {
-        "web"
+        platform::WEB
     }
 
     async fn send(

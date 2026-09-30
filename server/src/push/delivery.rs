@@ -7,8 +7,10 @@ use sqlx::SqlitePool;
 use tracing::{info, warn};
 
 use crate::config::Config;
+use crate::push::apns::ApnsSender;
+use crate::push::fcm::FcmSender;
 use crate::push::payload::build_message_payload;
-use crate::push::sender::{PushSender, SendError, WebPushSender};
+use crate::push::sender::{platform, PushSender, SendError, WebPushSender};
 use crate::push::subscriptions::PushSubscription;
 use crate::push::suppression::should_suppress;
 use crate::push::vapid::{PushError, VapidKeys};
@@ -22,15 +24,38 @@ pub struct DeliveryCoordinator {
 }
 
 impl DeliveryCoordinator {
-    pub fn new(
+    pub async fn new(
         pool: SqlitePool,
         config: &Config,
         vapid_keys: Arc<VapidKeys>,
     ) -> Result<Self, PushError> {
         let mut senders: HashMap<&'static str, Arc<dyn PushSender>> = HashMap::new();
 
-        let web_sender = WebPushSender::new(config, vapid_keys)?;
-        senders.insert("web", Arc::new(web_sender));
+        let web_sender = Arc::new(WebPushSender::new(config, vapid_keys)?);
+        senders.insert(platform::WEB, web_sender.clone());
+        senders.insert(platform::DESKTOP, web_sender);
+
+        // APNs
+        if let Some(apns) = ApnsSender::new(config)? {
+            senders.insert(platform::IOS, Arc::new(apns));
+            info!("push: APNs sender registered");
+        } else {
+            let partial = config.push_apns_key.is_some()
+                || config.push_apns_key_id.is_some()
+                || config.push_apns_team_id.is_some()
+                || config.push_apns_bundle_id.is_some();
+            if partial {
+                warn!("push: APNs sender not registered (partial configuration)");
+            }
+        }
+
+        // FCM
+        if let Some(fcm) = FcmSender::new(config).await? {
+            senders.insert(platform::ANDROID, Arc::new(fcm));
+            info!("push: FCM sender registered");
+        } else if config.push_fcm_service_account_json.is_some() {
+            warn!("push: FCM sender not registered (partial configuration)");
+        }
 
         Ok(Self {
             pool,
@@ -39,6 +64,10 @@ impl DeliveryCoordinator {
             timeout_secs: config.push_delivery_timeout_secs,
             max_concurrent: config.push_max_concurrent_deliveries,
         })
+    }
+
+    pub fn has_sender(&self, platform_name: &str) -> bool {
+        self.senders.contains_key(platform_name)
     }
 
     /// Dispatches notifications to all eligible subscribers in a room.

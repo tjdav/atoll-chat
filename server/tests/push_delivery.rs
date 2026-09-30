@@ -86,7 +86,7 @@ async fn create_coordinator(
         .map(Arc::new)
         .unwrap();
 
-    let coordinator = DeliveryCoordinator::new(pool.clone(), &config, vapid_keys.clone()).unwrap();
+    let coordinator = DeliveryCoordinator::new(pool.clone(), &config, vapid_keys.clone()).await.unwrap();
 
     (coordinator, vapid_keys)
 }

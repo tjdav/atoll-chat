@@ -118,15 +118,18 @@ pub async fn setup_test_app_with_config(
         .map(Arc::new);
 
     let push_delivery = if config_arc.push_delivery_enabled {
-        vapid_keys.as_ref().and_then(|keys| {
+        if let Some(keys) = vapid_keys.as_ref() {
             server::push::delivery::DeliveryCoordinator::new(
                 pool.clone(),
                 &config_arc,
                 keys.clone(),
             )
+            .await
             .ok()
             .map(Arc::new)
-        })
+        } else {
+            None
+        }
     } else {
         None
     };
