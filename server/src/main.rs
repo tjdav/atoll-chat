@@ -71,9 +71,28 @@ async fn main() -> anyhow::Result<()> {
             println!("Restore completed successfully.");
             return Ok(());
         }
-        Command::StorageMigrate { .. } => {
-            eprintln!("storage migrate is not yet implemented");
-            std::process::exit(1);
+        Command::StorageMigrate {
+            from,
+            to,
+            batch_size,
+            concurrency,
+            delete_source,
+            dry_run,
+        } => {
+            if let Err(e) = server::cli::run_storage_migrate(
+                from,
+                to,
+                batch_size,
+                concurrency,
+                delete_source,
+                dry_run,
+            )
+            .await
+            {
+                eprintln!("Error: {}", e);
+                std::process::exit(1);
+            }
+            return Ok(());
         }
     }
 
