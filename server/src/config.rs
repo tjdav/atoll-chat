@@ -75,16 +75,6 @@ pub struct Config {
     pub backup_interval_hours: u64,
     pub backup_retention_count: u64,
     pub backup_include_attachments: bool,
-
-    pub push_enabled: bool,
-    pub push_vapid_public_key: String,
-    pub push_vapid_private_key: String,
-    pub push_gateway_url: Option<String>,
-    pub push_delivery_enabled: bool,
-    pub push_suppression_window_secs: u64,
-    pub push_delivery_timeout_secs: u64,
-    pub push_max_concurrent_deliveries: usize,
-    pub push_vapid_subject: Option<String>,
 }
 
 impl Config {
@@ -460,89 +450,6 @@ impl Config {
             );
         }
 
-        let push_enabled = env::var("PUSH_ENABLED")
-            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
-            .unwrap_or(true);
-
-        let push_vapid_public_key = env::var("PUSH_VAPID_PUBLIC_KEY")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "auto".to_string());
-
-        let push_vapid_private_key = env::var("PUSH_VAPID_PRIVATE_KEY")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "auto".to_string());
-
-        let push_gateway_url = env::var("PUSH_GATEWAY_URL")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
-
-        if push_enabled {
-            let pub_auto = push_vapid_public_key == "auto";
-            let priv_auto = push_vapid_private_key == "auto";
-
-            if pub_auto != priv_auto {
-                anyhow::bail!(
-                    "FATAL: PUSH_VAPID_PUBLIC_KEY and PUSH_VAPID_PRIVATE_KEY must both be \"auto\" or both be explicit values."
-                );
-            }
-
-            if !pub_auto && !priv_auto {
-                use base64::engine::general_purpose::URL_SAFE_NO_PAD;
-                use base64::Engine;
-
-                let pub_bytes = URL_SAFE_NO_PAD
-                    .decode(&push_vapid_public_key)
-                    .map_err(|e| anyhow::anyhow!("Invalid PUSH_VAPID_PUBLIC_KEY base64url: {e}"))?;
-                if pub_bytes.len() != 65 || pub_bytes[0] != 0x04 {
-                    anyhow::bail!(
-                        "Invalid PUSH_VAPID_PUBLIC_KEY: must decode to 65 bytes starting with 0x04"
-                    );
-                }
-
-                let priv_bytes = URL_SAFE_NO_PAD
-                    .decode(&push_vapid_private_key)
-                    .map_err(|e| {
-                        anyhow::anyhow!("Invalid PUSH_VAPID_PRIVATE_KEY base64url: {e}")
-                    })?;
-                if priv_bytes.len() != 32 {
-                    anyhow::bail!("Invalid PUSH_VAPID_PRIVATE_KEY: must decode to 32 bytes");
-                }
-            }
-        }
-
-        let push_delivery_enabled = env::var("PUSH_DELIVERY_ENABLED")
-            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
-            .unwrap_or(true);
-
-        let push_suppression_window_secs = env::var("PUSH_SUPPRESSION_WINDOW_SECS")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(30);
-
-        let push_delivery_timeout_secs = env::var("PUSH_DELIVERY_TIMEOUT_SECS")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(10);
-
-        let push_max_concurrent_deliveries = env::var("PUSH_MAX_CONCURRENT_DELIVERIES")
-            .ok()
-            .and_then(|s| s.parse().ok())
-            .unwrap_or(32);
-
-        let push_vapid_subject = env::var("PUSH_VAPID_SUBJECT")
-            .ok()
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty());
-
-        if push_delivery_enabled && !push_enabled {
-            anyhow::bail!("FATAL: PUSH_DELIVERY_ENABLED=true requires PUSH_ENABLED=true.");
-        }
-
         Ok(Self {
             app_env,
             app_url,
@@ -600,15 +507,6 @@ impl Config {
             backup_interval_hours,
             backup_retention_count,
             backup_include_attachments,
-            push_enabled,
-            push_vapid_public_key,
-            push_vapid_private_key,
-            push_gateway_url,
-            push_delivery_enabled,
-            push_suppression_window_secs,
-            push_delivery_timeout_secs,
-            push_max_concurrent_deliveries,
-            push_vapid_subject,
         })
     }
 
@@ -680,15 +578,6 @@ impl Config {
             backup_interval_hours: 24,
             backup_retention_count: 30,
             backup_include_attachments: false,
-            push_enabled: true,
-            push_vapid_public_key: "auto".to_string(),
-            push_vapid_private_key: "auto".to_string(),
-            push_gateway_url: None,
-            push_delivery_enabled: true,
-            push_suppression_window_secs: 30,
-            push_delivery_timeout_secs: 10,
-            push_max_concurrent_deliveries: 32,
-            push_vapid_subject: None,
         }
     }
 }

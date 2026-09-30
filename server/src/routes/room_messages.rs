@@ -189,21 +189,6 @@ pub async fn submit(
         }
     }
 
-    // Dispatch push notification for application messages
-    if matches!(outcome, SubmitOutcome::Application { .. }) {
-        if let Some(ref push_delivery) = state.push_delivery {
-            let push_delivery = push_delivery.clone();
-            let room_id = id.clone();
-            let sender = auth.user_id.clone();
-
-            tokio::spawn(async move {
-                push_delivery
-                    .dispatch_message_notification(&room_id, &sender)
-                    .await;
-            });
-        }
-    }
-
     Ok((StatusCode::CREATED, Json(outcome)))
 }
 

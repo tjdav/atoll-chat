@@ -111,23 +111,6 @@ pub async fn setup_test_app_with_config(
     };
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
 
-    let vapid_keys = server::push::vapid::VapidKeys::load_or_generate(&pool, &config_arc)
-        .await
-        .ok()
-        .flatten()
-        .map(Arc::new);
-
-    let push_delivery = if config_arc.push_delivery_enabled {
-        vapid_keys.clone().map(|vapid| {
-            Arc::new(
-                server::push::delivery::DeliveryCoordinator::new(pool.clone(), &config_arc, vapid)
-                    .unwrap(),
-            )
-        })
-    } else {
-        None
-    };
-
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -139,8 +122,6 @@ pub async fn setup_test_app_with_config(
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
-        vapid_keys,
-        push_delivery,
     };
 
     let app = server::build_app(state);
