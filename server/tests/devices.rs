@@ -180,6 +180,7 @@ async fn test_04_device_limit_is_enforced() {
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
+        push_delivery: None,
     };
 
     let app = axum::Router::new()

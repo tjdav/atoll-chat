@@ -91,6 +91,7 @@ pub struct AppState {
     pub storage: Arc<dyn Storage>,
     pub backup_lock: Arc<tokio::sync::Mutex<()>>,
     pub vapid_keys: Option<Arc<push::vapid::VapidKeys>>,
+    pub push_delivery: Option<Arc<push::delivery::DeliveryCoordinator>>,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {

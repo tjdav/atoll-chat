@@ -82,6 +82,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
+        push_delivery: None,
     };
 
     let app = server::build_app(state);
@@ -430,6 +431,7 @@ async fn test_09_publish_failures_do_not_affect_http_response() {
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
+        push_delivery: None,
     };
 
     let app = server::build_app(state);

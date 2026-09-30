@@ -118,6 +118,19 @@ async fn main() -> anyhow::Result<()> {
         info!("push: disabled");
     }
 
+    let push_delivery = if config.push_delivery_enabled {
+        let vapid = vapid_keys
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("PUSH_DELIVERY_ENABLED=true requires VAPID keys."))?;
+        let coordinator =
+            server::push::delivery::DeliveryCoordinator::new(pool.clone(), &config, vapid)?;
+        info!("push delivery initialized");
+        Some(Arc::new(coordinator))
+    } else {
+        info!("push delivery disabled");
+        None
+    };
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -130,6 +143,7 @@ async fn main() -> anyhow::Result<()> {
         storage: storage.clone(),
         backup_lock,
         vapid_keys,
+        push_delivery,
     };
 
     // 7. Check bootstrap state

@@ -117,6 +117,20 @@ pub async fn setup_test_app_with_config(
         .flatten()
         .map(Arc::new);
 
+    let push_delivery = if config_arc.push_delivery_enabled {
+        vapid_keys.as_ref().and_then(|keys| {
+            server::push::delivery::DeliveryCoordinator::new(
+                pool.clone(),
+                &config_arc,
+                keys.clone(),
+            )
+            .ok()
+            .map(Arc::new)
+        })
+    } else {
+        None
+    };
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -129,6 +143,7 @@ pub async fn setup_test_app_with_config(
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys,
+        push_delivery,
     };
 
     let app = server::build_app(state);

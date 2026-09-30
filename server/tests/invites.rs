@@ -872,6 +872,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
+        push_delivery: None,
     };
 
     let app = axum::Router::new()
