@@ -115,3 +115,35 @@ pub fn verify_altcha_payload(
 
     Ok(result.verified)
 }
+
+pub async fn rotate_hmac_secret(
+    pool: &SqlitePool,
+    actor_id: Option<&str>,
+) -> Result<(), AltchaError> {
+    let mut bytes = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    let secret = hex::encode(bytes);
+
+    sqlx::query(
+        r#"
+        INSERT INTO instance_config (key, value, updated_at)
+        VALUES ('altcha_hmac_secret', ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        "#,
+    )
+    .bind(&secret)
+    .execute(pool)
+    .await?;
+
+    let _ = crate::audit::log(
+        pool,
+        actor_id,
+        crate::audit::action::ALTCHA_ROTATE,
+        None,
+        None,
+        None,
+    )
+    .await;
+
+    Ok(())
+}

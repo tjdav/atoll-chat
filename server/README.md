@@ -1335,3 +1335,33 @@ Automated CI integration tests mock APNs and FCM endpoints using synthetic crede
 4. Verify `GET /api/v1/capabilities` returns `ios: true` and `android: true` in `push_providers`.
 5. Install and launch the iOS/Android client on physical devices, register push subscriptions, and send a message from another account.
 6. Confirm real-time notification alerts appear on physical mobile devices.
+
+## Operator CLI
+
+### Operator subcommands
+
+The server binary exposes subcommands for operational tasks. Run `server --help`
+for the full list. Each subcommand exits after completing; none of them start
+the HTTP server.
+
+| Subcommand | Purpose |
+|---|---|
+| `server` | Run the HTTP server |
+| `server migrate` | Run pending migrations and exit |
+| `server restore --from <path> --confirm` | Restore from a backup |
+| `server rotate-vapid` | Regenerate VAPID keys and revoke all push subscriptions |
+| `server rotate-altcha` | Regenerate the ALTCHA HMAC secret |
+| `server rotate-oprf --confirm` | Resample the OPRF seed (destructive) |
+| `server storage migrate --from <src> --to <dst>` | Migrate attachment blobs (not yet implemented) |
+
+**Rotation commands require the server to be stopped.** They write to the
+database and the OPRF key file. Concurrent access can corrupt state.
+
+**The `rotate-oprf` subcommand is destructive.** It invalidates every user
+registration. Users will be unable to log in until they re-register. The
+subcommand backs up the old OPRF key file before overwriting it, but
+restoring from the backup does not restore the flag on users.
+
+**Existing sessions survive rotation.** A user with an active session remains
+authenticated until the session expires or is revoked. Only new logins and
+re-registrations are affected.

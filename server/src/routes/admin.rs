@@ -179,3 +179,41 @@ pub async fn get_audit_handler(
         next_before,
     }))
 }
+
+#[derive(Serialize)]
+pub struct RotateVapidResponse {
+    pub public_key: String,
+    pub subscriptions_revoked: u64,
+}
+
+#[derive(Serialize)]
+pub struct RotateAltchaResponse {
+    pub ok: bool,
+}
+
+pub async fn post_rotate_vapid_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    _: RequirePermission<ConfigEdit>,
+) -> Result<Json<RotateVapidResponse>, ApiError> {
+    let res = crate::push::vapid::rotate_vapid_keys(&state.pool, Some(&auth.user_id))
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    Ok(Json(RotateVapidResponse {
+        public_key: res.public_key,
+        subscriptions_revoked: res.subscriptions_revoked,
+    }))
+}
+
+pub async fn post_rotate_altcha_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    _: RequirePermission<ConfigEdit>,
+) -> Result<Json<RotateAltchaResponse>, ApiError> {
+    crate::altcha::rotate_hmac_secret(&state.pool, Some(&auth.user_id))
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    Ok(Json(RotateAltchaResponse { ok: true }))
+}

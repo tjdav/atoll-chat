@@ -169,6 +169,14 @@ pub fn build_app(state: AppState) -> Router {
             "/admin/backups",
             get(routes::admin_backups::list).post(routes::admin_backups::trigger),
         )
+        .route(
+            "/admin/vapid/rotate",
+            post(routes::admin::post_rotate_vapid_handler),
+        )
+        .route(
+            "/admin/altcha/rotate",
+            post(routes::admin::post_rotate_altcha_handler),
+        )
         .route("/capabilities", get(routes::capabilities::handler))
         .route("/roles", get(routes::roles::handler))
         .route(
