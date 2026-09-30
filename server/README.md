@@ -1130,3 +1130,44 @@ Restoring from a backup is **CLI-only** and requires shell access to the host ma
 - **S3 Attachment Blobs**: Attachment blobs stored on S3 are **not** backed up by the server. Operators should rely on S3 bucket versioning and lifecycle policies. Setting `BACKUP_INCLUDE_ATTACHMENTS=true` when `STORAGE_BACKEND=s3` causes a fatal startup error.
 - **OPRF Key Dependency**: Moving a backup file to a fresh server deployment requires copying the original OPRF key file first, as the backup key is derived from it.
 - **First Backup Delay**: The backup scheduler runs its first cycle after a **60-second** initial startup delay to allow the server to settle before taking snapshots.
+
+## Push Subscriptions
+
+The server supports Web Push (VAPID) and native push notification subscription management for clients.
+
+### Overview & VAPID Key Management
+
+VAPID (Voluntary Application Server Identification) key pairs allow web browsers to verify the application server sending push notifications.
+
+- **`PUSH_ENABLED`**: Default `true`. Controls whether push subscription functionality is active.
+- **`PUSH_VAPID_PUBLIC_KEY`** and **`PUSH_VAPID_PRIVATE_KEY`**: Default `"auto"`.
+  - In `"auto"` mode, the server generates a P-256 key pair on first startup and persists both keys in `instance_config`. Subsequent restarts load the persisted key pair.
+  - In explicit mode, both env vars must provide base64url-encoded keys (public key 65 bytes starting with `0x04`, private key 32 bytes). Mixed auto/explicit configurations fail startup validation.
+- **Security**: The private key is kept strictly secret in `instance_config` and memory, and is never logged or exposed in API responses. The public key is exposed via `GET /api/v1/capabilities` so clients can subscribe.
+
+### Endpoints
+
+1. **`POST /api/v1/users/me/push-subscriptions`**
+   - Registers or updates a push subscription.
+   - **Web / Desktop Payload**: Requires `platform` (`"web"` or `"desktop"`), `endpoint`, `p256dh`, `auth`, and `browser_id`.
+   - **iOS / Android Payload**: Requires `platform` (`"ios"` or `"android"`), `push_token`, and optional `device_id`.
+   - **Web Reregistration**: Keyed by `(user_id, browser_id)`. Re-registering with the same `browser_id` updates the existing subscription row in-place rather than creating duplicates.
+   - **Response**: HTTP 201 Created returning `PushSubscriptionView` (`id`, `platform`, `browser_id`, `device_id`, `created_at`, `last_used_at`). Secret fields (`endpoint`, `p256dh`, `auth`, `push_token`) are omitted.
+2. **`GET /api/v1/users/me/push-subscriptions`**
+   - Lists active subscriptions for the authenticated user (`revoked_at IS NULL`).
+   - Returns `{ "subscriptions": [...] }`. Secrets are omitted.
+3. **`DELETE /api/v1/users/me/push-subscriptions/:id`**
+   - Revokes a subscription by setting `revoked_at = CURRENT_TIMESTAMP`.
+   - Returns HTTP 204 No Content. Returns HTTP 404 if not found or owned by another user.
+
+### Device Revocation Cascade
+
+When a user revokes a device (`DELETE /api/v1/users/me/devices/:id`), all push subscriptions associated with that `device_id` are hard-deleted inside the revocation transaction. Subscriptions without a `device_id` are preserved.
+
+### Capabilities Advertisement
+
+`GET /api/v1/capabilities` includes:
+- `push_enabled`: boolean indicating if push is enabled.
+- `push_vapid_public_key`: base64url string when `push_enabled == true`, or `null` when disabled.
+
+> **Note**: This task handles subscription lifecycle and VAPID key management. Notification payload composition and delivery are handled in subsequent phases.

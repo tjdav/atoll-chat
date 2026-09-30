@@ -104,6 +104,20 @@ async fn main() -> anyhow::Result<()> {
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
     let backup_lock = Arc::new(tokio::sync::Mutex::new(()));
 
+    let vapid_keys = server::push::vapid::VapidKeys::load_or_generate(&pool, &config).await?;
+    let vapid_keys = vapid_keys.map(Arc::new);
+
+    if let Some(ref keys) = vapid_keys {
+        let prefix = if keys.public_key.len() >= 8 {
+            &keys.public_key[..8]
+        } else {
+            &keys.public_key
+        };
+        info!("push: VAPID initialized (public_key={}...)", prefix);
+    } else {
+        info!("push: disabled");
+    }
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -115,6 +129,7 @@ async fn main() -> anyhow::Result<()> {
         publisher,
         storage: storage.clone(),
         backup_lock,
+        vapid_keys,
     };
 
     // 7. Check bootstrap state

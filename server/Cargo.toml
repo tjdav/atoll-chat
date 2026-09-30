@@ -39,3 +39,4 @@ aes-gcm = "0.10"
 hkdf = "0.12"
 tar = "0.4"
 clap = { version = "4", features = ["derive"] }
+p256 = { version = "0.13", features = ["ecdsa"] }
