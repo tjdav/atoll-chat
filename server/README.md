@@ -1423,3 +1423,62 @@ would be supported in a future revision.
 - The migration does not validate that the destination backend is
   configured correctly before starting. A misconfigured S3 destination
   fails on the first write and reports failures.
+
+## Username OPRF
+
+The server implements OPRF (Oblivious Pseudorandom Function) blinding for usernames using the `voprf` crate (pinned to `v0.5.0`, Ristretto255-SHA512).
+
+### What OPRF Blinding Is & Why It Is Used
+
+OPRF blinding allows clients to obtain an evaluated username token from the server without exposing the plaintext username to the server or any network observer. The client blinds the username locally using a secret scalar factor, sends the blinded group element to the server, and the server evaluates the element using its OPRF key. The client then unblinds the response to obtain a deterministic `username_token` (64-byte SHA-512 digest, base64url-encoded). The server never sees the plaintext username during this operation or subsequent authentication/lookup flows.
+
+### Endpoint Contract (`POST /api/v1/oprf/blind`)
+
+- **URL**: `POST /api/v1/oprf/blind`
+- **Authentication**: Unauthenticated (the client has not logged in yet).
+- **Request Body**:
+  ```json
+  {
+    "blinded": "<base64_32_byte_compressed_ristretto255_point>"
+  }
+  ```
+- **Response Payload (HTTP 200)**:
+  ```json
+  {
+    "evaluated": "<base64_32_byte_compressed_ristretto255_point>"
+  }
+  ```
+- **Error Behavior**:
+  - `501 oprf_disabled`: Returned when `USERNAME_OPRF_ENABLED=false`.
+  - `501 blind_disabled`: Returned when `OPRF_BLIND_ENABLED=false`.
+  - `429 rate_limited`: Rate limit exceeded (`details.reset_at` included).
+  - `400 missing_field`: Missing or non-string `blinded` field (`details.field == "blinded"`).
+  - `400 invalid_blinded`: Invalid base64, incorrect byte length (must be 32 bytes), or invalid Ristretto255 group point.
+
+### Rate Limits
+
+Evaluation requests are protected by fixed-window rate limiting per client IP:
+- `RATE_OPRF_BLIND_PER_MIN` (default `30` requests/min)
+- `RATE_OPRF_BLIND_PER_HOUR` (default `300` requests/hour)
+
+### Key Derivation
+
+The server's OPRF key is derived deterministically from the single root deployment secret (`OPAQUE_OPRF_KEY_PATH`, serialized OPAQUE `ServerSetup`, 128 bytes):
+1. `root_secret = SHA-256(setup.serialize())`
+2. `username_key = HKDF-Expand(root_secret, info="username-oprf-v1", length=32)`
+3. `server = voprf::OprfServer::<Ristretto255>::new_from_seed(&username_key, b"username-oprf-v1")`
+
+Deriving the OPRF key from the `ServerSetup` file avoids managing secondary key files while ensuring cryptographic isolation via HKDF domain separation.
+
+### Anonymous Audit Counter
+
+Per spec requirements:
+- The server maintains an ephemeral, in-memory counter of blind evaluations.
+- Once per hour, a background cleanup job (`OprfAuditFlushJob`) flushes the counter and inserts a single summary row into the `oprf_audit` table with `event = "blind_eval_hourly:count=N"`.
+- Individual request bodies, client IP addresses, and exact request timestamps are **never** logged or stored.
+
+### Security & Privacy Rules
+
+- **Request Body & IP Privacy**: Evaluation request bodies and client IPs are omitted from server tracing and audit logs.
+- **Client Storage Policy**: Clients must **never** persist the derived `username_token` to disk at rest; it should be derived ephemerally in memory as needed.
+- **User Identity Storage**: User account storage, registration, and user lookup migration using `username_token` are managed in Task 21b.

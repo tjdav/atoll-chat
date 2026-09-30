@@ -167,6 +167,10 @@ async fn test_04_trigger_fails_when_backup_disabled() {
     let publisher = Arc::new(server::Publisher::new(sockudo_cfg));
     let backup_lock = Arc::new(tokio::sync::Mutex::new(()));
 
+    let oprf_keys = server::oprf::OprfKeys::load(&opaque_server.setup).unwrap();
+    let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
+    let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
+
     let state = server::AppState {
         pool: pool.clone(),
         opaque_server,
@@ -180,6 +184,8 @@ async fn test_04_trigger_fails_when_backup_disabled() {
         backup_lock,
         vapid_keys: None,
         push_delivery: None,
+        oprf,
+        oprf_audit,
     };
 
     let app = server::build_app(state);

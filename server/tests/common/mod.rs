@@ -134,6 +134,11 @@ pub async fn setup_test_app_with_config(
         None
     };
 
+    let oprf_keys =
+        server::oprf::OprfKeys::load(&opaque_server.setup).expect("Failed to load OprfKeys");
+    let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
+    let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -147,6 +152,8 @@ pub async fn setup_test_app_with_config(
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys,
         push_delivery,
+        oprf,
+        oprf_audit,
     };
 
     let app = server::build_app(state);

@@ -70,6 +70,10 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
     let storage = server::build_storage(&config).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_cfg));
 
+    let oprf_keys = server::oprf::OprfKeys::load(&opaque_server.setup).unwrap();
+    let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
+    let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
+
     let state = server::AppState {
         pool: pool.clone(),
         opaque_server,
@@ -83,6 +87,8 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
+        oprf,
+        oprf_audit,
     };
 
     let app = server::build_app(state);
@@ -419,6 +425,10 @@ async fn test_09_publish_failures_do_not_affect_http_response() {
     let storage = server::build_storage(&config).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_cfg));
 
+    let oprf_keys = server::oprf::OprfKeys::load(&opaque_server.setup).unwrap();
+    let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
+    let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
+
     let state = server::AppState {
         pool: pool.clone(),
         opaque_server,
@@ -432,6 +442,8 @@ async fn test_09_publish_failures_do_not_affect_http_response() {
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
+        oprf,
+        oprf_audit,
     };
 
     let app = server::build_app(state);

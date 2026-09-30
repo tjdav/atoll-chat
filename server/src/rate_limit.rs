@@ -17,6 +17,7 @@ pub enum RateLimitKey {
     Login { ip: String },
     DataExport { user_id: String },
     Presign { user_id: String },
+    OprfBlind { ip: String, window: Window },
 }
 
 #[derive(Debug, Clone)]
@@ -157,6 +158,24 @@ pub async fn check(
                 config.presign_per_min,
             )
         }
+        RateLimitKey::OprfBlind { ip, window } => {
+            let limit = match window {
+                Window::Minute => config.oprf_blind_per_min,
+                Window::Hour => config.oprf_blind_per_hour,
+                Window::Day => {
+                    return Err(RateLimitError::InvalidKey(
+                        "unsupported window for OprfBlind".into(),
+                    ))
+                }
+            };
+            let win_tag = match window {
+                Window::Minute => "min",
+                Window::Hour => "hour",
+                _ => "day",
+            };
+            let (start, reset) = compute_window(now, window);
+            (format!("oprf_blind:{ip}:{win_tag}"), start, reset, limit)
+        }
     };
 
     let count: i64 = sqlx::query_scalar(
@@ -184,4 +203,21 @@ pub async fn check(
         remaining,
         reset_at,
     })
+}
+
+pub fn extract_client_ip(
+    headers: &axum::http::HeaderMap,
+    config: &crate::config::Config,
+) -> String {
+    if config.trust_proxy {
+        if let Some(forwarded) = headers.get("x-forwarded-for").and_then(|h| h.to_str().ok()) {
+            if let Some(ip) = forwarded.split(',').next() {
+                let trimmed = ip.trim();
+                if !trimmed.is_empty() {
+                    return trimmed.to_string();
+                }
+            }
+        }
+    }
+    "127.0.0.1".to_string()
 }

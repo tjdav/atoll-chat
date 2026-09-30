@@ -108,6 +108,8 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         login_lockout_min: 15,
         export_rate_limit_hours: 24,
         presign_per_min: presign_limit,
+        oprf_blind_per_min: 30,
+        oprf_blind_per_hour: 300,
     };
 
     let config = Config {
@@ -159,6 +161,10 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
     };
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
 
+    let oprf_keys = server::oprf::OprfKeys::load(&opaque_server.setup).unwrap();
+    let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
+    let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -172,6 +178,8 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
+        oprf,
+        oprf_audit,
     };
 
     let app = server::build_app(state);

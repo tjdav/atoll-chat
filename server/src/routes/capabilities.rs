@@ -23,6 +23,8 @@ pub struct CapabilitiesResponse {
     pub attachment_format: String,
     pub attachment_chunk_size: u64,
     pub attachment_bucket_sizes: Vec<u64>,
+    pub username_oprf_enabled: bool,
+    pub oprf_suite: String,
 }
 
 pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -91,5 +93,7 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         attachment_format: "c2sp-chunked-aes256gcm-v1".to_string(),
         attachment_chunk_size: state.config.attachment_chunk_size,
         attachment_bucket_sizes: state.config.attachment_bucket_sizes.clone(),
+        username_oprf_enabled: state.config.username_oprf_enabled,
+        oprf_suite: "ristretto255-sha512".to_string(),
     })
 }

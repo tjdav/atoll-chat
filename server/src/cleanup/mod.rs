@@ -140,6 +140,7 @@ async fn wait_for_shutdown(
 pub mod attachments;
 pub mod audit;
 pub mod memory;
+pub mod oprf_audit;
 pub mod rate_limits;
 pub mod sessions;
 pub mod welcomes;

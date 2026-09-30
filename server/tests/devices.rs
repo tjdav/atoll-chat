@@ -168,6 +168,10 @@ async fn test_04_device_limit_is_enforced() {
     let storage = server::build_storage(&config_arc).expect("Failed to build storage");
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
 
+    let oprf_keys = server::oprf::OprfKeys::load(&opaque_server.setup).unwrap();
+    let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
+    let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -181,6 +185,8 @@ async fn test_04_device_limit_is_enforced() {
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
+        oprf,
+        oprf_audit,
     };
 
     let app = axum::Router::new()

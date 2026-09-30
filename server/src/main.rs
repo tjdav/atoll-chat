@@ -140,6 +140,14 @@ async fn main() -> anyhow::Result<()> {
     let opaque_server = Arc::new(OpaqueServer::load_or_generate(Path::new(
         &config.opaque_oprf_key_path,
     ))?);
+
+    let oprf_keys = server::oprf::OprfKeys::load(&opaque_server.setup)?;
+    let oprf_evaluator = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
+    let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
+
+    if !config.oprf_blind_enabled && config.username_oprf_enabled {
+        warn!("OPRF blind endpoint is disabled while username OPRF is enabled.");
+    }
     let registration_store = Arc::new(RegistrationStore::new());
     let login_store = Arc::new(LoginStore::new());
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await?);
@@ -198,6 +206,8 @@ async fn main() -> anyhow::Result<()> {
         backup_lock,
         vapid_keys,
         push_delivery,
+        oprf: oprf_evaluator,
+        oprf_audit: oprf_audit.clone(),
     };
 
     // 7. Check bootstrap state
@@ -238,6 +248,9 @@ async fn main() -> anyhow::Result<()> {
         scheduler.register(Box::new(server::cleanup::welcomes::WelcomesJob));
         scheduler.register(Box::new(server::cleanup::attachments::AttachmentsJob));
         scheduler.register(Box::new(server::cleanup::memory::MemoryStoresJob));
+        scheduler.register(Box::new(server::cleanup::oprf_audit::OprfAuditFlushJob {
+            oprf_audit: oprf_audit.clone(),
+        }));
 
         let ctx = server::cleanup::CleanupContextOwned {
             pool: pool.clone(),
