@@ -123,7 +123,7 @@ async fn main() -> anyhow::Result<()> {
             .clone()
             .ok_or_else(|| anyhow::anyhow!("PUSH_DELIVERY_ENABLED=true requires VAPID keys."))?;
         let coordinator =
-            server::push::delivery::DeliveryCoordinator::new(pool.clone(), &config, vapid)?;
+            server::push::delivery::DeliveryCoordinator::new(pool.clone(), &config, vapid).await?;
         info!("push delivery initialized");
         Some(Arc::new(coordinator))
     } else {

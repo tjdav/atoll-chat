@@ -1217,3 +1217,121 @@ Notifications carry metadata only:
 - **Success**: Updates `last_used_at = CURRENT_TIMESTAMP` on the subscription row.
 - **410 Gone / 404 Not Found**: The push endpoint is no longer valid. The subscription row is immediately deleted (`DELETE FROM push_subscriptions`).
 - **Transient Failures / Timeouts**: Logged at `warn`. The subscription is preserved for future attempts.
+
+### Native Delivery
+
+Native push notification senders for iOS (APNs) and Android (FCM) extend push delivery across all supported platforms (`web`, `desktop`, `ios`, `android`).
+
+#### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `PUSH_APNS_KEY` | File path to APNs `.p8` key or inline PKCS#8 PEM string. | Unset |
+| `PUSH_APNS_KEY_ID` | 10-character Key ID from Apple Developer Portal. | Unset |
+| `PUSH_APNS_TEAM_ID` | 10-character Team ID from Apple Developer Portal. | Unset |
+| `PUSH_APNS_BUNDLE_ID` | App bundle identifier (used as `apns-topic` header). | Unset |
+| `PUSH_APNS_USE_SANDBOX` | Connect to `api.sandbox.push.apple.com` if `true`, else `api.push.apple.com`. | `false` |
+| `PUSH_FCM_SERVICE_ACCOUNT_JSON` | File path to Google service account JSON or inline JSON string. | Unset |
+
+#### Provider Configuration & Graceful Startup
+
+- Senders are registered only when all required configuration options for that provider are supplied.
+- Partial configuration (e.g. key ID set but team ID missing) logs a startup `warn` message and disables that specific provider without failing server startup.
+- Mobile credentials and private keys (`.p8` key contents and service account JSON) are strictly secret and never logged or exposed in API responses.
+
+#### APNs Payload Envelope
+
+APNs notifications use HTTP/2 with JWT ES256 authentication and bundle the `aps` dictionary alongside custom payload fields:
+
+```json
+{
+  "aps": {
+    "alert": {
+      "title": "New message",
+      "body": "New message"
+    },
+    "sound": "default",
+    "badge": 1,
+    "mutable-content": 0,
+    "thread-id": "<room_id>"
+  },
+  "type": "message",
+  "room_id": "<room_id>",
+  "sender_user_id": "<user_id>",
+  "encrypted_payload": "",
+  "notification_id": "<ulid>",
+  "priority": "high",
+  "collapse_key": "<room_id>",
+  "timestamp": "<ISO 8601>"
+}
+```
+
+- **Device Token Validation**: APNs device tokens are validated locally before issuing network calls. Tokens not matching 64 hex characters are rejected immediately with a permanent failure error to prevent unnecessary round trips.
+
+#### FCM Payload Envelope
+
+FCM requests use HTTP/1.1 to the FCM HTTP v1 API (`fcm.googleapis.com`) with OAuth 2.0 bearer tokens obtained via service account authentication (scope `https://www.googleapis.com/auth/firebase.messaging`):
+
+```json
+{
+  "message": {
+    "token": "<push_token>",
+    "notification": {
+      "title": "New message",
+      "body": "New message"
+    },
+    "data": {
+      "type": "message",
+      "room_id": "<room_id>",
+      "sender_user_id": "<user_id>",
+      "encrypted_payload": "",
+      "notification_id": "<ulid>",
+      "priority": "high",
+      "collapse_key": "<room_id>",
+      "timestamp": "<ISO 8601>"
+    },
+    "android": {
+      "priority": "high",
+      "collapse_key": "<room_id>",
+      "notification": {
+        "channel_id": "messages"
+      }
+    }
+  }
+}
+```
+
+#### Status Code Mapping
+
+- **410 Gone / 404 Not Found / UNREGISTERED**: Indicates invalid or expired tokens/endpoints. The subscription is deleted (`DELETE FROM push_subscriptions`).
+- **401 Unauthorized / 400 Bad Request**: Permanent errors (e.g. invalid credentials or malformed payloads). Logged at `warn`, subscription preserved.
+- **429 / 5xx / Timeouts**: Transient errors. Logged at `warn`, subscription preserved for future attempts.
+
+#### Capabilities & Client Guidance
+
+`GET /api/v1/capabilities` advertises provider availability in `push_providers`:
+
+```json
+{
+  "push_enabled": true,
+  "push_providers": {
+    "web": true,
+    "desktop": true,
+    "ios": true,
+    "android": true
+  }
+}
+```
+
+Clients check `push_providers` on startup to determine whether native push registration should be attempted for their platform.
+
+#### Pre-Deployment Manual Verification Checklist
+
+Automated CI integration tests mock APNs and FCM endpoints using synthetic credentials. Before deploying to production, operators should manually verify end-to-end delivery:
+
+1. Obtain valid APNs `.p8` credentials from Apple Developer Console and FCM Service Account JSON from Firebase Console.
+2. Set `PUSH_ENABLED=true`, `PUSH_DELIVERY_ENABLED=true`, and provider credentials in `.env`.
+3. Start the server and confirm `push: APNs sender registered` and `push: FCM sender registered` appear in server logs.
+4. Verify `GET /api/v1/capabilities` returns `ios: true` and `android: true` in `push_providers`.
+5. Install and launch the iOS/Android client on physical devices, register push subscriptions, and send a message from another account.
+6. Confirm real-time notification alerts appear on physical mobile devices.

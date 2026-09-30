@@ -85,6 +85,14 @@ pub struct Config {
     pub push_suppression_window_secs: u64,
     pub push_delivery_timeout_secs: u64,
     pub push_max_concurrent_deliveries: usize,
+
+    pub push_apns_key: Option<String>,
+    pub push_apns_key_id: Option<String>,
+    pub push_apns_team_id: Option<String>,
+    pub push_apns_bundle_id: Option<String>,
+    pub push_apns_use_sandbox: bool,
+
+    pub push_fcm_service_account_json: Option<String>,
 }
 
 impl Config {
@@ -509,6 +517,35 @@ impl Config {
             anyhow::bail!("FATAL: PUSH_DELIVERY_ENABLED=true requires PUSH_ENABLED=true.");
         }
 
+        let push_apns_key = env::var("PUSH_APNS_KEY")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let push_apns_key_id = env::var("PUSH_APNS_KEY_ID")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let push_apns_team_id = env::var("PUSH_APNS_TEAM_ID")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let push_apns_bundle_id = env::var("PUSH_APNS_BUNDLE_ID")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let push_apns_use_sandbox = env::var("PUSH_APNS_USE_SANDBOX")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(false);
+
+        let push_fcm_service_account_json = env::var("PUSH_FCM_SERVICE_ACCOUNT_JSON")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
         if push_enabled {
             let pub_auto = push_vapid_public_key == "auto";
             let priv_auto = push_vapid_private_key == "auto";
@@ -609,6 +646,12 @@ impl Config {
             push_suppression_window_secs,
             push_delivery_timeout_secs,
             push_max_concurrent_deliveries,
+            push_apns_key,
+            push_apns_key_id,
+            push_apns_team_id,
+            push_apns_bundle_id,
+            push_apns_use_sandbox,
+            push_fcm_service_account_json,
         })
     }
 
@@ -689,6 +732,12 @@ impl Config {
             push_suppression_window_secs: 30,
             push_delivery_timeout_secs: 10,
             push_max_concurrent_deliveries: 32,
+            push_apns_key: None,
+            push_apns_key_id: None,
+            push_apns_team_id: None,
+            push_apns_bundle_id: None,
+            push_apns_use_sandbox: false,
+            push_fcm_service_account_json: None,
         }
     }
 }
