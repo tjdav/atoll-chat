@@ -149,6 +149,19 @@ pub async fn submit(
             {
                 tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
             }
+
+            if state.config.push_delivery_enabled {
+                if let Some(ref delivery) = state.push_delivery {
+                    let delivery = delivery.clone();
+                    let room_id = id.clone();
+                    let sender_id = auth.user_id.clone();
+                    tokio::spawn(async move {
+                        delivery
+                            .dispatch_message_notification(&room_id, &sender_id)
+                            .await;
+                    });
+                }
+            }
         }
         SubmitOutcome::Commit {
             message_id,

@@ -79,7 +79,12 @@ pub struct Config {
     pub push_enabled: bool,
     pub push_vapid_public_key: String,
     pub push_vapid_private_key: String,
+    pub push_vapid_subject: Option<String>,
     pub push_gateway_url: Option<String>,
+    pub push_delivery_enabled: bool,
+    pub push_suppression_window_secs: u64,
+    pub push_delivery_timeout_secs: u64,
+    pub push_max_concurrent_deliveries: usize,
 }
 
 impl Config {
@@ -471,10 +476,38 @@ impl Config {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "auto".to_string());
 
+        let push_vapid_subject = env::var("PUSH_VAPID_SUBJECT")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
         let push_gateway_url = env::var("PUSH_GATEWAY_URL")
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
+
+        let push_delivery_enabled = env::var("PUSH_DELIVERY_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let push_suppression_window_secs = env::var("PUSH_SUPPRESSION_WINDOW_SECS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let push_delivery_timeout_secs = env::var("PUSH_DELIVERY_TIMEOUT_SECS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10);
+
+        let push_max_concurrent_deliveries = env::var("PUSH_MAX_CONCURRENT_DELIVERIES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(32);
+
+        if push_delivery_enabled && !push_enabled {
+            anyhow::bail!("FATAL: PUSH_DELIVERY_ENABLED=true requires PUSH_ENABLED=true.");
+        }
 
         if push_enabled {
             let pub_auto = push_vapid_public_key == "auto";
@@ -570,7 +603,12 @@ impl Config {
             push_enabled,
             push_vapid_public_key,
             push_vapid_private_key,
+            push_vapid_subject,
             push_gateway_url,
+            push_delivery_enabled,
+            push_suppression_window_secs,
+            push_delivery_timeout_secs,
+            push_max_concurrent_deliveries,
         })
     }
 
@@ -645,7 +683,12 @@ impl Config {
             push_enabled: true,
             push_vapid_public_key: "auto".to_string(),
             push_vapid_private_key: "auto".to_string(),
+            push_vapid_subject: None,
             push_gateway_url: None,
+            push_delivery_enabled: true,
+            push_suppression_window_secs: 30,
+            push_delivery_timeout_secs: 10,
+            push_max_concurrent_deliveries: 32,
         }
     }
 }

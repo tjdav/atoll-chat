@@ -1170,4 +1170,50 @@ When a user revokes a device (`DELETE /api/v1/users/me/devices/:id`), all push s
 - `push_enabled`: boolean indicating if push is enabled.
 - `push_vapid_public_key`: base64url string when `push_enabled == true`, or `null` when disabled.
 
-> **Note**: This task handles subscription lifecycle and VAPID key management. Notification payload composition and delivery are handled in subsequent phases.
+### Delivery
+
+When an application message is submitted (`POST /api/v1/rooms/:id/messages`), the server composes a notification payload and dispatches it in the background to all eligible subscribed devices belonging to room members.
+
+#### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `PUSH_DELIVERY_ENABLED` | Enable or disable background push delivery (`true` or `false`). Requires `PUSH_ENABLED=true`. | `true` |
+| `PUSH_SUPPRESSION_WINDOW_SECS` | Time window in seconds to suppress push for devices with active WebSocket sessions. | `30` |
+| `PUSH_DELIVERY_TIMEOUT_SECS` | Timeout in seconds for individual push delivery requests. | `10` |
+| `PUSH_MAX_CONCURRENT_DELIVERIES` | Maximum number of in-flight concurrent delivery requests. | `32` |
+| `PUSH_VAPID_SUBJECT` | Contact URI / mailto / URL for VAPID JWT `sub` claim. Defaults to `APP_URL` or `mailto:admin@<app_name>`. | Unset |
+
+#### Dispatch Flow & Per-Device Suppression
+
+1. **Trigger**: Delivery is triggered upon application message submission. Commits and proposals do not trigger push notifications.
+2. **Detached Execution**: Dispatch is spawned as a detached background task (`tokio::spawn`), allowing the message submission HTTP response to return immediately without waiting for push delivery. Push delivery is advisory — failures do not affect message submission.
+3. **Recipient Lookup**: Room members are fetched excluding the sender (users do not receive push for their own messages).
+4. **Per-Device Suppression**: Active sessions (`sessions.last_seen_at`) are checked per device. If a device has updated its session within `PUSH_SUPPRESSION_WINDOW_SECS` (confirmed via session heartbeat), push delivery to that specific device is suppressed. Other devices belonging to the same user still receive push notifications.
+5. **Batch Dispatch**: Eligible subscriptions are dispatched concurrently, bounded by `PUSH_MAX_CONCURRENT_DELIVERIES` using stream buffering.
+
+#### Web Push Payload Schema (V1)
+
+Notifications carry metadata only:
+
+```json
+{
+  "type": "message",
+  "room_id": "<room_id>",
+  "sender_user_id": "<user_id>",
+  "encrypted_payload": "",
+  "notification_id": "<ulid>",
+  "priority": "high",
+  "collapse_key": "<room_id>",
+  "timestamp": "<ISO 8601>"
+}
+```
+
+- `encrypted_payload`: Empty in V1. The server does not see message plaintext. Upon receiving a notification, the client's service worker uses `room_id` and `sender_user_id` to show a notification, fetches missing message ciphertexts via the delta sync API, and decrypts locally using the room key.
+- `collapse_key`: Set to `room_id` so the push service collapses multiple incoming messages in the same conversation into a single notification.
+
+#### Result Handling & Subscription Cleanup
+
+- **Success**: Updates `last_used_at = CURRENT_TIMESTAMP` on the subscription row.
+- **410 Gone / 404 Not Found**: The push endpoint is no longer valid. The subscription row is immediately deleted (`DELETE FROM push_subscriptions`).
+- **Transient Failures / Timeouts**: Logged at `warn`. The subscription is preserved for future attempts.
