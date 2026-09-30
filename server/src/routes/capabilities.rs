@@ -8,7 +8,6 @@ use crate::AppState;
 pub struct CapabilitiesResponse {
     pub version: String,
     pub calling: bool,
-    pub push_enabled: bool,
     pub push_vapid_public_key: Option<String>,
     pub safety_number_mode: String,
     pub moderation_mode: String,
@@ -67,17 +66,10 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         0
     };
 
-    let push_vapid_public_key = if state.config.push_enabled {
-        state.vapid_keys.as_ref().map(|k| k.public_key.clone())
-    } else {
-        None
-    };
-
     Json(CapabilitiesResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         calling: false,
-        push_enabled: state.config.push_enabled,
-        push_vapid_public_key,
+        push_vapid_public_key: None,
         safety_number_mode,
         moderation_mode,
         websocket_url,

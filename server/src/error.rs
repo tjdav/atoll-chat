@@ -253,7 +253,6 @@ impl From<DeviceError> for ApiError {
     fn from(err: DeviceError) -> Self {
         match err {
             DeviceError::Database(e) => ApiError::Internal(e.into()),
-            DeviceError::Push(e) => ApiError::Internal(anyhow::anyhow!(e)),
             DeviceError::DeviceLimitExceeded { .. } => {
                 ApiError::BadRequest("device_limit_exceeded".to_string())
             }

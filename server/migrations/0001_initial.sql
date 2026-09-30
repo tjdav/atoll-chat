@@ -53,22 +53,6 @@ CREATE TABLE IF NOT EXISTS instance_config (
     updated_by TEXT REFERENCES users(id)
 );
 
-CREATE TABLE IF NOT EXISTS push_subscriptions (
-    id           TEXT PRIMARY KEY,
-    user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    device_id    TEXT REFERENCES devices(id) ON DELETE CASCADE,
-    platform     TEXT NOT NULL,
-    endpoint     TEXT,
-    p256dh       TEXT,
-    auth         TEXT,
-    push_token   TEXT,
-    browser_id   TEXT,
-    user_agent   TEXT,
-    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_used_at DATETIME,
-    revoked_at   DATETIME
-);
-
 CREATE TABLE IF NOT EXISTS instance_limits (
     key        TEXT PRIMARY KEY,
     value      TEXT NOT NULL,
