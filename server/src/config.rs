@@ -12,6 +12,8 @@ pub struct RateLimitConfig {
     pub login_lockout_min: u32,
     pub export_rate_limit_hours: u64,
     pub presign_per_min: u32,
+    pub oprf_blind_per_min: u32,
+    pub oprf_blind_per_hour: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -25,6 +27,8 @@ pub struct Config {
     pub db_path: String,
     pub db_busy_timeout_ms: u64,
     pub opaque_oprf_key_path: String,
+    pub oprf_blind_enabled: bool,
+    pub username_oprf_enabled: bool,
     pub altcha_enabled: bool,
     pub altcha_hmac_secret: String,
     pub altcha_algorithm: String,
@@ -126,6 +130,14 @@ impl Config {
 
         let opaque_oprf_key_path =
             env::var("OPAQUE_OPRF_KEY_PATH").unwrap_or_else(|_| "./data/oprf.key".to_string());
+
+        let oprf_blind_enabled = env::var("OPRF_BLIND_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let username_oprf_enabled = env::var("USERNAME_OPRF_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
 
         let altcha_enabled = env::var("ALTCHA_ENABLED")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
@@ -241,6 +253,16 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(60);
 
+        let rate_oprf_blind_per_min = env::var("RATE_OPRF_BLIND_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let rate_oprf_blind_per_hour = env::var("RATE_OPRF_BLIND_PER_HOUR")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(300);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -251,6 +273,8 @@ impl Config {
             login_lockout_min: rate_login_lockout_min,
             export_rate_limit_hours,
             presign_per_min: rate_presign_per_min,
+            oprf_blind_per_min: rate_oprf_blind_per_min,
+            oprf_blind_per_hour: rate_oprf_blind_per_hour,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -589,6 +613,8 @@ impl Config {
             db_path,
             db_busy_timeout_ms,
             opaque_oprf_key_path,
+            oprf_blind_enabled,
+            username_oprf_enabled,
             altcha_enabled,
             altcha_hmac_secret,
             altcha_algorithm,
@@ -665,6 +691,8 @@ impl Config {
             db_path: ":memory:".to_string(),
             db_busy_timeout_ms: 5000,
             opaque_oprf_key_path: "/tmp/test-oprf.key".to_string(),
+            oprf_blind_enabled: true,
+            username_oprf_enabled: true,
             altcha_enabled: false,
             altcha_hmac_secret: "auto".to_string(),
             altcha_algorithm: "PBKDF2/SHA-256".to_string(),
@@ -690,6 +718,8 @@ impl Config {
                 login_lockout_min: 15,
                 export_rate_limit_hours: 24,
                 presign_per_min: 60,
+                oprf_blind_per_min: 30,
+                oprf_blind_per_hour: 300,
             },
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,

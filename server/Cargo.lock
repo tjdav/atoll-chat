@@ -3206,6 +3206,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "ulid",
+ "voprf",
  "web-push",
  "wiremock",
  "yup-oauth2",

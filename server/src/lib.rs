@@ -17,6 +17,7 @@ pub mod limits;
 pub mod login;
 pub mod middleware;
 pub mod opaque;
+pub mod oprf;
 pub mod permission_check;
 pub mod permissions;
 pub mod push;
@@ -92,6 +93,8 @@ pub struct AppState {
     pub backup_lock: Arc<tokio::sync::Mutex<()>>,
     pub vapid_keys: Option<Arc<push::vapid::VapidKeys>>,
     pub push_delivery: Option<Arc<push::delivery::DeliveryCoordinator>>,
+    pub oprf: Arc<oprf::OprfEvaluator>,
+    pub oprf_audit: Arc<oprf::OprfAuditCounter>,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -154,6 +157,18 @@ impl axum::extract::FromRef<AppState> for Arc<dyn Storage> {
     }
 }
 
+impl axum::extract::FromRef<AppState> for Arc<oprf::OprfEvaluator> {
+    fn from_ref(state: &AppState) -> Self {
+        state.oprf.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<oprf::OprfAuditCounter> {
+    fn from_ref(state: &AppState) -> Self {
+        state.oprf_audit.clone()
+    }
+}
+
 pub fn build_app(state: AppState) -> Router {
     let api_routes = Router::new()
         .route(
@@ -191,6 +206,7 @@ pub fn build_app(state: AppState) -> Router {
             "/auth/register/finish",
             post(routes::register::register_finish),
         )
+        .route("/oprf/blind", post(routes::oprf::blind))
         .route("/auth/login/start", post(routes::login::login_start))
         .route("/auth/login/finish", post(routes::login::login_finish))
         .route(
