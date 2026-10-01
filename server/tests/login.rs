@@ -6,7 +6,7 @@ use axum::{
 };
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use common::{login_user, register_user, setup_test_app};
+use common::{login_user, obtain_username_token, register_user, setup_test_app};
 use opaque_ke::{ClientLogin, ClientLoginFinishParameters, CredentialResponse};
 use rand::rngs::OsRng;
 use serde_json::{json, Value};
@@ -30,7 +30,7 @@ async fn test_1_successful_login_with_valid_credentials() {
         .expect("missing session_token");
     assert!(!session_token.is_empty());
     assert_eq!(body["user_id"], user_id);
-    assert_eq!(body["username"], "alice");
+    assert!(body["username_token"].is_string());
 
     // Assert row exists in sessions table
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE user_id = ?")
@@ -92,6 +92,7 @@ async fn test_5_login_state_expires_after_ttl() {
     let (app, _pool) = setup_test_app().await;
 
     register_user(&app, "alice", "password123", None).await;
+    let username_token = obtain_username_token(&app, "alice").await;
 
     let mut rng = OsRng;
     let client_start = ClientLogin::<DefaultCipherSuite>::start(&mut rng, b"password123")
@@ -104,7 +105,7 @@ async fn test_5_login_state_expires_after_ttl() {
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "username": "alice",
+                "username_token": username_token,
                 "credential_request": cred_req_b64,
                 "client_id": TEST_CLIENT_ID,
             })

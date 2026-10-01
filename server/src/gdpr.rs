@@ -1,7 +1,8 @@
 use crate::audit;
-use base64::engine::general_purpose::STANDARD;
+use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 use chrono::{DateTime, Utc};
+use rand::RngCore;
 use serde_json::json;
 use sqlx::{Row, SqlitePool};
 use std::io::Write;
@@ -134,14 +135,17 @@ pub async fn anonymise_user(
         .await?;
     let sessions_deleted = sessions_res.rows_affected();
 
-    // 8. Anonymise the user row
+    // 8. Anonymise the user row: overwrite username_token with random 86-char base64url string
+    let mut rand_bytes = [0u8; 64];
+    rand::thread_rng().fill_bytes(&mut rand_bytes);
+    let random_token = URL_SAFE_NO_PAD.encode(rand_bytes);
+
     sqlx::query(
         r#"
         UPDATE users
-        SET username = 'deleted_' || lower(hex(randomblob(8))),
-            username_hash = lower(hex(randomblob(32))),
-            display_name = NULL,
-            profile_blob = NULL,
+        SET username_token = ?,
+            encrypted_display = NULL,
+            profile = NULL,
             opaque_registration = randomblob(32),
             identity_pubkey = '',
             max_file_size_bytes = NULL,
@@ -150,6 +154,7 @@ pub async fn anonymise_user(
         WHERE id = ?
         "#,
     )
+    .bind(&random_token)
     .bind(user_id)
     .execute(&mut *tx)
     .await?;
@@ -176,7 +181,7 @@ pub async fn anonymise_user(
         Err(e) => return Err(GdprError::Database(e)),
     };
 
-    // 10. Commit transaction
+    // Commit transaction
     tx.commit().await?;
 
     let summary = DeletionSummary {
@@ -188,7 +193,7 @@ pub async fn anonymise_user(
         recovery_vault_deleted,
     };
 
-    // 11. Write audit entry
+    // Write audit entry
     let metadata = serde_json::to_value(&summary).ok();
     let _ = audit::log(
         pool,
@@ -207,7 +212,7 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
     // 1. Profile
     let user_row = sqlx::query(
         r#"
-        SELECT id, username, display_name, identity_pubkey, profile_blob, profile_version, created_at
+        SELECT id, username_token, encrypted_display, identity_pubkey, profile, profile_version, created_at
         FROM users
         WHERE id = ?
         "#,
@@ -230,19 +235,19 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
     }
 
     let u_id: String = user_row.get("id");
-    let u_username: String = user_row.get("username");
-    let u_display_name: Option<String> = user_row.get("display_name");
+    let u_username_token: String = user_row.get("username_token");
+    let u_encrypted_display: Option<String> = user_row.get("encrypted_display");
     let u_identity_pubkey: String = user_row.get("identity_pubkey");
-    let u_profile_blob: Option<String> = user_row.get("profile_blob");
+    let u_profile: Option<String> = user_row.get("profile");
     let u_profile_version: i64 = user_row.get("profile_version");
     let u_created_at: DateTime<Utc> = user_row.get("created_at");
 
     let profile_json = json!({
         "user_id": u_id,
-        "username": u_username,
-        "display_name": u_display_name,
+        "username_token": u_username_token,
+        "encrypted_display": u_encrypted_display,
         "identity_pubkey": u_identity_pubkey,
-        "profile_blob": u_profile_blob,
+        "profile": u_profile,
         "profile_version": u_profile_version,
         "roles": roles,
         "created_at": u_created_at.to_rfc3339()
@@ -330,7 +335,7 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
 
     // 5. Messages
     let messages_res = match sqlx::query(
-        "SELECT id, room_id, epoch, seq, sender_client_id, content_type, mls_data, created_at FROM messages WHERE sender_id = ? ORDER BY created_at ASC",
+        "SELECT id, room_id, epoch, seq, sender_client_id, content_type, ciphertext, created_at FROM room_messages WHERE sender_user_id = ? ORDER BY created_at ASC",
     )
     .bind(user_id)
     .fetch_all(pool)
@@ -344,7 +349,7 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
                 let m_seq: i64 = row.get("seq");
                 let m_sender_client_id: String = row.get("sender_client_id");
                 let m_content_type: String = row.get("content_type");
-                let m_mls_data: Vec<u8> = row.get("mls_data");
+                let m_ciphertext: Vec<u8> = row.get("ciphertext");
                 let m_created_at: DateTime<Utc> = row.get("created_at");
 
                 list.push(json!({
@@ -354,14 +359,14 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
                     "seq": m_seq,
                     "sender_client_id": m_sender_client_id,
                     "content_type": m_content_type,
-                    "mls_data_base64": STANDARD.encode(m_mls_data),
+                    "ciphertext_base64": STANDARD.encode(m_ciphertext),
                     "created_at": m_created_at.to_rfc3339()
                 }));
             }
             json!({ "messages": list })
         }
         Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => {
-            json!({ "messages": [], "note": "message history not yet implemented" })
+            json!({ "messages": [], "note": "message history not present" })
         }
         Err(e) => return Err(GdprError::Database(e)),
     };
@@ -408,6 +413,9 @@ Contents:
 - rooms.json       — rooms you are a member of
 - messages.json    — encrypted message metadata
 - audit.json       — audit entries where you are the actor
+
+Your username_token is an opaque identifier. It is only interpretable by you,
+using your master password and the OPRF protocol. The server cannot reverse it.
 
 IMPORTANT: The message data in messages.json is encrypted end-to-end. The server does not have the keys to decrypt it. Only your clients can decrypt these messages.
 

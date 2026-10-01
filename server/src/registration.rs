@@ -6,8 +6,8 @@ pub const REGISTRATION_TTL: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Clone)]
 pub struct PendingRegistration {
-    pub username: String,
-    pub username_hash: String,
+    pub username_token: String,
+    pub credential_id: [u8; 64],
     pub created_at: Instant,
 }
 

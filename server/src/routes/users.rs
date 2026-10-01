@@ -2,6 +2,7 @@ use crate::audit;
 use crate::auth::AuthUser;
 use crate::error::ApiError;
 use crate::gdpr;
+use crate::identity::{validate_encrypted_display, validate_token};
 use crate::limits;
 use crate::rate_limit;
 use crate::roles;
@@ -11,9 +12,66 @@ use axum::{extract::State, Json};
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Row;
+
+#[derive(Debug, Deserialize)]
+pub struct UserLookupRequest {
+    pub username_token: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserLookupResponse {
+    pub user_id: String,
+    pub encrypted_display: Option<String>,
+}
+
+pub async fn lookup_user(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(body): Json<UserLookupRequest>,
+) -> Result<Json<UserLookupResponse>, ApiError> {
+    // 1. Validate username_token format
+    let token = body.username_token.trim();
+    if validate_token(token).is_err() {
+        return Err(ApiError::BadRequest("invalid_username_token".to_string()));
+    }
+
+    // 2. Rate limit lookup
+    let rate_key = rate_limit::RateLimitKey::Lookup {
+        user_id: auth.user_id.clone(),
+    };
+    let decision = rate_limit::check(&state.pool, &state.config.rate_limits, rate_key)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "Lookup rate limit exceeded".to_string(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    // 3. Query user by username_token
+    let row_opt = sqlx::query(
+        "SELECT id, encrypted_display FROM users WHERE username_token = ? AND deleted_at IS NULL",
+    )
+    .bind(token)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if let Some(row) = row_opt {
+        let user_id: String = row.get("id");
+        let encrypted_display: Option<String> = row.get("encrypted_display");
+        Ok(Json(UserLookupResponse {
+            user_id,
+            encrypted_display,
+        }))
+    } else {
+        Err(ApiError::NotFound("not_found".to_string()))
+    }
+}
 
 #[derive(Serialize)]
 pub struct UserLimitsResponse {
@@ -22,16 +80,17 @@ pub struct UserLimitsResponse {
 
 #[derive(Serialize)]
 pub struct UserProfileResponse {
-    pub user_id: String,
-    pub username: String,
-    pub display_name: Option<String>,
-    pub profile_blob: Option<String>,
-    pub profile_version: i64,
+    pub id: String,
+    pub username_token: String,
+    pub encrypted_display: Option<String>,
     pub identity_pubkey: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub is_owner: bool,
+    pub profile: Option<String>,
+    pub profile_version: i64,
+    pub max_file_size_bytes: Option<i64>,
     pub roles: Vec<String>,
     pub limits: UserLimitsResponse,
+    pub is_owner: bool,
+    pub created_at: DateTime<Utc>,
 }
 
 pub async fn get_me(
@@ -39,14 +98,15 @@ pub async fn get_me(
     auth: AuthUser,
 ) -> Result<Json<UserProfileResponse>, ApiError> {
     let row = sqlx::query(
-        "SELECT display_name, profile_blob, profile_version, identity_pubkey, max_file_size_bytes, created_at FROM users WHERE id = ?",
+        "SELECT username_token, encrypted_display, profile, profile_version, identity_pubkey, max_file_size_bytes, created_at FROM users WHERE id = ?",
     )
     .bind(&auth.user_id)
     .fetch_one(&state.pool)
     .await?;
 
-    let display_name: Option<String> = row.get("display_name");
-    let profile_blob: Option<String> = row.get("profile_blob");
+    let username_token: String = row.get("username_token");
+    let encrypted_display: Option<String> = row.get("encrypted_display");
+    let profile: Option<String> = row.get("profile");
     let profile_version: i64 = row.get("profile_version");
     let raw_identity_pubkey: String = row.get("identity_pubkey");
     let identity_pubkey = if raw_identity_pubkey.trim().is_empty() {
@@ -77,18 +137,19 @@ pub async fn get_me(
     ) as u64;
 
     Ok(Json(UserProfileResponse {
-        user_id: auth.user_id,
-        username: auth.username,
-        display_name,
-        profile_blob,
-        profile_version,
+        id: auth.user_id,
+        username_token,
+        encrypted_display,
         identity_pubkey,
-        created_at,
-        is_owner,
+        profile,
+        profile_version,
+        max_file_size_bytes: user_max_file_size,
         roles: role_names,
         limits: UserLimitsResponse {
             max_file_size_bytes: effective_limit,
         },
+        is_owner,
+        created_at,
     }))
 }
 
@@ -101,70 +162,93 @@ pub async fn patch_me(
         .as_object()
         .ok_or_else(|| ApiError::BadRequest("invalid request body".to_string()))?;
 
-    // Check username rejection
-    if obj.contains_key("username") {
+    // Check old field names
+    if obj.contains_key("display_name") {
+        return Err(ApiError::InternalWithDetails(
+            axum::http::StatusCode::BAD_REQUEST,
+            "field_renamed".to_string(),
+            serde_json::json!({
+                "old": "display_name",
+                "new": "encrypted_display"
+            }),
+        ));
+    }
+
+    if obj.contains_key("profile_blob") {
+        return Err(ApiError::InternalWithDetails(
+            axum::http::StatusCode::BAD_REQUEST,
+            "field_renamed".to_string(),
+            serde_json::json!({
+                "old": "profile_blob",
+                "new": "profile"
+            }),
+        ));
+    }
+
+    if obj.contains_key("username") || obj.contains_key("username_token") {
         return Err(ApiError::BadRequest("username_immutable".to_string()));
     }
 
     let current_row =
-        sqlx::query("SELECT display_name, profile_blob, profile_version FROM users WHERE id = ?")
+        sqlx::query("SELECT encrypted_display, profile, profile_version FROM users WHERE id = ?")
             .bind(&auth.user_id)
             .fetch_one(&state.pool)
             .await?;
 
-    let current_display_name: Option<String> = current_row.get("display_name");
-    let current_profile_blob: Option<String> = current_row.get("profile_blob");
+    let current_encrypted_display: Option<String> = current_row.get("encrypted_display");
+    let current_profile: Option<String> = current_row.get("profile");
     let current_version: i64 = current_row.get("profile_version");
 
-    let mut new_display_name = current_display_name;
-    let mut new_profile_blob = current_profile_blob;
+    let mut new_encrypted_display = current_encrypted_display;
+    let mut new_profile = current_profile;
 
-    if let Some(val) = obj.get("display_name") {
+    if let Some(val) = obj.get("encrypted_display") {
         if val.is_null() {
-            new_display_name = None;
+            new_encrypted_display = None;
         } else if let Some(s) = val.as_str() {
             let trimmed = s.trim();
             if trimmed.is_empty() {
-                new_display_name = None;
+                new_encrypted_display = None;
             } else {
-                // Check control characters (U+0000–U+001F or U+007F–U+009F)
-                if trimmed
-                    .chars()
-                    .any(|c| (c as u32 <= 0x001F) || (c as u32 >= 0x007F && c as u32 <= 0x009F))
-                {
-                    return Err(ApiError::BadRequest("invalid_display_name".to_string()));
+                if validate_encrypted_display(trimmed).is_err() {
+                    return Err(ApiError::BadRequest(
+                        "invalid_encrypted_display".to_string(),
+                    ));
                 }
-                let char_count = trimmed.chars().count();
-                if !(1..=64).contains(&char_count) {
-                    return Err(ApiError::BadRequest("invalid_display_name".to_string()));
-                }
-                new_display_name = Some(trimmed.to_string());
+                new_encrypted_display = Some(trimmed.to_string());
             }
         } else {
-            return Err(ApiError::BadRequest("invalid_display_name".to_string()));
+            return Err(ApiError::BadRequest(
+                "invalid_encrypted_display".to_string(),
+            ));
         }
     }
 
-    if let Some(val) = obj.get("profile_blob") {
+    if let Some(val) = obj.get("profile") {
         if val.is_null() {
-            new_profile_blob = None;
+            new_profile = None;
         } else if let Some(s) = val.as_str() {
-            if STANDARD.decode(s).is_err() && URL_SAFE_NO_PAD.decode(s).is_err() {
-                return Err(ApiError::BadRequest("invalid_profile_blob".to_string()));
+            let trimmed = s.trim();
+            if trimmed.is_empty() {
+                new_profile = None;
+            } else {
+                if STANDARD.decode(trimmed).is_err() && URL_SAFE_NO_PAD.decode(trimmed).is_err() {
+                    return Err(ApiError::BadRequest("invalid_profile".to_string()));
+                }
+                new_profile = Some(trimmed.to_string());
             }
-            new_profile_blob = Some(s.to_string());
         } else {
-            return Err(ApiError::BadRequest("invalid_profile_blob".to_string()));
+            return Err(ApiError::BadRequest("invalid_profile".to_string()));
         }
     }
 
     let new_version = current_version + 1;
 
     sqlx::query(
-        "UPDATE users SET display_name = ?, profile_blob = ?, profile_version = ? WHERE id = ?",
+        "UPDATE users SET encrypted_display = ?, profile = ?, profile_version = ? WHERE id = ?",
     )
-    .bind(&new_display_name)
-    .bind(&new_profile_blob)
+    .bind(&new_encrypted_display)
+    .bind(&new_profile)
     .bind(new_version)
     .bind(&auth.user_id)
     .execute(&state.pool)

@@ -18,6 +18,7 @@ pub enum RateLimitKey {
     DataExport { user_id: String },
     Presign { user_id: String },
     OprfBlind { ip: String, window: Window },
+    Lookup { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -175,6 +176,15 @@ pub async fn check(
             };
             let (start, reset) = compute_window(now, window);
             (format!("oprf_blind:{ip}:{win_tag}"), start, reset, limit)
+        }
+        RateLimitKey::Lookup { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("lookup:{user_id}:min"),
+                start,
+                reset,
+                60, // Default 60 lookup requests per user per minute
+            )
         }
     };
 

@@ -11,6 +11,7 @@ pub mod db;
 pub mod devices;
 pub mod error;
 pub mod gdpr;
+pub mod identity;
 pub mod invites;
 pub mod key_packages;
 pub mod limits;
@@ -209,6 +210,7 @@ pub fn build_app(state: AppState) -> Router {
         .route("/oprf/blind", post(routes::oprf::blind))
         .route("/auth/login/start", post(routes::login::login_start))
         .route("/auth/login/finish", post(routes::login::login_finish))
+        .route("/users/lookup", post(routes::users::lookup_user))
         .route(
             "/users/me",
             get(routes::users::get_me)

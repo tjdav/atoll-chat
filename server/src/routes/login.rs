@@ -1,4 +1,5 @@
 use crate::error::ApiError;
+use crate::identity::{token_bytes, validate_token};
 use crate::login::PendingLogin;
 use crate::opaque::DefaultCipherSuite;
 use crate::roles;
@@ -14,12 +15,11 @@ use opaque_ke::{
 use rand::rngs::OsRng;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::time::Instant;
 
 #[derive(Debug, Deserialize)]
 pub struct LoginStartRequest {
-    pub username: String,
+    pub username_token: String,
     pub credential_request: String,
     pub client_id: String,
 }
@@ -42,8 +42,8 @@ pub struct LoginFinishRequest {
 pub struct LoginFinishResponse {
     pub session_token: String,
     pub user_id: String,
-    pub username: String,
-    pub display_name: Option<String>,
+    pub username_token: String,
+    pub encrypted_display: Option<String>,
     pub device_id: String,
     pub is_owner: bool,
     pub expires_at: String,
@@ -60,17 +60,10 @@ pub async fn login_start(
     State(state): State<AppState>,
     Json(body): Json<LoginStartRequest>,
 ) -> Result<Json<LoginStartResponse>, ApiError> {
-    // 1. Validate username
-    let username = body.username.trim();
-    if username.len() < 3
-        || username.len() > 32
-        || !username
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-    {
-        return Err(ApiError::BadRequest(
-            "username must be 3-32 characters (alphanumeric, underscore, dash)".to_string(),
-        ));
+    // 1. Validate username_token format
+    let username_token = body.username_token.trim().to_string();
+    if validate_token(&username_token).is_err() {
+        return Err(ApiError::Unauthorized("invalid_credentials".to_string()));
     }
 
     // 2. Validate client_id
@@ -94,34 +87,50 @@ pub async fn login_start(
         ));
     }
 
-    // 4. Compute username_hash
-    let normalized = username.to_lowercase();
-    let mut hasher = Sha256::new();
-    hasher.update(b"username-v1:");
-    hasher.update(normalized.as_bytes());
-    let username_hash = hex::encode(hasher.finalize());
+    // 4. Extract credential_id
+    let credential_id = match token_bytes(&username_token) {
+        Ok(bytes) => bytes,
+        Err(_) => return Err(ApiError::Unauthorized("invalid_credentials".to_string())),
+    };
 
-    // 5. Query user by username_hash
-    let user_row: Option<(String, Vec<u8>, Option<String>, i64)> = sqlx::query_as(
-        "SELECT id, opaque_registration, disabled_at, requires_reregistration FROM users WHERE username_hash = ?",
+    // 5. Query user by username_token
+    #[derive(sqlx::FromRow)]
+    struct LoginUserRow {
+        id: String,
+        opaque_registration: Vec<u8>,
+        disabled_at: Option<String>,
+        deleted_at: Option<String>,
+        requires_reregistration: Option<i64>,
+        encrypted_display: Option<String>,
+    }
+
+    let user_row: Option<LoginUserRow> = sqlx::query_as(
+        "SELECT id, opaque_registration, disabled_at, deleted_at, requires_reregistration, encrypted_display FROM users WHERE username_token = ?",
     )
-    .bind(&username_hash)
+    .bind(&username_token)
     .fetch_optional(&state.pool)
     .await?;
 
-    let (user_id, opaque_registration_bytes, disabled_at, requires_reregistration) = match user_row
-    {
+    let user = match user_row {
         Some(row) => row,
         None => return Err(ApiError::Unauthorized("invalid_credentials".to_string())),
     };
 
-    if requires_reregistration == 1 {
+    if user.deleted_at.is_some() {
+        return Err(ApiError::Unauthorized("invalid_credentials".to_string()));
+    }
+
+    if user.requires_reregistration.unwrap_or(0) == 1 {
         return Err(ApiError::Conflict("reregistration_required".to_string()));
     }
 
-    if disabled_at.is_some() {
+    if user.disabled_at.is_some() {
         return Err(ApiError::Unauthorized("account_disabled".to_string()));
     }
+
+    let user_id = user.id;
+    let opaque_registration_bytes = user.opaque_registration;
+    let encrypted_display = user.encrypted_display;
 
     // 6. Deserialize stored password file
     let password_file = ServerRegistration::<DefaultCipherSuite>::deserialize(
@@ -139,7 +148,7 @@ pub async fn login_start(
         )
     })?;
 
-    // 7. Deserialize credential_request and run ServerLogin::start
+    // 7. Deserialize credential_request and run ServerLogin::start using credential_id bytes
     let credential_request = CredentialRequest::<DefaultCipherSuite>::deserialize(&req_bytes)
         .map_err(|_| ApiError::Unauthorized("invalid_credentials".to_string()))?;
 
@@ -149,7 +158,7 @@ pub async fn login_start(
         &state.opaque_server.setup,
         Some(password_file),
         credential_request,
-        username_hash.as_bytes(),
+        &credential_id[..],
         ServerLoginParameters::default(),
     )
     .map_err(|e| {
@@ -164,7 +173,8 @@ pub async fn login_start(
 
     let pending = PendingLogin {
         user_id,
-        username_hash,
+        username_token,
+        encrypted_display,
         client_id: client_id.to_string(),
         server_login_state: start_result.state,
         created_at: Instant::now(),
@@ -207,13 +217,11 @@ pub async fn login_finish(
         .map_err(|_| ApiError::Unauthorized("invalid_credentials".to_string()))?;
 
     // 5. Query user info
-    let stored_user: (String, Option<String>, String) =
-        sqlx::query_as("SELECT username, display_name, identity_pubkey FROM users WHERE id = ?")
+    let stored_identity_pubkey: String =
+        sqlx::query_scalar("SELECT identity_pubkey FROM users WHERE id = ?")
             .bind(&pending.user_id)
             .fetch_one(&state.pool)
             .await?;
-
-    let (username, display_name, stored_identity_pubkey) = stored_user;
 
     // 6. Handle identity_pubkey
     if let Some(ref pubkey_input) = body.identity_pubkey {
@@ -306,8 +314,8 @@ pub async fn login_finish(
     Ok(Json(LoginFinishResponse {
         session_token: token.raw,
         user_id: pending.user_id,
-        username,
-        display_name,
+        username_token: pending.username_token,
+        encrypted_display: pending.encrypted_display,
         device_id,
         is_owner,
         expires_at,

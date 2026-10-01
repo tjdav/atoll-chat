@@ -17,8 +17,8 @@ pub struct AuthUser {
     pub user_id: String,
     pub session_id: String,
     pub device_id: Option<String>,
-    pub username: String,
-    pub display_name: Option<String>,
+    pub username_token: String,
+    pub encrypted_display: Option<String>,
     pub expires_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
 }
@@ -101,31 +101,32 @@ where
         };
 
         // 4. Query user from DB
-        let user_row =
-            match sqlx::query("SELECT username, display_name, disabled_at FROM users WHERE id = ?")
-                .bind(&session_ctx.user_id)
-                .fetch_optional(&state.pool)
+        let user_row = match sqlx::query(
+            "SELECT username_token, encrypted_display, disabled_at FROM users WHERE id = ?",
+        )
+        .bind(&session_ctx.user_id)
+        .fetch_optional(&state.pool)
+        .await
+        {
+            Ok(Some(row)) => row,
+            Ok(None) => {
+                // User missing: revoke session best-effort and return 401 unauthorized
+                if let Err(e) = session::revoke_session(
+                    &state.pool,
+                    &session_ctx.user_id,
+                    &session_ctx.session_id,
+                )
                 .await
-            {
-                Ok(Some(row)) => row,
-                Ok(None) => {
-                    // User missing: revoke session best-effort and return 401 unauthorized
-                    if let Err(e) = session::revoke_session(
-                        &state.pool,
-                        &session_ctx.user_id,
-                        &session_ctx.session_id,
-                    )
-                    .await
-                    {
-                        warn!(
-                            "failed to revoke session for missing user {}: {}",
-                            session_ctx.user_id, e
-                        );
-                    }
-                    return Err(AuthError::Unauthorized.into_response());
+                {
+                    warn!(
+                        "failed to revoke session for missing user {}: {}",
+                        session_ctx.user_id, e
+                    );
                 }
-                Err(e) => return Err(AuthError::Internal(e.into()).into_response()),
-            };
+                return Err(AuthError::Unauthorized.into_response());
+            }
+            Err(e) => return Err(AuthError::Internal(e.into()).into_response()),
+        };
 
         let disabled_at: Option<DateTime<Utc>> = user_row.get("disabled_at");
         if disabled_at.is_some() {
@@ -142,8 +143,8 @@ where
             return Err(AuthError::AccountDisabled.into_response());
         }
 
-        let username: String = user_row.get("username");
-        let display_name: Option<String> = user_row.get("display_name");
+        let username_token: String = user_row.get("username_token");
+        let encrypted_display: Option<String> = user_row.get("encrypted_display");
 
         let expires_at_dt = parse_datetime(&session_ctx.expires_at).unwrap_or_else(Utc::now);
         let created_at_dt = parse_datetime(&session_ctx.created_at).unwrap_or_else(Utc::now);
@@ -152,8 +153,8 @@ where
             user_id: session_ctx.user_id,
             session_id: session_ctx.session_id,
             device_id: session_ctx.device_id,
-            username,
-            display_name,
+            username_token,
+            encrypted_display,
             expires_at: expires_at_dt,
             created_at: created_at_dt,
         })

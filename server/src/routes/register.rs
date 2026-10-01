@@ -1,5 +1,6 @@
 use crate::altcha::{verify_altcha_payload, AltchaConfig};
 use crate::error::ApiError;
+use crate::identity::{token_bytes, validate_encrypted_display, validate_token};
 use crate::invites::{self, InviteError};
 use crate::opaque::DefaultCipherSuite;
 use crate::registration::PendingRegistration;
@@ -10,13 +11,12 @@ use base64::Engine;
 use opaque_ke::{RegistrationRequest, RegistrationUpload, ServerRegistration};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::time::Instant;
 use tracing::info;
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterStartRequest {
-    pub username: String,
+    pub username_token: String,
     pub registration_request: String,
     pub altcha: Option<String>,
 }
@@ -32,13 +32,14 @@ pub struct RegisterFinishRequest {
     pub registration_id: String,
     pub registration_upload: String,
     pub invite_code: Option<String>,
+    pub encrypted_display: Option<String>,
     pub altcha: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct RegisterFinishResponse {
     pub user_id: String,
-    pub username: String,
+    pub username_token: String,
     pub is_owner: bool,
 }
 
@@ -93,23 +94,20 @@ pub async fn register_start(
     State(state): State<AppState>,
     Json(body): Json<RegisterStartRequest>,
 ) -> Result<Json<RegisterStartResponse>, ApiError> {
-    // 0. Validate ALTCHA
-    validate_altcha(&state.altcha_config, body.altcha.as_deref())?;
-
-    // 1. Validate username
-    let username = body.username.trim();
-    if username.len() < 3
-        || username.len() > 32
-        || !username
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-    {
-        return Err(ApiError::BadRequest(
-            "username must be 3-32 characters (alphanumeric, underscore, dash)".to_string(),
-        ));
+    // 1. Validate username_token format
+    let username_token = body.username_token.trim().to_string();
+    if validate_token(&username_token).is_err() {
+        return Err(ApiError::BadRequest("invalid_username_token".to_string()));
     }
 
-    // 2. Validate registration_request
+    // 2. Validate ALTCHA
+    validate_altcha(&state.altcha_config, body.altcha.as_deref())?;
+
+    // 3. Extract credential_id bytes from token
+    let credential_id = token_bytes(&username_token)
+        .map_err(|_| ApiError::BadRequest("invalid_username_token".to_string()))?;
+
+    // 4. Validate registration_request
     let req_bytes = decode_base64(&body.registration_request)?;
     if req_bytes.is_empty() {
         return Err(ApiError::BadRequest(
@@ -117,43 +115,36 @@ pub async fn register_start(
         ));
     }
 
-    // 3. Compute username_hash
-    let normalized = username.to_lowercase();
-    let mut hasher = Sha256::new();
-    hasher.update(b"username-v1:");
-    hasher.update(normalized.as_bytes());
-    let username_hash = hex::encode(hasher.finalize());
-
-    // 4. Check if user with username_hash already exists
+    // 5. Check if user with username_token already exists and deleted_at IS NULL
     let existing_user: Option<(String,)> =
-        sqlx::query_as("SELECT id FROM users WHERE username_hash = ?")
-            .bind(&username_hash)
+        sqlx::query_as("SELECT id FROM users WHERE username_token = ? AND deleted_at IS NULL")
+            .bind(&username_token)
             .fetch_optional(&state.pool)
             .await?;
 
     if existing_user.is_some() {
-        return Err(ApiError::Conflict("username taken".to_string()));
+        return Err(ApiError::Conflict("username_taken".to_string()));
     }
 
-    // 5. OPAQUE start
+    // 6. OPAQUE start using credential_id bytes
     let opaque_req = RegistrationRequest::<DefaultCipherSuite>::deserialize(&req_bytes)
         .map_err(|e| ApiError::BadRequest(format!("invalid registration request: {e}")))?;
 
     let result = ServerRegistration::<DefaultCipherSuite>::start(
         &state.opaque_server.setup,
         opaque_req,
-        username_hash.as_bytes(),
+        &credential_id[..],
     )
     .map_err(|e| ApiError::BadRequest(format!("OPAQUE registration start failed: {e}")))?;
 
-    // 6. Correlation state
+    // 7. Store correlation state
     let mut rand_bytes = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut rand_bytes);
     let registration_id = URL_SAFE_NO_PAD.encode(rand_bytes);
 
     let pending = PendingRegistration {
-        username: username.to_string(),
-        username_hash,
+        username_token: username_token.clone(),
+        credential_id,
         created_at: Instant::now(),
     };
 
@@ -161,7 +152,7 @@ pub async fn register_start(
         .registration_store
         .insert(registration_id.clone(), pending);
 
-    // 7. Base64 encode registration_response
+    // 8. Base64 encode registration_response
     let registration_response_bytes = result.message.serialize();
     let registration_response = STANDARD.encode(registration_response_bytes);
 
@@ -175,23 +166,40 @@ pub async fn register_finish(
     State(state): State<AppState>,
     Json(body): Json<RegisterFinishRequest>,
 ) -> Result<Json<RegisterFinishResponse>, ApiError> {
-    // 0. Validate ALTCHA
-    validate_altcha(&state.altcha_config, body.altcha.as_deref())?;
-
     // 1. Take pending registration from store
     let pending = state
         .registration_store
         .take(&body.registration_id)
-        .ok_or_else(|| ApiError::BadRequest("unknown or expired registration_id".to_string()))?;
+        .ok_or_else(|| ApiError::BadRequest("unknown_registration_id".to_string()))?;
 
-    // 2. Decode registration upload bytes
+    // 2. Validate ALTCHA
+    validate_altcha(&state.altcha_config, body.altcha.as_deref())?;
+
+    // 3. Validate encrypted_display if present
+    let encrypted_display = if let Some(ref disp) = body.encrypted_display {
+        let trimmed = disp.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            if validate_encrypted_display(trimmed).is_err() {
+                return Err(ApiError::BadRequest(
+                    "invalid_encrypted_display".to_string(),
+                ));
+            }
+            Some(trimmed.to_string())
+        }
+    } else {
+        None
+    };
+
+    // 4. Decode registration upload bytes
     let upload_bytes = decode_base64(&body.registration_upload)?;
 
-    // 3. Deserialize RegistrationUpload
+    // 5. Deserialize RegistrationUpload
     let upload = RegistrationUpload::<DefaultCipherSuite>::deserialize(&upload_bytes)
         .map_err(|e| ApiError::BadRequest(format!("invalid registration upload: {e}")))?;
 
-    // 4. OPAQUE finish
+    // 6. OPAQUE finish
     let server_registration = ServerRegistration::<DefaultCipherSuite>::finish(upload);
     let opaque_registration_bytes = server_registration.serialize().to_vec();
 
@@ -228,7 +236,7 @@ pub async fn register_finish(
             })?;
     }
 
-    // 5. Begin DB Transaction for user creation
+    // 7. Begin DB Transaction for user creation
     let mut tx = state.pool.begin().await?;
 
     // Generate user_id (16 random bytes -> 22 char base64url string)
@@ -239,13 +247,13 @@ pub async fn register_finish(
     // Insert user into DB
     sqlx::query(
         r#"
-        INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey, profile_version)
+        INSERT INTO users (id, username_token, encrypted_display, opaque_registration, identity_pubkey, profile_version)
         VALUES (?, ?, ?, ?, '', 1)
         "#,
     )
     .bind(&user_id)
-    .bind(&pending.username)
-    .bind(&pending.username_hash)
+    .bind(&pending.username_token)
+    .bind(&encrypted_display)
     .bind(&opaque_registration_bytes)
     .execute(&mut *tx)
     .await?;
@@ -282,7 +290,7 @@ pub async fn register_finish(
 
     Ok(Json(RegisterFinishResponse {
         user_id,
-        username: pending.username,
+        username_token: pending.username_token,
         is_owner,
     }))
 }
