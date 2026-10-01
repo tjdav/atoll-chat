@@ -1,0 +1,142 @@
+=== server/migrations/0001_initial.sql ===
+-- Users and authentication
+CREATE TABLE IF NOT EXISTS users (
+    id                  TEXT PRIMARY KEY,
+    username            TEXT NOT NULL,
+    username_hash       TEXT NOT NULL UNIQUE,
+=== server/migrations/0002_roles_seed.sql ===
+INSERT OR IGNORE INTO roles (id, name, level, permissions) VALUES
+    ('role_owner',   'owner',   100, '["*"]'),
+    ('role_admin',   'admin',    80, '["user.manage","invite.unlimited","config.edit","room.force_delete","backup.manage"]'),
+    ('role_inviter', 'inviter',  50, '["invite.limited"]'),
+    ('role_member',  'member',   10, '["room.create","room.join","message.send"]');
+=== server/migrations/0003_server_invites.sql ===
+CREATE TABLE IF NOT EXISTS server_invites (
+    id           TEXT PRIMARY KEY,
+    code         TEXT NOT NULL UNIQUE,
+    created_by   TEXT REFERENCES users(id),
+    max_uses     INTEGER NOT NULL,
+=== server/migrations/0004_session_last_seen.sql ===
+ALTER TABLE sessions ADD COLUMN last_seen_at DATETIME;
+
+ALTER TABLE users ADD COLUMN display_name TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_active
+=== server/migrations/0005_pending_mls_removes.sql ===
+-- Definitions for rooms, room_members, room_epochs, key_packages, pending_mls_removes
+CREATE TABLE IF NOT EXISTS rooms (
+    id                   TEXT PRIMARY KEY,
+    owner_id             TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name_encrypted       TEXT,
+=== server/migrations/0006_rate_limits.sql ===
+CREATE TABLE IF NOT EXISTS rate_limits (
+    key          TEXT NOT NULL,
+    window_start DATETIME NOT NULL,
+    count        INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (key, window_start)
+=== server/migrations/0007_invite_indexes.sql ===
+CREATE INDEX IF NOT EXISTS idx_server_invites_created_by
+    ON server_invites(created_by, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_server_invites_active
+    ON server_invites(code)
+=== server/migrations/0008_audit_indexes.sql ===
+CREATE TABLE IF NOT EXISTS audit_log (
+    id          TEXT PRIMARY KEY,
+    actor_id    TEXT REFERENCES users(id),
+    action      TEXT NOT NULL,
+    target_type TEXT,
+=== server/migrations/0009_welcomes.sql ===
+CREATE TABLE IF NOT EXISTS welcomes (
+    id                  TEXT PRIMARY KEY,
+    room_id             TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    recipient_user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_client_id TEXT NOT NULL,
+=== server/migrations/0010_user_deleted_at.sql ===
+ALTER TABLE users ADD COLUMN deleted_at DATETIME;
+=== server/migrations/0011_room_indexes.sql ===
+-- Migration 0011: Room indexes and room_epochs table
+CREATE TABLE IF NOT EXISTS room_epochs (
+    room_id    TEXT PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,
+    epoch      INTEGER NOT NULL DEFAULT 0,
+    sequence   INTEGER NOT NULL DEFAULT 0,
+=== server/migrations/0012_room_invites.sql ===
+CREATE TABLE IF NOT EXISTS room_invites (
+    id           TEXT PRIMARY KEY,
+    room_id      TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    code         TEXT NOT NULL UNIQUE,
+    created_by   TEXT NOT NULL REFERENCES users(id),
+=== server/migrations/0013_keypackage_indexes.sql ===
+-- Migration 0013: KeyPackage schema update and indexes for claim ordering
+ALTER TABLE key_packages RENAME COLUMN key_package TO key_package_data;
+ALTER TABLE key_packages ADD COLUMN cipher_suite INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE key_packages ADD COLUMN is_last_resort INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE key_packages ADD COLUMN consumed_at DATETIME;
+=== server/migrations/0014_room_messages.sql ===
+CREATE TABLE IF NOT EXISTS room_messages (
+    id                        TEXT PRIMARY KEY,
+    room_id                   TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    sender_user_id            TEXT NOT NULL REFERENCES users(id),
+    sender_client_id          TEXT NOT NULL,
+=== server/migrations/0015_room_messages_deleted_at.sql ===
+-- Amendment 2 (2026-09-28): Message Deletion Endpoint
+--
+-- Adds a tombstone column to room_messages. Phase 10 does not read or
+-- write this column. Phase 11's DELETE /rooms/:id/messages/:msg_id
+-- endpoint sets it. Deleted messages remain in the table until retention
+=== server/migrations/0016_pending_removes_index.sql ===
+CREATE INDEX IF NOT EXISTS idx_pending_mls_removes_active
+    ON pending_mls_removes(room_id, consumed_at)
+    WHERE consumed_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_pending_mls_removes_pending
+=== server/migrations/0017_attachment_columns.sql ===
+-- Extend attachments table schema for phase 12a
+DROP TABLE IF EXISTS attachments;
+
+CREATE TABLE attachments (
+    id                 TEXT PRIMARY KEY,
+=== server/migrations/0018_users_requires_reregistration.sql ===
+ALTER TABLE users ADD COLUMN requires_reregistration INTEGER NOT NULL DEFAULT 0;
+=== server/migrations/0019_oprf_audit.sql ===
+CREATE TABLE oprf_audit (
+    id          TEXT PRIMARY KEY,
+    event       TEXT NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+=== server/migrations/0020_users_oprf_identity.sql ===
+-- V2 Amendment 13: OPRF-based identity.
+--
+-- Removes plaintext username, username_hash, and display_name.
+-- Adds username_token and encrypted_display.
+
+=== server/migrations/0021_user_seq.sql ===
+-- V2 Amendment 15: user-scoped sync sequence counter.
+--
+-- Every user has a monotonic counter that allocates user_seq values to
+-- user-scoped state rows. The counter is per-user so that a user's
+-- devices converge on a total order without cross-user coordination.
+=== server/migrations/0022_read_state.sql ===
+-- V2 Amendment 15: read state.
+--
+-- For each (user, room) pair, the ID of the last message the user has read.
+-- The user_seq column orders writes within the user's sync stream.
+-- deleted_at supports tombstoning when a user leaves a room or marks state
+=== server/migrations/0023_user_preferences.sql ===
+-- V2 Amendment 15: user preferences.
+--
+-- Per-user key/value store for preferences (room_order, theme, etc.).
+-- Composite primary key (user_id, key) with user_seq for ordering in sync.
+
+=== server/migrations/0024_device_names.sql ===
+-- V2 Amendment 15: device names as user-scoped sync state.
+--
+-- Device names are encrypted client-side with a key derived from the
+-- user's OPRF token. The server stores the ciphertext verbatim and never
+-- decrypts it. Names are synced across the user's devices via user_seq.
+=== server/migrations/0025_requires_reregistration.sql ===
+-- V2 Amendment 13 follow-up: reregistration flag.
+--
+-- After the username OPRF key is rotated, every stored username_token
+-- becomes invalid. Users are flagged for re-registration. The login
+-- handler rejects flagged users with HTTP 409.

@@ -1,0 +1,51 @@
+pub enum Command {
+    /// Run the HTTP server (default)
+    Serve,
+
+    /// Run pending database migrations and exit
+    Migrate,
+
+    /// Regenerate VAPID keys and revoke all push subscriptions
+    RotateVapid,
+
+    /// Regenerate ALTCHA HMAC secret
+    RotateAltcha,
+
+    /// Resample OPRF seed (destructive: invalidates user registrations)
+    RotateOprf {
+        #[arg(long, default_value_t = false)]
+        confirm: bool,
+    },
+
+    /// Restore from a backup
+    Restore {
+        #[arg(long)]
+        from: PathBuf,
+
+        #[arg(long, default_value_t = false)]
+        confirm: bool,
+    },
+
+    /// Migrate attachment storage backend
+    StorageMigrate {
+        #[arg(long)]
+        from: String,
+
+        #[arg(long)]
+        to: String,
+
+        #[arg(long, default_value = "100")]
+        batch_size: usize,
+
+        #[arg(long, default_value = "4")]
+        concurrency: usize,
+
+        #[arg(long)]
+        delete_source: bool,
+
+        #[arg(long)]
+        dry_run: bool,
+    },
+}
+
+pub async fn run_migrate() -> Result<(), Box<dyn std::error::Error>> {

@@ -1,0 +1,150 @@
+# Test batch manifest.
+#
+# Every file in tests/*.rs MUST appear in exactly one batch.
+# The test `test_batch_manifest.rs` enforces this invariant.
+#
+# To add a new test file:
+#   1. Add it to the batch that matches its domain.
+#   2. If no batch fits, add a new batch.
+#   3. Update the Makefile (see below) — or the Makefile can read this file.
+#
+# Batch runtime budget: 60 seconds per batch.
+
+[[batch]]
+name = "identity"
+description = "OPRF identity, registration, login, lookup, profile, GDPR"
+files = [
+    "gdpr",
+    "gdpr_identity",
+    "identity_schema",
+    "login_oprf",
+    "lookup_oprf",
+    "profile_oprf",
+    "register_oprf",
+    "registration",
+]
+timeout_seconds = 60
+
+[[batch]]
+name = "auth"
+description = "Sessions, devices, admin config, ALTCHA, legacy login, permissions, invites, audit, ready"
+files = [
+    "admin",
+    "altcha",
+    "audit",
+    "auth",
+    "devices",
+    "invites",
+    "login",
+    "permissions",
+    "ready",
+]
+timeout_seconds = 60
+
+[[batch]]
+name = "messaging"
+description = "Rooms, room messages, welcomes, key packages, moderation, room invites, message deletion, message sync"
+files = [
+    "key_packages",
+    "message_deletion",
+    "message_sync",
+    "moderation",
+    "room_invites",
+    "room_messages",
+    "rooms",
+    "welcomes",
+]
+timeout_seconds = 60
+
+[[batch]]
+name = "storage"
+description = "Attachments, backups, admin backups, retention, storage migration"
+files = [
+    "admin_backups",
+    "attachment_retention",
+    "attachments",
+    "attachments_presign",
+    "attachments_range",
+    "backup",
+    "backup_restore",
+    "cli_storage_migrate",
+    "storage",
+    "storage_migrate",
+]
+timeout_seconds = 60
+
+[[batch]]
+name = "oprf"
+description = "OPRF blind endpoint and key derivation"
+files = [
+    "admin_oprf_rotate",
+    "oprf_blind",
+    "oprf_keys",
+    "oprf_rotation",
+    "oprf_rotation_login",
+]
+timeout_seconds = 60
+
+[[batch]]
+name = "operations"
+description = "CLI subcommands, rotation, cleanup, migrations"
+files = [
+    "admin_rotate",
+    "cleanup",
+    "cli_migrate",
+    "cli_rotate",
+]
+timeout_seconds = 60
+
+[[batch]]
+name = "transport"
+description = "HTTPS enforcement, SPA hosting"
+files = [
+    "static",
+    "transport",
+]
+timeout_seconds = 30
+
+[[batch]]
+name = "sockudo"
+description = "Sockudo auth, event publishing, pending removes"
+files = [
+    "event_publishing",
+    "pending_removes",
+    "sockudo",
+]
+timeout_seconds = 60
+
+[[batch]]
+name = "push"
+description = "Push subscriptions, Web Push, VAPID, delivery, and native push (APNs, FCM)"
+files = [
+    "push_apns",
+    "push_delivery",
+    "push_delivery_native",
+    "push_fcm",
+    "push_payload",
+    "push_subscriptions",
+    "push_suppression",
+    "push_vapid",
+]
+timeout_seconds = 60
+
+[[batch]]
+name = "sync"
+description = "User-scoped sync foundation, sequence allocation, sync endpoint, channel auth, encrypted device names"
+files = [
+    "device_name_login",
+    "device_name_sync",
+    "device_name_validation",
+    "device_name_write",
+    "preferences_crud",
+    "preferences_sync",
+    "preferences_validation",
+    "read_state_sync",
+    "read_state_write",
+    "sync_channel_auth",
+    "sync_endpoint",
+    "sync_seq",
+]
+timeout_seconds = 60
