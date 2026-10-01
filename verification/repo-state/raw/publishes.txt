@@ -1,0 +1,9 @@
+server/src/sockudo/publisher.rs:51:    pub async fn publish(
+server/src/routes/room_messages.rs:147:                .publish(&channel, "message.new", msg_payload)
+server/src/routes/room_messages.rs:184:                .publish(&channel, "message.new", msg_payload)
+server/src/routes/room_messages.rs:197:                .publish(&channel, "epoch.updated", epoch_payload)
+server/src/routes/room_messages.rs:300:        .publish(&channel, "message.deleted", payload)
+server/src/routes/rooms.rs:182:        .publish(&channel, "room.member_removed", payload)
+server/src/routes/rooms.rs:251:        .publish(&channel, "room.member_added", event_payload)
+server/src/routes/rooms.rs:282:        .publish(&channel, "room.member_removed", payload)
+server/src/sync/envelope.rs:42:        .publish(&channel, &envelope.event_type, payload)

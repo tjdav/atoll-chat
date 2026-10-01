@@ -1,0 +1,2 @@
+OK: all test files assigned to exactly one batch
+Exit code: 0

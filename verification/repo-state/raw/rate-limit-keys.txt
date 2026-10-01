@@ -1,0 +1,51 @@
+pub enum RateLimitKey {
+    InviteCreate { user_id: String, window: Window },
+    InviteRedeem { ip: String },
+    KpClaim { user_id: String, window: Window },
+    Login { ip: String },
+    DataExport { user_id: String },
+    Presign { user_id: String },
+    OprfBlind { ip: String, window: Window },
+    Lookup { user_id: String },
+    ReadState { user_id: String },
+    Preference { user_id: String },
+    DeviceName { user_id: String },
+    AdminOprfRotate { user_id: String },
+}
+
+#[derive(Debug, Clone)]
+pub struct RateLimitDecision {
+    pub allowed: bool,
+    pub remaining: u32,
+    pub reset_at: DateTime<Utc>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum RateLimitError {
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error("invalid key: {0}")]
+    InvalidKey(String),
+}
+
+fn compute_window(now: DateTime<Utc>, window: Window) -> (DateTime<Utc>, DateTime<Utc>) {
+    match window {
+        Window::Minute => {
+            let start = now
+                .with_second(0)
+                .and_then(|t| t.with_nanosecond(0))
+                .unwrap_or(now);
+            let reset = start + Duration::minutes(1);
+            (start, reset)
+        }
+        Window::Hour => {
+            let start = now
+                .with_minute(0)
+                .and_then(|t| t.with_second(0))
+                .and_then(|t| t.with_nanosecond(0))
+                .unwrap_or(now);
+            let reset = start + Duration::hours(1);
+            (start, reset)
+        }
+        Window::Day => {
+            let start = now

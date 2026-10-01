@@ -1,0 +1,171 @@
+pub fn build_app(state: AppState) -> Router {
+    let api_routes = Router::new()
+        .route(
+            "/admin/config",
+            get(routes::admin::get_config_handler).patch(routes::admin::patch_config_handler),
+        )
+        .route(
+            "/admin/limits",
+            get(routes::admin::get_limits_handler).patch(routes::admin::patch_limits_handler),
+        )
+        .route("/admin/audit", get(routes::admin::get_audit_handler))
+        .route(
+            "/admin/backups",
+            get(routes::admin_backups::list).post(routes::admin_backups::trigger),
+        )
+        .route(
+            "/admin/vapid/rotate",
+            post(routes::admin::post_rotate_vapid_handler),
+        )
+        .route(
+            "/admin/altcha/rotate",
+            post(routes::admin::post_rotate_altcha_handler),
+        )
+        .route("/admin/oprf/rotate", post(routes::admin_oprf::rotate))
+        .route("/capabilities", get(routes::capabilities::handler))
+        .route("/roles", get(routes::roles::handler))
+        .route(
+            "/auth/register/challenge",
+            get(routes::register::register_challenge),
+        )
+        .route(
+            "/auth/register/start",
+            post(routes::register::register_start),
+        )
+        .route(
+            "/auth/register/finish",
+            post(routes::register::register_finish),
+        )
+        .route("/oprf/blind", post(routes::oprf::blind))
+        .route("/auth/login/start", post(routes::login::login_start))
+        .route("/auth/login/finish", post(routes::login::login_finish))
+        .route("/users/lookup", post(routes::users::lookup_user))
+        .route(
+            "/users/me",
+            get(routes::users::get_me)
+                .patch(routes::users::patch_me)
+                .delete(routes::users::delete_me),
+        )
+        .route("/users/me/export", get(routes::users::export_me))
+        .route("/users/me/sessions", get(routes::sessions::list))
+        .route("/users/me/sessions/{id}", delete(routes::sessions::revoke))
+        .route("/users/me/devices", get(routes::devices::list))
+        .route("/users/me/read-state", post(routes::read_state::write))
+        .route(
+            "/users/me/preferences/{key}",
+            get(routes::preferences::get)
+                .patch(routes::preferences::write)
+                .delete(routes::preferences::delete),
+        )
+        .route(
+            "/users/me/devices/{id}",
+            patch(routes::devices::update_name).delete(routes::devices::revoke),
+        )
+        .route(
+            "/users/me/push-subscriptions",
+            get(routes::push_subscriptions::list).post(routes::push_subscriptions::register),
+        )
+        .route(
+            "/users/me/push-subscriptions/{id}",
+            delete(routes::push_subscriptions::revoke),
+        )
+        .route("/users/me/sync", get(routes::sync::get_sync))
+        .route("/auth/logout", post(routes::sessions::logout))
+        .route(
+            "/admin/invites",
+            post(routes::invites::create_invite_handler).get(routes::invites::list_invites_handler),
+        )
+        .route(
+            "/admin/invites/{id}",
+            delete(routes::invites::revoke_invite_handler),
+        )
+        .route(
+            "/invites/{code}",
+            get(routes::invites::validate_invite_public_handler),
+        )
+        .route(
+            "/rooms",
+            post(routes::rooms::create).get(routes::rooms::list),
+        )
+        .route("/rooms/join", post(routes::room_invites::join))
+        .route(
+            "/rooms/{id}",
+            get(routes::rooms::get).delete(routes::rooms::delete),
+        )
+        .route(
+            "/rooms/{id}/invites",
+            post(routes::room_invites::create).get(routes::room_invites::list),
+        )
+        .route(
+            "/rooms/{id}/invites/{invite_id}",
+            delete(routes::room_invites::revoke),
+        )
+        .route("/rooms/{id}/leave", post(routes::rooms::leave))
+        .route(
+            "/rooms/{id}/members",
+            get(routes::rooms::list_members).post(routes::rooms::add_member),
+        )
+        .route(
+            "/rooms/{id}/members/{uid}",
+            delete(routes::rooms::kick_member),
+        )
+        .route(
+            "/rooms/{id}/members/{uid}/promote",
+            post(routes::rooms::promote_member),
+        )
+        .route(
+            "/rooms/{id}/members/{uid}/demote",
+            post(routes::rooms::demote_member),
+        )
+        .route(
+            "/rooms/{id}/transfer",
+            post(routes::rooms::transfer_ownership),
+        )
+        .route("/keypackages", post(routes::key_packages::upload))
+        .route("/keypackages/count", get(routes::key_packages::count))
+        .route("/keypackages/claim", post(routes::key_packages::claim))
+        .route(
+            "/rooms/{id}/messages",
+            post(routes::room_messages::submit).get(routes::room_messages::list),
+        )
+        .route(
+            "/rooms/{id}/messages/{message_id}",
+            delete(routes::room_messages::delete_message),
+        )
+        .route(
+            "/rooms/{id}/messages/{message_id}/ciphertext",
+            get(routes::room_messages::get_ciphertext),
+        )
+        .route("/rooms/{id}/epoch", get(routes::room_messages::get_epoch))
+        .route("/welcomes", get(routes::welcomes::list))
+        .route("/welcomes/{id}", get(routes::welcomes::get))
+        .route("/welcomes/{id}/consume", post(routes::welcomes::consume))
+        .route("/sockudo/auth", post(routes::sockudo::auth))
+        .route(
+            "/rooms/{id}/pending-removes",
+            get(routes::pending_removes::list),
+        )
+        .route(
+            "/rooms/{id}/pending-removes/{remove_id}/consume",
+            post(routes::pending_removes::consume),
+        )
+        .route("/rooms/{id}/attachments", post(routes::attachments::upload))
+        .route(
+            "/attachments/{id}",
+            get(routes::attachments::download).delete(routes::attachments::delete_attachment),
+        )
+        .route(
+            "/attachments/{id}/presign",
+            post(routes::attachments::presign),
+        );
+
+    let cors = if state.config.app_env == "development" {
+        tracing::info!("CORS mode: permissive (development)");
+        CorsLayer::permissive()
+    } else {
+        if let Some(app_url) = &state.config.app_url {
+            tracing::info!("CORS mode: restricted to {}", app_url);
+            CorsLayer::new().allow_origin(
+                app_url
+                    .parse::<axum::http::HeaderValue>()
+                    .expect("Invalid APP_URL for CORS"),

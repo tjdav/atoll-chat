@@ -1,0 +1,9 @@
+attachments          push_subscriptions   server_invites
+audit_log            rate_limits          sessions
+device_names         read_state           user_preferences
+devices              roles                user_roles
+instance_config      room_epochs          user_seq
+instance_limits      room_invites         users
+key_packages         room_members         welcomes
+oprf_audit           room_messages
+pending_mls_removes  rooms
