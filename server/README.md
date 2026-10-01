@@ -885,8 +885,9 @@ Before Sockudo allows a WebSocket client to subscribe to a private channel, the 
 - Body: `{"socket_id": "1234.5678", "channel_name": "private-room-<room_id>"}`
 - Validation:
   - `socket_id` must match `^\d+\.\d+$` (HTTP 400 `invalid_socket_id`).
-  - `channel_name` must start with `private-room-` (HTTP 400 `invalid_channel_name`).
-  - Requesting user must be an active member of the room. Rejects non-members and non-existent rooms uniformly with HTTP 403 `forbidden` to prevent room enumeration.
+  - `channel_name` must start with `private-room-` or `private-user-` (HTTP 400 `invalid_channel_name`).
+  - For room channels (`private-room-<room_id>`): Requesting user must be an active member of the room. Rejects non-members and non-existent rooms uniformly with HTTP 403 `forbidden` to prevent room enumeration.
+  - For user channels (`private-user-<user_id>`): `user_id` must strictly equal the authenticated user's ID (`target_user_id == auth.user_id`), returning HTTP 403 `forbidden` otherwise.
 - Response: `{ "auth": "<app_key>:<signature_hex>" }` computed via `HMAC-SHA256(app_secret, "socket_id:channel_name")`.
 
 ### Realtime Publish Flow
@@ -919,6 +920,62 @@ The server queues remove intentions in `pending_mls_removes` when members or dev
 3. Client receives `message` events in real time.
 4. Client fetches ciphertexts on demand and periodically polls `GET /api/v1/rooms/:id/messages?since_epoch=N` on reconnect or network interruption.
 5. Client lists and processes `GET /api/v1/rooms/:id/pending-removes` to complete room membership removals.
+
+## User-Scoped Sync
+
+The user-scoped sync foundation provides the core synchronization infrastructure for per-user state across devices.
+
+### User Sequence Counter (`user_seq`)
+
+- **Scope**: Sequence numbers are strictly per-user (`user_id`). Each user has a monotonic counter in `user_seq` starting at 1.
+- **Total Order Guarantee**: A user's devices share the same sequence space so that state changes converge on a total order without cross-user coordination.
+- **Allocation (`allocate_user_seq`)**:
+  - Executed inside a SQLite transaction using `INSERT INTO user_seq (user_id, next_seq) VALUES (?, 2) ON CONFLICT(user_id) DO UPDATE SET next_seq = next_seq + 1 RETURNING next_seq - 1`.
+  - Serialized at the database write-lock level to prevent sequence collisions across concurrent requests.
+
+### Endpoint (`GET /api/v1/users/me/sync`)
+
+- **Auth**: Requires `AuthUser` authentication.
+- **Query Parameter**:
+  - `since_seq`: Required non-negative integer (`>= 0`). Missing, negative, or malformed values return HTTP 400 (`{"error":"invalid_since_seq"}`).
+- **Cursor Semantics**:
+  - `since_seq = 0`: Full sync request returning all current state (excluding tombstones).
+  - `since_seq > 0`: Delta sync request returning rows modified after `since_seq` (including tombstones).
+- **Response Shape**:
+  ```json
+  {
+    "read_state": [],
+    "user_preferences": [],
+    "device_state": [],
+    "starred_items": [],
+    "max_seq": 0,
+    "full_resync_required": false
+  }
+  ```
+  - `max_seq`: Returns the maximum `user_seq` across returned state rows (equals `since_seq` when no rows are returned).
+  - `full_resync_required`: Set to `false` in this foundation task. When sync state retention pruning is added in a future task, clients whose `since_seq` falls below retained history receive `true` and must re-sync from `since_seq = 0`.
+- **Cache Directive**: Responses carry `Cache-Control: no-store` to guarantee clients never receive stale state diffs.
+
+### User Channel Subscription (`private-user-{user_id}`)
+
+- **Sockudo Auth Extension**: `POST /api/v1/sockudo/auth` supports channel authorization for `private-user-{user_id}` channels.
+- **Authorization Rule**: Strict user equality check (`target_user_id == auth.user_id`). Users can subscribe only to their own user channel; attempts to authorize another user's channel return HTTP 403 (`{"error":"forbidden"}`).
+
+### Durable User Event Envelope
+
+Real-time user state changes publish an advisory `UserEventEnvelope` to `private-user-{user_id}`:
+
+```json
+{
+  "event_type": "read.sync",
+  "user_seq": 42,
+  "payload": { ... },
+  "emitted_at": "2026-09-30T12:00:00Z"
+}
+```
+
+- **Delivery Guarantee**: Best-effort advisory events. Event publishing failures log at `warn` without aborting HTTP writes.
+- **Authoritative Source**: REST sync endpoint (`GET /api/v1/users/me/sync`) remains the authoritative source of truth.
 
 ## Attachments
 
@@ -1222,7 +1279,7 @@ Notifications carry metadata only:
 - **410 Gone / 404 Not Found**: The push endpoint is no longer valid. The subscription row is immediately deleted (`DELETE FROM push_subscriptions`).
 - **Transient Failures / Timeouts**: Logged at `warn`. The subscription is preserved for future attempts.
 
-### Native Delivery
+#### Native Delivery
 
 Native push notification senders for iOS (APNs) and Android (FCM) extend push delivery across all supported platforms (`web`, `desktop`, `ios`, `android`).
 

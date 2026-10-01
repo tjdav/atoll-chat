@@ -32,6 +32,7 @@ pub mod routes;
 pub mod session;
 pub mod sockudo;
 pub mod storage;
+pub mod sync;
 pub mod welcomes;
 
 use axum::{
@@ -76,6 +77,10 @@ pub use sockudo::{Publisher, SockudoConfig, SockudoError};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 pub use storage::{build_storage, FsStorage, S3Storage, Storage, StorageError};
+pub use sync::{
+    allocate_user_seq, execute_sync, publish_user_event, DeviceStateRow, PreferenceRow,
+    ReadStateRow, StarredItemRow, SyncError, SyncQuery, SyncResponse, UserEventEnvelope,
+};
 pub use welcomes::{
     consume_welcome, create_welcome, get_welcome_data, list_pending, WelcomeError, WelcomeView,
 };
@@ -230,6 +235,7 @@ pub fn build_app(state: AppState) -> Router {
             "/users/me/push-subscriptions/{id}",
             delete(routes::push_subscriptions::revoke),
         )
+        .route("/users/me/sync", get(routes::sync::get_sync))
         .route("/auth/logout", post(routes::sessions::logout))
         .route(
             "/admin/invites",
