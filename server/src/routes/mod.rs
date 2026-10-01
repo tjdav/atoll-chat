@@ -10,6 +10,7 @@ pub mod login;
 pub mod oprf;
 pub mod pending_removes;
 pub mod push_subscriptions;
+pub mod read_state;
 pub mod ready;
 pub mod register;
 pub mod roles;

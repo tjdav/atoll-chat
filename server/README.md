@@ -977,6 +977,24 @@ Real-time user state changes publish an advisory `UserEventEnvelope` to `private
 - **Delivery Guarantee**: Best-effort advisory events. Event publishing failures log at `warn` without aborting HTTP writes.
 - **Authoritative Source**: REST sync endpoint (`GET /api/v1/users/me/sync`) remains the authoritative source of truth.
 
+### Read State (`POST /api/v1/users/me/read-state`)
+
+- **What Read State Is**: Tracks the ID of the last message read by a user per room (`(user_id, room_id)`). It is per-user (not per-device) so reading a message on one device marks it read across all user devices.
+- **Write Endpoint (`POST /api/v1/users/me/read-state`)**:
+  - Request body: `{ "room_id": "<room_id>", "last_read_message_id": "<message_id or null>" }`.
+  - Behavior: Verifies membership and message existence (if `last_read_message_id` is provided), allocates a `user_seq`, and upserts `read_state` setting `deleted_at = NULL`.
+  - Headers: Returns `Cache-Control: no-store`.
+  - Rate limiting: Keyed by user ID (`RATE_READ_STATE_PER_MIN`, default 120/min).
+- **Sync & Tombstones**:
+  - Full sync (`since_seq = 0`) excludes tombstones (`deleted_at IS NULL`).
+  - Delta sync (`since_seq > 0`) includes tombstones (`deleted_at IS NOT NULL`) so clients can delete local state.
+- **Durable Event**: On write commit, dispatches advisory event `read.sync` to `private-user-{user_id}`.
+- **Client Integration Contract**:
+  - Client writes read state after viewing a message.
+  - Client applies `read.sync` events received on the user channel.
+  - On cold start, client calls `GET /users/me/sync?since_seq=0` and applies all rows.
+  - On reconnect, client calls `GET /users/me/sync?since_seq=<cursor>` and applies the diff.
+
 ## Attachments
 
 Phase 12 delivers encrypted attachment storage, HTTP Range streaming support, and S3 presigned URLs.

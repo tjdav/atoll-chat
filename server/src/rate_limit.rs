@@ -19,6 +19,7 @@ pub enum RateLimitKey {
     Presign { user_id: String },
     OprfBlind { ip: String, window: Window },
     Lookup { user_id: String },
+    ReadState { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -184,6 +185,15 @@ pub async fn check(
                 start,
                 reset,
                 60, // Default 60 lookup requests per user per minute
+            )
+        }
+        RateLimitKey::ReadState { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("read_state:{user_id}:min"),
+                start,
+                reset,
+                config.read_state_per_min,
             )
         }
     };
