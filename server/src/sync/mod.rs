@@ -1,12 +1,12 @@
 pub mod envelope;
+pub mod preferences;
 pub mod query;
 pub mod read_state;
 pub mod seq;
 
 pub use envelope::{publish_user_event, UserEventEnvelope};
-pub use query::{
-    execute_sync, DeviceStateRow, PreferenceRow, StarredItemRow, SyncQuery, SyncResponse,
-};
+pub use preferences::PreferenceRow;
+pub use query::{execute_sync, DeviceStateRow, StarredItemRow, SyncQuery, SyncResponse};
 pub use read_state::ReadStateRow;
 pub use seq::allocate_user_seq;
 
@@ -20,4 +20,6 @@ pub enum SyncError {
     Serialization(String),
     #[error("read state error: {0}")]
     ReadState(#[from] read_state::ReadStateError),
+    #[error("preferences error: {0}")]
+    Preferences(#[from] preferences::PreferencesError),
 }

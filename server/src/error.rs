@@ -8,6 +8,7 @@ use crate::room_invites::RoomInviteError;
 use crate::room_messages::RoomMessageError;
 use crate::rooms::RoomError;
 use crate::session::SessionError;
+use crate::sync::preferences::PreferencesError;
 use axum::{
     http::{header, StatusCode},
     response::{IntoResponse, Response},
@@ -96,6 +97,27 @@ impl IntoResponse for ApiError {
 
                 (status, body).into_response()
             }
+        }
+    }
+}
+
+// Implement From<PreferencesError> for ApiError
+impl From<PreferencesError> for ApiError {
+    fn from(err: PreferencesError) -> Self {
+        match err {
+            PreferencesError::Database(e) => ApiError::Internal(e.into()),
+            PreferencesError::InvalidKey(_) => ApiError::BadRequest("invalid_key".to_string()),
+            PreferencesError::ReservedKey(k) => ApiError::InternalWithDetails(
+                StatusCode::BAD_REQUEST,
+                "reserved_key".to_string(),
+                serde_json::json!({ "key": k }),
+            ),
+            PreferencesError::ValueTooLarge(limit, size) => ApiError::InternalWithDetails(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "value_too_large".to_string(),
+                serde_json::json!({ "limit": limit, "size": size }),
+            ),
+            PreferencesError::Serialization(msg) => ApiError::BadRequest(msg),
         }
     }
 }

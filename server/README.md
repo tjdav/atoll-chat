@@ -995,6 +995,27 @@ Real-time user state changes publish an advisory `UserEventEnvelope` to `private
   - On cold start, client calls `GET /users/me/sync?since_seq=0` and applies all rows.
   - On reconnect, client calls `GET /users/me/sync?since_seq=<cursor>` and applies the diff.
 
+### Generic Preferences (`/api/v1/users/me/preferences/:key`)
+
+- **What Generic Preferences Are**: Serves as a generic key/value store for user-defined client settings (theme, notification sounds, nicknames, font size, etc.) without requiring a server endpoint per setting.
+- **Key Syntax & Constraints**:
+  - Valid keys match `^[a-z][a-z0-9_-]*(:[a-z0-9_-]+)*$` with length `1..=128`. Invalid patterns return HTTP 400 (`invalid_key`).
+  - Reserved keys (`room_order`) and keys starting with `_` are reserved for server-owned functionality.
+  - Writing or deleting reserved keys returns HTTP 400 (`reserved_key` with details `{"key": key}`).
+  - Reading a reserved key via the generic endpoint returns HTTP 404 (`preference_not_found`).
+- **Value Size Limit**: Values are arbitrary JSON (string, number, boolean, array, object, null) stored as JSON strings. Maximum value size is 64 KB (65,536 bytes) serialized. Exceeding 64 KB returns HTTP 413 (`value_too_large` with details `{"limit": 65536, "size": actual}`).
+- **Endpoints**:
+  - `GET /api/v1/users/me/preferences/:key` — Reads one preference row.
+  - `PATCH /api/v1/users/me/preferences/:key` — Writes a preference row (`{"value": <any JSON>}`). Body missing `value` returns HTTP 400 (`missing_field` with details `{"field": "value"}`).
+  - `DELETE /api/v1/users/me/preferences/:key` — Deletes a preference row. Not present returns HTTP 404 (`preference_not_found`).
+  - Responses return `Cache-Control: no-store`.
+- **Rate Limiting**: Keyed by user ID (`RATE_PREFERENCE_PER_MIN`, default 120/min).
+- **Sync Integration**: Preference rows are returned in the `user_preferences` array of `GET /api/v1/users/me/sync`.
+- **Durable Event**: On write or delete commit, dispatches advisory event `preference.updated` to `private-user-{user_id}`:
+  - Write payload: `{ "key": key, "user_seq": seq }` (omits value to conserve bandwidth).
+  - Delete payload: `{ "key": key, "user_seq": seq, "deleted": true }`.
+- **Hard-Delete Sync Limitation**: Deleted preference rows are physically removed from `user_preferences`. Deleted keys do not appear in sync responses; clients discover deletions on subsequent full syncs (`since_seq = 0`) by the absence of the key.
+
 ## Attachments
 
 Phase 12 delivers encrypted attachment storage, HTTP Range streaming support, and S3 presigned URLs.
