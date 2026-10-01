@@ -10,7 +10,7 @@ pub struct Device {
     pub id: String,
     pub user_id: String,
     pub client_id: String,
-    pub name: Option<String>,
+    pub encrypted_device_name: Option<String>,
     pub last_seen: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
@@ -41,9 +41,11 @@ pub async fn find_by_client_id(
 ) -> Result<Option<Device>, DeviceError> {
     let row = sqlx::query(
         r#"
-        SELECT id, user_id, client_id, name, last_seen, created_at
-        FROM devices
-        WHERE user_id = ? AND client_id = ?
+        SELECT d.id, d.user_id, d.client_id, dn.encrypted_device_name, d.last_seen, d.created_at
+        FROM devices d
+        LEFT JOIN device_names dn
+            ON d.id = dn.device_id AND d.user_id = dn.user_id AND dn.deleted_at IS NULL
+        WHERE d.user_id = ? AND d.client_id = ?
         "#,
     )
     .bind(user_id)
@@ -60,7 +62,7 @@ pub async fn find_by_client_id(
         id: row.get("id"),
         user_id: row.get("user_id"),
         client_id: row.get("client_id"),
-        name: row.get("name"),
+        encrypted_device_name: row.get("encrypted_device_name"),
         last_seen: row.get("last_seen"),
         created_at: row.get("created_at"),
     }))
@@ -70,32 +72,30 @@ pub async fn create_device(
     pool: &SqlitePool,
     user_id: &str,
     client_id: &str,
-    name: Option<&str>,
 ) -> Result<Device, DeviceError> {
     let mut id_bytes = [0u8; 16];
     rand::thread_rng().fill_bytes(&mut id_bytes);
     let device_id = URL_SAFE_NO_PAD.encode(id_bytes);
 
-    let clean_name = name.map(|s| s.trim()).filter(|s| !s.is_empty());
-
     sqlx::query(
         r#"
-        INSERT INTO devices (id, user_id, client_id, name)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO devices (id, user_id, client_id)
+        VALUES (?, ?, ?)
         "#,
     )
     .bind(&device_id)
     .bind(user_id)
     .bind(client_id)
-    .bind(clean_name)
     .execute(pool)
     .await?;
 
     let row = sqlx::query(
         r#"
-        SELECT id, user_id, client_id, name, last_seen, created_at
-        FROM devices
-        WHERE id = ?
+        SELECT d.id, d.user_id, d.client_id, dn.encrypted_device_name, d.last_seen, d.created_at
+        FROM devices d
+        LEFT JOIN device_names dn
+            ON d.id = dn.device_id AND d.user_id = dn.user_id AND dn.deleted_at IS NULL
+        WHERE d.id = ?
         "#,
     )
     .bind(&device_id)
@@ -106,7 +106,7 @@ pub async fn create_device(
         id: row.get("id"),
         user_id: row.get("user_id"),
         client_id: row.get("client_id"),
-        name: row.get("name"),
+        encrypted_device_name: row.get("encrypted_device_name"),
         last_seen: row.get("last_seen"),
         created_at: row.get("created_at"),
     })
@@ -134,10 +134,12 @@ pub async fn touch_last_seen(pool: &SqlitePool, device_id: &str) -> Result<(), D
 pub async fn list_devices(pool: &SqlitePool, user_id: &str) -> Result<Vec<Device>, DeviceError> {
     let rows = sqlx::query(
         r#"
-        SELECT id, user_id, client_id, name, last_seen, created_at
-        FROM devices
-        WHERE user_id = ?
-        ORDER BY created_at DESC
+        SELECT d.id, d.user_id, d.client_id, dn.encrypted_device_name, d.last_seen, d.created_at
+        FROM devices d
+        LEFT JOIN device_names dn
+            ON d.id = dn.device_id AND d.user_id = dn.user_id AND dn.deleted_at IS NULL
+        WHERE d.user_id = ?
+        ORDER BY d.created_at DESC
         "#,
     )
     .bind(user_id)
@@ -150,7 +152,7 @@ pub async fn list_devices(pool: &SqlitePool, user_id: &str) -> Result<Vec<Device
             id: row.get("id"),
             user_id: row.get("user_id"),
             client_id: row.get("client_id"),
-            name: row.get("name"),
+            encrypted_device_name: row.get("encrypted_device_name"),
             last_seen: row.get("last_seen"),
             created_at: row.get("created_at"),
         });
@@ -237,7 +239,7 @@ pub async fn revoke_device(
     // 4. Delete push subscriptions tied to this device
     crate::push::subscriptions::delete_for_device(&mut tx, device_id).await?;
 
-    // 5. Delete the device row (cascades to sessions)
+    // 5. Delete the device row (cascades to sessions and device_names)
     sqlx::query("DELETE FROM devices WHERE id = ? AND user_id = ?")
         .bind(device_id)
         .bind(user_id)

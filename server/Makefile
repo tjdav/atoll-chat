@@ -60,7 +60,7 @@ test-push:
 
 .PHONY: test-sync
 test-sync:
-	$(CARGO) test --test preferences_crud --test preferences_sync --test preferences_validation --test read_state_sync --test read_state_write --test sync_channel_auth --test sync_endpoint --test sync_seq
+	$(CARGO) test --test device_name_login --test device_name_sync --test device_name_validation --test device_name_write --test preferences_crud --test preferences_sync --test preferences_validation --test read_state_sync --test read_state_write --test sync_channel_auth --test sync_endpoint --test sync_seq
 
 .PHONY: test-all
 test-all: check-batches test-identity test-auth test-messaging test-storage test-oprf test-operations test-transport test-sockudo test-push test-sync

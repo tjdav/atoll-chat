@@ -352,7 +352,8 @@ Devices represent distinct client installations (keyed by `client_id`).
 
 ### Device Endpoints
 
-- **`GET /api/v1/users/me/devices`**: Lists all devices for the authenticated user, ordered by creation date descending. Returns device details (`id`, `client_id`, `name`, `created_at`, `last_seen`) and `is_current: true` for the device associated with the current session.
+- **`GET /api/v1/users/me/devices`**: Lists all devices for the authenticated user, ordered by creation date descending. Returns device details (`id`, `client_id`, `encrypted_device_name`, `created_at`, `last_seen`) and `is_current: true` for the device associated with the current session. `encrypted_device_name` is `null` if no encrypted name is set.
+- **`PATCH /api/v1/users/me/devices/:id`**: Renames a device after creation by updating its encrypted device name (`{"encrypted_device_name": "<base64url>"}`). Rejects legacy plaintext `device_name` field with HTTP 400 `field_renamed`.
 - **`DELETE /api/v1/users/me/devices/:id`**: Revokes the specified device.
   - Attempting to revoke the current session's device returns HTTP 400 (`{"error":"cannot_revoke_current_device"}`). To revoke the current device, users should log out or revoke it from another device.
   - If the device exists and belongs to the user, revocation executes atomically and returns HTTP 204 No Content.
@@ -1015,6 +1016,17 @@ Real-time user state changes publish an advisory `UserEventEnvelope` to `private
   - Write payload: `{ "key": key, "user_seq": seq }` (omits value to conserve bandwidth).
   - Delete payload: `{ "key": key, "user_seq": seq, "deleted": true }`.
 - **Hard-Delete Sync Limitation**: Deleted preference rows are physically removed from `user_preferences`. Deleted keys do not appear in sync responses; clients discover deletions on subsequent full syncs (`since_seq = 0`) by the absence of the key.
+
+### Device Names (`PATCH /api/v1/users/me/devices/:id`)
+
+- **What Device Names Are**: In V2, device names are opaque ciphertexts encrypted client-side using a key derived from the user's OPRF token. The server never sees plaintext device names.
+- **Key Derivation**: Any device knowing the username can blind-evaluate with the server to derive the identical device name encryption key.
+- **Endpoints**:
+  - **Login Finish (`POST /api/v1/auth/login/finish`)**: Accepts optional `encrypted_device_name` and stores/updates it in `device_names` for the device. Sending legacy plaintext `device_name` returns HTTP 400 (`field_renamed`).
+  - **Device Rename (`PATCH /api/v1/users/me/devices/:id`)**: Renames a device (`{"encrypted_device_name": "<base64url>"}`). Validates base64url format and decoded byte length (28–284 bytes). Returns HTTP 200 with `DeviceStateRow` and `Cache-Control: no-store`. Rate-limited via `RATE_DEVICE_NAME_PER_MIN` (default 30/min).
+- **Sync Integration**: Encrypted device names are returned in the `device_state` array of `GET /api/v1/users/me/sync`.
+- **Durable Event**: On write commit, dispatches advisory event `device.sync` (`{"device_id": id, "user_seq": seq}`) to `private-user-{user_id}` (ciphertext omitted to conserve bandwidth).
+- **Hard-Delete CASCADE on Revocation**: Device revocation cascades deletion of `device_names` rows via `ON DELETE CASCADE`. Revocation is user-initiated on one device; no tombstone is generated.
 
 ## Attachments
 
