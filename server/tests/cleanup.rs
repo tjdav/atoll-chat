@@ -14,6 +14,8 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+const DUMMY_TOKEN: &str = "token_alice_1234567890123456789012345678901234567890123456789012345678901234567890123456789012";
+
 fn test_config(audit_retention_days: u64) -> Config {
     Config {
         audit_retention_days,
@@ -51,7 +53,8 @@ async fn test_01_session_cleanup_removes_old_expired_sessions() {
     let pool = setup_test_db().await;
     let ctx = build_ctx(pool.clone(), test_config(90));
 
-    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('u1', 'user1', 'hash1', 'reg', 'pub')")
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u1', ?, 'reg', 'pub')")
+        .bind(DUMMY_TOKEN)
         .execute(&pool)
         .await
         .unwrap();
@@ -92,7 +95,8 @@ async fn test_02_session_cleanup_preserves_recently_expired_sessions() {
     let pool = setup_test_db().await;
     let ctx = build_ctx(pool.clone(), test_config(90));
 
-    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('u1', 'user1', 'hash1', 'reg', 'pub')")
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u1', ?, 'reg', 'pub')")
+        .bind(DUMMY_TOKEN)
         .execute(&pool)
         .await
         .unwrap();
@@ -120,7 +124,8 @@ async fn test_03_session_cleanup_removes_revoked_sessions_after_30_days() {
     let pool = setup_test_db().await;
     let ctx = build_ctx(pool.clone(), test_config(90));
 
-    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('u1', 'user1', 'hash1', 'reg', 'pub')")
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u1', ?, 'reg', 'pub')")
+        .bind(DUMMY_TOKEN)
         .execute(&pool)
         .await
         .unwrap();
@@ -269,7 +274,8 @@ async fn test_07_welcome_expiry_removes_stale_welcomes() {
     let pool = setup_test_db().await;
     let ctx = build_ctx(pool.clone(), test_config(90));
 
-    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('u1', 'user1', 'hash1', 'reg', 'pub')")
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u1', ?, 'reg', 'pub')")
+        .bind(DUMMY_TOKEN)
         .execute(&pool)
         .await
         .unwrap();
@@ -320,8 +326,8 @@ async fn test_08_memory_store_purge_removes_expired_entries() {
     ctx.registration_store.insert(
         "reg1".to_string(),
         PendingRegistration {
-            username: "alice".to_string(),
-            username_hash: "hash".to_string(),
+            username_token: DUMMY_TOKEN.to_string(),
+            credential_id: [0u8; 64],
             created_at: expired_time,
         },
     );
@@ -344,7 +350,8 @@ async fn test_08_memory_store_purge_removes_expired_entries() {
         "log1".to_string(),
         PendingLogin {
             user_id: "u1".to_string(),
-            username_hash: "hash".to_string(),
+            username_token: DUMMY_TOKEN.to_string(),
+            encrypted_display: None,
             client_id: "c1".to_string(),
             server_login_state: server_login.state,
             created_at: expired_time,

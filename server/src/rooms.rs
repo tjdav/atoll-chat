@@ -79,8 +79,8 @@ pub struct PendingRemove {
 #[derive(Debug, Clone, Serialize)]
 pub struct RoomMember {
     pub user_id: String,
-    pub username: String,
-    pub display_name: Option<String>,
+    pub username_token: String,
+    pub encrypted_display: Option<String>,
     pub role: String,
     pub joined_at: DateTime<Utc>,
 }
@@ -614,7 +614,7 @@ pub async fn list_members(
     // 2. Query members
     let rows = sqlx::query(
         r#"
-        SELECT rm.user_id, u.username, u.display_name, rm.role, rm.joined_at
+        SELECT rm.user_id, u.username_token, u.encrypted_display, rm.role, rm.joined_at
         FROM room_members rm
         JOIN users u ON u.id = rm.user_id
         WHERE rm.room_id = ?
@@ -633,8 +633,8 @@ pub async fn list_members(
     for row in rows {
         members.push(RoomMember {
             user_id: row.get("user_id"),
-            username: row.get("username"),
-            display_name: row.get("display_name"),
+            username_token: row.get("username_token"),
+            encrypted_display: row.get("encrypted_display"),
             role: row.get("role"),
             joined_at: row.get("joined_at"),
         });
@@ -685,7 +685,7 @@ pub async fn add_member(
 
     // 4. Verify target user exists and deleted_at IS NULL
     let target_user: Option<(String, String, Option<String>)> = sqlx::query_as(
-        "SELECT id, username, display_name FROM users WHERE id = ? AND deleted_at IS NULL",
+        "SELECT id, username_token, encrypted_display FROM users WHERE id = ? AND deleted_at IS NULL",
     )
     .bind(target_user_id)
     .fetch_optional(&mut *tx)
@@ -756,7 +756,7 @@ pub async fn add_member(
     // 8. Fetch the new member record
     let row = sqlx::query(
         r#"
-        SELECT rm.user_id, u.username, u.display_name, rm.role, rm.joined_at
+        SELECT rm.user_id, u.username_token, u.encrypted_display, rm.role, rm.joined_at
         FROM room_members rm
         JOIN users u ON u.id = rm.user_id
         WHERE rm.room_id = ? AND rm.user_id = ?
@@ -769,8 +769,8 @@ pub async fn add_member(
 
     let member = RoomMember {
         user_id: row.get("user_id"),
-        username: row.get("username"),
-        display_name: row.get("display_name"),
+        username_token: row.get("username_token"),
+        encrypted_display: row.get("encrypted_display"),
         role: row.get("role"),
         joined_at: row.get("joined_at"),
     };

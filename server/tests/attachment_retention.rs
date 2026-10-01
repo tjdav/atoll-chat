@@ -105,12 +105,12 @@ async fn setup_user_and_room(
     room_id: &str,
     retention_days: Option<i64>,
 ) {
+    let dummy_token = format!("token_{}_1234567890123456789012345678901234567890123456789012345678901234567890123456789012", user_id);
     sqlx::query(
-        "INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES (?, ?, ?, 'reg', 'pub') ON CONFLICT DO NOTHING",
+        "INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES (?, ?, 'reg', 'pub') ON CONFLICT DO NOTHING",
     )
     .bind(user_id)
-    .bind(user_id)
-    .bind(format!("hash_{}", user_id))
+    .bind(&dummy_token)
     .execute(pool)
     .await
     .unwrap();

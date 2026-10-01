@@ -199,7 +199,7 @@ async fn test_03_target_with_no_devices_returns_400() {
 
     // Register user B without creating a device
     let user_b_id = ulid::Ulid::new().to_string();
-    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES (?, 'user_b', 'hash_b', 'reg', 'pub')")
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES (?, 'token_b_1234567890123456789012345678901234567890123456789012345678901234567890123456789012', 'reg', 'pub')")
         .bind(&user_b_id)
         .execute(&pool)
         .await

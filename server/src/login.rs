@@ -8,7 +8,8 @@ pub const LOGIN_TTL: Duration = Duration::from_secs(300);
 
 pub struct PendingLogin {
     pub user_id: String,
-    pub username_hash: String,
+    pub username_token: String,
+    pub encrypted_display: Option<String>,
     pub client_id: String,
     pub server_login_state: ServerLogin<DefaultCipherSuite>,
     pub created_at: Instant,

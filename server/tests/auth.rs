@@ -2,9 +2,15 @@ mod common;
 
 use axum::body::Body;
 use axum::http::{header, Request, StatusCode};
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use common::{register_user, setup_test_app};
 use serde_json::{json, Value};
 use tower::ServiceExt;
+
+fn valid_disp() -> String {
+    URL_SAFE_NO_PAD.encode([0u8; 32])
+}
 
 #[tokio::test]
 async fn test_01_valid_token_authenticates() {
@@ -31,8 +37,8 @@ async fn test_01_valid_token_authenticates() {
         .unwrap();
     let json: Value = serde_json::from_slice(&body_bytes).unwrap();
 
-    assert_eq!(json["user_id"], user_id);
-    assert_eq!(json["username"], "alice");
+    assert_eq!(json["id"], user_id);
+    assert!(json["username_token"].is_string());
     assert_eq!(json["is_owner"], true);
 }
 
@@ -212,14 +218,14 @@ async fn test_08_patch_users_me_updates_display_name() {
     assert_eq!(status, StatusCode::OK);
     let token = login_res["session_token"].as_str().unwrap();
 
+    let disp = valid_disp();
+
     let req = Request::builder()
         .method("PATCH")
         .uri("/api/v1/users/me")
         .header(header::AUTHORIZATION, format!("Bearer {}", token))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({ "display_name": "New Name" }).to_string(),
-        ))
+        .body(Body::from(json!({ "encrypted_display": disp }).to_string()))
         .unwrap();
 
     let resp = app.oneshot(req).await.unwrap();
@@ -230,7 +236,7 @@ async fn test_08_patch_users_me_updates_display_name() {
         .unwrap();
     let json: Value = serde_json::from_slice(&body_bytes).unwrap();
 
-    assert_eq!(json["display_name"], "New Name");
+    assert_eq!(json["encrypted_display"], disp);
     assert_eq!(json["profile_version"], 2);
 }
 
@@ -249,7 +255,9 @@ async fn test_09_patch_users_me_rejects_username_changes() {
         .uri("/api/v1/users/me")
         .header(header::AUTHORIZATION, format!("Bearer {}", token))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "username": "newname" }).to_string()))
+        .body(Body::from(
+            json!({ "username_token": "newname" }).to_string(),
+        ))
         .unwrap();
 
     let resp = app.oneshot(req).await.unwrap();
@@ -272,14 +280,15 @@ async fn test_10_patch_users_me_validates_display_name_length() {
     assert_eq!(status, StatusCode::OK);
     let token = login_res["session_token"].as_str().unwrap();
 
-    // 65-character display name
-    let long_name = "a".repeat(65);
+    // Invalid length encrypted_display (short)
     let req1 = Request::builder()
         .method("PATCH")
         .uri("/api/v1/users/me")
         .header(header::AUTHORIZATION, format!("Bearer {}", token))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "display_name": long_name }).to_string()))
+        .body(Body::from(
+            json!({ "encrypted_display": "short" }).to_string(),
+        ))
         .unwrap();
 
     let resp1 = app.clone().oneshot(req1).await.unwrap();
@@ -291,7 +300,9 @@ async fn test_10_patch_users_me_validates_display_name_length() {
         .uri("/api/v1/users/me")
         .header(header::AUTHORIZATION, format!("Bearer {}", token))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "display_name": "   " }).to_string()))
+        .body(Body::from(
+            json!({ "encrypted_display": "   " }).to_string(),
+        ))
         .unwrap();
 
     let resp2 = app.oneshot(req2).await.unwrap();
@@ -301,7 +312,7 @@ async fn test_10_patch_users_me_validates_display_name_length() {
         .await
         .unwrap();
     let json2: Value = serde_json::from_slice(&body_bytes2).unwrap();
-    assert!(json2["display_name"].is_null());
+    assert!(json2["encrypted_display"].is_null());
 }
 
 #[tokio::test]

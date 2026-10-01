@@ -930,9 +930,9 @@ async fn test_18_list_members_succeeds() {
     let members = json_m["members"].as_array().unwrap();
 
     assert_eq!(members.len(), 2);
-    assert_eq!(members[0]["username"], "alice");
+    assert!(members[0]["username_token"].is_string());
     assert_eq!(members[0]["role"], "owner");
-    assert_eq!(members[1]["username"], "bob");
+    assert!(members[1]["username_token"].is_string());
     assert_eq!(members[1]["role"], "member");
 }
 
@@ -1016,7 +1016,7 @@ async fn test_20_add_member_as_owner_succeeds() {
     let json_a: Value = serde_json::from_slice(&body_a).unwrap();
 
     assert_eq!(json_a["user_id"], user_b_id);
-    assert_eq!(json_a["username"], "bob");
+    assert!(json_a["username_token"].is_string());
     assert_eq!(json_a["role"], "member");
 }
 

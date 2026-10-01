@@ -6,7 +6,9 @@ use axum::{
 };
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
-use common::{fetch_and_solve_altcha, setup_test_app, setup_test_app_with_config};
+use common::{
+    fetch_and_solve_altcha, obtain_username_token, setup_test_app, setup_test_app_with_config,
+};
 use opaque_ke::ClientRegistration;
 use rand::rngs::OsRng;
 use serde_json::{json, Value};
@@ -65,6 +67,8 @@ async fn challenge_endpoint_returns_404_when_disabled() {
 async fn register_start_requires_altcha_when_enabled() {
     let (app, _pool) = setup_test_app().await;
 
+    let token = obtain_username_token(&app, "alice").await;
+
     let mut rng = OsRng;
     let client_start = ClientRegistration::<DefaultCipherSuite>::start(&mut rng, b"password123")
         .expect("ClientRegistration::start failed");
@@ -76,7 +80,7 @@ async fn register_start_requires_altcha_when_enabled() {
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "username": "alice",
+                "username_token": token,
                 "registration_request": reg_req_b64,
             })
             .to_string(),
@@ -97,6 +101,8 @@ async fn register_start_requires_altcha_when_enabled() {
 async fn register_start_rejects_invalid_altcha() {
     let (app, _pool) = setup_test_app().await;
 
+    let token = obtain_username_token(&app, "alice").await;
+
     let mut rng = OsRng;
     let client_start = ClientRegistration::<DefaultCipherSuite>::start(&mut rng, b"password123")
         .expect("ClientRegistration::start failed");
@@ -108,7 +114,7 @@ async fn register_start_rejects_invalid_altcha() {
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "username": "alice",
+                "username_token": token,
                 "registration_request": reg_req_b64,
                 "altcha": "invalid_base64_payload_here",
             })
@@ -129,6 +135,8 @@ async fn register_start_rejects_invalid_altcha() {
 #[tokio::test]
 async fn register_start_rejects_tampered_solution() {
     let (app, _pool) = setup_test_app().await;
+
+    let token = obtain_username_token(&app, "alice").await;
 
     // Fetch challenge
     let req_ch = Request::builder()
@@ -166,7 +174,7 @@ async fn register_start_rejects_tampered_solution() {
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "username": "alice",
+                "username_token": token,
                 "registration_request": reg_req_b64,
                 "altcha": tampered_b64,
             })
@@ -188,6 +196,7 @@ async fn register_start_rejects_tampered_solution() {
 async fn registration_succeeds_with_valid_altcha() {
     let (app, _pool) = setup_test_app().await;
 
+    let token = obtain_username_token(&app, "alice").await;
     let altcha_payload = fetch_and_solve_altcha(&app).await;
 
     let mut rng = OsRng;
@@ -201,7 +210,7 @@ async fn registration_succeeds_with_valid_altcha() {
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "username": "alice",
+                "username_token": token,
                 "registration_request": reg_req_b64,
                 "altcha": altcha_payload,
             })
@@ -237,13 +246,13 @@ async fn hmac_secret_persisted_in_instance_config() {
     assert!(!altcha_config1.hmac_secret.is_empty());
 
     // Query instance_config table directly
-    let saved_secret: (String,) =
-        sqlx::query_as("SELECT value FROM instance_config WHERE key = 'altcha_hmac_secret'")
+    let saved_secret: String =
+        sqlx::query_scalar("SELECT value FROM instance_config WHERE key = 'altcha_hmac_secret'")
             .fetch_one(&pool)
             .await
             .unwrap();
 
-    assert_eq!(saved_secret.0, altcha_config1.hmac_secret);
+    assert_eq!(saved_secret, altcha_config1.hmac_secret);
 
     // Subsequent initialization reuses the same secret
     let altcha_config2 = AltchaConfig::from_env(&config, &pool).await.unwrap();

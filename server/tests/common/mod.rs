@@ -18,6 +18,7 @@ use server::AppState;
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::sync::Arc;
 use tower::ServiceExt;
+use voprf::{EvaluationElement, OprfClient, Ristretto255};
 
 #[allow(dead_code)]
 pub async fn setup_test_db() -> SqlitePool {
@@ -193,12 +194,53 @@ pub async fn fetch_and_solve_altcha(app: &Router) -> String {
 }
 
 #[allow(dead_code)]
+pub async fn obtain_username_token(app: &Router, username: &str) -> String {
+    let mut rng = OsRng;
+    let client_blind = OprfClient::<Ristretto255>::blind(username.as_bytes(), &mut rng)
+        .expect("OprfClient::blind failed");
+
+    let blinded_b64 = STANDARD.encode(client_blind.message.serialize());
+
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/v1/oprf/blind")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "blinded": blinded_b64 }).to_string()))
+        .unwrap();
+
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: Value = serde_json::from_slice(&body_bytes).unwrap();
+    let eval_b64 = json["evaluated"].as_str().unwrap();
+
+    let eval_bytes = STANDARD
+        .decode(eval_b64)
+        .or_else(|_| URL_SAFE_NO_PAD.decode(eval_b64))
+        .unwrap();
+
+    let eval_element = EvaluationElement::<Ristretto255>::deserialize(&eval_bytes)
+        .expect("deserialize EvaluationElement failed");
+
+    let finalize_res = client_blind
+        .state
+        .finalize(username.as_bytes(), &eval_element)
+        .expect("OprfClient::finalize failed");
+
+    URL_SAFE_NO_PAD.encode(finalize_res)
+}
+
+#[allow(dead_code)]
 pub async fn register_user(
     app: &Router,
     username: &str,
     password: &str,
     invite_code: Option<&str>,
 ) -> String {
+    let username_token = obtain_username_token(app, username).await;
     let altcha1 = fetch_and_solve_altcha(app).await;
 
     let mut rng = OsRng;
@@ -214,7 +256,7 @@ pub async fn register_user(
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "username": username,
+                "username_token": username_token,
                 "registration_request": reg_req_b64,
                 "altcha": altcha1,
             })
@@ -298,6 +340,8 @@ pub async fn login_user_with_device_name(
     identity_pubkey: Option<&str>,
     device_name: Option<&str>,
 ) -> (StatusCode, Value) {
+    let username_token = obtain_username_token(app, username).await;
+
     let mut rng = OsRng;
     let client_start = ClientLogin::<DefaultCipherSuite>::start(&mut rng, password.as_bytes())
         .expect("ClientLogin::start failed");
@@ -310,7 +354,7 @@ pub async fn login_user_with_device_name(
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "username": username,
+                "username_token": username_token,
                 "credential_request": cred_req_b64,
                 "client_id": client_id,
             })

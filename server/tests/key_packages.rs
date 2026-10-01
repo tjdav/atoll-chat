@@ -380,6 +380,10 @@ async fn test_08_upload_quota_clamps_to_server_max() {
 
     let app = axum::Router::new()
         .route(
+            "/api/v1/oprf/blind",
+            axum::routing::post(routes::oprf::blind),
+        )
+        .route(
             "/api/v1/auth/register/challenge",
             axum::routing::get(routes::register::register_challenge),
         )
@@ -1562,6 +1566,10 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
 
     let app = axum::Router::new()
         .route(
+            "/api/v1/oprf/blind",
+            axum::routing::post(routes::oprf::blind),
+        )
+        .route(
             "/api/v1/auth/register/challenge",
             axum::routing::get(routes::register::register_challenge),
         )
@@ -1719,6 +1727,10 @@ async fn test_29_rate_limit_is_per_user_not_global() {
     };
 
     let app = axum::Router::new()
+        .route(
+            "/api/v1/oprf/blind",
+            axum::routing::post(routes::oprf::blind),
+        )
         .route(
             "/api/v1/auth/register/challenge",
             axum::routing::get(routes::register::register_challenge),

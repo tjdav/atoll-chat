@@ -191,6 +191,10 @@ async fn test_04_device_limit_is_enforced() {
 
     let app = axum::Router::new()
         .route(
+            "/api/v1/oprf/blind",
+            axum::routing::post(routes::oprf::blind),
+        )
+        .route(
             "/api/v1/auth/register/challenge",
             axum::routing::get(routes::register::register_challenge),
         )

@@ -128,7 +128,7 @@ async fn test_oprf_rotation_aborts_without_confirm() {
 async fn test_oprf_rotation_flags_users_and_invalidates_login() {
     let (app, pool) = setup_test_app().await;
 
-    register_user(&app, "bob_oprf", "Password123!", None).await;
+    let user_id = register_user(&app, "bob_oprf", "Password123!", None).await;
 
     let (status_before, login_val_before) = login_user(
         &app,
@@ -159,11 +159,11 @@ async fn test_oprf_rotation_flags_users_and_invalidates_login() {
     assert!(rot_res.backup_path.exists());
     assert_eq!(rot_res.users_affected, 1);
 
-    let flag: i64 =
-        sqlx::query_scalar("SELECT requires_reregistration FROM users WHERE username = 'bob_oprf'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let flag: i64 = sqlx::query_scalar("SELECT requires_reregistration FROM users WHERE id = ?")
+        .bind(&user_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(flag, 1);
 
     // Login fails with 409 reregistration_required
@@ -193,5 +193,5 @@ async fn test_oprf_rotation_flags_users_and_invalidates_login() {
         .await
         .unwrap();
     let me_json: Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(me_json["username"], "bob_oprf");
+    assert!(me_json["username_token"].is_string());
 }

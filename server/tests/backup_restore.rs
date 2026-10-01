@@ -147,7 +147,7 @@ async fn test_end_to_end_backup_and_restore() {
             .await
             .unwrap();
 
-        sqlx::query("UPDATE users SET display_name = 'corrupted' WHERE id = ?")
+        sqlx::query("UPDATE users SET profile = 'corrupted' WHERE id = ?")
             .bind(&user_id)
             .execute(&mutate_pool)
             .await
@@ -173,13 +173,12 @@ async fn test_end_to_end_backup_and_restore() {
         .await
         .unwrap();
 
-    let display_name: Option<String> =
-        sqlx::query_scalar("SELECT display_name FROM users WHERE id = ?")
-            .bind(&user_id)
-            .fetch_one(&verify_pool)
-            .await
-            .unwrap();
-    assert_eq!(display_name, None);
+    let profile: Option<String> = sqlx::query_scalar("SELECT profile FROM users WHERE id = ?")
+        .bind(&user_id)
+        .fetch_one(&verify_pool)
+        .await
+        .unwrap();
+    assert_eq!(profile, None);
 
     let alice_exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM users WHERE id = ?)")
         .bind(&user_id)
