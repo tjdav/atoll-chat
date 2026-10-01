@@ -19,5 +19,6 @@ pub mod rooms;
 pub mod sessions;
 pub mod sockudo;
 pub mod r#static;
+pub mod sync;
 pub mod users;
 pub mod welcomes;

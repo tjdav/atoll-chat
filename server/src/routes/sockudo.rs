@@ -34,14 +34,25 @@ pub async fn auth(
         return Err(ApiError::BadRequest("invalid_socket_id".to_string()));
     }
 
-    let room_id = match payload.channel_name.strip_prefix("private-room-") {
-        Some(id) if !id.is_empty() => id,
-        _ => return Err(ApiError::BadRequest("invalid_channel_name".to_string())),
-    };
+    if let Some(room_id) = payload.channel_name.strip_prefix("private-room-") {
+        if room_id.is_empty() {
+            return Err(ApiError::BadRequest("invalid_channel_name".to_string()));
+        }
 
-    let room = rooms::get_room_for_user(&state.pool, room_id, &auth.user_id).await?;
-    if room.is_none() {
-        return Err(ApiError::Forbidden("forbidden".to_string()));
+        let room = rooms::get_room_for_user(&state.pool, room_id, &auth.user_id).await?;
+        if room.is_none() {
+            return Err(ApiError::Forbidden("forbidden".to_string()));
+        }
+    } else if let Some(target_user_id) = payload.channel_name.strip_prefix("private-user-") {
+        if target_user_id.is_empty() {
+            return Err(ApiError::BadRequest("invalid_channel_name".to_string()));
+        }
+
+        if target_user_id != auth.user_id {
+            return Err(ApiError::Forbidden("forbidden".to_string()));
+        }
+    } else {
+        return Err(ApiError::BadRequest("invalid_channel_name".to_string()));
     }
 
     let auth_str = state
