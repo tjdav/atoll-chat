@@ -9,6 +9,7 @@ pub mod key_packages;
 pub mod login;
 pub mod oprf;
 pub mod pending_removes;
+pub mod preferences;
 pub mod push_subscriptions;
 pub mod read_state;
 pub mod ready;

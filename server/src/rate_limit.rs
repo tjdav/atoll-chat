@@ -20,6 +20,7 @@ pub enum RateLimitKey {
     OprfBlind { ip: String, window: Window },
     Lookup { user_id: String },
     ReadState { user_id: String },
+    Preference { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -194,6 +195,15 @@ pub async fn check(
                 start,
                 reset,
                 config.read_state_per_min,
+            )
+        }
+        RateLimitKey::Preference { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("preference:{user_id}:min"),
+                start,
+                reset,
+                config.preference_per_min,
             )
         }
     };

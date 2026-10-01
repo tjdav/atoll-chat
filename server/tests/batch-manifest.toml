@@ -131,6 +131,9 @@ timeout_seconds = 60
 name = "sync"
 description = "User-scoped sync foundation, sequence allocation, sync endpoint, channel auth"
 files = [
+    "preferences_crud",
+    "preferences_sync",
+    "preferences_validation",
     "read_state_sync",
     "read_state_write",
     "sync_channel_auth",

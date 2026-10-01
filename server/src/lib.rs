@@ -227,6 +227,12 @@ pub fn build_app(state: AppState) -> Router {
         .route("/users/me/sessions/{id}", delete(routes::sessions::revoke))
         .route("/users/me/devices", get(routes::devices::list))
         .route("/users/me/read-state", post(routes::read_state::write))
+        .route(
+            "/users/me/preferences/{key}",
+            get(routes::preferences::get)
+                .patch(routes::preferences::write)
+                .delete(routes::preferences::delete),
+        )
         .route("/users/me/devices/{id}", delete(routes::devices::revoke))
         .route(
             "/users/me/push-subscriptions",

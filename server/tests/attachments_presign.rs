@@ -111,6 +111,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         oprf_blind_per_min: 30,
         oprf_blind_per_hour: 300,
         read_state_per_min: 120,
+        preference_per_min: 120,
     };
 
     let config = Config {

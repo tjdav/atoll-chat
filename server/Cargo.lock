@@ -3200,6 +3200,7 @@ dependencies = [
  "opaque-ke",
  "p256",
  "rand 0.8.8",
+ "regex",
  "reqwest",
  "rust-s3",
  "serde",

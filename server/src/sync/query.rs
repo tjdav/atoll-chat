@@ -1,4 +1,4 @@
-use crate::sync::{read_state, ReadStateRow, SyncError};
+use crate::sync::{preferences, read_state, PreferenceRow, ReadStateRow, SyncError};
 use serde::Serialize;
 use sqlx::SqlitePool;
 
@@ -6,9 +6,6 @@ pub struct SyncQuery {
     pub user_id: String,
     pub since_seq: i64,
 }
-
-#[derive(Debug, Clone, Serialize)]
-pub struct PreferenceRow {}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DeviceStateRow {}
@@ -33,16 +30,32 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         read_state::list_read_state_since(pool, &query.user_id, query.since_seq).await?
     };
 
+    let user_preferences = if query.since_seq == 0 {
+        preferences::list_preferences_all(pool, &query.user_id).await?
+    } else {
+        preferences::list_preferences_since(pool, &query.user_id, query.since_seq).await?
+    };
+
     let max_read_state_seq = read_state
         .iter()
         .map(|r| r.user_seq)
         .max()
         .unwrap_or(query.since_seq);
-    let max_seq = std::cmp::max(query.since_seq, max_read_state_seq);
+
+    let max_pref_seq = user_preferences
+        .iter()
+        .map(|r| r.user_seq)
+        .max()
+        .unwrap_or(query.since_seq);
+
+    let max_seq = std::cmp::max(
+        query.since_seq,
+        std::cmp::max(max_read_state_seq, max_pref_seq),
+    );
 
     Ok(SyncResponse {
         read_state,
-        user_preferences: Vec::new(),
+        user_preferences,
         device_state: Vec::new(),
         starred_items: Vec::new(),
         max_seq,
