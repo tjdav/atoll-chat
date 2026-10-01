@@ -60,6 +60,10 @@ The server checks the number of users on startup. If no users exist, it logs tha
 - `GET /api/v1/roles` - Returns the four global roles ordered by descending level. (Unauthenticated)
 
 ### Testing
+For testing instructions, see [TESTING.md](TESTING.md). Run tests via
+`make test-<batch>` rather than `cargo test`. The full suite exceeds
+common tool timeouts when run unfiltered.
+
 You can run the unit and integration tests using:
 
 ```bash
