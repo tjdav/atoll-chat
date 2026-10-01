@@ -875,6 +875,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        oprf_rotation_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
         oprf,

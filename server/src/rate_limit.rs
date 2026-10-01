@@ -22,6 +22,7 @@ pub enum RateLimitKey {
     ReadState { user_id: String },
     Preference { user_id: String },
     DeviceName { user_id: String },
+    AdminOprfRotate { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -214,6 +215,16 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_device_name_per_min,
+            )
+        }
+        RateLimitKey::AdminOprfRotate { user_id } => {
+            let (start, reset) = compute_window(now, Window::Hour);
+            let boundary = start.format("%Y-%m-%d-%H").to_string();
+            (
+                format!("admin_oprf_rotate:{user_id}:hour:{boundary}"),
+                start,
+                reset,
+                config.rate_admin_oprf_rotate_per_hour,
             )
         }
     };

@@ -113,6 +113,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         read_state_per_min: 120,
         preference_per_min: 120,
         rate_device_name_per_min: 30,
+        rate_admin_oprf_rotate_per_hour: 1,
     };
 
     let config = Config {
@@ -179,6 +180,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        oprf_rotation_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
         oprf,

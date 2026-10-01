@@ -58,6 +58,7 @@ async fn setup_test_app(config_override: impl FnOnce(&mut Config)) -> (axum::Rou
         })),
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        oprf_rotation_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
         oprf: oprf_evaluator,

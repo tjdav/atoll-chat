@@ -77,10 +77,13 @@ timeout_seconds = 60
 name = "oprf"
 description = "OPRF blind endpoint and key derivation"
 files = [
+    "admin_oprf_rotate",
     "oprf_blind",
     "oprf_keys",
+    "oprf_rotation",
+    "oprf_rotation_login",
 ]
-timeout_seconds = 30
+timeout_seconds = 60
 
 [[batch]]
 name = "operations"

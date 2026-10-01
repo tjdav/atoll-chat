@@ -108,11 +108,31 @@ pub async fn run_rotate_oprf(confirm: bool) -> Result<(), Box<dyn std::error::Er
 
     let config = Config::from_env()?;
     let pool = db::init_pool(&config).await?;
-    let res = crate::opaque::rotate_oprf_key(&pool, &config, None).await?;
+
+    let outcome = crate::oprf::rotation::rotate_oprf_key(&pool, &config).await?;
+
+    let _ = crate::audit::log(
+        &pool,
+        None, // CLI actor is anonymous
+        crate::audit::action::OPRF_ROTATE,
+        Some("server_setup"),
+        None,
+        Some(serde_json::json!({
+            "users_flagged": outcome.users_flagged,
+            "backup_path": outcome.backup_path.display().to_string(),
+        })),
+    )
+    .await;
+
     println!("OPRF key rotated.");
-    println!("Backup saved to: {}", res.backup_path.display());
-    println!("Users affected: {}", res.users_affected);
-    println!("All users must re-register. Existing sessions remain valid until they expire.");
+    println!("Backup saved to: {}", outcome.backup_path.display());
+    println!(
+        "Users flagged for re-registration: {}",
+        outcome.users_flagged
+    );
+    println!("The server must be restarted for the new key to take effect.");
+    println!("All flagged users will be unable to log in until they re-register.");
+
     Ok(())
 }
 

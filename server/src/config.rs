@@ -17,6 +17,7 @@ pub struct RateLimitConfig {
     pub read_state_per_min: u32,
     pub preference_per_min: u32,
     pub rate_device_name_per_min: u32,
+    pub rate_admin_oprf_rotate_per_hour: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -281,6 +282,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(30);
 
+        let rate_admin_oprf_rotate_per_hour = env::var("RATE_ADMIN_OPRF_ROTATE_PER_HOUR")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -296,6 +302,7 @@ impl Config {
             read_state_per_min: rate_read_state_per_min,
             preference_per_min: rate_preference_per_min,
             rate_device_name_per_min,
+            rate_admin_oprf_rotate_per_hour,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -744,6 +751,7 @@ impl Config {
                 read_state_per_min: 120,
                 preference_per_min: 120,
                 rate_device_name_per_min: 30,
+                rate_admin_oprf_rotate_per_hour: 1,
             },
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,

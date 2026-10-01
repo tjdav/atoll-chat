@@ -66,6 +66,7 @@ pub use key_packages::{
 pub use limits::ServerHardMax;
 pub use login::LoginStore;
 pub use opaque::{DefaultCipherSuite, OpaqueServer};
+pub use permission_check::{ConfigEdit, RequirePermission};
 pub use rate_limit::{RateLimitConfig, RateLimitDecision, RateLimitError, RateLimitKey, Window};
 pub use registration::RegistrationStore;
 pub use room_messages::{
@@ -97,6 +98,7 @@ pub struct AppState {
     pub publisher: Arc<Publisher>,
     pub storage: Arc<dyn Storage>,
     pub backup_lock: Arc<tokio::sync::Mutex<()>>,
+    pub oprf_rotation_lock: Arc<tokio::sync::Mutex<()>>,
     pub vapid_keys: Option<Arc<push::vapid::VapidKeys>>,
     pub push_delivery: Option<Arc<push::delivery::DeliveryCoordinator>>,
     pub oprf: Arc<oprf::OprfEvaluator>,
@@ -198,6 +200,7 @@ pub fn build_app(state: AppState) -> Router {
             "/admin/altcha/rotate",
             post(routes::admin::post_rotate_altcha_handler),
         )
+        .route("/admin/oprf/rotate", post(routes::admin_oprf::rotate))
         .route("/capabilities", get(routes::capabilities::handler))
         .route("/roles", get(routes::roles::handler))
         .route(
