@@ -151,6 +151,7 @@ pub async fn setup_test_app_with_config(
         publisher,
         storage,
         backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        oprf_rotation_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys,
         push_delivery,
         oprf,

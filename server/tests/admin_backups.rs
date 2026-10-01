@@ -182,6 +182,7 @@ async fn test_04_trigger_fails_when_backup_disabled() {
         publisher,
         storage,
         backup_lock,
+        oprf_rotation_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
         oprf,

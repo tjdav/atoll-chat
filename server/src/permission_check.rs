@@ -41,6 +41,18 @@ impl Permission for BackupManage {
 
 pub struct RequirePermission<P: Permission>(pub PhantomData<P>);
 
+impl<P: Permission> RequirePermission<P> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<P: Permission> Default for RequirePermission<P> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<P: Permission, S> FromRequestParts<S> for RequirePermission<P>
 where
     S: Send + Sync,

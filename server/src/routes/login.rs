@@ -118,16 +118,22 @@ pub async fn login_start(
         None => return Err(ApiError::Unauthorized("invalid_credentials".to_string())),
     };
 
+    if user.disabled_at.is_some() {
+        return Err(ApiError::Unauthorized("account_disabled".to_string()));
+    }
+
     if user.deleted_at.is_some() {
         return Err(ApiError::Unauthorized("invalid_credentials".to_string()));
     }
 
     if user.requires_reregistration.unwrap_or(0) == 1 {
-        return Err(ApiError::Conflict("reregistration_required".to_string()));
-    }
-
-    if user.disabled_at.is_some() {
-        return Err(ApiError::Unauthorized("account_disabled".to_string()));
+        return Err(ApiError::InternalWithDetails(
+            StatusCode::CONFLICT,
+            "reregistration_required".to_string(),
+            serde_json::json!({
+                "message": "This account must re-register. The server's OPRF key was rotated."
+            }),
+        ));
     }
 
     let user_id = user.id;

@@ -78,6 +78,7 @@ async fn test_end_to_end_backup_and_restore() {
         publisher,
         storage,
         backup_lock,
+        oprf_rotation_lock: Arc::new(tokio::sync::Mutex::new(())),
         vapid_keys: None,
         push_delivery: None,
         oprf,

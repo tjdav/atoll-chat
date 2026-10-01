@@ -165,6 +165,7 @@ async fn main() -> anyhow::Result<()> {
     let sockudo_config = server::SockudoConfig::load_or_initialize(&pool, &config).await?;
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
     let backup_lock = Arc::new(tokio::sync::Mutex::new(()));
+    let oprf_rotation_lock = Arc::new(tokio::sync::Mutex::new(()));
 
     let vapid_keys = server::push::vapid::VapidKeys::load_or_generate(&pool, &config).await?;
     let vapid_keys = vapid_keys.map(Arc::new);
@@ -204,6 +205,7 @@ async fn main() -> anyhow::Result<()> {
         publisher,
         storage: storage.clone(),
         backup_lock,
+        oprf_rotation_lock,
         vapid_keys,
         push_delivery,
         oprf: oprf_evaluator,

@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod admin_backups;
+pub mod admin_oprf;
 pub mod attachments;
 pub mod capabilities;
 pub mod devices;
