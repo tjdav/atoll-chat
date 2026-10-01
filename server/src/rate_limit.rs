@@ -21,6 +21,7 @@ pub enum RateLimitKey {
     Lookup { user_id: String },
     ReadState { user_id: String },
     Preference { user_id: String },
+    DeviceName { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -204,6 +205,15 @@ pub async fn check(
                 start,
                 reset,
                 config.preference_per_min,
+            )
+        }
+        RateLimitKey::DeviceName { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("device_name:{user_id}:min"),
+                start,
+                reset,
+                config.rate_device_name_per_min,
             )
         }
     };

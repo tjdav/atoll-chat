@@ -129,8 +129,12 @@ timeout_seconds = 60
 
 [[batch]]
 name = "sync"
-description = "User-scoped sync foundation, sequence allocation, sync endpoint, channel auth"
+description = "User-scoped sync foundation, sequence allocation, sync endpoint, channel auth, encrypted device names"
 files = [
+    "device_name_login",
+    "device_name_sync",
+    "device_name_validation",
+    "device_name_write",
     "preferences_crud",
     "preferences_sync",
     "preferences_validation",

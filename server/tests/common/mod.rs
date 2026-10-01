@@ -338,7 +338,7 @@ pub async fn login_user_with_device_name(
     password: &str,
     client_id: &str,
     identity_pubkey: Option<&str>,
-    device_name: Option<&str>,
+    encrypted_device_name: Option<&str>,
 ) -> (StatusCode, Value) {
     let username_token = obtain_username_token(app, username).await;
 
@@ -405,7 +405,7 @@ pub async fn login_user_with_device_name(
                         "login_id": login_id,
                         "credential_finalization": dummy_finalization,
                         "identity_pubkey": identity_pubkey,
-                        "device_name": device_name,
+                        "encrypted_device_name": encrypted_device_name,
                     })
                     .to_string(),
                 ))
@@ -432,7 +432,7 @@ pub async fn login_user_with_device_name(
                 "login_id": login_id,
                 "credential_finalization": cred_fin_b64,
                 "identity_pubkey": identity_pubkey,
-                "device_name": device_name,
+                "encrypted_device_name": encrypted_device_name,
             })
             .to_string(),
         ))

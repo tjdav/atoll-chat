@@ -1,12 +1,14 @@
+pub mod device_names;
 pub mod envelope;
 pub mod preferences;
 pub mod query;
 pub mod read_state;
 pub mod seq;
 
+pub use device_names::DeviceStateRow;
 pub use envelope::{publish_user_event, UserEventEnvelope};
 pub use preferences::PreferenceRow;
-pub use query::{execute_sync, DeviceStateRow, StarredItemRow, SyncQuery, SyncResponse};
+pub use query::{execute_sync, StarredItemRow, SyncQuery, SyncResponse};
 pub use read_state::ReadStateRow;
 pub use seq::allocate_user_seq;
 

@@ -36,7 +36,7 @@ pub mod sync;
 pub mod welcomes;
 
 use axum::{
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use tower_http::cors::CorsLayer;
@@ -233,7 +233,10 @@ pub fn build_app(state: AppState) -> Router {
                 .patch(routes::preferences::write)
                 .delete(routes::preferences::delete),
         )
-        .route("/users/me/devices/{id}", delete(routes::devices::revoke))
+        .route(
+            "/users/me/devices/{id}",
+            patch(routes::devices::update_name).delete(routes::devices::revoke),
+        )
         .route(
             "/users/me/push-subscriptions",
             get(routes::push_subscriptions::list).post(routes::push_subscriptions::register),

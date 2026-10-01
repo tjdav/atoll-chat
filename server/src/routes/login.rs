@@ -1,9 +1,10 @@
 use crate::error::ApiError;
-use crate::identity::{token_bytes, validate_token};
+use crate::identity::{token_bytes, validate_encrypted_device_name, validate_token};
 use crate::login::PendingLogin;
 use crate::opaque::DefaultCipherSuite;
 use crate::roles;
 use crate::session;
+use crate::sync::device_names::{self, WriteRequest};
 use crate::AppState;
 use axum::{extract::State, http::StatusCode, Json};
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
@@ -15,6 +16,7 @@ use opaque_ke::{
 use rand::rngs::OsRng;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::time::Instant;
 
 #[derive(Debug, Deserialize)]
@@ -35,7 +37,7 @@ pub struct LoginFinishRequest {
     pub login_id: String,
     pub credential_finalization: String,
     pub identity_pubkey: Option<String>,
-    pub device_name: Option<String>,
+    pub encrypted_device_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -194,8 +196,27 @@ pub async fn login_start(
 
 pub async fn login_finish(
     State(state): State<AppState>,
-    Json(body): Json<LoginFinishRequest>,
+    body_val: Json<Value>,
 ) -> Result<Json<LoginFinishResponse>, ApiError> {
+    let obj = body_val
+        .as_object()
+        .ok_or_else(|| ApiError::BadRequest("invalid request body".to_string()))?;
+
+    // Check if legacy field device_name is present
+    if obj.contains_key("device_name") {
+        return Err(ApiError::InternalWithDetails(
+            StatusCode::BAD_REQUEST,
+            "field_renamed".to_string(),
+            serde_json::json!({
+                "old": "device_name",
+                "new": "encrypted_device_name"
+            }),
+        ));
+    }
+
+    let body: LoginFinishRequest = serde_json::from_value(body_val.0)
+        .map_err(|e| ApiError::BadRequest(format!("invalid json body: {e}")))?;
+
     // 1. Take pending login
     let pending = state
         .login_store
@@ -250,15 +271,17 @@ pub async fn login_finish(
         }
     }
 
-    // 7. Validate device_name if provided
-    let clean_device_name = match body.device_name {
+    // 7. Validate encrypted_device_name if provided
+    let clean_encrypted_device_name = match body.encrypted_device_name {
         Some(ref name) => {
             let trimmed = name.trim();
             if trimmed.is_empty() {
                 None
             } else {
-                if trimmed.chars().count() > 64 || trimmed.chars().any(|c| c.is_control()) {
-                    return Err(ApiError::BadRequest("invalid device_name".to_string()));
+                if validate_encrypted_device_name(trimmed).is_err() {
+                    return Err(ApiError::BadRequest(
+                        "invalid_encrypted_device_name".to_string(),
+                    ));
                 }
                 Some(trimmed.to_string())
             }
@@ -281,18 +304,48 @@ pub async fn login_finish(
             if count >= state.config.server_max_devices_per_user {
                 return Err(ApiError::BadRequest("device_limit_exceeded".to_string()));
             }
-            let new_dev = crate::devices::create_device(
-                &state.pool,
-                &pending.user_id,
-                &pending.client_id,
-                clean_device_name.as_deref(),
-            )
-            .await?;
+            let new_dev =
+                crate::devices::create_device(&state.pool, &pending.user_id, &pending.client_id)
+                    .await?;
             new_dev.id
         }
     };
 
-    // 9. Create session
+    // 9. Write encrypted_device_name if provided and changed
+    if let Some(enc_name) = clean_encrypted_device_name {
+        let existing_name: Option<String> = sqlx::query_scalar(
+            "SELECT encrypted_device_name FROM device_names WHERE user_id = ? AND device_id = ?",
+        )
+        .bind(&pending.user_id)
+        .bind(&device_id)
+        .fetch_optional(&state.pool)
+        .await
+        .unwrap_or(None);
+
+        if existing_name.as_deref() != Some(&enc_name) {
+            let res = device_names::write_device_name(
+                &state.pool,
+                &state.publisher,
+                WriteRequest {
+                    user_id: pending.user_id.clone(),
+                    device_id: device_id.clone(),
+                    encrypted_device_name: enc_name,
+                },
+            )
+            .await;
+
+            if let Err(e) = res {
+                tracing::warn!(
+                    "Failed to write encrypted device name for user {} device {}: {}",
+                    pending.user_id,
+                    device_id,
+                    e
+                );
+            }
+        }
+    }
+
+    // 10. Create session
     let token = session::create_session(
         &state.pool,
         &pending.user_id,

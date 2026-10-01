@@ -1,4 +1,7 @@
-use crate::sync::{preferences, read_state, PreferenceRow, ReadStateRow, SyncError};
+use crate::sync::{
+    device_names::{self, DeviceStateRow},
+    preferences, read_state, PreferenceRow, ReadStateRow, SyncError,
+};
 use serde::Serialize;
 use sqlx::SqlitePool;
 
@@ -6,9 +9,6 @@ pub struct SyncQuery {
     pub user_id: String,
     pub since_seq: i64,
 }
-
-#[derive(Debug, Clone, Serialize)]
-pub struct DeviceStateRow {}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct StarredItemRow {}
@@ -36,6 +36,22 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         preferences::list_preferences_since(pool, &query.user_id, query.since_seq).await?
     };
 
+    let device_state = if query.since_seq == 0 {
+        device_names::list_device_names_all(pool, &query.user_id)
+            .await
+            .map_err(|e| match e {
+                device_names::DeviceNameSyncError::Database(err) => SyncError::Database(err),
+                other => SyncError::Database(sqlx::Error::Protocol(other.to_string())),
+            })?
+    } else {
+        device_names::list_device_names_since(pool, &query.user_id, query.since_seq)
+            .await
+            .map_err(|e| match e {
+                device_names::DeviceNameSyncError::Database(err) => SyncError::Database(err),
+                other => SyncError::Database(sqlx::Error::Protocol(other.to_string())),
+            })?
+    };
+
     let max_read_state_seq = read_state
         .iter()
         .map(|r| r.user_seq)
@@ -48,15 +64,24 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         .max()
         .unwrap_or(query.since_seq);
 
+    let max_device_seq = device_state
+        .iter()
+        .map(|r| r.user_seq)
+        .max()
+        .unwrap_or(query.since_seq);
+
     let max_seq = std::cmp::max(
         query.since_seq,
-        std::cmp::max(max_read_state_seq, max_pref_seq),
+        std::cmp::max(
+            max_read_state_seq,
+            std::cmp::max(max_pref_seq, max_device_seq),
+        ),
     );
 
     Ok(SyncResponse {
         read_state,
         user_preferences,
-        device_state: Vec::new(),
+        device_state,
         starred_items: Vec::new(),
         max_seq,
         full_resync_required: false,

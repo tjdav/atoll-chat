@@ -8,6 +8,7 @@ use crate::room_invites::RoomInviteError;
 use crate::room_messages::RoomMessageError;
 use crate::rooms::RoomError;
 use crate::session::SessionError;
+use crate::sync::device_names::DeviceNameSyncError;
 use crate::sync::preferences::PreferencesError;
 use axum::{
     http::{header, StatusCode},
@@ -96,6 +97,21 @@ impl IntoResponse for ApiError {
                 }));
 
                 (status, body).into_response()
+            }
+        }
+    }
+}
+
+// Implement From<DeviceNameSyncError> for ApiError
+impl From<DeviceNameSyncError> for ApiError {
+    fn from(err: DeviceNameSyncError) -> Self {
+        match err {
+            DeviceNameSyncError::Database(e) => ApiError::Internal(e.into()),
+            DeviceNameSyncError::DeviceNotOwned => {
+                ApiError::NotFound("device_not_found".to_string())
+            }
+            DeviceNameSyncError::InvalidCiphertext(_) => {
+                ApiError::BadRequest("invalid_encrypted_device_name".to_string())
             }
         }
     }
