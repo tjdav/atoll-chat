@@ -871,6 +871,21 @@ Phase 10 delivers messaging support, welcome packet routing, and MLS epoch linea
 - **Consumption**: Recipient lists unconsumed welcomes via `GET /api/v1/welcomes`, fetches the welcome ciphertext via `GET /api/v1/welcomes/:id`, and marks it consumed via `POST /api/v1/welcomes/:id/consume`. Attempting to consume an already-consumed welcome returns HTTP 409 Conflict (`{"error":"already_consumed"}`).
 - **Multi-Device Welcome Limitation**: Phase 10 attaches welcome packets to the target's most recent device. Multi-device welcome fanout is managed at the client / MLS layer in Phase 11.
 
+### Message Editing
+
+Message editing allows senders to update the ciphertext of previously sent application messages.
+
+- **Edit Model & Chain**: An edit is stored as a new `room_messages` row with `edit_of = <original_id>` and `edit_sequence = <previous_sequence + 1>`. The original message row is preserved. On the first edit, `edited_at` is set on the original row.
+- **Endpoint (`PATCH /api/v1/rooms/:id/messages/:msg_id`)**:
+  - Request body: `{ "ciphertext": "<base64>" }`.
+  - Rate limited per user via `RATE_EDIT_PER_MIN` (default 30/min).
+  - Returns HTTP 200 with `{ "edit_id": "...", "original_id": "...", "edit_sequence": N, "epoch": E, "created_at": "..." }` and `Cache-Control: no-store`.
+  - Errors: `missing_field` (400), `invalid_ciphertext` (400), `not_editable` (400 if commit/proposal), `forbidden` (403 if not sender), `edit_window_expired` (403 if past edit window), `room_not_found` (404 if not member), `message_not_found` (404), `message_deleted` (409 if original deleted), `ciphertext_too_large` (413), `rate_limited` (429).
+- **Edit Window Enforcement**: Server enforces `edit_window_seconds` (default 900s / 15 mins) measured from the original message's `created_at`.
+- **Read Exposure**: `GET /api/v1/rooms/:id/messages` includes `edit_of` (original ID or null) and `edit_sequence` (position in chain or 0) for every row in the list.
+- **Sockudo Event (`message.edited`)**: Publishes `{ "edit_id": "...", "original_id": "...", "edit_sequence": N, "created_at": "..." }` to `private-room-<room_id>`. Ciphertext is omitted.
+- **Audit Action**: Writes `edit.create` to the audit log upon successful edit.
+
 ### Scope Boundaries
 
 - Phase 10 implements server-side persistence and CAS linearization.

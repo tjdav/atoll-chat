@@ -19,6 +19,7 @@ pub struct RateLimitConfig {
     pub rate_device_name_per_min: u32,
     pub rate_admin_oprf_rotate_per_hour: u32,
     pub rate_room_metadata_per_min: u32,
+    pub rate_edit_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +51,7 @@ pub struct Config {
     pub room_invite_default_uses: i64,
     pub room_invite_code_length: usize,
     pub max_room_metadata_bytes: usize,
+    pub edit_window_seconds: i64,
     pub rate_limits: RateLimitConfig,
     pub cleanup_enabled: bool,
     pub cleanup_interval_minutes: u64,
@@ -299,6 +301,16 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(4096);
 
+        let edit_window_seconds = env::var("EDIT_WINDOW_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(900);
+
+        let rate_edit_per_min = env::var("RATE_EDIT_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -316,6 +328,7 @@ impl Config {
             rate_device_name_per_min,
             rate_admin_oprf_rotate_per_hour,
             rate_room_metadata_per_min,
+            rate_edit_per_min,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -672,6 +685,7 @@ impl Config {
             room_invite_default_uses,
             room_invite_code_length,
             max_room_metadata_bytes,
+            edit_window_seconds,
             rate_limits,
             cleanup_enabled,
             cleanup_interval_minutes,
@@ -768,7 +782,9 @@ impl Config {
                 rate_device_name_per_min: 30,
                 rate_admin_oprf_rotate_per_hour: 1,
                 rate_room_metadata_per_min: 30,
+                rate_edit_per_min: 30,
             },
+            edit_window_seconds: 900,
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,
             cleanup_startup_delay_secs: 0,

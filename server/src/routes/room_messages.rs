@@ -1,6 +1,7 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header, HeaderMap, StatusCode},
+    response::IntoResponse,
     Json,
 };
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -13,9 +14,11 @@ use crate::{
     auth::AuthUser,
     config_ops, devices,
     error::ApiError,
+    limits,
+    rate_limit::{self, RateLimitKey},
     room_messages::{
-        self, DeleteRequest, ListMessagesQuery, ListMessagesResult, MessageContentType,
-        MessageCursor, SubmitOutcome, SubmitRequest,
+        self, DeleteRequest, EditRequest, ListMessagesQuery, ListMessagesResult,
+        MessageContentType, MessageCursor, RoomMessageError, SubmitOutcome, SubmitRequest,
     },
     AppState,
 };
@@ -29,6 +32,12 @@ pub struct SubmitMessageRequest {
     pub content_type: String,
     pub ciphertext: String,
     pub transcript_hash: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EditMessageRequest {
+    pub ciphertext: Option<String>,
+    pub sender_client_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -304,4 +313,124 @@ pub async fn delete_message(
     }
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn edit(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, message_id)): Path<(String, String)>,
+    headers: HeaderMap,
+    Json(payload): Json<EditMessageRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    // 1. Rate limit check
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::Edit {
+            user_id: auth.user_id.clone(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate limit exceeded for message edit".to_string(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    // 2. Validate ciphertext present
+    let ciphertext_b64 = payload.ciphertext.ok_or_else(|| {
+        ApiError::InternalWithDetails(
+            StatusCode::BAD_REQUEST,
+            "missing_field".to_string(),
+            json!({ "field": "ciphertext" }),
+        )
+    })?;
+
+    // 3. Base64 decode ciphertext
+    let ciphertext_bytes = BASE64
+        .decode(ciphertext_b64.trim())
+        .map_err(|_| ApiError::BadRequest("invalid_ciphertext".to_string()))?;
+
+    // 4. Validate ciphertext length against effective limit
+    let instance_limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
+    let max_message_size = instance_limits
+        .message_size_bytes
+        .min(state.server_hard_max.message_size_bytes) as usize;
+
+    if ciphertext_bytes.len() > max_message_size {
+        return Err(ApiError::InternalCustom(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "ciphertext_too_large".to_string(),
+        ));
+    }
+
+    // 5. Determine client_id
+    let user_devices = devices::list_devices(&state.pool, &auth.user_id).await?;
+    let requester_client_id = if let Some(ref cid) = payload.sender_client_id {
+        cid.clone()
+    } else if let Some(header_cid) = headers.get("x-client-id").and_then(|h| h.to_str().ok()) {
+        header_cid.to_string()
+    } else if let Some(dev) = user_devices.first() {
+        dev.client_id.clone()
+    } else {
+        return Err(ApiError::BadRequest("unknown_client_id".to_string()));
+    };
+
+    let edit_req = EditRequest {
+        room_id: id.clone(),
+        message_id: message_id.clone(),
+        requester_user_id: auth.user_id.clone(),
+        requester_client_id,
+        new_ciphertext: ciphertext_bytes,
+    };
+
+    let edit_window = state.config.edit_window_seconds;
+
+    let result = match room_messages::edit_message(&state.pool, edit_req, edit_window).await {
+        Ok(res) => res,
+        Err(RoomMessageError::WindowExpired) => {
+            return Err(ApiError::InternalWithDetails(
+                StatusCode::FORBIDDEN,
+                "edit_window_expired".to_string(),
+                json!({ "window_seconds": edit_window }),
+            ));
+        }
+        Err(err) => return Err(ApiError::from(err)),
+    };
+
+    // Audit log
+    let _ = audit::log(
+        &state.pool,
+        Some(&auth.user_id),
+        audit::action::EDIT_CREATE,
+        Some("room_message"),
+        Some(&result.edit_id),
+        Some(json!({
+            "room_id": id,
+            "original_id": result.original_id,
+            "edit_sequence": result.edit_sequence,
+        })),
+    )
+    .await;
+
+    // Sockudo publish message.edited
+    let channel = format!("private-room-{}", id);
+    let event_payload = json!({
+        "edit_id": result.edit_id,
+        "original_id": result.original_id,
+        "edit_sequence": result.edit_sequence,
+        "created_at": result.created_at.to_rfc3339(),
+    });
+
+    if let Err(e) = state
+        .publisher
+        .publish(&channel, "message.edited", event_payload)
+        .await
+    {
+        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+    }
+
+    Ok(([(header::CACHE_CONTROL, "no-store")], Json(result)))
 }

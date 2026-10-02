@@ -37,9 +37,13 @@
   - **Migration:** `0026_rooms_metadata.sql` (Case A: dropped `name_encrypted`, added `metadata` and `metadata_version`).
   - **Delivered:** `0026_rooms_metadata.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/error.rs`, `server/README.md`, `room_metadata_write.rs`, `room_metadata_validation.rs`, `room_metadata_events.rs`.
   - **Batch:** `messaging`
+- **Task 27 — Message Editing**: done
+  - **Migration:** `0027_message_edit_columns.sql` (Case A: added `edit_of`, `edit_sequence`, `edited_at` columns and `idx_room_messages_edit_of` partial index).
+  - **Delivered:** `0027_message_edit_columns.sql`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/audit.rs`, `server/src/error.rs`, `server/src/lib.rs`, `server/README.md`, `message_edit_write.rs`, `message_edit_validation.rs`, `message_edit_events.rs`.
+  - **Batch:** `messaging`
 
 ## Summary
-- **Total Tasks Tracked:** 14
-- **Done:** 14
+- **Total Tasks Tracked:** 15
+- **Done:** 15
 - **Pending:** 0
 - **Mismatches:** 0

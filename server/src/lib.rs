@@ -70,8 +70,9 @@ pub use permission_check::{ConfigEdit, RequirePermission};
 pub use rate_limit::{RateLimitConfig, RateLimitDecision, RateLimitError, RateLimitKey, Window};
 pub use registration::RegistrationStore;
 pub use room_messages::{
-    get_current_epoch, get_message_ciphertext, list_messages, submit_message, MessageContentType,
-    RoomMessageError, RoomMessageView, SubmitOutcome, SubmitRequest,
+    edit_message, get_current_epoch, get_message_ciphertext, list_messages, submit_message,
+    EditRequest, EditResult, MessageContentType, RoomMessageError, RoomMessageView, SubmitOutcome,
+    SubmitRequest,
 };
 pub use rooms::{consume_pending_remove, list_pending_removes, PendingRemove};
 pub use sockudo::{Publisher, SockudoConfig, SockudoError};
@@ -311,7 +312,7 @@ pub fn build_app(state: AppState) -> Router {
         )
         .route(
             "/rooms/{id}/messages/{message_id}",
-            delete(routes::room_messages::delete_message),
+            patch(routes::room_messages::edit).delete(routes::room_messages::delete_message),
         )
         .route(
             "/rooms/{id}/messages/{message_id}/ciphertext",
