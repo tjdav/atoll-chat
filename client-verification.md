@@ -137,3 +137,21 @@ build task runs.
 | `auth:biometric:request` | Emitted when Face ID / biometric button is clicked on login view |
 | Shell custom elements | `<auth-gate>`, `<auth-view-login>`, `<auth-view-register>`, `<auth-view-recovery>` defined in `src/components/containers/` |
 | View switching mechanism | `active` attribute on sub-views with custom element getter `style: { display: (state) => (state.active ? 'block' : 'none') }` |
+
+### C-V-C — Client-Side OPRF Library Availability & Wire-Format Compatibility
+
+**Verified:** 2026-10-02
+
+| Fact | Value |
+|---|---|
+| Recommended OPRF Library | `@noble/curves` (`^2.4.0`) |
+| Recommended Hash Utility | `@noble/hashes` (`^1.7.0`) |
+| Module Export | `@noble/curves/ed25519.js` (`ristretto255_oprf.oprf`) |
+| OPRF Mode | Base mode (non-verifiable OPRF per RFC 9497) |
+| Protocol Suite | `ristretto255-SHA512` |
+| `voprf 0.5.0` Differential Test Parity | **100% Byte-Exact Match** |
+| Wire Format (`blinded` / `evaluated`) | 32-byte compressed Ristretto255 point encoded as standard Base64 string |
+| Wire Format (`username_token`) | 64-byte SHA-512 digest encoded as 86-character unpadded Base64url string |
+| Pure-JS / Browser Native | Yes (0 external dependencies, tree-shakes to ~15 KiB, runs natively in browser/Node 24) |
+| WASM Requirement | None |
+| Report Location | `client-verification/cv-c/report.md` |
