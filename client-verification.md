@@ -170,3 +170,19 @@ build task runs.
 | `deriveDeviceNameKey(token)` | `async (token: Uint8Array) => Promise<Uint8Array>` | Client spec §6.21 & §8.3. Computes `HKDF-Expand(token, info="device-name-encryption-v1", length=32)` returning 32-byte AES key. |
 | `createApiClient(options)` | `({ baseUrl: string, getAuthToken?: Function, fetchImpl?: typeof fetch }) => { get: Function, post: Function, del: Function }` | Client spec §4.3 & §21. Minimal fetch wrapper returning `{ get(path, { query, headers, signal }), post(path, { body, headers, signal }), del(path, { headers, signal }) }`. |
 | `ApiError` | `class ApiError extends Error { status: number, code: string, message: string, details: any }` | Normalized API error thrown on non-2xx HTTP responses. |
+
+### C-V-D — Client OPAQUE Library Availability & Wire Compatibility
+
+**Verified:** 2026-10-02
+
+| Fact | Value |
+|---|---|
+| Recommended OPAQUE Library | `@serenity-kit/opaque@1.1.0` |
+| `opaque-ke 4.0.1` Differential Parity | **100% Byte-Exact Match** across registration, login, and 64-byte session key derivation |
+| Cipher Suite | `Ristretto255`, `TripleDh<Ristretto255, Sha512>`, `Argon2` KSF |
+| Wire Encoding (Client → Server) | Base64URL string (`URL_SAFE_NO_PAD`) |
+| Wire Encoding (Server → Client) | Standard Base64 string (`STANDARD`); client MUST translate to Base64URL before calling `@serenity-kit/opaque` |
+| WASM Architecture | Embedded base64 WASM bundle; auto-initialized / synchronous, requiring 0 build pipeline changes |
+| Security Review | Audited via 7ASecurity whitebox review & penetration test (OTF Red Team Lab) |
+| C-AUTH-3 Unblocked Strategy | Single pure JS application task using `@serenity-kit/opaque@1.1.0` |
+| Report Location | `client-verification/cv-d/report.md` |
