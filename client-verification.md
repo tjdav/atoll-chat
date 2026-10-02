@@ -40,3 +40,18 @@ build task runs.
 | Coralite repository | `https://codeberg.org/tjdavid/coralite.git` |
 | Coralite issue tracker | `https://codeberg.org/tjdavid/coralite/issues` |
 | Coralite homepage | `https://coralite.dev` |
+
+### C-INFRA-2 — Node 24 Enforcement and Build Pipeline Behavior
+
+**Verified:** 2026-10-02
+
+| Fact | Value |
+|---|---|
+| Active Node.js runtime | `v24.21.0` |
+| Workspace Node floor | `>=24.0.0` (root, `@atoll/app`, `@atoll/extend`) |
+| `.nvmrc` value | `24` |
+| Installed `coralite` version | `1.0.0-rc.5` |
+| Installed `coralite-scripts` version | `1.0.0-rc.5` |
+| Build status | `blocked-upstream` |
+| Missing `src/components` behavior | Throws `CoraliteError: Root directory was not found: src/components` (CF-001) |
+| Missing `public` directory behavior | Throws `Error: ENOENT: no such file or directory, lstat 'public'` in `copyDirectory` (CF-002) |
