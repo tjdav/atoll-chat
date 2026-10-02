@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 15 |
-| Done | 3 |
+| Pending | 14 |
+| Done | 4 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -24,7 +24,7 @@ or modify the server's ledger.
 | C-V-A | Verify repo state and toolchain | done | — | — |
 | C-INFRA-0 | Establish client tracking files | done | C-V-A | — |
 | C-CORALITE-FEEDBACK | Establish Coralite Upstream Feedback Policy | done | C-INFRA-0 | — |
-| C-INFRA-1 | Monorepo setup | pending | C-INFRA-0 | — |
+| C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
 | C-INFRA-2 | Coralite & Plugin Configuration | pending | C-INFRA-1 | — |
 | C-INFRA-3 | SQLite & Database Storage Architecture | pending | C-INFRA-1 | — |
 | C-INFRA-4 | CoreCrypto WASM Integration & Keystore | pending | C-INFRA-1 | — |
@@ -140,3 +140,10 @@ On completion:
   - Created `client-coralite-feedback.md` at repo root tracking Coralite upstream friction.
   - Added `Coralite Feedback Policy` and `Coralite Feedback IDs` registry table to `client-task-ledger.md`.
   - Recorded verified Coralite issue tracker URL in `client-verification.md`.
+- **C-INFRA-1 Deliverables:**
+  - Created `pnpm-workspace.yaml` declaring `packages/*`.
+  - Created root `package.json` with workspace metadata, scripts, packageManager, and Node.js engine requirement (`>=22.22.2`).
+  - Created root `.nvmrc` containing `22.22.2`.
+  - Created `packages/app/package.json` for `@atoll/app`.
+  - Created `packages/extend/package.json` for `@atoll/extend`.
+  - Extended root `.gitignore` with client Node.js, build output, and log ignore rules.

@@ -56,3 +56,15 @@ db/
 # Rust
 target/
 server/target/
+
+# Client — Node.js
+node_modules/
+
+# Client — build output
+dist/
+.coralite/
+
+# Client — logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
