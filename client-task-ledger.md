@@ -14,8 +14,8 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 13 |
-| Done | 4 |
-| Blocked | 1 |
+| Done | 6 |
+| Blocked | 0 |
 
 ## Client Tasks
 
@@ -25,7 +25,8 @@ or modify the server's ledger.
 | C-INFRA-0 | Establish client tracking files | done | C-V-A | — |
 | C-CORALITE-FEEDBACK | Establish Coralite Upstream Feedback Policy | done | C-INFRA-0 | — |
 | C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
-| C-INFRA-2 | Coralite & Plugin Configuration | blocked-upstream | C-INFRA-1 | — |
+| C-INFRA-2 | Coralite & Plugin Configuration | done | C-INFRA-1 | — |
+| C-INFRA-2b | Unblock Coralite Build Pipeline | done | C-INFRA-2 | — |
 | C-INFRA-3 | SQLite & Database Storage Architecture | pending | C-INFRA-1 | — |
 | C-INFRA-4 | CoreCrypto WASM Integration & Keystore | pending | C-INFRA-1 | — |
 | C-INFRA-5 | Design System Tokens & Base CSS | pending | C-INFRA-1 | — |
@@ -42,7 +43,7 @@ or modify the server's ledger.
 
 ## Blockers
 
-- **C-INFRA-2 Upstream Bugs (CF-001, CF-002):** `coralite@1.0.0-rc.5` and `coralite-scripts@1.0.0-rc.5` crash on missing `src/components` and `public` directories during `pnpm build`. Paused pending upstream bug fixes.
+None — all client tasks are unblocked.
 
 ## Coralite Feedback Policy
 
@@ -128,8 +129,8 @@ On completion:
 
 | ID | Task | Type | Tier | Status |
 |---|---|---|---|---|
-| CF-001 | C-INFRA-2 | Bug (missing `src/components` directory causes `CoraliteError` crash) | T1 | filed-upstream |
-| CF-002 | C-INFRA-2 | Bug (missing `public` directory causes `ENOENT` `copyDirectory` crash) | T1 | filed-upstream |
+| CF-001 | C-INFRA-2 | Bug (missing `src/components` directory causes `CoraliteError` crash) | T1 | filed-upstream; client-mitigated-by-input |
+| CF-002 | C-INFRA-2 | Bug (missing `public` directory causes `ENOENT` `copyDirectory` crash) | T1 | filed-upstream; client-mitigated-by-input |
 
 ## Notes
 
@@ -149,7 +150,12 @@ On completion:
   - Created `packages/extend/package.json` for `@atoll/extend`.
   - Extended root `.gitignore` with client Node.js, build output, and log ignore rules.
 - **C-INFRA-2 Deliverables & Status:**
-  - Status: `blocked-upstream` due to T1 bugs CF-001 and CF-002.
+  - Status: `done` (unblocked by C-INFRA-2b input directory mitigation).
   - Raised Node.js floor to `>=24.0.0` across root, `@atoll/app`, and `@atoll/extend` `package.json` files and updated `.nvmrc` to `24`.
   - Installed `coralite@1.0.0-rc.5` and `coralite-scripts@1.0.0-rc.5` under Node `v24.21.0` and generated `pnpm-lock.yaml`.
   - Created `packages/app/coralite.config.js`, `src/pages/index.html`, `src/pages/app.html`, `src/styles/main.css`, `src/styles/tokens.css`, `src/styles/utilities.css`, and `packages/app/.gitignore`.
+- **C-INFRA-2b Deliverables:**
+  - Created placeholder directories `packages/app/src/components/.gitkeep` and `packages/app/public/.gitkeep`.
+  - Unblocked Coralite build step: `pnpm --filter @atoll/app build` executed successfully producing `packages/app/dist/index.html` and `packages/app/dist/app.html`.
+  - Annotated CF-001 and CF-002 entries as `filed-upstream; client-mitigated-by-input`.
+  - Updated C-INFRA-2 status from `blocked-upstream` to `done`.
