@@ -1,0 +1,127 @@
+<template id="auth-view-recovery">
+  <section class="card">
+    <header>
+      <h1>Recover access</h1>
+    </header>
+    <form ref="form" novalidate>
+      <label class="field">
+        <span class="field-label">Username</span>
+        <input ref="username" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      </label>
+      <label class="field">
+        <span class="field-label">Recovery code</span>
+        <input ref="recoveryCode" type="text" name="recoveryCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required>
+      </label>
+      <label class="field">
+        <span class="field-label">New password</span>
+        <input ref="newPassword" type="password" name="newPassword" autocomplete="new-password" required>
+      </label>
+      <button ref="submit" type="submit" class="primary">Recover access</button>
+    </form>
+    <footer>
+      <button ref="backLink" type="button" class="link">← Back to log in</button>
+    </footer>
+  </section>
+</template>
+
+<style>
+  .card {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  header h1 {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .field-label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+  }
+  input {
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background-color: var(--surface-1);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: var(--text-base);
+  }
+  input:focus {
+    outline: 2px solid var(--accent-fill);
+    outline-offset: 1px;
+  }
+  button.primary {
+    width: 100%;
+    padding: var(--space-2) var(--space-4);
+    background-color: var(--accent-fill);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+  footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  button.link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent-fill);
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+  }
+  button.link:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<script type="module">
+export default {
+  attributes: {
+    active: { type: Boolean, default: false }
+  },
+  style: {
+    display: (state) => (state.active ? 'block' : 'none')
+  },
+  client({ refs, emit, signal }) {
+    refs('form').addEventListener('submit', (event) => {
+      event.preventDefault()
+      emit('auth:recovery:submit', {
+        username: refs('username').value,
+        recoveryCode: refs('recoveryCode').value,
+        newPassword: refs('newPassword').value
+      })
+    }, { signal })
+
+    refs('backLink').addEventListener('click', () => {
+      emit('auth:view-change', { view: 'login' })
+    }, { signal })
+  }
+}
+</script>

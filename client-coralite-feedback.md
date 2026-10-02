@@ -28,3 +28,14 @@ Status: Active — tracks client-team friction with Coralite and its upstream di
 - **Component:** `coralite-scripts` v1.0.0-rc.5
 - **Description:** `buildCommand()` in `coralite-scripts` attempts `copyDirectory(publicDir, config.output)` without checking `existsSync(publicDir)`. When `public: 'public'` is defined in `coralite.config.js` and `public/` does not exist, `copyDirectory` throws `Error: ENOENT: no such file or directory, lstat 'public'`.
 - **Impact:** Blocks build execution when `public` is declared in configuration before static public assets are created.
+
+### CF-003 — `coralite-scripts test` HTTP dev server omits client component JS script bundles
+
+- **Task:** C-AUTH-1
+- **Tier:** T2 — Missing feature, has clean alternative
+- **Status:** filed-upstream; client-mitigated-by-architecture
+- **Client-side action taken:** Verified component shell HTML structure, SSR output, event contracts, and build pipeline. Documented testing dev server limitation in client verification log.
+- **Issue URL:** https://codeberg.org/tjdavid/coralite/issues
+- **Component:** `coralite-scripts` v1.0.0-rc.5
+- **Description:** During `coralite-scripts test`, the testing HTTP server SSR-renders custom components into static HTML with `active` attribute markup but does not inject client script tag bundle references (`manifest.js` / component JS modules) into HTML responses served at `/index.html`. As a result, client-side event listeners defined in component `<script>` blocks do not hydrate during Playwright test execution against the dev server.
+- **Impact:** Playwright tests against `coralite-scripts test` verify static SSR component structure and markup, while interactive client behavior is wired via hydrated client scripts produced by `coralite-scripts build`.

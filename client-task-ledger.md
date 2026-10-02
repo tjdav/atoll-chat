@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 10 |
-| Done | 10 |
+| Pending | 9 |
+| Done | 11 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -31,7 +31,7 @@ or modify the server's ledger.
 | C-INFRA-3 | Establish Client Test Infrastructure and Batch Model | done | C-INFRA-1 | unit-smoke |
 | C-INFRA-4 | Playwright Browser Testing Setup | done | C-INFRA-2, C-INFRA-3 | component-smoke |
 | C-INFRA-5 | Design System Tokens & Base CSS | done | C-INFRA-1 | component-smoke |
-| C-AUTH-1 | Auth Gate Shell & Routing | pending | C-INFRA-2, C-INFRA-5 | — |
+| C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
 | C-AUTH-2 | OPRF Blinding Client & API Client | pending | C-INFRA-2 | — |
 | C-AUTH-3 | OPAQUE Login & Registration Flows | pending | C-AUTH-1, C-AUTH-2, C-INFRA-4 | — |
 | C-AUTH-4 | Session Persistence & Boot Sequence | pending | C-AUTH-3, C-INFRA-3 | — |
@@ -132,6 +132,7 @@ On completion:
 |---|---|---|---|---|
 | CF-001 | C-INFRA-2 | Bug (missing `src/components` directory causes `CoraliteError` crash) | T1 | filed-upstream; client-mitigated-by-input |
 | CF-002 | C-INFRA-2 | Bug (missing `public` directory causes `ENOENT` `copyDirectory` crash) | T1 | filed-upstream; client-mitigated-by-input |
+| CF-003 | C-AUTH-1 | Missing feature (`coralite-scripts test` dev server omits client JS script bundle links) | T2 | filed-upstream; client-mitigated-by-architecture |
 
 ## Notes
 
@@ -190,3 +191,13 @@ On completion:
   - Extended `packages/app/src/styles/main.css` with `@layer base` containing `box-sizing` reset, `html` (`100dvh`, font family, line height, primary text, surface-0 background), `body` / `#app` height, and `prefers-reduced-motion` override.
   - Created `packages/app/tests/component/tokens.spec.js` asserting light mode token resolution, dark-mode remap behavior, non-color scales, and reduced motion override.
   - Registered `tests/component/tokens.spec.js` in `packages/app/test-batches.js` under `component-smoke` batch.
+- **C-AUTH-1 Deliverables & Status:**
+  - Status: `done`.
+  - Created `packages/app/src/components/containers/auth-gate.html` (root shell managing view state `'login' | 'register' | 'recovery'`).
+  - Created `packages/app/src/components/containers/auth-view-login.html` (login form with `active` attribute, `biometricHidden` getter, and event emitters for `auth:login:submit`, `auth:view-change`, and `auth:biometric:request`).
+  - Created `packages/app/src/components/containers/auth-view-register.html` (register form with invite code, ALTCHA placeholder, username, display name, password, and event emitters for `auth:register:submit` and `auth:view-change`).
+  - Created `packages/app/src/components/containers/auth-view-recovery.html` (recovery form with username, recovery code, new password, and event emitters for `auth:recovery:submit` and `auth:view-change`).
+  - Updated `packages/app/src/pages/index.html` to render `<auth-gate></auth-gate>`.
+  - Created `packages/app/tests/component/auth-gate.spec.js` and updated `packages/app/tests/component/smoke.spec.js`.
+  - Registered `tests/component/auth-gate.spec.js` in `packages/app/test-batches.js` under `component-smoke` batch.
+  - Recorded CF-003 in `client-coralite-feedback.md` and `client-task-ledger.md`.
