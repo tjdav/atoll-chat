@@ -99,3 +99,16 @@
     ```
     Returns `Cache-Control: no-store`.
   - **Rate Limit Policy:** Endpoint is read-only and cheap (single indexed scan). No new rate limit variant added.
+
+## V-F — `users.profile` Semantics and Avatar Storage Reconciliation
+- **ID:** V-F
+- **Date:** 2026-10-02
+- **Status:** complete. Canonical.
+- **Spec sections affected:** Server Spec v2.0 §2.4, §7.1, §7.2, §8.2.1, §8.2.2, §8.2.3, §8.2.4, §8.8, §14.3, §16, §17; Client Spec v1.0 §7.1, §8.4, §13.5, §13.6, §13.7, §17.1, §24
+- **Question asked:** What are the visibility semantics of `users.profile` and `profile_version`, where does the user's avatar attachment ID live, how do `ui-profile` and `users.profile` relate, and is Task 32 unblocked?
+- **Answer found:**
+  - **Visibility Model:** `users.profile` and `profile_version` are strictly self-only (`GET /users/me`, `PATCH /users/me`). No endpoint (`POST /users/lookup`, `GET /rooms/:id/members`, etc.) ever exposes `profile` or `profile_version` to other users.
+  - **Avatar Attachment Storage:** Confirmed Option A — the user's avatar attachment ID lives inside the client's opaque end-to-end encrypted profile payload stored in `users.profile`.
+  - **Terminology Reconciliation:** `ui-profile` in Client Spec v1.0 §7.1 is the client-side UI Web Component renderer tag, while `users.profile` in Server Spec v2.0 §7.1 is the server database column storing the client-encrypted profile payload.
+  - **Task 32 Status:** Task 32 (Avatar Upload) is unblocked under Interpretation A (V-E) without requiring any server schema changes.
+- **Link to report:** [verification/users-profile/report.md](verification/users-profile/report.md)
