@@ -57,6 +57,7 @@ files = [
     "reaction_validation",
     "reaction_write",
     "room_invites",
+    "room_members_pagination",
     "room_messages",
     "room_metadata_events",
     "room_metadata_validation",

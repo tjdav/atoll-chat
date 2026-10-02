@@ -21,6 +21,7 @@ pub struct RateLimitConfig {
     pub rate_room_metadata_per_min: u32,
     pub rate_edit_per_min: u32,
     pub rate_reaction_per_min: u32,
+    pub rate_member_list_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -317,6 +318,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(60);
 
+        let rate_member_list_per_min = env::var("RATE_MEMBER_LIST_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(60);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -336,6 +342,7 @@ impl Config {
             rate_room_metadata_per_min,
             rate_edit_per_min,
             rate_reaction_per_min,
+            rate_member_list_per_min,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -791,6 +798,7 @@ impl Config {
                 rate_room_metadata_per_min: 30,
                 rate_edit_per_min: 30,
                 rate_reaction_per_min: 60,
+                rate_member_list_per_min: 60,
             },
             edit_window_seconds: 900,
             cleanup_enabled: false,

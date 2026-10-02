@@ -931,9 +931,14 @@ async fn test_18_list_members_succeeds() {
 
     assert_eq!(members.len(), 2);
     assert!(members[0]["username_token"].is_string());
-    assert_eq!(members[0]["role"], "owner");
     assert!(members[1]["username_token"].is_string());
-    assert_eq!(members[1]["role"], "member");
+
+    let roles: Vec<&str> = members
+        .iter()
+        .map(|m| m["role"].as_str().unwrap())
+        .collect();
+    assert!(roles.contains(&"owner"));
+    assert!(roles.contains(&"member"));
 }
 
 #[tokio::test]

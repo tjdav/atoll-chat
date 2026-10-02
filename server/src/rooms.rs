@@ -87,6 +87,39 @@ pub struct RoomMember {
     pub joined_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemberCursor {
+    pub room_id: String,
+    pub last_user_id: String,
+}
+
+impl MemberCursor {
+    pub fn encode(&self) -> String {
+        let json = serde_json::to_string(self).unwrap_or_default();
+        URL_SAFE_NO_PAD.encode(json.as_bytes())
+    }
+
+    pub fn decode(encoded: &str) -> Option<Self> {
+        let bytes = URL_SAFE_NO_PAD.decode(encoded.trim()).ok()?;
+        serde_json::from_slice(&bytes).ok()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ListMembersQuery {
+    pub room_id: String,
+    pub requester_id: String,
+    pub limit: usize,
+    pub cursor: Option<MemberCursor>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ListMembersResult {
+    pub members: Vec<RoomMember>,
+    pub next_cursor: Option<String>,
+    pub has_more: bool,
+}
+
 #[derive(Debug, Default)]
 pub struct CreateRoomOptions {
     pub retention_days: Option<i64>,
@@ -727,16 +760,16 @@ pub async fn leave_room(
     Ok(LeaveOutcome::TransferredOwnership { new_owner_id })
 }
 
+/// Pagination is best-effort under concurrent membership changes.
 pub async fn list_members(
     pool: &SqlitePool,
-    room_id: &str,
-    user_id: &str,
-) -> Result<Vec<RoomMember>, RoomError> {
+    query: ListMembersQuery,
+) -> Result<ListMembersResult, RoomError> {
     // 1. Verify requester is a member
     let is_member: Option<(i32,)> =
         sqlx::query_as("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
-            .bind(room_id)
-            .bind(user_id)
+            .bind(&query.room_id)
+            .bind(&query.requester_id)
             .fetch_optional(pool)
             .await?;
 
@@ -744,23 +777,40 @@ pub async fn list_members(
         return Err(RoomError::NotAMember);
     }
 
-    // 2. Query members
-    let rows = sqlx::query(
-        r#"
-        SELECT rm.user_id, u.username_token, u.encrypted_display, rm.role, rm.joined_at
-        FROM room_members rm
-        JOIN users u ON u.id = rm.user_id
-        WHERE rm.room_id = ?
-        ORDER BY CASE rm.role
-            WHEN 'owner' THEN 0
-            WHEN 'moderator' THEN 1
-            ELSE 2
-        END, rm.joined_at ASC
-        "#,
-    )
-    .bind(room_id)
-    .fetch_all(pool)
-    .await?;
+    let fetch_limit = query.limit + 1;
+
+    let rows = if let Some(ref cursor) = query.cursor {
+        sqlx::query(
+            r#"
+            SELECT rm.user_id, u.username_token, u.encrypted_display, rm.role, rm.joined_at
+            FROM room_members rm
+            JOIN users u ON u.id = rm.user_id
+            WHERE rm.room_id = ? AND rm.user_id > ?
+            ORDER BY rm.user_id ASC
+            LIMIT ?
+            "#,
+        )
+        .bind(&query.room_id)
+        .bind(&cursor.last_user_id)
+        .bind(fetch_limit as i64)
+        .fetch_all(pool)
+        .await?
+    } else {
+        sqlx::query(
+            r#"
+            SELECT rm.user_id, u.username_token, u.encrypted_display, rm.role, rm.joined_at
+            FROM room_members rm
+            JOIN users u ON u.id = rm.user_id
+            WHERE rm.room_id = ?
+            ORDER BY rm.user_id ASC
+            LIMIT ?
+            "#,
+        )
+        .bind(&query.room_id)
+        .bind(fetch_limit as i64)
+        .fetch_all(pool)
+        .await?
+    };
 
     let mut members = Vec::new();
     for row in rows {
@@ -773,7 +823,28 @@ pub async fn list_members(
         });
     }
 
-    Ok(members)
+    let has_more = members.len() > query.limit;
+    if has_more {
+        members.truncate(query.limit);
+    }
+
+    let next_cursor = if has_more {
+        members.last().map(|m| {
+            MemberCursor {
+                room_id: query.room_id.clone(),
+                last_user_id: m.user_id.clone(),
+            }
+            .encode()
+        })
+    } else {
+        None
+    };
+
+    Ok(ListMembersResult {
+        members,
+        next_cursor,
+        has_more,
+    })
 }
 
 pub async fn add_member(
