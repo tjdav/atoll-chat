@@ -27,6 +27,7 @@ pub enum RateLimitKey {
     Edit { user_id: String },
     Reaction { user_id: String },
     MemberList { user_id: String },
+    RecoverStart { ip: String, window: Window },
 }
 
 #[derive(Debug, Clone)]
@@ -265,6 +266,34 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_member_list_per_min,
+            )
+        }
+        RateLimitKey::RecoverStart { ip, window } => {
+            let limit = match window {
+                Window::Minute => config.rate_recover_start_per_min,
+                Window::Hour => config.rate_recover_start_per_hour,
+                Window::Day => {
+                    return Err(RateLimitError::InvalidKey(
+                        "unsupported window for RecoverStart".into(),
+                    ))
+                }
+            };
+            let win_tag = match window {
+                Window::Minute => "min",
+                Window::Hour => "hour",
+                _ => "day",
+            };
+            let (start, reset) = compute_window(now, window);
+            let boundary = if window == Window::Hour {
+                format!(":{}", start.format("%Y-%m-%d-%H"))
+            } else {
+                String::new()
+            };
+            (
+                format!("recover_start:{ip}:{win_tag}{boundary}"),
+                start,
+                reset,
+                limit,
             )
         }
     };

@@ -99,25 +99,8 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
     let login_store = Arc::new(LoginStore::new());
 
     let rate_limits = RateLimitConfig {
-        invite_create_hourly: 50,
-        invite_create_daily: 200,
-        invite_redeem_per_min: 10,
-        kp_claim_per_min: 30,
-        kp_claim_hourly: 200,
-        login_per_min: 10,
-        login_lockout_min: 15,
-        export_rate_limit_hours: 24,
         presign_per_min: presign_limit,
-        oprf_blind_per_min: 30,
-        oprf_blind_per_hour: 300,
-        read_state_per_min: 120,
-        preference_per_min: 120,
-        rate_device_name_per_min: 30,
-        rate_admin_oprf_rotate_per_hour: 1,
-        rate_room_metadata_per_min: 30,
-        rate_edit_per_min: 30,
-        rate_reaction_per_min: 60,
-        rate_member_list_per_min: 60,
+        ..Config::test_default().rate_limits
     };
 
     let config = Config {
@@ -179,6 +162,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         opaque_server,
         registration_store,
         login_store,
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         altcha_config,
         config: config_arc,
         server_hard_max,

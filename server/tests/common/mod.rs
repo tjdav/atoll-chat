@@ -13,6 +13,7 @@ use server::altcha::AltchaConfig;
 use server::config::Config;
 use server::login::LoginStore;
 use server::opaque::{DefaultCipherSuite, OpaqueServer};
+use server::recovery::RecoveryStore;
 use server::registration::RegistrationStore;
 use server::AppState;
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
@@ -68,6 +69,7 @@ pub async fn setup_test_app_with_config(
         Arc::new(OpaqueServer::load_or_generate(&key_path).expect("Failed to create OpaqueServer"));
     let registration_store = Arc::new(RegistrationStore::new());
     let login_store = Arc::new(LoginStore::new());
+    let recovery_store = Arc::new(RecoveryStore::new());
 
     let config = Config {
         db_path: db_path.to_string_lossy().to_string(),
@@ -146,6 +148,7 @@ pub async fn setup_test_app_with_config(
         opaque_server,
         registration_store,
         login_store,
+        recovery_store,
         altcha_config: altcha_config.clone(),
         config: config_arc,
         server_hard_max,

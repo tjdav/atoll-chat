@@ -72,6 +72,7 @@ async fn test_end_to_end_backup_and_restore() {
         opaque_server: opaque_server.clone(),
         registration_store,
         login_store,
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         altcha_config,
         config: config_arc.clone(),
         server_hard_max,

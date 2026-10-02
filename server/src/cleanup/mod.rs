@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::limits::ServerHardMax;
 use crate::login::LoginStore;
+use crate::recovery::RecoveryStore;
 use crate::registration::RegistrationStore;
 use crate::storage::Storage;
 use async_trait::async_trait;
@@ -19,6 +20,7 @@ pub struct CleanupContext<'a> {
     pub config: &'a Config,
     pub registration_store: &'a Arc<RegistrationStore>,
     pub login_store: &'a Arc<LoginStore>,
+    pub recovery_store: &'a Arc<RecoveryStore>,
     pub storage: &'a Arc<dyn Storage>,
     pub server_max: &'a Arc<ServerHardMax>,
 }
@@ -29,6 +31,7 @@ pub struct CleanupContextOwned {
     pub config: Arc<Config>,
     pub registration_store: Arc<RegistrationStore>,
     pub login_store: Arc<LoginStore>,
+    pub recovery_store: Arc<RecoveryStore>,
     pub storage: Arc<dyn Storage>,
     pub server_max: Arc<ServerHardMax>,
 }
@@ -40,6 +43,7 @@ impl CleanupContextOwned {
             config: &self.config,
             registration_store: &self.registration_store,
             login_store: &self.login_store,
+            recovery_store: &self.recovery_store,
             storage: &self.storage,
             server_max: &self.server_max,
         }

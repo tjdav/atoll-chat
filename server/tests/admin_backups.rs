@@ -176,6 +176,7 @@ async fn test_04_trigger_fails_when_backup_disabled() {
         opaque_server,
         registration_store,
         login_store,
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         altcha_config,
         config: config_arc,
         server_hard_max,

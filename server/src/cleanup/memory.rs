@@ -15,7 +15,8 @@ impl CleanupJob for MemoryStoresJob {
             .registration_store
             .purge_expired(Duration::from_secs(300));
         let login_deleted = ctx.login_store.purge_expired(Duration::from_secs(300));
-        let total = (reg_deleted + login_deleted) as u64;
+        let recovery_deleted = ctx.recovery_store.purge_expired(Duration::from_secs(600));
+        let total = (reg_deleted + login_deleted + recovery_deleted) as u64;
 
         Ok(CleanupReport {
             rows_deleted: total,

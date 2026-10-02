@@ -15,6 +15,7 @@ pub mod push_subscriptions;
 pub mod reactions;
 pub mod read_state;
 pub mod ready;
+pub mod recover;
 pub mod register;
 pub mod roles;
 pub mod room_invites;

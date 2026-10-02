@@ -21,6 +21,7 @@ files = [
     "lookup_oprf",
     "profile_oprf",
     "recovery_code",
+    "recovery_endpoints",
     "register_oprf",
     "registration",
 ]

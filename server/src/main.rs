@@ -5,6 +5,7 @@ use server::config::Config;
 use server::db;
 use server::login::LoginStore;
 use server::opaque::OpaqueServer;
+use server::recovery::RecoveryStore;
 use server::registration::RegistrationStore;
 use server::roles;
 use server::AppState;
@@ -150,6 +151,7 @@ async fn main() -> anyhow::Result<()> {
     }
     let registration_store = Arc::new(RegistrationStore::new());
     let login_store = Arc::new(LoginStore::new());
+    let recovery_store = Arc::new(RecoveryStore::new());
     let altcha_config = Arc::new(AltchaConfig::from_env(&config, &pool).await?);
     let server_hard_max = Arc::new(server::ServerHardMax {
         file_size_bytes: config.max_file_size_bytes as i64,
@@ -200,6 +202,7 @@ async fn main() -> anyhow::Result<()> {
         opaque_server,
         registration_store: registration_store.clone(),
         login_store: login_store.clone(),
+        recovery_store: recovery_store.clone(),
         altcha_config,
         config: config.clone(),
         server_hard_max: server_hard_max.clone(),
@@ -260,6 +263,7 @@ async fn main() -> anyhow::Result<()> {
             config: config.clone(),
             registration_store: registration_store.clone(),
             login_store: login_store.clone(),
+            recovery_store: recovery_store.clone(),
             storage: storage.clone(),
             server_max: server_hard_max.clone(),
         };
