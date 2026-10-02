@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname } from 'node:path'
 import batches from '../test-batches.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const packageRoot = join(here, '..')
+const packageRoot = dirname(here)
 
 const name = process.argv[2]
 if (!name) {
@@ -21,23 +21,41 @@ if (!batch) {
   process.exit(1)
 }
 
-// Runner registry. e2e and component runners are added by C-INFRA-4
-// when Playwright is installed.
+const runnerType = batch.runner
+
 const runners = {
-  unit: (files) => ({ cmd: 'node', args: ['--test', ...files] }),
+  node: (files) => ({ cmd: 'node', args: ['--test', ...files] }),
+  playwright: (files) => ({ cmd: 'pnpm', args: ['exec', 'playwright', 'test', ...files] }),
 }
 
-const runner = runners[batch.type]
+const runner = runners[runnerType]
 if (!runner) {
-  console.error(`Batch type "${batch.type}" has no registered runner.`)
-  console.error(`Add one in scripts/run-batch.js when the tooling lands.`)
+  console.error(`Batch runner "${runnerType}" is not registered.`)
   process.exit(1)
 }
 
 const { cmd, args } = runner(batch.files)
 const child = spawn(cmd, args, { stdio: 'inherit', cwd: packageRoot })
-child.on('exit', (code) => process.exit(code ?? 0))
+
+let timedOut = false
+const timeoutMs = 60_000
+const timer = setTimeout(() => {
+  timedOut = true
+  console.error(`\nBatch "${name}" timed out after 60 seconds. Exiting...`)
+  child.kill('SIGTERM')
+  setTimeout(() => child.kill('SIGKILL'), 5000).unref()
+}, timeoutMs)
+
+child.on('exit', (code) => {
+  clearTimeout(timer)
+  if (timedOut) {
+    process.exit(1)
+  }
+  process.exit(code ?? 0)
+})
+
 child.on('error', (err) => {
+  clearTimeout(timer)
   console.error(`Failed to spawn runner: ${err.message}`)
   process.exit(1)
 })

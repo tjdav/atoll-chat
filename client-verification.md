@@ -94,3 +94,18 @@ build task runs.
 | Viable test runners | Node.js built-in runner (`node --test`) for unit tests; Playwright + `@axe-core/playwright` for component/E2E tests |
 | Batch model alignment | JS batch manifest (`test-batches.js`) grouping specs into runner batches executed via `pnpm test:batch <batch>` |
 | Report location | `client-verification/cv-b/report.md` |
+
+### C-INFRA-4 — Playwright WebServer Launch & Component Batch Verification
+
+**Verified:** 2026-10-02
+
+| Fact | Value |
+|---|---|
+| `@playwright/test` installed version | `1.63.0` (pinned spec range `^1.61.0`) |
+| `@axe-core/playwright` installed version | `4.10.1` (pinned spec range `^4.10.0`) |
+| Playwright Chromium browser | Installed (`v1243`, Chrome Headless Shell 153.0.8010.12) |
+| `coralite-scripts test` port behavior | Listens on port `3000` (configurable via `coralite.config.js` or `PORT`, portfinder fallback) |
+| `webServer` integration | Playwright automatically starts `coralite-scripts test` on port 3000 and serves `/app.html` and `/index.html` |
+| `component-smoke` batch result | Passed (2 passed, 12.2s execution time, well under 60-second budget) |
+| `unit-smoke` batch result | Passed (3 passed, 0.09s execution time) |
+| `check-batches` validation | OK — 2 test files across 2 batches |
