@@ -1,0 +1,22 @@
+/**
+ * Client test batches.
+ *
+ * Every test file must appear in exactly one batch. The check-batches
+ * script enforces this invariant.
+ *
+ * Each batch runs in under 60 seconds. If a batch exceeds that, split it.
+ *
+ * Adding a test file: add its path to an existing batch, or create a new
+ * batch. Then run `pnpm check-batches`.
+ */
+
+export default [
+  {
+    name: 'unit-smoke',
+    type: 'unit',
+    description: 'Smoke tests that prove the test runner is operational.',
+    files: [
+      'tests/unit/smoke.test.js',
+    ],
+  },
+]
