@@ -13,9 +13,9 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 14 |
+| Pending | 13 |
 | Done | 4 |
-| Blocked | 0 |
+| Blocked | 1 |
 
 ## Client Tasks
 
@@ -25,7 +25,7 @@ or modify the server's ledger.
 | C-INFRA-0 | Establish client tracking files | done | C-V-A | — |
 | C-CORALITE-FEEDBACK | Establish Coralite Upstream Feedback Policy | done | C-INFRA-0 | — |
 | C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
-| C-INFRA-2 | Coralite & Plugin Configuration | pending | C-INFRA-1 | — |
+| C-INFRA-2 | Coralite & Plugin Configuration | blocked-upstream | C-INFRA-1 | — |
 | C-INFRA-3 | SQLite & Database Storage Architecture | pending | C-INFRA-1 | — |
 | C-INFRA-4 | CoreCrypto WASM Integration & Keystore | pending | C-INFRA-1 | — |
 | C-INFRA-5 | Design System Tokens & Base CSS | pending | C-INFRA-1 | — |
@@ -42,8 +42,7 @@ or modify the server's ledger.
 
 ## Blockers
 
-- **Node.js version:** Installed `v22.22.1` is below the spec's `≥ 22.22.2`.
-  Resolve in the runtime environment before any build task.
+- **C-INFRA-2 Upstream Bugs (CF-001, CF-002):** `coralite@1.0.0-rc.5` and `coralite-scripts@1.0.0-rc.5` crash on missing `src/components` and `public` directories during `pnpm build`. Paused pending upstream bug fixes.
 
 ## Coralite Feedback Policy
 
@@ -129,6 +128,8 @@ On completion:
 
 | ID | Task | Type | Tier | Status |
 |---|---|---|---|---|
+| CF-001 | C-INFRA-2 | Bug (missing `src/components` directory causes `CoraliteError` crash) | T1 | filed-upstream |
+| CF-002 | C-INFRA-2 | Bug (missing `public` directory causes `ENOENT` `copyDirectory` crash) | T1 | filed-upstream |
 
 ## Notes
 
@@ -147,3 +148,8 @@ On completion:
   - Created `packages/app/package.json` for `@atoll/app`.
   - Created `packages/extend/package.json` for `@atoll/extend`.
   - Extended root `.gitignore` with client Node.js, build output, and log ignore rules.
+- **C-INFRA-2 Deliverables & Status:**
+  - Status: `blocked-upstream` due to T1 bugs CF-001 and CF-002.
+  - Raised Node.js floor to `>=24.0.0` across root, `@atoll/app`, and `@atoll/extend` `package.json` files and updated `.nvmrc` to `24`.
+  - Installed `coralite@1.0.0-rc.5` and `coralite-scripts@1.0.0-rc.5` under Node `v24.21.0` and generated `pnpm-lock.yaml`.
+  - Created `packages/app/coralite.config.js`, `src/pages/index.html`, `src/pages/app.html`, `src/styles/main.css`, `src/styles/tokens.css`, `src/styles/utilities.css`, and `packages/app/.gitignore`.

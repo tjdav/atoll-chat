@@ -4,6 +4,15 @@
   "type": "module",
   "version": "0.0.0",
   "engines": {
-    "node": ">=22.22.2"
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "coralite-scripts dev",
+    "build": "coralite-scripts build",
+    "test": "coralite-scripts test"
+  },
+  "devDependencies": {
+    "coralite": "1.0.0-rc.5",
+    "coralite-scripts": "1.0.0-rc.5"
   }
 }
