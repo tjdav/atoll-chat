@@ -18,6 +18,8 @@ export default [
     description: 'Smoke tests that prove the test runner is operational.',
     files: [
       'tests/unit/smoke.test.js',
+      'tests/unit/oprf.test.js',
+      'tests/unit/api.test.js',
     ],
   },
   {

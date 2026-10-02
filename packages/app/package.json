@@ -18,5 +18,9 @@
     "@playwright/test": "^1.61.0",
     "coralite": "1.0.0-rc.5",
     "coralite-scripts": "1.0.0-rc.5"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^1.8.0"
   }
 }

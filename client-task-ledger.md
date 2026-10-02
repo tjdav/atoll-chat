@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 8 |
-| Done | 12 |
+| Pending | 7 |
+| Done | 13 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -33,7 +33,7 @@ or modify the server's ledger.
 | C-INFRA-4 | Playwright Browser Testing Setup | done | C-INFRA-2, C-INFRA-3 | component-smoke |
 | C-INFRA-5 | Design System Tokens & Base CSS | done | C-INFRA-1 | component-smoke |
 | C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
-| C-AUTH-2 | OPRF Blinding Client & API Client | pending | C-INFRA-2, C-V-C | — |
+| C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
 | C-AUTH-3 | OPAQUE Login & Registration Flows | pending | C-AUTH-1, C-AUTH-2, C-INFRA-4 | — |
 | C-AUTH-4 | Session Persistence & Boot Sequence | pending | C-AUTH-3, C-INFRA-3 | — |
 | C-AUTH-5 | Recovery Code Flow & Account Recovery | pending | C-AUTH-3 | — |
@@ -208,3 +208,12 @@ On completion:
   - Conducted differential execution test between `@noble/curves@2.4.0` (`ristretto255_oprf.oprf`) and `voprf 0.5.0` (Rust crate), establishing 100% byte-exact parity on RFC 9497 §2.2 finalize hash output and 86-character base64url username token generation.
   - Recommended Strategy 1 (Pure-JS via `@noble/curves@^2.4.0`). Confirmed no WASM pipeline or WASM build steps are required.
   - Updated C-AUTH-2 dependencies to include C-V-C and noted that C-AUTH-2 scope is confirmed as a single pure-JS task.
+- **C-AUTH-2 Deliverables & Status:**
+  - Status: `done`.
+  - Installed `@noble/curves` (`2.4.0`) and `@noble/hashes` (`1.8.0`) under `dependencies` in `packages/app/package.json`.
+  - Created `packages/app/src/lib/oprf/index.js` exporting `blind(username)`, `finalize(username, evaluatedBytes, state)`, `deriveDisplayNameKey(token)`, and `deriveDeviceNameKey(token)` with spec section JSDocs.
+  - Created `packages/app/src/lib/api/index.js` exporting `createApiClient({ baseUrl, getAuthToken, fetchImpl })` and `ApiError`.
+  - Created `packages/app/tests/unit/oprf.test.js` testing blinding output lengths, deterministic finalization, domain separation, UTF-8 handling, and byte-exact C-V-C / RFC 9497 differential vector matching.
+  - Created `packages/app/tests/unit/api.test.js` testing GET query params, POST JSON bodies, DELETE, auth header injection, 204 No Content, non-JSON response handling, error normalization, and AbortSignal propagation.
+  - Registered test files in `unit-smoke` batch in `packages/app/test-batches.js`.
+  - Confirmed `pnpm check-batches`, `pnpm test:batch unit-smoke`, and `pnpm --filter @atoll/app build` pass.

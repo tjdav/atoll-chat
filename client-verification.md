@@ -155,3 +155,18 @@ build task runs.
 | Pure-JS / Browser Native | Yes (0 external dependencies, tree-shakes to ~15 KiB, runs natively in browser/Node 24) |
 | WASM Requirement | None |
 | Report Location | `client-verification/cv-c/report.md` |
+
+### C-AUTH-2 — OPRF Client Library & API Fetch Wrapper Contracts
+
+**Verified:** 2026-10-02
+
+| Symbol / Function | Signature & Return Type | Spec Reference & Behavior |
+|---|---|---|
+| `@noble/curves` installed | `2.4.0` | Runtime dependency in `packages/app/package.json` |
+| `@noble/hashes` installed | `1.8.0` | Runtime dependency in `packages/app/package.json` |
+| `blind(username)` | `async (username: string) => Promise<{ blindedBytes: Uint8Array, state: { blind: Uint8Array, usernameBytes: Uint8Array } }>` | Client spec §6.19 & RFC 9497. Returns 32-byte `blindedBytes` compressed Ristretto255 point and state object holding private scalar `blind`. |
+| `finalize(username, evaluatedBytes, state)` | `async (username: string \| Uint8Array, evaluatedBytes: Uint8Array, state: { blind: Uint8Array }) => Promise<Uint8Array>` | Client spec §6.19 & RFC 9497 §2.2. Returns 64-byte finalized username token digest. Verified byte-exact against Rust `voprf 0.5.0` reference vector. |
+| `deriveDisplayNameKey(token)` | `async (token: Uint8Array) => Promise<Uint8Array>` | Client spec §6.20 & §8.3. Computes `HKDF-Expand(token, info="display-name-encryption-v1", length=32)` returning 32-byte AES key. |
+| `deriveDeviceNameKey(token)` | `async (token: Uint8Array) => Promise<Uint8Array>` | Client spec §6.21 & §8.3. Computes `HKDF-Expand(token, info="device-name-encryption-v1", length=32)` returning 32-byte AES key. |
+| `createApiClient(options)` | `({ baseUrl: string, getAuthToken?: Function, fetchImpl?: typeof fetch }) => { get: Function, post: Function, del: Function }` | Client spec §4.3 & §21. Minimal fetch wrapper returning `{ get(path, { query, headers, signal }), post(path, { body, headers, signal }), del(path, { headers, signal }) }`. |
+| `ApiError` | `class ApiError extends Error { status: number, code: string, message: string, details: any }` | Normalized API error thrown on non-2xx HTTP responses. |
