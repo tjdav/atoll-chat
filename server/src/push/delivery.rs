@@ -7,6 +7,7 @@ use sqlx::SqlitePool;
 use tracing::{info, warn};
 
 use crate::config::Config;
+use crate::identity::token::sender_ref_from_username_token;
 use crate::push::apns::ApnsSender;
 use crate::push::fcm::FcmSender;
 use crate::push::payload::build_message_payload;
@@ -130,7 +131,28 @@ impl DeliveryCoordinator {
             }
         }
 
-        let payload = build_message_payload(room_id, sender_user_id);
+        let sender_token: Option<String> =
+            sqlx::query_scalar("SELECT username_token FROM users WHERE id = ?")
+                .bind(sender_user_id)
+                .fetch_optional(&self.pool)
+                .await
+                .unwrap_or(None);
+
+        let sender_ref = match sender_token {
+            Some(ref token) => match sender_ref_from_username_token(token) {
+                Ok(s_ref) => s_ref,
+                Err(e) => {
+                    warn!(error = %e, "push: invalid sender username_token, falling back");
+                    "AAAAAAAAAAAAAAAAAAAAAA".to_string()
+                }
+            },
+            None => {
+                warn!("push: sender user not found for token lookup, falling back");
+                "AAAAAAAAAAAAAAAAAAAAAA".to_string()
+            }
+        };
+
+        let payload = build_message_payload(room_id, &sender_ref);
 
         let mut eligible_subscriptions: Vec<PushSubscription> = Vec::new();
         let mut suppressed = 0usize;

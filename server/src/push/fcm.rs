@@ -127,7 +127,7 @@ impl PushSender for FcmSender {
                 "data": {
                     "type": payload.notification_type,
                     "room_id": payload.room_id,
-                    "sender_user_id": payload.sender_user_id,
+                    "sender_ref": payload.sender_ref,
                     "encrypted_payload": payload.encrypted_payload,
                     "notification_id": payload.notification_id,
                     "priority": payload.priority,

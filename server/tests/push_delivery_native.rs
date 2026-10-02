@@ -23,14 +23,21 @@ fn synthetic_fcm_sa(token_uri: &str) -> String {
     .to_string()
 }
 
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
+
 async fn setup_user(pool: &SqlitePool, user_id: &str, username: &str) {
-    let hash = format!("hash_{}", username);
+    let mut token_bytes = [0u8; 64];
+    let user_bytes = username.as_bytes();
+    let len = user_bytes.len().min(64);
+    token_bytes[..len].copy_from_slice(&user_bytes[..len]);
+    let token = URL_SAFE_NO_PAD.encode(token_bytes);
+
     sqlx::query(
-        "INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES (?, ?, ?, X'00', '')",
+        "INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES (?, ?, X'00', '')",
     )
     .bind(user_id)
-    .bind(username)
-    .bind(hash)
+    .bind(token)
     .execute(pool)
     .await
     .unwrap();

@@ -148,8 +148,8 @@ impl PushSender for ApnsSender {
         );
         data.insert("room_id", serde_json::to_value(&payload.room_id).unwrap());
         data.insert(
-            "sender_user_id",
-            serde_json::to_value(&payload.sender_user_id).unwrap(),
+            "sender_ref",
+            serde_json::to_value(&payload.sender_ref).unwrap(),
         );
         data.insert(
             "encrypted_payload",
