@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 7 |
-| Done | 13 |
+| Pending | 6 |
+| Done | 14 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -24,6 +24,7 @@ or modify the server's ledger.
 | C-V-A | Verify repo state and toolchain | done | — | — |
 | C-V-B | Verify Client Testing Stack and Coralite Test Tooling | done | C-INFRA-2 | — |
 | C-V-C | Verify Client-Side OPRF Library Availability | done | C-AUTH-1 | — |
+| C-V-D | Verify Client OPAQUE Library Availability and Wire Compatibility | done | C-AUTH-2, C-V-C | — |
 | C-INFRA-0 | Establish client tracking files | done | C-V-A | — |
 | C-CORALITE-FEEDBACK | Establish Coralite Upstream Feedback Policy | done | C-INFRA-0 | — |
 | C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
@@ -34,7 +35,7 @@ or modify the server's ledger.
 | C-INFRA-5 | Design System Tokens & Base CSS | done | C-INFRA-1 | component-smoke |
 | C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
-| C-AUTH-3 | OPAQUE Login & Registration Flows | pending | C-AUTH-1, C-AUTH-2, C-INFRA-4 | — |
+| C-AUTH-3 | OPAQUE Login & Registration Flows | pending | C-AUTH-1, C-AUTH-2, C-V-D, C-INFRA-4 | — |
 | C-AUTH-4 | Session Persistence & Boot Sequence | pending | C-AUTH-3, C-INFRA-3 | — |
 | C-AUTH-5 | Recovery Code Flow & Account Recovery | pending | C-AUTH-3 | — |
 | C-CHAT-1 | Messenger Shell & Three-Panel Layout | pending | C-INFRA-2, C-INFRA-5 | — |
@@ -217,3 +218,8 @@ On completion:
   - Created `packages/app/tests/unit/api.test.js` testing GET query params, POST JSON bodies, DELETE, auth header injection, 204 No Content, non-JSON response handling, error normalization, and AbortSignal propagation.
   - Registered test files in `unit-smoke` batch in `packages/app/test-batches.js`.
   - Confirmed `pnpm check-batches`, `pnpm test:batch unit-smoke`, and `pnpm --filter @atoll/app build` pass.
+- **C-V-D Deliverables & Status:**
+  - Status: `done`.
+  - Produced verification report at `client-verification/cv-d/report.md`.
+  - Conducted differential execution test between `@serenity-kit/opaque@1.1.0` and `opaque-ke 4.0.1` (Rust crate), establishing 100% byte-exact parity across registration (`RegistrationRequest`, `RegistrationResponse`, `RegistrationUpload`), login (`CredentialRequest`, `CredentialResponse`, `CredentialFinalization`), and 64-byte session key derivation.
+  - Recommended Strategy 2 (`@serenity-kit/opaque@1.1.0`). Confirmed C-AUTH-3 is unblocked as a single pure JS task requiring zero custom WASM build steps or pipeline plugins.
