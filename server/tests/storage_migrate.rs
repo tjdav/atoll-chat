@@ -32,7 +32,7 @@ async fn insert_test_attachment(
     let key = format!("attachments/{}/{}/{}", &hash[0..2], &hash[2..4], &hash);
 
     sqlx::query(
-        "INSERT OR IGNORE INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('user_1', 'user_1', 'hash_1', 'reg_1', 'pubkey_1')"
+        "INSERT OR IGNORE INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('user_1', 'token_1', 'reg_1', 'pubkey_1')"
     )
     .execute(pool)
     .await

@@ -106,13 +106,13 @@ pub async fn upload(
             .await
             .map_err(|_| AttachmentRouteError::MissingFile)?;
 
-        parse_multipart(&room_id, &user_id, multipart).await?
+        parse_multipart(Some(&room_id), &user_id, multipart).await?
     } else if content_type.starts_with("application/octet-stream") || content_type.is_empty() {
         let bytes = axum::body::to_bytes(body.into_body(), usize::MAX)
             .await
             .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
 
-        parse_octet_stream(&room_id, &user_id, &headers, bytes.to_vec())?
+        parse_octet_stream(Some(&room_id), &user_id, &headers, bytes.to_vec())?
     } else {
         return Err(AttachmentRouteError::UnsupportedMediaType);
     };
@@ -386,8 +386,204 @@ async fn get_effective_file_size_limit(
     Ok(effective as u64)
 }
 
+pub async fn upload_avatar(
+    State(pool): State<SqlitePool>,
+    State(storage): State<Arc<dyn Storage>>,
+    State(config): State<Arc<Config>>,
+    State(hard_max): State<Arc<ServerHardMax>>,
+    AuthUser { user_id, .. }: AuthUser,
+    headers: HeaderMap,
+    body: axum::extract::Request,
+) -> Result<impl IntoResponse, AttachmentRouteError> {
+    let content_type = headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_lowercase();
+
+    if !content_type.starts_with("multipart/form-data") {
+        return Err(AttachmentRouteError::UnsupportedMediaType);
+    }
+
+    let effective_limit =
+        get_effective_user_file_size_limit(&pool, &user_id, &config, &hard_max).await?;
+
+    let multipart = Multipart::from_request(body, &())
+        .await
+        .map_err(|_| AttachmentRouteError::MissingFile)?;
+
+    let req = parse_multipart_strict_single_file(None, &user_id, multipart).await?;
+
+    if req.data.len() as u64 > effective_limit {
+        return Err(AttachmentRouteError::FileTooLarge {
+            limit: effective_limit,
+            received: req.data.len() as u64,
+        });
+    }
+
+    let view = attachments::upload_attachment(&pool, storage.as_ref(), &config, req).await?;
+    let res_headers = [(header::CACHE_CONTROL, "no-store".to_string())];
+    Ok((StatusCode::CREATED, res_headers, Json(view)))
+}
+
+async fn get_effective_user_file_size_limit(
+    pool: &SqlitePool,
+    user_id: &str,
+    config: &Config,
+    hard_max: &ServerHardMax,
+) -> Result<u64, AttachmentRouteError> {
+    let user_max_file_size: Option<i64> =
+        sqlx::query_scalar("SELECT max_file_size_bytes FROM users WHERE id = ?")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(AttachmentError::from)?;
+
+    let effective = limits::effective_file_size_limit(
+        user_max_file_size,
+        config.max_file_size_bytes as i64,
+        hard_max.file_size_bytes,
+    );
+
+    Ok(effective as u64)
+}
+
+async fn parse_multipart_strict_single_file(
+    room_id: Option<&str>,
+    uploader_id: &str,
+    mut multipart: Multipart,
+) -> Result<UploadRequest, AttachmentRouteError> {
+    let mut file_data: Option<Vec<u8>> = None;
+    let mut file_count = 0;
+    let mut claimed_id: Option<String> = None;
+    let mut plaintext_size: Option<i64> = None;
+    let mut encrypted_size: Option<i64> = None;
+    let mut chunk_size: Option<i64> = None;
+    let mut chunk_count: Option<i64> = None;
+    let mut nonce_prefix: Option<String> = None;
+    let mut base_counter: Option<i64> = None;
+    let mut content_type: Option<String> = None;
+    let mut uploader_client_id: Option<String> = None;
+
+    while let Ok(Some(field)) = multipart.next_field().await {
+        let name = field.name().unwrap_or("").to_string();
+        match name.as_str() {
+            "file" => {
+                file_count += 1;
+                let bytes = field
+                    .bytes()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                file_data = Some(bytes.to_vec());
+            }
+            "claimed_id" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                claimed_id = Some(text);
+            }
+            "plaintext_size" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                plaintext_size = text.parse().ok();
+            }
+            "encrypted_size" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                encrypted_size = text.parse().ok();
+            }
+            "chunk_size" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                chunk_size = text.parse().ok();
+            }
+            "chunk_count" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                chunk_count = text.parse().ok();
+            }
+            "nonce_prefix" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                nonce_prefix = Some(text);
+            }
+            "base_counter" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                base_counter = text.parse().ok();
+            }
+            "content_type" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                content_type = Some(text);
+            }
+            "uploader_client_id" => {
+                let text = field
+                    .text()
+                    .await
+                    .map_err(|e| AttachmentRouteError::BadRequest(e.to_string()))?;
+                uploader_client_id = Some(text);
+            }
+            _ => {}
+        }
+    }
+
+    if file_count != 1 {
+        return Err(AttachmentRouteError::InvalidRequest(
+            "exactly one file part is required".to_string(),
+        ));
+    }
+
+    let data = file_data.ok_or(AttachmentRouteError::MissingFile)?;
+    let claimed_id = claimed_id.ok_or(AttachmentRouteError::InvalidClaimedId)?;
+    let plaintext_size = plaintext_size.ok_or_else(|| {
+        AttachmentRouteError::InvalidManifest("missing plaintext_size".to_string())
+    })?;
+    let encrypted_size = encrypted_size.ok_or_else(|| {
+        AttachmentRouteError::InvalidManifest("missing encrypted_size".to_string())
+    })?;
+    let chunk_size = chunk_size
+        .ok_or_else(|| AttachmentRouteError::InvalidManifest("missing chunk_size".to_string()))?;
+    let chunk_count = chunk_count
+        .ok_or_else(|| AttachmentRouteError::InvalidManifest("missing chunk_count".to_string()))?;
+    let nonce_prefix = nonce_prefix
+        .ok_or_else(|| AttachmentRouteError::InvalidManifest("missing nonce_prefix".to_string()))?;
+    let base_counter = base_counter
+        .ok_or_else(|| AttachmentRouteError::InvalidManifest("missing base_counter".to_string()))?;
+
+    Ok(UploadRequest {
+        room_id: room_id.map(|s| s.to_string()),
+        uploader_id: uploader_id.to_string(),
+        uploader_client_id,
+        content_type: content_type.unwrap_or_else(|| "application/octet-stream".to_string()),
+        data,
+        claimed_id,
+        plaintext_size,
+        encrypted_size,
+        chunk_size,
+        chunk_count,
+        nonce_prefix,
+        base_counter,
+    })
+}
+
 async fn parse_multipart(
-    room_id: &str,
+    room_id: Option<&str>,
     uploader_id: &str,
     mut multipart: Multipart,
 ) -> Result<UploadRequest, AttachmentRouteError> {
@@ -497,7 +693,7 @@ async fn parse_multipart(
         .ok_or_else(|| AttachmentRouteError::InvalidManifest("missing base_counter".to_string()))?;
 
     Ok(UploadRequest {
-        room_id: room_id.to_string(),
+        room_id: room_id.map(|s| s.to_string()),
         uploader_id: uploader_id.to_string(),
         uploader_client_id,
         content_type: content_type.unwrap_or_else(|| "application/octet-stream".to_string()),
@@ -513,7 +709,7 @@ async fn parse_multipart(
 }
 
 fn parse_octet_stream(
-    room_id: &str,
+    room_id: Option<&str>,
     uploader_id: &str,
     headers: &HeaderMap,
     data: Vec<u8>,
@@ -554,7 +750,7 @@ fn parse_octet_stream(
     let uploader_client_id = get_header("X-Uploader-Client-Id");
 
     Ok(UploadRequest {
-        room_id: room_id.to_string(),
+        room_id: room_id.map(|s| s.to_string()),
         uploader_id: uploader_id.to_string(),
         uploader_client_id,
         content_type,
@@ -571,6 +767,8 @@ fn parse_octet_stream(
 
 #[derive(Debug, thiserror::Error)]
 pub enum AttachmentRouteError {
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
     #[error("missing file")]
     MissingFile,
     #[error("invalid claimed_id")]
@@ -600,9 +798,14 @@ pub enum AttachmentRouteError {
 impl IntoResponse for AttachmentRouteError {
     fn into_response(self) -> Response {
         match self {
+            AttachmentRouteError::InvalidRequest(msg) => (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"error": "invalid_request", "message": msg})),
+            )
+                .into_response(),
             AttachmentRouteError::MissingFile => (
                 StatusCode::BAD_REQUEST,
-                Json(json!({"error": "missing_file", "message": "Field 'file' is required"})),
+                Json(json!({"error": "invalid_request", "message": "Field 'file' is required"})),
             )
                 .into_response(),
             AttachmentRouteError::InvalidClaimedId => (
