@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 12 |
-| Done | 7 |
+| Done | 8 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-V-B | Verify Client Testing Stack and Coralite Test Tooling | done | C-INFRA-2 | — |
 | C-INFRA-0 | Establish client tracking files | done | C-V-A | — |
 | C-CORALITE-FEEDBACK | Establish Coralite Upstream Feedback Policy | done | C-INFRA-0 | — |
 | C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
@@ -167,3 +168,8 @@ On completion:
   - Created `packages/app/scripts/run-batch.js` (batch runner dispatching `unit` to `node --test`).
   - Created `packages/app/TESTING.md` (contributor guide for test batch architecture).
   - Updated `packages/app/package.json` with `test:batch` and `check-batches` scripts.
+- **C-V-B Deliverables & Status:**
+  - Status: `done`.
+  - Produced verification report at `client-verification/cv-b/report.md`.
+  - Verified `coralite-scripts test` serves testing-mode HTTP server without executing tests or accepting file filters.
+  - Determined two-runner architecture: Node.js built-in runner (`node --test`) for unit tests and Playwright (`@playwright/test`) + `@axe-core/playwright` for component/E2E tests.
