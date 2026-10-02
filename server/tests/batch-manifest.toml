@@ -20,6 +20,7 @@ files = [
     "login_oprf",
     "lookup_oprf",
     "profile_oprf",
+    "recovery_code",
     "register_oprf",
     "registration",
 ]
