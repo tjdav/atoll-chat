@@ -8,6 +8,9 @@
 - **V-D — Repository State Verification**: done
   - **Delivered:** `verification/repo-state/report.md`
   - **Recommendation:** Reconciled ground truth across migrations, test files, schema, routes, CLI, env vars, rate limits, capabilities, events, task ledger, and verification log.
+- **V-F — `users.profile` Semantics and Avatar Storage Reconciliation**: done
+  - **Delivered:** `verification/users-profile/report.md`
+  - **Outcome:** Reconciled `users.profile` and `users.profile_version` as self-only client-encrypted profile payload home (Option A / Interpretation A). Task 32 (Avatar Upload) is unblocked with no server schema changes required.
 
 ## Completed Tasks
 
@@ -69,8 +72,12 @@
   - **Delivered:** `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/lib.rs`, `server/tests/retention_preview.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `messaging`
 
+## Annotations for Future Tasks
+
+- **Task 32 — Avatar Upload (`POST /users/me/avatar`)**: Unblocked per Verification V-F (and V-E). Image asset is processed via the attachment pipeline with C2SP purpose `"user-avatar"` and returns the attachment record DTO. Client stores resulting attachment ID inside its client-encrypted profile payload and updates `users.profile` via `PATCH /users/me`. No server database schema change required.
+
 ## Summary
-- **Total Tasks Tracked:** 22
-- **Done:** 22
+- **Total Verifications/Tasks Tracked:** 24
+- **Done:** 24
 - **Pending:** 0
 - **Mismatches:** 0
