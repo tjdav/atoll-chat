@@ -25,6 +25,7 @@ fn test_server_max() -> ServerHardMax {
         message_size_bytes: 65536,
         attachment_retention_days: 365,
         call_max_participants: 50,
+        reactions_per_message: 50,
     }
 }
 
@@ -38,6 +39,7 @@ fn test_instance_limits() -> InstanceLimits {
         message_size_bytes: 16384,
         attachment_retention_days: 30,
         call_max_participants: 8,
+        reactions_per_message: 50,
     }
 }
 

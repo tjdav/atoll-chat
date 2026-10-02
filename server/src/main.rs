@@ -160,6 +160,7 @@ async fn main() -> anyhow::Result<()> {
         message_size_bytes: 65536,
         attachment_retention_days: 365,
         call_max_participants: 50,
+        reactions_per_message: 50,
     });
 
     let sockudo_config = server::SockudoConfig::load_or_initialize(&pool, &config).await?;

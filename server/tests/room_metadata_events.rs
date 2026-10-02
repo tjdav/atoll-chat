@@ -56,6 +56,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         message_size_bytes: 65536,
         attachment_retention_days: 365,
         call_max_participants: 50,
+        reactions_per_message: 50,
     });
 
     let sockudo_cfg = server::SockudoConfig {
@@ -239,6 +240,7 @@ async fn test_publisher_failure_does_not_affect_http_response() {
         message_size_bytes: 65536,
         attachment_retention_days: 365,
         call_max_participants: 50,
+        reactions_per_message: 50,
     });
 
     let sockudo_cfg = server::SockudoConfig {

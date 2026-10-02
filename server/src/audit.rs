@@ -23,6 +23,8 @@ pub mod action {
     pub const USER_EXPORT: &str = "user.export";
     pub const MESSAGE_DELETE: &str = "message.delete";
     pub const EDIT_CREATE: &str = "edit.create";
+    pub const REACTION_CREATE: &str = "reaction.create";
+    pub const REACTION_DELETE: &str = "reaction.delete";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

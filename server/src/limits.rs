@@ -13,6 +13,7 @@ pub struct InstanceLimits {
     pub message_size_bytes: i64,
     pub attachment_retention_days: i64,
     pub call_max_participants: i64,
+    pub reactions_per_message: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -25,6 +26,7 @@ pub struct ServerHardMax {
     pub message_size_bytes: i64,
     pub attachment_retention_days: i64,
     pub call_max_participants: i64,
+    pub reactions_per_message: i64,
 }
 
 impl Default for ServerHardMax {
@@ -38,6 +40,7 @@ impl Default for ServerHardMax {
             message_size_bytes: 65536,
             attachment_retention_days: 365,
             call_max_participants: 50,
+            reactions_per_message: 50,
         }
     }
 }
@@ -52,6 +55,7 @@ impl LimitMin {
     pub const MESSAGE_SIZE_BYTES: i64 = 1024; // 1KB
     pub const ATTACHMENT_RETENTION_DAYS: i64 = 0;
     pub const CALL_MAX_PARTICIPANTS: i64 = 2;
+    pub const REACTIONS_PER_MESSAGE: i64 = 1;
 }
 
 pub struct LimitDefault;
@@ -64,6 +68,7 @@ impl LimitDefault {
     pub const MESSAGE_SIZE_BYTES: i64 = 16384;
     pub const ATTACHMENT_RETENTION_DAYS: i64 = 0;
     pub const CALL_MAX_PARTICIPANTS: i64 = 8;
+    pub const REACTIONS_PER_MESSAGE: i64 = 50;
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -141,6 +146,12 @@ pub async fn get_limits(
         .unwrap_or(LimitDefault::CALL_MAX_PARTICIPANTS)
         .min(server_max.call_max_participants);
 
+    let reactions_per_message = map
+        .get("reactions_per_message")
+        .copied()
+        .unwrap_or(LimitDefault::REACTIONS_PER_MESSAGE)
+        .min(server_max.reactions_per_message);
+
     Ok(InstanceLimits {
         file_size_bytes,
         room_size,
@@ -150,6 +161,7 @@ pub async fn get_limits(
         message_size_bytes,
         attachment_retention_days,
         call_max_participants,
+        reactions_per_message,
     })
 }
 
@@ -207,6 +219,12 @@ pub async fn set_limits(
         LimitMin::CALL_MAX_PARTICIPANTS,
         server_max.call_max_participants,
     )?;
+    validate_field(
+        "reactions_per_message",
+        new_limits.reactions_per_message,
+        LimitMin::REACTIONS_PER_MESSAGE,
+        server_max.reactions_per_message,
+    )?;
 
     let mut tx = pool.begin().await?;
 
@@ -222,6 +240,7 @@ pub async fn set_limits(
             new_limits.attachment_retention_days,
         ),
         ("call_max_participants", new_limits.call_max_participants),
+        ("reactions_per_message", new_limits.reactions_per_message),
     ];
 
     for (k, v) in pairs {

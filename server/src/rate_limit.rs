@@ -25,6 +25,7 @@ pub enum RateLimitKey {
     AdminOprfRotate { user_id: String },
     RoomMetadata { user_id: String },
     Edit { user_id: String },
+    Reaction { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -245,6 +246,15 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_edit_per_min,
+            )
+        }
+        RateLimitKey::Reaction { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("reaction:{user_id}:min"),
+                start,
+                reset,
+                config.rate_reaction_per_min,
             )
         }
     };

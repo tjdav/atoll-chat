@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
 
+use crate::reactions::list::ReactionSummary;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MessageCursor {
     pub epoch: i64,
@@ -37,6 +39,7 @@ pub struct RoomMessageView {
     pub edited_at: Option<DateTime<Utc>>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
+    pub reactions: Vec<ReactionSummary>,
 }
 
 pub struct EditRequest {
@@ -367,21 +370,36 @@ pub async fn list_messages(
             .fetch_all(pool)
             .await?;
 
+            let msg_ids: Vec<String> = rows.iter().map(|r| r.get("id")).collect();
+            let reactions_map = crate::reactions::list::list_reactions_for_messages(
+                pool,
+                &query.room_id,
+                &query.requester_id,
+                &msg_ids,
+            )
+            .await
+            .unwrap_or_default();
+
             let mut msgs: Vec<RoomMessageView> = rows
                 .into_iter()
-                .map(|row| RoomMessageView {
-                    id: row.get("id"),
-                    room_id: row.get("room_id"),
-                    sender_user_id: row.get("sender_user_id"),
-                    sender_client_id: row.get("sender_client_id"),
-                    epoch: row.get("epoch"),
-                    seq: row.get("seq"),
-                    content_type: row.get("content_type"),
-                    edit_of: row.get("edit_of"),
-                    edit_sequence: row.get("edit_sequence"),
-                    edited_at: row.get("edited_at"),
-                    deleted_at: row.get("deleted_at"),
-                    created_at: row.get("created_at"),
+                .map(|row| {
+                    let id: String = row.get("id");
+                    let reactions = reactions_map.get(&id).cloned().unwrap_or_default();
+                    RoomMessageView {
+                        id,
+                        room_id: row.get("room_id"),
+                        sender_user_id: row.get("sender_user_id"),
+                        sender_client_id: row.get("sender_client_id"),
+                        epoch: row.get("epoch"),
+                        seq: row.get("seq"),
+                        content_type: row.get("content_type"),
+                        edit_of: row.get("edit_of"),
+                        edit_sequence: row.get("edit_sequence"),
+                        edited_at: row.get("edited_at"),
+                        deleted_at: row.get("deleted_at"),
+                        created_at: row.get("created_at"),
+                        reactions,
+                    }
                 })
                 .collect();
 
@@ -406,21 +424,36 @@ pub async fn list_messages(
             .fetch_all(pool)
             .await?;
 
+            let msg_ids: Vec<String> = rows.iter().map(|r| r.get("id")).collect();
+            let reactions_map = crate::reactions::list::list_reactions_for_messages(
+                pool,
+                &query.room_id,
+                &query.requester_id,
+                &msg_ids,
+            )
+            .await
+            .unwrap_or_default();
+
             let mut msgs: Vec<RoomMessageView> = rows
                 .into_iter()
-                .map(|row| RoomMessageView {
-                    id: row.get("id"),
-                    room_id: row.get("room_id"),
-                    sender_user_id: row.get("sender_user_id"),
-                    sender_client_id: row.get("sender_client_id"),
-                    epoch: row.get("epoch"),
-                    seq: row.get("seq"),
-                    content_type: row.get("content_type"),
-                    edit_of: row.get("edit_of"),
-                    edit_sequence: row.get("edit_sequence"),
-                    edited_at: row.get("edited_at"),
-                    deleted_at: row.get("deleted_at"),
-                    created_at: row.get("created_at"),
+                .map(|row| {
+                    let id: String = row.get("id");
+                    let reactions = reactions_map.get(&id).cloned().unwrap_or_default();
+                    RoomMessageView {
+                        id,
+                        room_id: row.get("room_id"),
+                        sender_user_id: row.get("sender_user_id"),
+                        sender_client_id: row.get("sender_client_id"),
+                        epoch: row.get("epoch"),
+                        seq: row.get("seq"),
+                        content_type: row.get("content_type"),
+                        edit_of: row.get("edit_of"),
+                        edit_sequence: row.get("edit_sequence"),
+                        edited_at: row.get("edited_at"),
+                        deleted_at: row.get("deleted_at"),
+                        created_at: row.get("created_at"),
+                        reactions,
+                    }
                 })
                 .collect();
 

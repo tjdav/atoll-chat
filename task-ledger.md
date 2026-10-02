@@ -41,9 +41,13 @@
   - **Migration:** `0027_message_edit_columns.sql` (Case A: added `edit_of`, `edit_sequence`, `edited_at` columns and `idx_room_messages_edit_of` partial index).
   - **Delivered:** `0027_message_edit_columns.sql`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/audit.rs`, `server/src/error.rs`, `server/src/lib.rs`, `server/README.md`, `message_edit_write.rs`, `message_edit_validation.rs`, `message_edit_events.rs`.
   - **Batch:** `messaging`
+- **Task 28 — Message Reactions**: done
+  - **Migration:** `0028_reactions.sql` (Case A: created `reactions` table with unique constraint `(message_id, sender_user_id, sender_client_id, reaction)` and partial/indexing strategy).
+  - **Delivered:** `0028_reactions.sql`, `server/src/reactions/mod.rs`, `server/src/reactions/write.rs`, `server/src/reactions/list.rs`, `server/src/routes/reactions.rs`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/limits.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/audit.rs`, `server/src/error.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/README.md`, `reaction_write.rs`, `reaction_validation.rs`, `reaction_list.rs`, `reaction_events.rs`.
+  - **Batch:** `messaging`
 
 ## Summary
-- **Total Tasks Tracked:** 15
-- **Done:** 15
+- **Total Tasks Tracked:** 16
+- **Done:** 16
 - **Pending:** 0
 - **Mismatches:** 0
