@@ -1,0 +1,50 @@
+<template id="auth-gate">
+  <main class="gate">
+    <div class="gate-column">
+      <auth-view-login active="{{ loginActive }}"></auth-view-login>
+      <auth-view-register active="{{ registerActive }}"></auth-view-register>
+      <auth-view-recovery active="{{ recoveryActive }}"></auth-view-recovery>
+    </div>
+  </main>
+</template>
+
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+  .gate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: var(--space-4);
+    background-color: var(--surface-0);
+  }
+  .gate-column {
+    width: 100%;
+    max-width: 360px;
+  }
+</style>
+
+<script type="module">
+export default {
+  attributes: {
+    view: { type: String, default: 'login' }
+  },
+  getters: {
+    loginActive: ({ state }) => state.view === 'login',
+    registerActive: ({ state }) => state.view === 'register',
+    recoveryActive: ({ state }) => state.view === 'recovery'
+  },
+  client({ root, state, signal }) {
+    root.addEventListener('auth:view-change', (event) => {
+      const next = event.detail?.view
+      if (next === 'login' || next === 'register' || next === 'recovery') {
+        state.view = next
+      }
+    }, { signal })
+  }
+}
+</script>

@@ -28,6 +28,7 @@ export default [
     files: [
       'tests/component/smoke.spec.js',
       'tests/component/tokens.spec.js',
+      'tests/component/auth-gate.spec.js',
     ],
   },
 ]
