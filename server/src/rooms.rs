@@ -7,12 +7,14 @@ use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
 
 use crate::limits::{InstanceLimits, ServerHardMax};
+use crate::sockudo::Publisher;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Room {
     pub id: String,
     pub owner_id: String,
-    pub name_encrypted: Option<String>,
+    pub metadata: Option<String>,
+    pub metadata_version: i64,
     pub retention_days: Option<i64>,
     pub max_file_size_bytes: Option<i64>,
     pub moderation_override: Option<String>,
@@ -87,7 +89,6 @@ pub struct RoomMember {
 
 #[derive(Debug, Default)]
 pub struct CreateRoomOptions {
-    pub name_encrypted: Option<String>,
     pub retention_days: Option<i64>,
     pub max_file_size_bytes: Option<i64>,
 }
@@ -144,6 +145,137 @@ pub enum RoomError {
     TargetHasNoDevice,
     #[error("pending remove not found")]
     RemoveNotFound,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RoomMetadataError {
+    #[error("metadata exceeds {0} bytes (got {1})")]
+    TooLarge(usize, usize),
+    #[error("metadata must be valid base64url")]
+    InvalidEncoding,
+    #[error("database error: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error("room not found")]
+    RoomNotFound,
+    #[error("not a member")]
+    NotAMember,
+    #[error("insufficient privileges")]
+    Forbidden,
+}
+
+/// Validates that the metadata blob is a well-formed base64url string
+/// that decodes to at most `max_bytes` bytes.
+pub fn validate_metadata_blob(value: &str, max_bytes: usize) -> Result<(), RoomMetadataError> {
+    use base64::engine::general_purpose::{URL_SAFE, URL_SAFE_NO_PAD};
+
+    let bytes = URL_SAFE_NO_PAD
+        .decode(value)
+        .or_else(|_| URL_SAFE.decode(value))
+        .map_err(|_| RoomMetadataError::InvalidEncoding)?;
+
+    if bytes.len() > max_bytes {
+        return Err(RoomMetadataError::TooLarge(max_bytes, bytes.len()));
+    }
+
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct RoomMetadataResult {
+    pub room_id: String,
+    pub metadata: Option<String>,
+    pub metadata_version: i64,
+    pub updated_at: DateTime<Utc>,
+}
+
+pub async fn update_room_metadata(
+    pool: &SqlitePool,
+    publisher: &Publisher,
+    room_id: &str,
+    requester_id: &str,
+    metadata: Option<&str>,
+    max_metadata_bytes: usize,
+) -> Result<RoomMetadataResult, RoomMetadataError> {
+    let mut tx = pool.begin().await?;
+
+    // 1. Verify requester membership
+    let member_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let role = match member_role {
+        Some((r,)) => r,
+        None => return Err(RoomMetadataError::RoomNotFound),
+    };
+
+    // 2. Verify requester is room owner
+    if role != "owner" {
+        return Err(RoomMetadataError::Forbidden);
+    }
+
+    // 3. Validate metadata blob if present
+    let clean_metadata = if let Some(m) = metadata {
+        validate_metadata_blob(m, max_metadata_bytes)?;
+        // Store canonical unpadded string or verbatim input if valid
+        use base64::engine::general_purpose::{URL_SAFE, URL_SAFE_NO_PAD};
+        let decoded = URL_SAFE_NO_PAD
+            .decode(m)
+            .or_else(|_| URL_SAFE.decode(m))
+            .map_err(|_| RoomMetadataError::InvalidEncoding)?;
+        Some(URL_SAFE_NO_PAD.encode(decoded))
+    } else {
+        None
+    };
+
+    // 4. Update row
+    sqlx::query(
+        r#"
+        UPDATE rooms
+        SET metadata = ?,
+            metadata_version = metadata_version + 1
+        WHERE id = ?
+        "#,
+    )
+    .bind(&clean_metadata)
+    .bind(room_id)
+    .execute(&mut *tx)
+    .await?;
+
+    // 5. Read back updated row
+    let row: (Option<String>, i64, DateTime<Utc>) = sqlx::query_as(
+        r#"
+        SELECT metadata, metadata_version, created_at
+        FROM rooms
+        WHERE id = ?
+        "#,
+    )
+    .bind(room_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    let result = RoomMetadataResult {
+        room_id: room_id.to_string(),
+        metadata: row.0,
+        metadata_version: row.1,
+        updated_at: Utc::now(),
+    };
+
+    // 6. Post-commit: publish room.updated
+    let payload = serde_json::json!({
+        "room_id": result.room_id,
+        "metadata_version": result.metadata_version,
+    });
+    let channel = format!("private-room-{}", room_id);
+    if let Err(e) = publisher.publish(&channel, "room.updated", payload).await {
+        tracing::warn!(error = %e, room_id = %room_id, "room.updated publish failed");
+    }
+
+    Ok(result)
 }
 
 pub async fn create_room(
@@ -206,13 +338,12 @@ pub async fn create_room(
     // 5. Insert into rooms
     sqlx::query(
         r#"
-        INSERT INTO rooms (id, owner_id, name_encrypted, retention_days, max_file_size_bytes)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO rooms (id, owner_id, retention_days, max_file_size_bytes)
+        VALUES (?, ?, ?, ?)
         "#,
     )
     .bind(&room_id)
     .bind(owner_id)
-    .bind(&options.name_encrypted)
     .bind(clamped_retention)
     .bind(clamped_file_size)
     .execute(&mut *tx)
@@ -244,7 +375,7 @@ pub async fn create_room(
     // 8. Fetch the created room to get created_at
     let room = sqlx::query_as::<_, Room>(
         r#"
-        SELECT id, owner_id, name_encrypted, retention_days, max_file_size_bytes, moderation_override, created_at
+        SELECT id, owner_id, metadata, metadata_version, retention_days, max_file_size_bytes, moderation_override, created_at
         FROM rooms
         WHERE id = ?
         "#,
@@ -264,7 +395,7 @@ pub async fn list_rooms_for_user(
 ) -> Result<Vec<RoomWithRole>, RoomError> {
     let rows = sqlx::query(
         r#"
-        SELECT r.id, r.owner_id, r.name_encrypted, r.retention_days, r.max_file_size_bytes, r.moderation_override, r.created_at,
+        SELECT r.id, r.owner_id, r.metadata, r.metadata_version, r.retention_days, r.max_file_size_bytes, r.moderation_override, r.created_at,
                rm.role AS current_user_role,
                (SELECT COUNT(*) FROM room_members WHERE room_id = r.id) AS member_count
         FROM rooms r
@@ -282,7 +413,8 @@ pub async fn list_rooms_for_user(
         let room = Room {
             id: row.get("id"),
             owner_id: row.get("owner_id"),
-            name_encrypted: row.get("name_encrypted"),
+            metadata: row.get("metadata"),
+            metadata_version: row.get("metadata_version"),
             retention_days: row.get("retention_days"),
             max_file_size_bytes: row.get("max_file_size_bytes"),
             moderation_override: row.get("moderation_override"),
@@ -310,7 +442,7 @@ pub async fn get_room_for_user(
 ) -> Result<Option<RoomWithRole>, RoomError> {
     let row_opt = sqlx::query(
         r#"
-        SELECT r.id, r.owner_id, r.name_encrypted, r.retention_days, r.max_file_size_bytes, r.moderation_override, r.created_at,
+        SELECT r.id, r.owner_id, r.metadata, r.metadata_version, r.retention_days, r.max_file_size_bytes, r.moderation_override, r.created_at,
                rm.role AS current_user_role,
                (SELECT COUNT(*) FROM room_members WHERE room_id = r.id) AS member_count
         FROM rooms r
@@ -327,7 +459,8 @@ pub async fn get_room_for_user(
         let room = Room {
             id: row.get("id"),
             owner_id: row.get("owner_id"),
-            name_encrypted: row.get("name_encrypted"),
+            metadata: row.get("metadata"),
+            metadata_version: row.get("metadata_version"),
             retention_days: row.get("retention_days"),
             max_file_size_bytes: row.get("max_file_size_bytes"),
             moderation_override: row.get("moderation_override"),

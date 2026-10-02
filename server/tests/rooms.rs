@@ -1783,9 +1783,7 @@ async fn test_37_other_room_fields_unchanged() {
         .uri("/api/v1/rooms")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({ "name_encrypted": "test_room_name" }).to_string(),
-        ))
+        .body(Body::from(json!({}).to_string()))
         .unwrap();
     let resp_create = app.clone().oneshot(req_create).await.unwrap();
     let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
@@ -1810,7 +1808,8 @@ async fn test_37_other_room_fields_unchanged() {
 
     assert_eq!(json_g["id"], room_id);
     assert_eq!(json_g["owner_id"], user_a_id);
-    assert_eq!(json_g["name_encrypted"], "test_room_name");
+    assert_eq!(json_g["metadata"], Value::Null);
+    assert_eq!(json_g["metadata_version"], 1);
     assert!(json_g["created_at"].is_string());
     assert_eq!(json_g["current_user_role"], "owner");
     assert_eq!(json_g["member_count"], 1);

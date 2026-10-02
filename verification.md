@@ -25,3 +25,11 @@
 - **Spec sections affected:** §5.8
 - **Question asked:** How to resolve the migration conflict where `requires_reregistration` column was added twice during fresh database migration?
 - **Answer found:** Removed redundant `0025_requires_reregistration.sql` migration file. The `requires_reregistration` column is already defined in `0020_users_oprf_identity.sql`. Database migrations 0001 through 0024 now run sequentially without conflict on a clean database.
+
+## Task 26 — Room Metadata Schema Migration
+- **ID:** Task 26
+- **Date:** 2026-10-02
+- **Status:** Complete.
+- **Spec sections affected:** §2.4, §7.4
+- **Question asked:** What was the initial schema state of the `rooms` table prior to migration 0026?
+- **Answer found:** Case A — `rooms` contained `name_encrypted` (TEXT) and lacked `metadata` or `metadata_version`. Migration `0026_rooms_metadata.sql` added `metadata` (TEXT), added `metadata_version` (INTEGER NOT NULL DEFAULT 1), and dropped `name_encrypted`.

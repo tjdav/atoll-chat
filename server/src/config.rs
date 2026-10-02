@@ -18,6 +18,7 @@ pub struct RateLimitConfig {
     pub preference_per_min: u32,
     pub rate_device_name_per_min: u32,
     pub rate_admin_oprf_rotate_per_hour: u32,
+    pub rate_room_metadata_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -48,6 +49,7 @@ pub struct Config {
     pub invite_limited_max_open: i64,
     pub room_invite_default_uses: i64,
     pub room_invite_code_length: usize,
+    pub max_room_metadata_bytes: usize,
     pub rate_limits: RateLimitConfig,
     pub cleanup_enabled: bool,
     pub cleanup_interval_minutes: u64,
@@ -287,6 +289,16 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(1);
 
+        let rate_room_metadata_per_min = env::var("RATE_ROOM_METADATA_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let max_room_metadata_bytes = env::var("MAX_ROOM_METADATA_BYTES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(4096);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -303,6 +315,7 @@ impl Config {
             preference_per_min: rate_preference_per_min,
             rate_device_name_per_min,
             rate_admin_oprf_rotate_per_hour,
+            rate_room_metadata_per_min,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -658,6 +671,7 @@ impl Config {
             invite_limited_max_open,
             room_invite_default_uses,
             room_invite_code_length,
+            max_room_metadata_bytes,
             rate_limits,
             cleanup_enabled,
             cleanup_interval_minutes,
@@ -736,6 +750,7 @@ impl Config {
             invite_limited_max_open: 50,
             room_invite_default_uses: 1,
             room_invite_code_length: 8,
+            max_room_metadata_bytes: 4096,
             rate_limits: RateLimitConfig {
                 invite_create_hourly: 50,
                 invite_create_daily: 200,
@@ -752,6 +767,7 @@ impl Config {
                 preference_per_min: 120,
                 rate_device_name_per_min: 30,
                 rate_admin_oprf_rotate_per_hour: 1,
+                rate_room_metadata_per_min: 30,
             },
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,
