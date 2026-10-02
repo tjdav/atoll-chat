@@ -22,6 +22,8 @@ pub struct RateLimitConfig {
     pub rate_edit_per_min: u32,
     pub rate_reaction_per_min: u32,
     pub rate_member_list_per_min: u32,
+    pub rate_recover_start_per_min: u32,
+    pub rate_recover_start_per_hour: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -323,6 +325,16 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(60);
 
+        let rate_recover_start_per_min = env::var("RATE_RECOVER_START_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(5);
+
+        let rate_recover_start_per_hour = env::var("RATE_RECOVER_START_PER_HOUR")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(20);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -343,6 +355,8 @@ impl Config {
             rate_edit_per_min,
             rate_reaction_per_min,
             rate_member_list_per_min,
+            rate_recover_start_per_min,
+            rate_recover_start_per_hour,
         };
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -799,6 +813,8 @@ impl Config {
                 rate_edit_per_min: 30,
                 rate_reaction_per_min: 60,
                 rate_member_list_per_min: 60,
+                rate_recover_start_per_min: 5,
+                rate_recover_start_per_hour: 20,
             },
             edit_window_seconds: 900,
             cleanup_enabled: false,

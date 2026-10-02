@@ -870,6 +870,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         opaque_server,
         registration_store,
         login_store,
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         altcha_config,
         config: cfg_arc,
         server_hard_max,

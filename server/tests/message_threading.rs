@@ -78,6 +78,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         opaque_server,
         registration_store,
         login_store,
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         altcha_config,
         config: Arc::new(config),
         server_hard_max,

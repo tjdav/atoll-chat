@@ -44,6 +44,7 @@ fn build_ctx(pool: SqlitePool, config: Config) -> CleanupContextOwned {
         config: config_arc,
         registration_store: Arc::new(RegistrationStore::new()),
         login_store: Arc::new(LoginStore::new()),
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         storage,
         server_max,
     }

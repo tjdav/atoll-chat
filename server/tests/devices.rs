@@ -178,6 +178,7 @@ async fn test_04_device_limit_is_enforced() {
         opaque_server,
         registration_store,
         login_store,
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         altcha_config,
         config: config_arc,
         server_hard_max,

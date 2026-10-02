@@ -32,6 +32,7 @@ async fn setup_test_app(config_override: impl FnOnce(&mut Config)) -> (axum::Rou
         opaque_server,
         registration_store: Arc::new(server::registration::RegistrationStore::new()),
         login_store: Arc::new(server::login::LoginStore::new()),
+        recovery_store: Arc::new(server::recovery::RecoveryStore::new()),
         altcha_config: Arc::new(server::AltchaConfig {
             enabled: false,
             hmac_secret: "auto".to_string(),

@@ -649,6 +649,7 @@ async fn test_11_attachments_job_runs_and_reports_notes_on_blob_error() {
         config: config.clone(),
         registration_store: Arc::new(RegistrationStore::new()),
         login_store: Arc::new(LoginStore::new()),
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         storage: failing_storage.clone(),
         server_max,
     };
@@ -686,6 +687,7 @@ async fn test_12_scheduler_registers_attachments_job() {
         config,
         registration_store: Arc::new(RegistrationStore::new()),
         login_store: Arc::new(LoginStore::new()),
+        recovery_store: Arc::new(server::RecoveryStore::new()),
         storage,
         server_max,
     };

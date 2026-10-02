@@ -467,6 +467,7 @@ async fn test_13_deletion_does_not_accelerate_retention() {
         config: &config,
         registration_store: &reg_store,
         login_store: &login_store,
+        recovery_store: &std::sync::Arc::new(server::RecoveryStore::new()),
         storage: &storage,
         server_max: &server_max,
     };

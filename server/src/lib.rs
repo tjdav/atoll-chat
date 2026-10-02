@@ -24,6 +24,7 @@ pub mod permissions;
 pub mod push;
 pub mod rate_limit;
 pub mod reactions;
+pub mod recovery;
 pub mod recovery_code;
 pub mod registration;
 pub mod roles;
@@ -70,6 +71,7 @@ pub use login::LoginStore;
 pub use opaque::{DefaultCipherSuite, OpaqueServer};
 pub use permission_check::{ConfigEdit, RequirePermission};
 pub use rate_limit::{RateLimitConfig, RateLimitDecision, RateLimitError, RateLimitKey, Window};
+pub use recovery::RecoveryStore;
 pub use recovery_code::{
     generate, hash, hash_with_salt, persist_for_user, verify, verify_for_user, RecoveryCodeError,
 };
@@ -98,6 +100,7 @@ pub struct AppState {
     pub opaque_server: Arc<OpaqueServer>,
     pub registration_store: Arc<RegistrationStore>,
     pub login_store: Arc<LoginStore>,
+    pub recovery_store: Arc<RecoveryStore>,
     pub altcha_config: Arc<AltchaConfig>,
     pub config: Arc<Config>,
     pub server_hard_max: Arc<ServerHardMax>,
@@ -138,6 +141,12 @@ impl axum::extract::FromRef<AppState> for Arc<RegistrationStore> {
 impl axum::extract::FromRef<AppState> for Arc<LoginStore> {
     fn from_ref(state: &AppState) -> Self {
         state.login_store.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<RecoveryStore> {
+    fn from_ref(state: &AppState) -> Self {
+        state.recovery_store.clone()
     }
 }
 
@@ -220,6 +229,11 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/auth/register/finish",
             post(routes::register::register_finish),
+        )
+        .route("/auth/recover/start", post(routes::recover::recover_start))
+        .route(
+            "/auth/recover/finish",
+            post(routes::recover::recover_finish),
         )
         .route("/oprf/blind", post(routes::oprf::blind))
         .route("/auth/login/start", post(routes::login::login_start))

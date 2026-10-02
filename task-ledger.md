@@ -60,9 +60,13 @@
   - **Migration:** `0030_recovery_codes.sql` (Case B: created `recovery_codes` table with `id`, `user_id`, `code_hash`, `code_salt`, `consumed_at`, `created_at` and index `idx_recovery_codes_user`).
   - **Delivered:** `0030_recovery_codes.sql`, `server/src/recovery_code.rs`, `server/src/lib.rs`, `server/Cargo.toml`, `server/tests/recovery_code.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `identity`
+- **Task 22b — Recovery Endpoints and OPAQUE Re-registration**: done
+  - **Migration:** None (Case A: in-memory `RecoveryStore` option chosen).
+  - **Delivered:** `server/src/recovery.rs`, `server/src/routes/recover.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/audit.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/src/cleanup/memory.rs`, `server/src/cleanup/mod.rs`, `server/tests/recovery_endpoints.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `identity`
 
 ## Summary
-- **Total Tasks Tracked:** 20
-- **Done:** 20
+- **Total Tasks Tracked:** 21
+- **Done:** 21
 - **Pending:** 0
 - **Mismatches:** 0

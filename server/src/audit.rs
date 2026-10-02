@@ -25,6 +25,8 @@ pub mod action {
     pub const EDIT_CREATE: &str = "edit.create";
     pub const REACTION_CREATE: &str = "reaction.create";
     pub const REACTION_DELETE: &str = "reaction.delete";
+    pub const RECOVER_START: &str = "recover.start";
+    pub const RECOVER_FINISH: &str = "recover.finish";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
