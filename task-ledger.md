@@ -56,9 +56,13 @@
   - **Migration:** None (Case A: `room_members` composite primary key `(room_id, user_id)` efficiently supports `user_id > ?` cursor pagination).
   - **Delivered:** `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/tests/attachments_presign.rs`, `server/tests/rooms.rs`, `server/tests/room_members_pagination.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `messaging`
+- **Task 22a — Recovery Code Generation**: done
+  - **Migration:** `0030_recovery_codes.sql` (Case B: created `recovery_codes` table with `id`, `user_id`, `code_hash`, `code_salt`, `consumed_at`, `created_at` and index `idx_recovery_codes_user`).
+  - **Delivered:** `0030_recovery_codes.sql`, `server/src/recovery_code.rs`, `server/src/lib.rs`, `server/Cargo.toml`, `server/tests/recovery_code.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `identity`
 
 ## Summary
-- **Total Tasks Tracked:** 19
-- **Done:** 19
+- **Total Tasks Tracked:** 20
+- **Done:** 20
 - **Pending:** 0
 - **Mismatches:** 0

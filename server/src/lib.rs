@@ -24,6 +24,7 @@ pub mod permissions;
 pub mod push;
 pub mod rate_limit;
 pub mod reactions;
+pub mod recovery_code;
 pub mod registration;
 pub mod roles;
 pub mod room_invites;
@@ -69,6 +70,9 @@ pub use login::LoginStore;
 pub use opaque::{DefaultCipherSuite, OpaqueServer};
 pub use permission_check::{ConfigEdit, RequirePermission};
 pub use rate_limit::{RateLimitConfig, RateLimitDecision, RateLimitError, RateLimitKey, Window};
+pub use recovery_code::{
+    generate, hash, hash_with_salt, persist_for_user, verify, verify_for_user, RecoveryCodeError,
+};
 pub use registration::RegistrationStore;
 pub use room_messages::{
     edit_message, get_current_epoch, get_message_ciphertext, list_messages, submit_message,

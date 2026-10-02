@@ -57,3 +57,16 @@
 - **Spec sections affected:** §2.1, §8.2
 - **Question asked:** What is the exact cursor format and encoding used for `GET /rooms/:id/members` pagination?
 - **Answer found:** The cursor is an opaque, unpadded base64url encoded string of a JSON struct `{"room_id": "<room_id>", "last_user_id": "<user_id>"}`. The server validates that `cursor.room_id` matches the path `:id` (returning 400 `invalid_cursor` on mismatch or malformed format). Pagination uses total stable ordering on `user_id ASC`.
+
+## Task 22a — Recovery Code Generation & Argon2id Format
+- **ID:** Task 22a
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical.
+- **Spec sections affected:** §2.1, §4.5, §6.23, §7.1, §16.2
+- **Question asked:** What are the recovery code format, salt length, Argon2id parameters, single-use policy, and migration details?
+- **Answer found:**
+  - **Code format:** Crockford Base32, exactly 20 characters uppercase `[0-9A-HJKMNP-TV-Z]`, providing 100 bits of entropy.
+  - **Salt length:** 16 random bytes (`ARGON2_SALT_LEN = 16`).
+  - **Argon2id parameters:** OWASP defaults: `m_cost = 19456` (19 MiB), `t_cost = 2`, `p_cost = 1`, output length 32 bytes (`ARGON2_HASH_LEN = 32`).
+  - **Lifecycle:** Codes are single-use by default (`consumed_at` set upon use) and do not expire.
+  - **Migration:** Created migration `0030_recovery_codes.sql` for table `recovery_codes` with index `idx_recovery_codes_user` on `(user_id, consumed_at) WHERE consumed_at IS NULL`.
