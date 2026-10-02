@@ -293,6 +293,10 @@ impl From<RoomError> for ApiError {
                 ApiError::BadRequest("target_has_no_device".to_string())
             }
             RoomError::RemoveNotFound => ApiError::NotFound("remove_not_found".to_string()),
+            RoomError::PendingAddNotFound => {
+                ApiError::NotFound("pending_add_not_found".to_string())
+            }
+            RoomError::AlreadyConsumed => ApiError::Conflict("already_consumed".to_string()),
         }
     }
 }

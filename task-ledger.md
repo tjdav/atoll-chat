@@ -75,13 +75,17 @@
   - **Migration:** `0031_attachments_nullable_room_id.sql` (Case B: recreated `attachments` table to make `room_id` nullable for user-scoped attachments).
   - **Delivered:** `0031_attachments_nullable_room_id.sql`, `server/src/attachments.rs`, `server/src/routes/attachments.rs`, `server/src/lib.rs`, `server/tests/user_avatar.rs`, `server/tests/batch-manifest.toml`.
   - **Batch:** `storage`
+- **Task 33 — Pending MLS Adds Coordination**: done
+  - **Migration:** `0032_pending_mls_adds.sql` (Case B: created `pending_mls_adds` table per §7.5 and partial index `idx_pending_mls_adds_active`).
+  - **Delivered:** `0032_pending_mls_adds.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/error.rs`, `server/src/lib.rs`, `server/tests/pending_adds.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `sockudo`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 25
-- **Done:** 25
+- **Total Verifications/Tasks Tracked:** 26
+- **Done:** 26
 - **Pending:** 0
 - **Mismatches:** 0

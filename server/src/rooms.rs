@@ -87,6 +87,21 @@ pub struct RoomMember {
     pub joined_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct AddMemberOutcome {
+    pub member: RoomMember,
+    pub added_client_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PendingAddView {
+    pub id: String,
+    pub target_user_id: String,
+    pub target_client_id: String,
+    pub key_package_id: String,
+    pub queued_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemberCursor {
     pub room_id: String,
@@ -178,6 +193,10 @@ pub enum RoomError {
     TargetHasNoDevice,
     #[error("pending remove not found")]
     RemoveNotFound,
+    #[error("pending add not found")]
+    PendingAddNotFound,
+    #[error("pending add already consumed")]
+    AlreadyConsumed,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -945,6 +964,97 @@ pub async fn list_members(
     })
 }
 
+pub async fn list_pending_adds(
+    pool: &SqlitePool,
+    room_id: &str,
+    requester_id: &str,
+) -> Result<Vec<PendingAddView>, RoomError> {
+    let is_member: Option<(i32,)> =
+        sqlx::query_as("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(pool)
+            .await?;
+
+    if is_member.is_none() {
+        return Err(RoomError::NotAMember);
+    }
+
+    let rows = sqlx::query(
+        r#"
+        SELECT id, target_user_id, target_client_id, key_package_id, queued_at
+        FROM pending_mls_adds
+        WHERE room_id = ? AND consumed_at IS NULL
+        ORDER BY queued_at ASC, id ASC
+        "#,
+    )
+    .bind(room_id)
+    .fetch_all(pool)
+    .await?;
+
+    let mut pending_adds = Vec::new();
+    for row in rows {
+        pending_adds.push(PendingAddView {
+            id: row.get("id"),
+            target_user_id: row.get("target_user_id"),
+            target_client_id: row.get("target_client_id"),
+            key_package_id: row.get("key_package_id"),
+            queued_at: row.get("queued_at"),
+        });
+    }
+
+    Ok(pending_adds)
+}
+
+pub async fn consume_pending_add(
+    pool: &SqlitePool,
+    room_id: &str,
+    add_id: &str,
+    requester_id: &str,
+) -> Result<DateTime<Utc>, RoomError> {
+    let mut tx = pool.begin().await?;
+
+    let is_member: Option<(i32,)> =
+        sqlx::query_as("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    if is_member.is_none() {
+        return Err(RoomError::NotAMember);
+    }
+
+    let row_opt: Option<(Option<DateTime<Utc>>,)> =
+        sqlx::query_as("SELECT consumed_at FROM pending_mls_adds WHERE id = ? AND room_id = ?")
+            .bind(add_id)
+            .bind(room_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let consumed_at_opt = match row_opt {
+        Some((c,)) => c,
+        None => return Err(RoomError::PendingAddNotFound),
+    };
+
+    if consumed_at_opt.is_some() {
+        return Err(RoomError::AlreadyConsumed);
+    }
+
+    let now = Utc::now();
+
+    sqlx::query("UPDATE pending_mls_adds SET consumed_at = ? WHERE id = ? AND room_id = ?")
+        .bind(now)
+        .bind(add_id)
+        .bind(room_id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(now)
+}
+
 pub async fn add_member(
     pool: &SqlitePool,
     room_id: &str,
@@ -953,7 +1063,7 @@ pub async fn add_member(
     welcome_data: Option<Vec<u8>>,
     limits: &InstanceLimits,
     server_max: &ServerHardMax,
-) -> Result<RoomMember, RoomError> {
+) -> Result<AddMemberOutcome, RoomError> {
     let mut tx = pool.begin().await?;
 
     // 1. Verify requester is member
@@ -1055,7 +1165,87 @@ pub async fn add_member(
     .execute(&mut *tx)
     .await?;
 
-    // 8. Fetch the new member record
+    // 9. Look up target user's devices and insert pending_mls_adds
+    let devices: Vec<(String,)> =
+        sqlx::query_as("SELECT client_id FROM devices WHERE user_id = ? ORDER BY created_at ASC")
+            .bind(target_user_id)
+            .fetch_all(&mut *tx)
+            .await?;
+
+    let mut added_client_ids = Vec::new();
+
+    for (client_id,) in devices {
+        // Select unconsumed non-last-resort key package
+        let normal_pkg: Option<(String, i64)> = sqlx::query_as(
+            r#"
+            SELECT id, is_last_resort
+            FROM key_packages
+            WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 0
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+            "#,
+        )
+        .bind(target_user_id)
+        .bind(&client_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let pkg = match normal_pkg {
+            Some(p) => Some(p),
+            None => {
+                // Fallback to unconsumed last-resort key package
+                sqlx::query_as(
+                    r#"
+                    SELECT id, is_last_resort
+                    FROM key_packages
+                    WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 1
+                    ORDER BY created_at ASC, id ASC
+                    LIMIT 1
+                    "#,
+                )
+                .bind(target_user_id)
+                .bind(&client_id)
+                .fetch_optional(&mut *tx)
+                .await?
+            }
+        };
+
+        if let Some((kp_id, is_last_resort_i64)) = pkg {
+            if is_last_resort_i64 == 0 {
+                sqlx::query(
+                    "UPDATE key_packages SET consumed = 1, consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
+                )
+                .bind(&kp_id)
+                .execute(&mut *tx)
+                .await?;
+            }
+
+            let add_id = Ulid::new().to_string();
+            sqlx::query(
+                r#"
+                INSERT INTO pending_mls_adds (id, room_id, target_user_id, target_client_id, key_package_id)
+                VALUES (?, ?, ?, ?, ?)
+                "#,
+            )
+            .bind(&add_id)
+            .bind(room_id)
+            .bind(target_user_id)
+            .bind(&client_id)
+            .bind(&kp_id)
+            .execute(&mut *tx)
+            .await?;
+
+            added_client_ids.push(client_id);
+        } else {
+            tracing::warn!(
+                user_id = %target_user_id,
+                client_id = %client_id,
+                "No unconsumed key package available for target device"
+            );
+        }
+    }
+
+    // 10. Fetch the new member record
     let row = sqlx::query(
         r#"
         SELECT rm.user_id, u.username_token, u.encrypted_display, rm.role, rm.joined_at
@@ -1079,7 +1269,10 @@ pub async fn add_member(
 
     tx.commit().await?;
 
-    Ok(member)
+    Ok(AddMemberOutcome {
+        member,
+        added_client_ids,
+    })
 }
 
 pub async fn kick_member(

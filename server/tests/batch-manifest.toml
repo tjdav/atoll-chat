@@ -123,9 +123,10 @@ timeout_seconds = 30
 
 [[batch]]
 name = "sockudo"
-description = "Sockudo auth, event publishing, pending removes"
+description = "Sockudo auth, event publishing, pending removes, pending adds"
 files = [
     "event_publishing",
+    "pending_adds",
     "pending_removes",
     "sockudo",
 ]
