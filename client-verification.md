@@ -69,3 +69,15 @@ build task runs.
 | Injected head script | `<script>(() => { document.documentElement.setAttribute('data-coralite-ready', 'true'); })();</script>` |
 | Injected CSP meta tag | `<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'sha256-3SMB9nwEjM7evSTwt0wdVhh2AMYdu33TQRapZUlHl54='">` |
 | CSS link resolution | `<link rel="stylesheet" href="/assets/css/main.css">` |
+
+### C-INFRA-3 — Client Test Infrastructure & Batch Model
+
+**Verified:** 2026-10-02
+
+| Fact | Value |
+|---|---|
+| Unit test runner | Node.js built-in runner (`node --test`) |
+| E2E / Component runner | Playwright (`@playwright/test` — to be installed by C-INFRA-4) |
+| Batch manifest location & format | `packages/app/test-batches.js` (ES module exporting batch array) |
+| `check-batches` invariant | Every `*.test.js` under `packages/app/tests/` must belong to exactly one batch (detects orphans, phantoms, duplicates) |
+| Initial test batch | `unit-smoke` containing `tests/unit/smoke.test.js` |

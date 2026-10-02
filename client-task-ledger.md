@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 13 |
-| Done | 6 |
+| Pending | 12 |
+| Done | 7 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -27,7 +27,7 @@ or modify the server's ledger.
 | C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
 | C-INFRA-2 | Coralite & Plugin Configuration | done | C-INFRA-1 | — |
 | C-INFRA-2b | Unblock Coralite Build Pipeline | done | C-INFRA-2 | — |
-| C-INFRA-3 | SQLite & Database Storage Architecture | pending | C-INFRA-1 | — |
+| C-INFRA-3 | Establish Client Test Infrastructure and Batch Model | done | C-INFRA-1 | unit-smoke |
 | C-INFRA-4 | CoreCrypto WASM Integration & Keystore | pending | C-INFRA-1 | — |
 | C-INFRA-5 | Design System Tokens & Base CSS | pending | C-INFRA-1 | — |
 | C-AUTH-1 | Auth Gate Shell & Routing | pending | C-INFRA-2, C-INFRA-5 | — |
@@ -159,3 +159,11 @@ On completion:
   - Unblocked Coralite build step: `pnpm --filter @atoll/app build` executed successfully producing `packages/app/dist/index.html` and `packages/app/dist/app.html`.
   - Annotated CF-001 and CF-002 entries as `filed-upstream; client-mitigated-by-input`.
   - Updated C-INFRA-2 status from `blocked-upstream` to `done`.
+- **C-INFRA-3 Deliverables & Status:**
+  - Status: `done`.
+  - Created `packages/app/tests/unit/smoke.test.js` (smoke tests asserting pinned dependencies and node engine floor).
+  - Created `packages/app/test-batches.js` (batch manifest exporting `unit-smoke` batch).
+  - Created `packages/app/scripts/check-batches.js` (manifest validator for orphans, phantoms, duplicates).
+  - Created `packages/app/scripts/run-batch.js` (batch runner dispatching `unit` to `node --test`).
+  - Created `packages/app/TESTING.md` (contributor guide for test batch architecture).
+  - Updated `packages/app/package.json` with `test:batch` and `check-batches` scripts.

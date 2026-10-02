@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "coralite-scripts dev",
     "build": "coralite-scripts build",
-    "test": "coralite-scripts test"
+    "test": "coralite-scripts test",
+    "test:batch": "node scripts/run-batch.js",
+    "check-batches": "node scripts/check-batches.js"
   },
   "devDependencies": {
     "coralite": "1.0.0-rc.5",
