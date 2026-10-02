@@ -14,9 +14,19 @@ export default [
   {
     name: 'unit-smoke',
     type: 'unit',
+    runner: 'node',
     description: 'Smoke tests that prove the test runner is operational.',
     files: [
       'tests/unit/smoke.test.js',
+    ],
+  },
+  {
+    name: 'component-smoke',
+    type: 'component',
+    runner: 'playwright',
+    description: 'Smoke tests for component rendering and Playwright pipeline.',
+    files: [
+      'tests/component/smoke.spec.js',
     ],
   },
 ]

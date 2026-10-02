@@ -76,3 +76,25 @@ into two batches.
 
 There is no target that runs every batch. The full suite will exceed
 tool execution timeouts. Run only the batch containing your change.
+
+## Playwright Workflow
+
+Component and E2E browser tests use `@playwright/test` and `@axe-core/playwright`.
+
+### Runner Types
+Batches declare a `runner` property in `test-batches.js`:
+- `runner: 'node'` — executes Node.js native unit test runner (`node --test`).
+- `runner: 'playwright'` — executes Playwright browser test runner (`playwright test`).
+
+### Running Playwright Batches
+
+    pnpm --filter @atoll/app test:batch component-smoke
+
+### Automatic Web Server (`webServer`)
+Playwright's `playwright.config.js` configures `webServer` to launch `coralite-scripts test` automatically. You do not need to start `coralite-scripts test` manually before running Playwright batches.
+
+### Browser Constraints
+For v1, tests target Chromium (`Desktop Chrome`). Firefox and WebKit are not installed or required.
+
+### Execution Budget
+Each Playwright batch is subject to the strict 60-second budget enforced by `scripts/run-batch.js`.

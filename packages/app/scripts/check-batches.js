@@ -16,7 +16,7 @@ async function walk(dir) {
     const full = join(dir, entry.name)
     if (entry.isDirectory()) {
       files.push(...await walk(full))
-    } else if (entry.name.endsWith('.test.js')) {
+    } else if (entry.name.endsWith('.test.js') || entry.name.endsWith('.spec.js')) {
       files.push(relative(packageRoot, full).split(sep).join('/'))
     }
   }
@@ -24,6 +24,31 @@ async function walk(dir) {
 }
 
 const discovered = await walk(testsDir).catch(() => [])
+
+let failed = false
+
+for (const batch of batches) {
+  if (!batch.runner || !['node', 'playwright'].includes(batch.runner)) {
+    console.error(`Invalid or missing runner in batch "${batch.name}": expected "node" or "playwright".`)
+    failed = true
+    continue
+  }
+
+  for (const file of batch.files) {
+    if (batch.runner === 'node' && (!file.startsWith('tests/unit/') || !file.endsWith('.test.js'))) {
+      console.error(`Invalid file pattern for node runner in batch "${batch.name}": ${file} (expected tests/unit/**/*.test.js)`)
+      failed = true
+    } else if (
+      batch.runner === 'playwright' &&
+      !((file.startsWith('tests/component/') || file.startsWith('tests/e2e/')) && file.endsWith('.spec.js'))
+    ) {
+      console.error(
+        `Invalid file pattern for playwright runner in batch "${batch.name}": ${file} (expected tests/component/**/*.spec.js or tests/e2e/**/*.spec.js)`
+      )
+      failed = true
+    }
+  }
+}
 
 const seen = new Map()
 const duplicates = []
@@ -40,8 +65,6 @@ for (const batch of batches) {
 const declared = new Set(seen.keys())
 const orphans = discovered.filter((f) => !declared.has(f))
 const phantoms = [...declared].filter((f) => !discovered.includes(f))
-
-let failed = false
 
 if (orphans.length > 0) {
   console.error('Orphan test files (present on disk, absent from every batch):')

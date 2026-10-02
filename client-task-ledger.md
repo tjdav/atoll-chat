@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 12 |
-| Done | 8 |
+| Pending | 11 |
+| Done | 9 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -29,7 +29,7 @@ or modify the server's ledger.
 | C-INFRA-2 | Coralite & Plugin Configuration | done | C-INFRA-1 | — |
 | C-INFRA-2b | Unblock Coralite Build Pipeline | done | C-INFRA-2 | — |
 | C-INFRA-3 | Establish Client Test Infrastructure and Batch Model | done | C-INFRA-1 | unit-smoke |
-| C-INFRA-4 | CoreCrypto WASM Integration & Keystore | pending | C-INFRA-1 | — |
+| C-INFRA-4 | Playwright Browser Testing Setup | done | C-INFRA-2, C-INFRA-3 | component-smoke |
 | C-INFRA-5 | Design System Tokens & Base CSS | pending | C-INFRA-1 | — |
 | C-AUTH-1 | Auth Gate Shell & Routing | pending | C-INFRA-2, C-INFRA-5 | — |
 | C-AUTH-2 | OPRF Blinding Client & API Client | pending | C-INFRA-2 | — |
@@ -173,3 +173,14 @@ On completion:
   - Produced verification report at `client-verification/cv-b/report.md`.
   - Verified `coralite-scripts test` serves testing-mode HTTP server without executing tests or accepting file filters.
   - Determined two-runner architecture: Node.js built-in runner (`node --test`) for unit tests and Playwright (`@playwright/test`) + `@axe-core/playwright` for component/E2E tests.
+- **C-INFRA-4 Deliverables & Status:**
+  - Status: `done`.
+  - Installed `@playwright/test` (`1.63.0`) and `@axe-core/playwright` (`4.10.1`) as devDependencies in `packages/app/package.json`.
+  - Downloaded Playwright Chromium browser binaries (`v1243`).
+  - Observed `coralite-scripts test` port behavior: default port `3000` (portfinder fallback).
+  - Created `packages/app/playwright.config.js` with `webServer` launching `coralite-scripts test`.
+  - Extended `packages/app/test-batches.js` with `runner` field across batches and added `component-smoke` batch.
+  - Extended `packages/app/scripts/run-batch.js` to dispatch `playwright` runner with 60s timeout handling.
+  - Extended `packages/app/scripts/check-batches.js` to validate `runner` fields and check `tests/component/` and `tests/e2e/` for orphans.
+  - Created `packages/app/tests/component/smoke.spec.js` asserting placeholder headings on `/app.html` (`Messenger Shell`) and `/index.html` (`Auth Gate`).
+  - Updated `packages/app/TESTING.md` with Playwright workflow documentation.
