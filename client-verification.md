@@ -30,3 +30,13 @@ or modify the server's verification log.
 build task runs.
 
 **Report:** `client-verification/cv-a/report.md`
+
+### C-CORALITE-FEEDBACK — Coralite Issue Tracker URL
+
+**Verified:** 2026-10-02
+
+| Fact | Value |
+|---|---|
+| Coralite repository | `https://codeberg.org/tjdavid/coralite.git` |
+| Coralite issue tracker | `https://codeberg.org/tjdavid/coralite/issues` |
+| Coralite homepage | `https://coralite.dev` |
