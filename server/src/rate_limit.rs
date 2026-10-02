@@ -26,6 +26,7 @@ pub enum RateLimitKey {
     RoomMetadata { user_id: String },
     Edit { user_id: String },
     Reaction { user_id: String },
+    MemberList { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -255,6 +256,15 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_reaction_per_min,
+            )
+        }
+        RateLimitKey::MemberList { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("member_list:{user_id}:min"),
+                start,
+                reset,
+                config.rate_member_list_per_min,
             )
         }
     };

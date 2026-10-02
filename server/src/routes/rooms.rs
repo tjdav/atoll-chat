@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
     response::IntoResponse,
     Json,
@@ -15,7 +15,10 @@ use crate::{
     error::ApiError,
     limits,
     rate_limit::{self, RateLimitKey},
-    rooms::{self, CreateRoomOptions, LeaveOutcome, RoomError, RoomMember, RoomWithRole},
+    rooms::{
+        self, CreateRoomOptions, LeaveOutcome, ListMembersQuery, MemberCursor, RoomError,
+        RoomMember, RoomWithRole,
+    },
     AppState,
 };
 
@@ -35,9 +38,17 @@ pub struct RoomListResponse {
     pub rooms: Vec<RoomWithRole>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ListMembersQueryParams {
+    pub limit: Option<String>,
+    pub cursor: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct MemberListResponse {
     pub members: Vec<RoomMember>,
+    pub next_cursor: Option<String>,
+    pub has_more: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -210,9 +221,72 @@ pub async fn list_members(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<String>,
-) -> Result<Json<MemberListResponse>, ApiError> {
-    let members = rooms::list_members(&state.pool, &id, &auth.user_id).await?;
-    Ok(Json(MemberListResponse { members }))
+    Query(query): Query<ListMembersQueryParams>,
+) -> Result<impl IntoResponse, ApiError> {
+    // 1. Rate limit check
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::MemberList {
+            user_id: auth.user_id.clone(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate limit exceeded for member list".to_string(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    // 2. Parse and validate limit
+    let limit = match query.limit {
+        Some(s) => {
+            let parsed: i64 = s
+                .parse()
+                .map_err(|_| ApiError::BadRequest("invalid_limit".to_string()))?;
+            if parsed <= 0 {
+                return Err(ApiError::BadRequest("invalid_limit".to_string()));
+            }
+            (parsed as usize).min(200)
+        }
+        None => 50,
+    };
+
+    // 3. Parse and validate cursor
+    let cursor = match query.cursor {
+        Some(c_str) => {
+            let decoded = MemberCursor::decode(&c_str)
+                .ok_or_else(|| ApiError::BadRequest("invalid_cursor".to_string()))?;
+            if decoded.room_id != id {
+                return Err(ApiError::BadRequest("invalid_cursor".to_string()));
+            }
+            Some(decoded)
+        }
+        None => None,
+    };
+
+    let list_query = ListMembersQuery {
+        room_id: id,
+        requester_id: auth.user_id,
+        limit,
+        cursor,
+    };
+
+    let result = rooms::list_members(&state.pool, list_query).await?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((
+        headers,
+        Json(MemberListResponse {
+            members: result.members,
+            next_cursor: result.next_cursor,
+            has_more: result.has_more,
+        }),
+    ))
 }
 
 pub async fn add_member(

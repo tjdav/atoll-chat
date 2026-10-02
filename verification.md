@@ -49,3 +49,11 @@
 - **Spec sections affected:** §5.10, §16.12
 - **Question asked:** What is the exact canonical wire format for `sender_ref` in push notification payloads?
 - **Answer found:** `sender_ref` is a 22-character unpadded base64url string derived by decoding the sender's 86-character `username_token` (unpadded base64url -> 64 bytes), taking the first 16 bytes, and re-encoding as unpadded base64url. It replaces `sender_user_id` in push notification envelopes across Web Push, APNs, and FCM.
+
+## Task 30 — Room Member Pagination Cursor Format
+- **ID:** Task 30
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical.
+- **Spec sections affected:** §2.1, §8.2
+- **Question asked:** What is the exact cursor format and encoding used for `GET /rooms/:id/members` pagination?
+- **Answer found:** The cursor is an opaque, unpadded base64url encoded string of a JSON struct `{"room_id": "<room_id>", "last_user_id": "<user_id>"}`. The server validates that `cursor.room_id` matches the path `:id` (returning 400 `invalid_cursor` on mismatch or malformed format). Pagination uses total stable ordering on `user_id ASC`.

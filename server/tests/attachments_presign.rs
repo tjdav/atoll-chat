@@ -117,6 +117,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         rate_room_metadata_per_min: 30,
         rate_edit_per_min: 30,
         rate_reaction_per_min: 60,
+        rate_member_list_per_min: 60,
     };
 
     let config = Config {

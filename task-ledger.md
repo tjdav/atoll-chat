@@ -52,9 +52,13 @@
 - **Task 15b-R — Push Payload `sender_ref` Retrofit**: done
   - **Delivered:** `server/src/identity/token.rs`, `server/src/push/payload.rs`, `server/src/push/delivery.rs`, `server/src/push/apns.rs`, `server/src/push/fcm.rs`, `server/tests/push_payload.rs`, `server/tests/push_delivery.rs`, `server/tests/push_delivery_native.rs`, `server/tests/push_subscriptions.rs`, `server/tests/push_suppression.rs`.
   - **Batch:** `push`
+- **Task 30 — Room Member Pagination**: done
+  - **Migration:** None (Case A: `room_members` composite primary key `(room_id, user_id)` efficiently supports `user_id > ?` cursor pagination).
+  - **Delivered:** `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/tests/attachments_presign.rs`, `server/tests/rooms.rs`, `server/tests/room_members_pagination.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `messaging`
 
 ## Summary
-- **Total Tasks Tracked:** 18
-- **Done:** 18
+- **Total Tasks Tracked:** 19
+- **Done:** 19
 - **Pending:** 0
 - **Mismatches:** 0
