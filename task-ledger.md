@@ -64,9 +64,13 @@
   - **Migration:** None (Case A: in-memory `RecoveryStore` option chosen).
   - **Delivered:** `server/src/recovery.rs`, `server/src/routes/recover.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/audit.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/src/cleanup/memory.rs`, `server/src/cleanup/mod.rs`, `server/tests/recovery_endpoints.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `identity`
+- **Task 31 — Retention Change Preview**: done
+  - **Migration:** None (Case A: pure read-only preview using existing tables).
+  - **Delivered:** `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/lib.rs`, `server/tests/retention_preview.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `messaging`
 
 ## Summary
-- **Total Tasks Tracked:** 21
-- **Done:** 21
+- **Total Tasks Tracked:** 22
+- **Done:** 22
 - **Pending:** 0
 - **Mismatches:** 0
