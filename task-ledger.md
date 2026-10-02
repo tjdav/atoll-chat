@@ -45,9 +45,13 @@
   - **Migration:** `0028_reactions.sql` (Case A: created `reactions` table with unique constraint `(message_id, sender_user_id, sender_client_id, reaction)` and partial/indexing strategy).
   - **Delivered:** `0028_reactions.sql`, `server/src/reactions/mod.rs`, `server/src/reactions/write.rs`, `server/src/reactions/list.rs`, `server/src/routes/reactions.rs`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/limits.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/audit.rs`, `server/src/error.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/README.md`, `reaction_write.rs`, `reaction_validation.rs`, `reaction_list.rs`, `reaction_events.rs`.
   - **Batch:** `messaging`
+- **Task 29 — Message Threading (`reply_to`)**: done
+  - **Migration:** `0029_message_reply_to.sql` (Case A: added `reply_to TEXT REFERENCES room_messages(id)` column and `idx_room_messages_reply_to` partial index).
+  - **Delivered:** `0029_message_reply_to.sql`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/routes/capabilities.rs`, `server/src/error.rs`, `message_threading.rs`.
+  - **Batch:** `messaging`
 
 ## Summary
-- **Total Tasks Tracked:** 16
-- **Done:** 16
+- **Total Tasks Tracked:** 17
+- **Done:** 17
 - **Pending:** 0
 - **Mismatches:** 0

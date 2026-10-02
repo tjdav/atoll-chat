@@ -12,7 +12,8 @@ async fn test_reaction_events_and_audit() {
 
     let _user_id = common::register_user(&app, "react_evt_user", "Password123!", None).await;
     let client_id = "evt_client_123456789";
-    let (status, login_res) = common::login_user(&app, "react_evt_user", "Password123!", client_id, None).await;
+    let (status, login_res) =
+        common::login_user(&app, "react_evt_user", "Password123!", client_id, None).await;
     assert_eq!(status, StatusCode::OK);
     let user_token = login_res["session_token"].as_str().unwrap().to_string();
 
@@ -25,7 +26,9 @@ async fn test_reaction_events_and_audit() {
         .body(axum::body::Body::from(json!({}).to_string()))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let room_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let room_id = room_body["id"].as_str().unwrap();
 
@@ -47,14 +50,19 @@ async fn test_reaction_events_and_audit() {
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let msg_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let msg_id = msg_body["message_id"].as_str().unwrap();
 
     // 1. Add reaction
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", user_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(

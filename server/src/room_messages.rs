@@ -34,6 +34,7 @@ pub struct RoomMessageView {
     pub epoch: i64,
     pub seq: i64,
     pub content_type: String,
+    pub reply_to: Option<String>,
     pub edit_of: Option<String>,
     pub edit_sequence: i64,
     pub edited_at: Option<DateTime<Utc>>,
@@ -66,6 +67,7 @@ pub enum SubmitOutcome {
         message_id: String,
         epoch: i64,
         seq: i64,
+        reply_to: Option<String>,
         created_at: DateTime<Utc>,
     },
     Commit {
@@ -86,6 +88,7 @@ pub struct SubmitRequest {
     pub content_type: MessageContentType,
     pub ciphertext: Vec<u8>,
     pub transcript_hash: Option<Vec<u8>>,
+    pub reply_to: Option<String>,
 }
 
 #[derive(Debug)]
@@ -127,6 +130,8 @@ pub enum RoomMessageError {
     MissingTranscriptHash,
     #[error("application message requires an existing epoch")]
     NoEpochEstablished,
+    #[error("invalid reply target")]
+    InvalidReplyTarget { reason: Option<String> },
     #[error("message not found")]
     MessageNotFound,
     #[error("message already deleted")]
@@ -245,13 +250,45 @@ pub async fn submit_message(
                     });
                 }
 
+                // Validate reply_to if present
+                if let Some(ref target_id) = req.reply_to {
+                    let target_row: Option<(String, String, Option<DateTime<Utc>>)> =
+                        sqlx::query_as("SELECT room_id, content_type, deleted_at FROM room_messages WHERE id = ?")
+                            .bind(target_id)
+                            .fetch_optional(&mut *conn)
+                            .await?;
+
+                    match target_row {
+                        None => {
+                            return Err(RoomMessageError::InvalidReplyTarget { reason: None });
+                        }
+                        Some((target_room_id, target_content_type, target_deleted_at)) => {
+                            if target_room_id != req.room_id {
+                                return Err(RoomMessageError::InvalidReplyTarget {
+                                    reason: Some("not_in_room".to_string()),
+                                });
+                            }
+                            if target_deleted_at.is_some() {
+                                return Err(RoomMessageError::InvalidReplyTarget {
+                                    reason: Some("deleted".to_string()),
+                                });
+                            }
+                            if target_content_type != "application" {
+                                return Err(RoomMessageError::InvalidReplyTarget {
+                                    reason: Some("not_application".to_string()),
+                                });
+                            }
+                        }
+                    }
+                }
+
                 let next_sequence = current_sequence + 1;
                 let message_id = Ulid::new().to_string();
 
                 sqlx::query(
                     r#"
-                    INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext, reply_to)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     "#,
                 )
                 .bind(&message_id)
@@ -262,6 +299,7 @@ pub async fn submit_message(
                 .bind(next_sequence)
                 .bind(req.content_type.as_str())
                 .bind(&req.ciphertext)
+                .bind(&req.reply_to)
                 .execute(&mut *conn)
                 .await?;
 
@@ -281,6 +319,7 @@ pub async fn submit_message(
                     message_id,
                     epoch: current_epoch,
                     seq: next_sequence,
+                    reply_to: req.reply_to,
                     created_at,
                 })
             }
@@ -355,7 +394,7 @@ pub async fn list_messages(
         Some(since) => {
             let rows = sqlx::query(
                 r#"
-                SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, edit_of, edit_sequence, edited_at, deleted_at, created_at
+                SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, edit_of, edit_sequence, edited_at, deleted_at, created_at
                 FROM room_messages
                 WHERE room_id = ?
                   AND (epoch, seq) > (?, ?)
@@ -393,6 +432,7 @@ pub async fn list_messages(
                         epoch: row.get("epoch"),
                         seq: row.get("seq"),
                         content_type: row.get("content_type"),
+                        reply_to: row.get("reply_to"),
                         edit_of: row.get("edit_of"),
                         edit_sequence: row.get("edit_sequence"),
                         edited_at: row.get("edited_at"),
@@ -412,7 +452,7 @@ pub async fn list_messages(
         None => {
             let rows = sqlx::query(
                 r#"
-                SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, edit_of, edit_sequence, edited_at, deleted_at, created_at
+                SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, edit_of, edit_sequence, edited_at, deleted_at, created_at
                 FROM room_messages
                 WHERE room_id = ?
                 ORDER BY epoch DESC, seq DESC
@@ -447,6 +487,7 @@ pub async fn list_messages(
                         epoch: row.get("epoch"),
                         seq: row.get("seq"),
                         content_type: row.get("content_type"),
+                        reply_to: row.get("reply_to"),
                         edit_of: row.get("edit_of"),
                         edit_sequence: row.get("edit_sequence"),
                         edited_at: row.get("edited_at"),

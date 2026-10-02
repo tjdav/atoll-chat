@@ -28,7 +28,9 @@ async fn test_reaction_validation_and_limits() {
         .body(axum::body::Body::from(json!({}).to_string()))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let room_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let room_id = room_body["id"].as_str().unwrap();
 
@@ -50,14 +52,19 @@ async fn test_reaction_validation_and_limits() {
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let msg_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let msg_id = msg_body["message_id"].as_str().unwrap();
 
     // 1. Empty reaction returns 400 invalid_reaction
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", user_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -75,7 +82,10 @@ async fn test_reaction_validation_and_limits() {
     let long_str = "a".repeat(65);
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", user_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -92,7 +102,10 @@ async fn test_reaction_validation_and_limits() {
     // 3. Reaction containing control chars returns 400
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", user_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -109,7 +122,10 @@ async fn test_reaction_validation_and_limits() {
     // 4. Unicode emoji with skin tone modifier & ZWJ sequence are accepted
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", user_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -125,7 +141,10 @@ async fn test_reaction_validation_and_limits() {
 
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", user_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -152,7 +171,10 @@ async fn test_reaction_validation_and_limits() {
     // The message currently has 2 reactions ("👍🏽", "👨‍👩‍👧‍👦"). Attempting a 3rd should return 409 reaction_limit_reached
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", user_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -165,7 +187,9 @@ async fn test_reaction_validation_and_limits() {
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::CONFLICT);
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let err_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(err_body["error"], "reaction_limit_reached");
 }

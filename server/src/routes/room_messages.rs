@@ -32,6 +32,7 @@ pub struct SubmitMessageRequest {
     pub content_type: String,
     pub ciphertext: String,
     pub transcript_hash: Option<String>,
+    pub reply_to: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -128,6 +129,7 @@ pub async fn submit(
         content_type,
         ciphertext: ciphertext_bytes,
         transcript_hash: transcript_hash_bytes,
+        reply_to: payload.reply_to.clone(),
     };
 
     let outcome = room_messages::submit_message(&state.pool, req).await?;
@@ -139,6 +141,7 @@ pub async fn submit(
             message_id,
             epoch,
             seq,
+            reply_to,
             created_at,
         } => {
             let msg_payload = json!({
@@ -149,6 +152,7 @@ pub async fn submit(
                 "epoch": epoch,
                 "seq": seq,
                 "content_type": content_type.as_str(),
+                "reply_to": reply_to,
                 "created_at": created_at.to_rfc3339(),
             });
             if let Err(e) = state
@@ -186,6 +190,7 @@ pub async fn submit(
                 "epoch": new_epoch,
                 "seq": 0,
                 "content_type": "commit",
+                "reply_to": serde_json::Value::Null,
                 "created_at": created_at.to_rfc3339(),
             });
             if let Err(e) = state

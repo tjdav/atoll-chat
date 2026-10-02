@@ -33,8 +33,10 @@ async fn create_test_user(
         None
     };
 
-    let user_id = common::register_user(app, username, "Password123!", invite_code.as_deref()).await;
-    let (status, login_res) = common::login_user(app, username, "Password123!", client_id, None).await;
+    let user_id =
+        common::register_user(app, username, "Password123!", invite_code.as_deref()).await;
+    let (status, login_res) =
+        common::login_user(app, username, "Password123!", client_id, None).await;
     if status != StatusCode::OK {
         panic!(
             "login_user failed for {}: status={}, res={:?}",
@@ -54,8 +56,10 @@ async fn test_reaction_write_flow() {
     let user2_client_id = "user2_client_1234567";
 
     // 1. Register owner & user2
-    let (_owner_id, owner_token) = create_test_user(&app, &pool, "react_owner", owner_client_id).await;
-    let (user2_id, user2_token) = create_test_user(&app, &pool, "react_user2", user2_client_id).await;
+    let (_owner_id, owner_token) =
+        create_test_user(&app, &pool, "react_owner", owner_client_id).await;
+    let (user2_id, user2_token) =
+        create_test_user(&app, &pool, "react_user2", user2_client_id).await;
 
     // Create room via router call or direct helper
     let req = axum::http::Request::builder()
@@ -67,7 +71,9 @@ async fn test_reaction_write_flow() {
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::CREATED);
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let room_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let room_id = room_body["id"].as_str().unwrap();
 
@@ -77,7 +83,9 @@ async fn test_reaction_write_flow() {
         .uri(format!("/api/v1/rooms/{}/members", room_id))
         .header("Authorization", format!("Bearer {}", owner_token))
         .header("Content-Type", "application/json")
-        .body(axum::body::Body::from(json!({ "user_id": user2_id }).to_string()))
+        .body(axum::body::Body::from(
+            json!({ "user_id": user2_id }).to_string(),
+        ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::CREATED);
@@ -101,14 +109,19 @@ async fn test_reaction_write_flow() {
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::CREATED);
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let msg_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let msg_id = msg_body["message_id"].as_str().unwrap();
 
     // 4. Add reaction by owner
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", owner_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -125,7 +138,9 @@ async fn test_reaction_write_flow() {
         res.headers().get(header::CACHE_CONTROL).unwrap(),
         "no-store"
     );
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let add_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(add_body["message_id"], msg_id);
     assert_eq!(add_body["reaction"], "👍");
@@ -133,7 +148,10 @@ async fn test_reaction_write_flow() {
     // 5. Add duplicate reaction by same user & client returns 409 already_reacted
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", owner_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -146,14 +164,19 @@ async fn test_reaction_write_flow() {
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::CONFLICT);
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let err_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(err_body["error"], "already_reacted");
 
     // 6. Two different reactions from same client succeed
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", owner_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -187,7 +210,10 @@ async fn test_reaction_write_flow() {
     // 8. Subsequent add reactivates row
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", owner_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -202,11 +228,15 @@ async fn test_reaction_write_flow() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // 9. Non-member cannot add (HTTP 404 room_not_found)
-    let (_non_member_id, non_member_token) = create_test_user(&app, &pool, "react_non_member", "nm_client_12345678").await;
+    let (_non_member_id, non_member_token) =
+        create_test_user(&app, &pool, "react_non_member", "nm_client_12345678").await;
 
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
         .header("Authorization", format!("Bearer {}", non_member_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(
@@ -223,7 +253,10 @@ async fn test_reaction_write_flow() {
     // 10. Unknown message returns 404 message_not_found
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/nonexistent_msg/reactions", room_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/nonexistent_msg/reactions",
+            room_id
+        ))
         .header("Authorization", format!("Bearer {}", owner_token))
         .header("Content-Type", "application/json")
         .body(axum::body::Body::from(

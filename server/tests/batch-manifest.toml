@@ -62,6 +62,7 @@ files = [
     "room_metadata_validation",
     "room_metadata_write",
     "rooms",
+    "message_threading",
     "welcomes",
 ]
 timeout_seconds = 60
