@@ -65,6 +65,11 @@ pub struct LeaveResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct RetentionPreviewRequest {
+    pub retention_days: i64,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct TransferOwnershipRequest {
     pub user_id: String,
 }
@@ -453,6 +458,56 @@ pub async fn update_metadata(
         &auth.user_id,
         metadata_str,
         state.config.max_room_metadata_bytes,
+    )
+    .await?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((headers, Json(result)))
+}
+
+pub async fn retention_preview(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+    body: String,
+) -> Result<impl IntoResponse, ApiError> {
+    let payload: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|_| ApiError::BadRequest("invalid_retention_days".to_string()))?;
+
+    let obj = payload
+        .as_object()
+        .ok_or_else(|| ApiError::BadRequest("invalid_retention_days".to_string()))?;
+
+    let retention_val = obj
+        .get("retention_days")
+        .ok_or_else(|| ApiError::BadRequest("invalid_retention_days".to_string()))?;
+
+    let retention_days = retention_val
+        .as_i64()
+        .ok_or_else(|| ApiError::BadRequest("invalid_retention_days".to_string()))?;
+
+    if !(0..=365).contains(&retention_days) {
+        return Err(ApiError::BadRequest("invalid_retention_days".to_string()));
+    }
+
+    let room_with_role = rooms::get_room_for_user(&state.pool, &id, &auth.user_id)
+        .await?
+        .ok_or_else(|| ApiError::NotFound("room_not_found".to_string()))?;
+
+    if room_with_role.current_user_role != "owner" {
+        return Err(ApiError::Forbidden("forbidden".to_string()));
+    }
+
+    let effective_limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
+
+    let result = rooms::preview_retention_change(
+        &state.pool,
+        &id,
+        retention_days,
+        &effective_limits,
+        &state.server_hard_max,
     )
     .await?;
 

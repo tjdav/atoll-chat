@@ -319,6 +319,10 @@ pub fn build_app(state: AppState) -> Router {
             post(routes::rooms::demote_member),
         )
         .route(
+            "/rooms/{id}/retention/preview",
+            post(routes::rooms::retention_preview),
+        )
+        .route(
             "/rooms/{id}/transfer",
             post(routes::rooms::transfer_ownership),
         )

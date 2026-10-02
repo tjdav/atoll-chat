@@ -221,6 +221,104 @@ pub struct RoomMetadataResult {
     pub updated_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct RetentionPreviewResult {
+    pub current_retention_days: i64,
+    pub proposed_retention_days: i64,
+    pub messages_affected: i64,
+    pub attachments_affected: i64,
+    pub oldest_affected_at: Option<DateTime<Utc>>,
+    pub newest_affected_at: Option<DateTime<Utc>>,
+}
+
+pub async fn preview_retention_change(
+    pool: &SqlitePool,
+    room_id: &str,
+    proposed_retention_days: i64,
+    limits: &InstanceLimits,
+    server_max: &ServerHardMax,
+) -> Result<RetentionPreviewResult, RoomError> {
+    let room_row: Option<(Option<i64>,)> =
+        sqlx::query_as("SELECT retention_days FROM rooms WHERE id = ?")
+            .bind(room_id)
+            .fetch_optional(pool)
+            .await?;
+
+    let room_retention = match room_row {
+        Some((r,)) => r,
+        None => return Err(RoomError::RoomNotFound),
+    };
+
+    let current_retention_days = effective_message_retention_days(
+        room_retention,
+        limits.attachment_retention_days,
+        server_max.attachment_retention_days,
+    );
+
+    if proposed_retention_days == 0 {
+        return Ok(RetentionPreviewResult {
+            current_retention_days,
+            proposed_retention_days: 0,
+            messages_affected: 0,
+            attachments_affected: 0,
+            oldest_affected_at: None,
+            newest_affected_at: None,
+        });
+    }
+
+    let msg_stats: (i64, Option<DateTime<Utc>>, Option<DateTime<Utc>>) = sqlx::query_as(
+        r#"
+        SELECT
+            COUNT(*),
+            MIN(created_at),
+            MAX(created_at)
+        FROM room_messages
+        WHERE room_id = ?
+          AND created_at < datetime('now', '-' || ? || ' days')
+          AND deleted_at IS NULL
+          AND content_type NOT IN ('commit', 'proposal')
+        "#,
+    )
+    .bind(room_id)
+    .bind(proposed_retention_days)
+    .fetch_one(pool)
+    .await?;
+
+    let messages_affected = msg_stats.0;
+    let oldest_affected_at = if messages_affected > 0 {
+        msg_stats.1
+    } else {
+        None
+    };
+    let newest_affected_at = if messages_affected > 0 {
+        msg_stats.2
+    } else {
+        None
+    };
+
+    let att_count: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*)
+        FROM attachments
+        WHERE room_id = ?
+          AND created_at < datetime('now', '-' || ? || ' days')
+        "#,
+    )
+    .bind(room_id)
+    .bind(proposed_retention_days)
+    .fetch_one(pool)
+    .await?;
+
+    Ok(RetentionPreviewResult {
+        current_retention_days,
+        proposed_retention_days,
+        messages_affected,
+        attachments_affected: att_count.0,
+        oldest_affected_at,
+        newest_affected_at,
+    })
+}
+
 pub async fn update_room_metadata(
     pool: &SqlitePool,
     publisher: &Publisher,

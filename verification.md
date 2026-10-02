@@ -70,3 +70,32 @@
   - **Argon2id parameters:** OWASP defaults: `m_cost = 19456` (19 MiB), `t_cost = 2`, `p_cost = 1`, output length 32 bytes (`ARGON2_HASH_LEN = 32`).
   - **Lifecycle:** Codes are single-use by default (`consumed_at` set upon use) and do not expire.
   - **Migration:** Created migration `0030_recovery_codes.sql` for table `recovery_codes` with index `idx_recovery_codes_user` on `(user_id, consumed_at) WHERE consumed_at IS NULL`.
+
+## Task 31 — Retention Change Preview Semantics
+- **ID:** Task 31
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical.
+- **Spec sections affected:** §2.1, §3.2, §8.4
+- **Question asked:** What are the exact request/response shapes, retention semantics, row filtering rules, and rate-limit policy for `POST /rooms/:id/retention/preview`?
+- **Answer found:**
+  - **Endpoint & Auth:** `POST /api/v1/rooms/:id/retention/preview`. Owner-only authorization (returns 403 `forbidden` for non-owner members, 404 `room_not_found` for non-members).
+  - **Request Body:** `{ "retention_days": <i64> }` where `0 <= retention_days <= 365`. Values out of range or non-integer return 400 `invalid_retention_days`.
+  - **Retention Semantics:** `retention_days = 0` means "forever" (no pruning -> 0 affected items).
+  - **Affected Item Boundary & Selection:**
+    - Comparison cutoff: `created_at < datetime('now', '-' || proposed_retention_days || ' days')`.
+    - Soft-deleted messages (`deleted_at IS NOT NULL`) and commit/proposal protocol artifacts (`content_type IN ('commit', 'proposal')`) are excluded from count.
+    - Edit rows (`edit_of IS NOT NULL`) are standard message rows and are included in message count.
+    - Attachment count includes attachments in the room matching the same cutoff.
+  - **Response Shape:**
+    ```json
+    {
+      "current_retention_days": 90,
+      "proposed_retention_days": 30,
+      "messages_affected": 1234,
+      "attachments_affected": 56,
+      "oldest_affected_at": "2026-01-01T00:00:00Z",
+      "newest_affected_at": "2026-06-01T12:34:56Z"
+    }
+    ```
+    Returns `Cache-Control: no-store`.
+  - **Rate Limit Policy:** Endpoint is read-only and cheap (single indexed scan). No new rate limit variant added.
