@@ -871,6 +871,22 @@ Phase 10 delivers messaging support, welcome packet routing, and MLS epoch linea
 - **Consumption**: Recipient lists unconsumed welcomes via `GET /api/v1/welcomes`, fetches the welcome ciphertext via `GET /api/v1/welcomes/:id`, and marks it consumed via `POST /api/v1/welcomes/:id/consume`. Attempting to consume an already-consumed welcome returns HTTP 409 Conflict (`{"error":"already_consumed"}`).
 - **Multi-Device Welcome Limitation**: Phase 10 attaches welcome packets to the target's most recent device. Multi-device welcome fanout is managed at the client / MLS layer in Phase 11.
 
+### Message Reactions
+
+Message reactions allow users to attach short strings (typically Unicode emojis) to messages.
+
+- **What Reactions Are**: Reactions are metadata attached to an existing message rather than new messages in the stream. They do not trigger push notifications, do not increment unread counts, and do not advance the room's sequence or epoch ("silent delivery").
+- **Unique Constraint & Per-Client Reactions**: Keyed by `(message_id, sender_user_id, sender_client_id, reaction)`. A user with multiple devices can react with the same emoji from different devices independently.
+- **Reaction String Bounds**: Validated application-side: non-empty, max 64 characters (Unicode scalar values), max 256 UTF-8 bytes, and no ASCII/Latin-1 control characters.
+- **Limits**: `reactions_per_message` instance limit (default 50, server hard max 50). Only non-deleted reactions count toward the limit. Soft-deleted reactions reactivate on re-add.
+- **Endpoints**:
+  - `POST /api/v1/rooms/:id/messages/:msg_id/reactions`: Body `{"reaction": "👍", "client_id": "..."}`. Returns `AddReactionResponse` and `Cache-Control: no-store`.
+  - `DELETE /api/v1/rooms/:id/messages/:msg_id/reactions/:reaction?client_id=...`: URL-encoded reaction parameter. Soft-deletes user client's reaction. Returns HTTP 204 and `Cache-Control: no-store`.
+  - `GET /api/v1/rooms/:id/messages/:msg_id/reactions`: Returns aggregated reactions array `{ "message_id": "...", "reactions": [{ "reaction": "👍", "count": 3, "reacted_by_me": true }] }`.
+- **Message List Inclusion**: `GET /api/v1/rooms/:id/messages` includes a `reactions` array on each message view object.
+- **Events (`reaction.added` / `reaction.removed`)**: Published to `private-room-<room_id>` post-commit. Payload contains `reaction_id`, `message_id`, `user_id`, `client_id`, `reaction`, and `created_at` (for `added`). Aggregate counts are omitted.
+- **Audit Actions**: Writes `reaction.create` and `reaction.delete` to the audit log upon successful add/remove.
+
 ### Message Editing
 
 Message editing allows senders to update the ciphertext of previously sent application messages.

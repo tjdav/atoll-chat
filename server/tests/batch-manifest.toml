@@ -43,7 +43,7 @@ timeout_seconds = 60
 
 [[batch]]
 name = "messaging"
-description = "Rooms, room messages, welcomes, key packages, moderation, room invites, message deletion, message sync, room metadata, message edit"
+description = "Rooms, room messages, welcomes, key packages, moderation, room invites, message deletion, message sync, room metadata, message edit, reactions"
 files = [
     "key_packages",
     "message_deletion",
@@ -52,6 +52,10 @@ files = [
     "message_edit_write",
     "message_sync",
     "moderation",
+    "reaction_events",
+    "reaction_list",
+    "reaction_validation",
+    "reaction_write",
     "room_invites",
     "room_messages",
     "room_metadata_events",

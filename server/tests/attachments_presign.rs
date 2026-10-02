@@ -116,6 +116,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         rate_admin_oprf_rotate_per_hour: 1,
         rate_room_metadata_per_min: 30,
         rate_edit_per_min: 30,
+        rate_reaction_per_min: 60,
     };
 
     let config = Config {
@@ -156,6 +157,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         message_size_bytes: 65536,
         attachment_retention_days: 365,
         call_max_participants: 50,
+        reactions_per_message: 50,
     });
 
     let sockudo_config = server::SockudoConfig {

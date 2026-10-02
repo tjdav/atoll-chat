@@ -23,6 +23,7 @@ pub mod permission_check;
 pub mod permissions;
 pub mod push;
 pub mod rate_limit;
+pub mod reactions;
 pub mod registration;
 pub mod roles;
 pub mod room_invites;
@@ -313,6 +314,14 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/messages/{message_id}",
             patch(routes::room_messages::edit).delete(routes::room_messages::delete_message),
+        )
+        .route(
+            "/rooms/{id}/messages/{message_id}/reactions",
+            get(routes::reactions::list).post(routes::reactions::add),
+        )
+        .route(
+            "/rooms/{id}/messages/{message_id}/reactions/{reaction}",
+            delete(routes::reactions::remove),
         )
         .route(
             "/rooms/{id}/messages/{message_id}/ciphertext",

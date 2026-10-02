@@ -32,7 +32,7 @@ test-auth:
 
 .PHONY: test-messaging
 test-messaging:
-	$(CARGO) test --test key_packages --test message_deletion --test message_edit_events --test message_edit_validation --test message_edit_write --test message_sync --test moderation --test room_invites --test room_messages --test room_metadata_events --test room_metadata_validation --test room_metadata_write --test rooms --test welcomes
+	$(CARGO) test --test key_packages --test message_deletion --test message_edit_events --test message_edit_validation --test message_edit_write --test message_sync --test moderation --test reaction_events --test reaction_list --test reaction_validation --test reaction_write --test room_invites --test room_messages --test room_metadata_events --test room_metadata_validation --test room_metadata_write --test rooms --test welcomes
 
 .PHONY: test-storage
 test-storage:

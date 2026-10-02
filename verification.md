@@ -33,3 +33,11 @@
 - **Spec sections affected:** §2.4, §7.4
 - **Question asked:** What was the initial schema state of the `rooms` table prior to migration 0026?
 - **Answer found:** Case A — `rooms` contained `name_encrypted` (TEXT) and lacked `metadata` or `metadata_version`. Migration `0026_rooms_metadata.sql` added `metadata` (TEXT), added `metadata_version` (INTEGER NOT NULL DEFAULT 1), and dropped `name_encrypted`.
+
+## Task 28 — Message Reactions Schema & Unique Constraint
+- **ID:** Task 28
+- **Date:** 2026-10-02
+- **Status:** Complete.
+- **Spec sections affected:** §2.1, §4.2, §5.6, §7.6, §8.5, §8.8, §14.8
+- **Question asked:** What was the initial schema state of the `reactions` table prior to migration 0028?
+- **Answer found:** Case A — `reactions` table did not exist. Migration `0028_reactions.sql` created the `reactions` table with composite `UNIQUE (message_id, sender_user_id, sender_client_id, reaction)` and partial index on `reactions(message_id) WHERE deleted_at IS NULL`.
