@@ -123,3 +123,24 @@
   - `attachments.room_id` is nullable (`TEXT REFERENCES rooms(id) ON DELETE CASCADE`).
   - User-scoped attachments (such as user avatar uploads via `POST /users/me/avatar`) store `room_id = NULL` and set `uploader_id` to the calling user's ID.
   - The C2SP purpose string `"user-avatar"` is client-side only (used for C2SP encryption context derivation) and is not stored or validated server-side.
+
+## Task 33 — Pending MLS Adds Endpoints and Event Contract
+- **ID:** Task 33
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §2.1, §7.5, §8.5, §8.8
+- **Question asked:** What are the canonical endpoint shapes, event names/payloads, and lifecycle invariants for MLS pending adds coordination?
+- **Answer found:**
+  - **Table Schema:** `pending_mls_adds` table (`id`, `room_id`, `target_user_id`, `target_client_id`, `key_package_id`, `queued_at`, `consumed_at`) created in `0032_pending_mls_adds.sql` with partial index `idx_pending_mls_adds_active` on `(room_id, consumed_at) WHERE consumed_at IS NULL`.
+  - **Member Addition Behavior (`POST /rooms/:id/members`):**
+    - Inserts one `pending_mls_adds` row per target client device using an unconsumed key package.
+    - Consumes non-last-resort key packages (`consumed = 1, consumed_at = CURRENT_TIMESTAMP`).
+    - After transaction commit, publishes event `mls.add_pending` on channel `private-room-{room_id}` with payload `{ "room_id": "<id>", "target_user_id": "<user_id>", "client_ids": ["<client_id>", ...] }`.
+  - **List Endpoint (`GET /rooms/:id/pending-adds`):**
+    - Returns active pending adds (`consumed_at IS NULL`) for room, ordered by `queued_at ASC, id ASC`.
+    - Response body: `{ "pending_adds": [ { "id": "...", "target_user_id": "...", "target_client_id": "...", "key_package_id": "...", "queued_at": "..." } ] }`. Returns `Cache-Control: no-store`. Requires room membership (returns HTTP 404 `room_not_found` for non-members).
+  - **Consume Endpoint (`POST /rooms/:id/pending-adds/:add_id/consume`):**
+    - Marks pending add consumed by setting `consumed_at = CURRENT_TIMESTAMP`. Consumed rows persist (no automatic deletion).
+    - Response body: `{ "id": "<add_id>", "consumed_at": "<iso_timestamp>" }`. Returns `Cache-Control: no-store`.
+    - Error responses: HTTP 404 `pending_add_not_found` if missing or from another room; HTTP 409 `already_consumed` if previously consumed; HTTP 404 `room_not_found` if caller is not a room member.
+  - **Spec Gap Note (`mls.welcome_ready`):** `mls.welcome_ready` is expected by Client Spec v1.0 but is absent from Server Spec v2.0 §8.8. It is not implemented by Task 33 and is flagged in the proposed §8.8 amendment.

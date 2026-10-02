@@ -294,6 +294,61 @@ pub async fn list_members(
     ))
 }
 
+#[derive(Debug, Serialize)]
+pub struct PendingAddsResponse {
+    pub pending_adds: Vec<rooms::PendingAddView>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConsumePendingAddResponse {
+    pub id: String,
+    pub consumed_at: String,
+}
+
+pub async fn list_pending_adds(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, ApiError> {
+    let pending_adds = rooms::list_pending_adds(&state.pool, &id, &auth.user_id)
+        .await
+        .map_err(|e| match e {
+            RoomError::NotAMember => ApiError::NotFound("room_not_found".to_string()),
+            RoomError::RoomNotFound => ApiError::NotFound("room_not_found".to_string()),
+            other => other.into(),
+        })?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((headers, Json(PendingAddsResponse { pending_adds })))
+}
+
+pub async fn consume_pending_add(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((id, add_id)): Path<(String, String)>,
+) -> Result<impl IntoResponse, ApiError> {
+    let consumed_at = rooms::consume_pending_add(&state.pool, &id, &add_id, &auth.user_id)
+        .await
+        .map_err(|e| match e {
+            RoomError::NotAMember => ApiError::NotFound("room_not_found".to_string()),
+            RoomError::RoomNotFound => ApiError::NotFound("room_not_found".to_string()),
+            other => other.into(),
+        })?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((
+        headers,
+        Json(ConsumePendingAddResponse {
+            id: add_id,
+            consumed_at: consumed_at.to_rfc3339(),
+        }),
+    ))
+}
+
 pub async fn add_member(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -312,7 +367,7 @@ pub async fn add_member(
         _ => None,
     };
 
-    let member = rooms::add_member(
+    let outcome = rooms::add_member(
         &state.pool,
         &id,
         &auth.user_id,
@@ -326,9 +381,9 @@ pub async fn add_member(
     let channel = format!("private-room-{}", id);
     let event_payload = json!({
         "room_id": id,
-        "user_id": member.user_id,
-        "role": member.role,
-        "joined_at": member.joined_at.to_rfc3339(),
+        "user_id": outcome.member.user_id,
+        "role": outcome.member.role,
+        "joined_at": outcome.member.joined_at.to_rfc3339(),
     });
     if let Err(e) = state
         .publisher
@@ -338,7 +393,22 @@ pub async fn add_member(
         tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
     }
 
-    Ok((StatusCode::CREATED, Json(member)))
+    if !outcome.added_client_ids.is_empty() {
+        let mls_add_payload = json!({
+            "room_id": id,
+            "target_user_id": payload.user_id,
+            "client_ids": outcome.added_client_ids,
+        });
+        if let Err(e) = state
+            .publisher
+            .publish(&channel, "mls.add_pending", mls_add_payload)
+            .await
+        {
+            tracing::warn!(error = %e, channel = %channel, "sockudo publish failed for mls.add_pending");
+        }
+    }
+
+    Ok((StatusCode::CREATED, Json(outcome.member)))
 }
 
 pub async fn kick_member(

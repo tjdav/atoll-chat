@@ -52,7 +52,7 @@ test-transport:
 
 .PHONY: test-sockudo
 test-sockudo:
-	$(CARGO) test --test event_publishing --test pending_removes --test sockudo
+	$(CARGO) test --test event_publishing --test pending_adds --test pending_removes --test sockudo
 
 .PHONY: test-push
 test-push:

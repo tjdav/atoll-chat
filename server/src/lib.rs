@@ -363,6 +363,14 @@ pub fn build_app(state: AppState) -> Router {
             "/rooms/{id}/pending-removes/{remove_id}/consume",
             post(routes::pending_removes::consume),
         )
+        .route(
+            "/rooms/{id}/pending-adds",
+            get(routes::rooms::list_pending_adds),
+        )
+        .route(
+            "/rooms/{id}/pending-adds/{add_id}/consume",
+            post(routes::rooms::consume_pending_add),
+        )
         .route("/rooms/{id}/attachments", post(routes::attachments::upload))
         .route(
             "/attachments/{id}",
