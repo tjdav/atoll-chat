@@ -81,3 +81,16 @@ build task runs.
 | Batch manifest location & format | `packages/app/test-batches.js` (ES module exporting batch array) |
 | `check-batches` invariant | Every `*.test.js` under `packages/app/tests/` must belong to exactly one batch (detects orphans, phantoms, duplicates) |
 | Initial test batch | `unit-smoke` containing `tests/unit/smoke.test.js` |
+
+### C-V-B — Client Testing Stack and Coralite Test Tooling
+
+**Verified:** 2026-10-02
+
+| Fact | Value |
+|---|---|
+| `coralite-scripts test` behavior | Launches testing-mode HTTP server on port 3000; does NOT execute test files or apply filters |
+| Testing mode (`mode: 'testing'`) | Injects velocity CSS, prototype patching, static `data-testid` retention, and testing symbol |
+| Invocation granularity | Process-level server; batch filtering maps to runner level (`node --test <files>` or `playwright test <files>`) |
+| Viable test runners | Node.js built-in runner (`node --test`) for unit tests; Playwright + `@axe-core/playwright` for component/E2E tests |
+| Batch model alignment | JS batch manifest (`test-batches.js`) grouping specs into runner batches executed via `pnpm test:batch <batch>` |
+| Report location | `client-verification/cv-b/report.md` |
