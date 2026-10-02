@@ -31,9 +31,11 @@
   - **Verified:** `server/src/push/`, WebPush, APNs, FCM senders, capabilities integration
 - **Phase 17 — Automated Backups & Restore CLI**: done
   - **Verified:** `server/src/backup/`, `GET/POST /api/v1/admin/backups`, `server restore`
+- **MIG-FIX — Remove Redundant requires_reregistration Migration**: done
+  - **Verified:** Removed redundant migration `0025_requires_reregistration.sql`. All 24 migrations run successfully on clean database.
 
 ## Summary
-- **Total Tasks Tracked:** 12
-- **Done:** 12
+- **Total Tasks Tracked:** 13
+- **Done:** 13
 - **Pending:** 0
 - **Mismatches:** 0
