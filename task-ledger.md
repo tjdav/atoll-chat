@@ -33,9 +33,13 @@
   - **Verified:** `server/src/backup/`, `GET/POST /api/v1/admin/backups`, `server restore`
 - **MIG-FIX — Remove Redundant requires_reregistration Migration**: done
   - **Verified:** Removed redundant migration `0025_requires_reregistration.sql`. All 24 migrations run successfully on clean database.
+- **Task 26 — Room Metadata with Encrypted Payload**: done
+  - **Migration:** `0026_rooms_metadata.sql` (Case A: dropped `name_encrypted`, added `metadata` and `metadata_version`).
+  - **Delivered:** `0026_rooms_metadata.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/error.rs`, `server/README.md`, `room_metadata_write.rs`, `room_metadata_validation.rs`, `room_metadata_events.rs`.
+  - **Batch:** `messaging`
 
 ## Summary
-- **Total Tasks Tracked:** 13
-- **Done:** 13
+- **Total Tasks Tracked:** 14
+- **Done:** 14
 - **Pending:** 0
 - **Mismatches:** 0

@@ -269,7 +269,9 @@ pub fn build_app(state: AppState) -> Router {
         .route("/rooms/join", post(routes::room_invites::join))
         .route(
             "/rooms/{id}",
-            get(routes::rooms::get).delete(routes::rooms::delete),
+            get(routes::rooms::get)
+                .patch(routes::rooms::update_metadata)
+                .delete(routes::rooms::delete),
         )
         .route(
             "/rooms/{id}/invites",

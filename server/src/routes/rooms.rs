@@ -1,6 +1,7 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, HeaderMap, HeaderValue, StatusCode},
+    response::IntoResponse,
     Json,
 };
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -13,15 +14,20 @@ use crate::{
     config_ops,
     error::ApiError,
     limits,
+    rate_limit::{self, RateLimitKey},
     rooms::{self, CreateRoomOptions, LeaveOutcome, RoomError, RoomMember, RoomWithRole},
     AppState,
 };
 
 #[derive(Debug, Deserialize)]
 pub struct CreateRoomRequest {
-    pub name_encrypted: Option<String>,
     pub retention_days: Option<i64>,
     pub max_file_size_bytes: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateMetadataRequest {
+    pub metadata: Option<Option<String>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -60,7 +66,6 @@ pub async fn create(
     let effective_limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
 
     let options = CreateRoomOptions {
-        name_encrypted: payload.name_encrypted,
         retention_days: payload.retention_days,
         max_file_size_bytes: payload.max_file_size_bytes,
     };
@@ -322,13 +327,73 @@ pub async fn demote_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
+pub async fn update_metadata(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+    body: String,
+) -> Result<impl IntoResponse, ApiError> {
+    // Check rate limit
+    let rl_decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::RoomMetadata {
+            user_id: auth.user_id.clone(),
+        },
+    )
+    .await?;
+
+    if !rl_decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate limit exceeded".to_string(),
+            reset_at: rl_decision.reset_at,
+        });
+    }
+
+    let payload: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|_| ApiError::BadRequest("invalid_json".to_string()))?;
+
+    let obj = payload
+        .as_object()
+        .ok_or_else(|| ApiError::BadRequest("invalid_body".to_string()))?;
+
+    if !obj.contains_key("metadata") {
+        return Err(ApiError::InternalWithDetails(
+            StatusCode::BAD_REQUEST,
+            "missing_field".to_string(),
+            json!({ "field": "metadata" }),
+        ));
+    }
+
+    let metadata_val = &obj["metadata"];
+    let metadata_str = match metadata_val {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(s) => Some(s.as_str()),
+        _ => return Err(ApiError::BadRequest("invalid_metadata".to_string())),
+    };
+
+    let result = rooms::update_room_metadata(
+        &state.pool,
+        &state.publisher,
+        &id,
+        &auth.user_id,
+        metadata_str,
+        state.config.max_room_metadata_bytes,
+    )
+    .await?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((headers, Json(result)))
+}
+
 pub async fn transfer_ownership(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<String>,
     Json(payload): Json<TransferOwnershipRequest>,
 ) -> Result<StatusCode, ApiError> {
-    // TODO: Publish room.updated when room metadata fields (e.g. name_encrypted) are updated by an endpoint.
     rooms::transfer_ownership(&state.pool, &id, &auth.user_id, &payload.user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

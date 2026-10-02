@@ -23,6 +23,7 @@ pub enum RateLimitKey {
     Preference { user_id: String },
     DeviceName { user_id: String },
     AdminOprfRotate { user_id: String },
+    RoomMetadata { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -225,6 +226,15 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_admin_oprf_rotate_per_hour,
+            )
+        }
+        RateLimitKey::RoomMetadata { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("room_metadata:{user_id}:min"),
+                start,
+                reset,
+                config.rate_room_metadata_per_min,
             )
         }
     };

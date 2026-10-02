@@ -686,12 +686,18 @@ Room creation and membership enforcement respects instance limits and server har
 
 ### Room Endpoints
 
+- **Room Metadata**: Room metadata is an opaque encrypted JSON blob (`metadata`) managed by the client alongside a monotonic `metadata_version` counter for client cache invalidation. The server stores and returns the base64url string verbatim without decrypting or inspecting its contents. Size is bounded by `MAX_ROOM_METADATA_BYTES` (default 4096 bytes decoded).
 - **`POST /api/v1/rooms`**: Creates a new room with the requesting user as the owner.
-  - Body: `{"name_encrypted": "<base64|null>", "retention_days": 30, "max_file_size_bytes": 52428800}`
+  - Body: `{"retention_days": 30, "max_file_size_bytes": 52428800}`
   - Returns HTTP 201 Created with `RoomWithRole`.
   - Errors: `room_limit_reached` (409), `invalid_retention` (400), `invalid_file_size` (400).
 - **`GET /api/v1/rooms`**: Lists all rooms joined by the authenticated user, ordered by `joined_at DESC`.
-- **`GET /api/v1/rooms/:id`**: Returns metadata and role for a joined room. Returns 404 if not a member.
+- **`GET /api/v1/rooms/:id`**: Returns metadata and role for a joined room (`metadata` and `metadata_version` fields included). Returns 404 if not a member.
+- **`PATCH /api/v1/rooms/:id`**: Updates room metadata. Room owner only.
+  - Body: `{"metadata": "<base64url or null>"}`
+  - Returns HTTP 200 OK with `{ "room_id": "...", "metadata": "<base64url or null>", "metadata_version": 2, "updated_at": "..." }` and `Cache-Control: no-store`.
+  - Event: Publishes a `room.updated` advisory event (`{ "room_id": "...", "metadata_version": 2 }`) to `private-room-<room_id>`.
+  - Errors: `missing_field` (400), `invalid_metadata` (400), `forbidden` (403), `room_not_found` (404), `metadata_too_large` (413), `rate_limited` (429).
 - **`DELETE /api/v1/rooms/:id`**: Deletes a room. Owner-only (403 for regular members, 404 for non-members). Cascades to all child tables via foreign keys.
 - **`POST /api/v1/rooms/:id/leave`**: Leaves a room. Returns `{ "outcome": "left" | "transferred_ownership" | "room_deleted", "new_owner_id": "..." }`. Returns 400 `not_a_member` for non-members.
 - **`GET /api/v1/rooms/:id/members`**: Lists members in a room, ordered owner first, then moderators, then members by `joined_at ASC`. Member-only (404 for non-members).

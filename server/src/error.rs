@@ -6,7 +6,7 @@ use crate::limits::LimitsError;
 use crate::rate_limit::RateLimitError;
 use crate::room_invites::RoomInviteError;
 use crate::room_messages::RoomMessageError;
-use crate::rooms::RoomError;
+use crate::rooms::{RoomError, RoomMetadataError};
 use crate::session::SessionError;
 use crate::sync::device_names::DeviceNameSyncError;
 use crate::sync::preferences::PreferencesError;
@@ -224,6 +224,27 @@ impl From<LimitsError> for ApiError {
             LimitsError::ExceedsServerMax { .. } | LimitsError::BelowMinimum { .. } => {
                 ApiError::BadRequest(err.to_string())
             }
+        }
+    }
+}
+
+// Implement From<RoomMetadataError> for ApiError
+impl From<RoomMetadataError> for ApiError {
+    fn from(err: RoomMetadataError) -> Self {
+        match err {
+            RoomMetadataError::TooLarge(limit, size) => ApiError::InternalWithDetails(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "metadata_too_large".to_string(),
+                serde_json::json!({ "limit": limit, "size": size }),
+            ),
+            RoomMetadataError::InvalidEncoding => {
+                ApiError::BadRequest("invalid_metadata".to_string())
+            }
+            RoomMetadataError::Database(e) => ApiError::Internal(e.into()),
+            RoomMetadataError::RoomNotFound | RoomMetadataError::NotAMember => {
+                ApiError::NotFound("room_not_found".to_string())
+            }
+            RoomMetadataError::Forbidden => ApiError::Forbidden("forbidden".to_string()),
         }
     }
 }
