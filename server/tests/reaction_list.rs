@@ -33,8 +33,10 @@ async fn create_test_user(
         None
     };
 
-    let user_id = common::register_user(app, username, "Password123!", invite_code.as_deref()).await;
-    let (status, login_res) = common::login_user(app, username, "Password123!", client_id, None).await;
+    let user_id =
+        common::register_user(app, username, "Password123!", invite_code.as_deref()).await;
+    let (status, login_res) =
+        common::login_user(app, username, "Password123!", client_id, None).await;
     if status != StatusCode::OK {
         panic!(
             "login_user failed for {}: status={}, res={:?}",
@@ -65,7 +67,9 @@ async fn test_reaction_list_and_aggregation() {
         .body(axum::body::Body::from(json!({}).to_string()))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let room_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let room_id = room_body["id"].as_str().unwrap();
 
@@ -74,7 +78,9 @@ async fn test_reaction_list_and_aggregation() {
         .uri(format!("/api/v1/rooms/{}/members", room_id))
         .header("Authorization", format!("Bearer {}", u1_token))
         .header("Content-Type", "application/json")
-        .body(axum::body::Body::from(json!({ "user_id": u2_id }).to_string()))
+        .body(axum::body::Body::from(
+            json!({ "user_id": u2_id }).to_string(),
+        ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::CREATED);
@@ -97,49 +103,71 @@ async fn test_reaction_list_and_aggregation() {
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let msg1_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let msg1_id = msg1_body["message_id"].as_str().unwrap();
 
     // User1 reacts with 👍 and ❤️
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg1_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg1_id
+        ))
         .header("Authorization", format!("Bearer {}", u1_token))
         .header("Content-Type", "application/json")
-        .body(axum::body::Body::from(json!({ "reaction": "👍", "client_id": c1 }).to_string()))
+        .body(axum::body::Body::from(
+            json!({ "reaction": "👍", "client_id": c1 }).to_string(),
+        ))
         .unwrap();
     let _ = app.clone().oneshot(req).await;
 
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg1_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg1_id
+        ))
         .header("Authorization", format!("Bearer {}", u1_token))
         .header("Content-Type", "application/json")
-        .body(axum::body::Body::from(json!({ "reaction": "❤️", "client_id": c1 }).to_string()))
+        .body(axum::body::Body::from(
+            json!({ "reaction": "❤️", "client_id": c1 }).to_string(),
+        ))
         .unwrap();
     let _ = app.clone().oneshot(req).await;
 
     // User2 reacts with 👍
     let req = axum::http::Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg1_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg1_id
+        ))
         .header("Authorization", format!("Bearer {}", u2_token))
         .header("Content-Type", "application/json")
-        .body(axum::body::Body::from(json!({ "reaction": "👍", "client_id": c2 }).to_string()))
+        .body(axum::body::Body::from(
+            json!({ "reaction": "👍", "client_id": c2 }).to_string(),
+        ))
         .unwrap();
     let _ = app.clone().oneshot(req).await;
 
     // 1. GET reactions for single message from user1's perspective
     let req = axum::http::Request::builder()
         .method("GET")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg1_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg1_id
+        ))
         .header("Authorization", format!("Bearer {}", u1_token))
         .body(axum::body::Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let list_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let reactions = list_body["reactions"].as_array().unwrap();
     assert_eq!(reactions.len(), 2);
@@ -155,13 +183,18 @@ async fn test_reaction_list_and_aggregation() {
     // 2. GET reactions for single message from user2's perspective
     let req = axum::http::Request::builder()
         .method("GET")
-        .uri(format!("/api/v1/rooms/{}/messages/{}/reactions", room_id, msg1_id))
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg1_id
+        ))
         .header("Authorization", format!("Bearer {}", u2_token))
         .body(axum::body::Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let list_body2: Value = serde_json::from_slice(&body_bytes).unwrap();
     let reactions2 = list_body2["reactions"].as_array().unwrap();
     assert_eq!(reactions2[0]["reaction"], "👍");
@@ -178,7 +211,9 @@ async fn test_reaction_list_and_aggregation() {
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
     let msgs_res: Value = serde_json::from_slice(&body_bytes).unwrap();
     let messages = msgs_res["messages"].as_array().unwrap();
     assert_eq!(messages.len(), 1);

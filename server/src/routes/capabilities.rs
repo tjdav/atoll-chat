@@ -25,6 +25,7 @@ pub struct CapabilitiesResponse {
     pub attachment_bucket_sizes: Vec<u64>,
     pub username_oprf_enabled: bool,
     pub oprf_suite: String,
+    pub threading_enabled: bool,
 }
 
 pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -95,5 +96,6 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         attachment_bucket_sizes: state.config.attachment_bucket_sizes.clone(),
         username_oprf_enabled: state.config.username_oprf_enabled,
         oprf_suite: "ristretto255-sha512".to_string(),
+        threading_enabled: true,
     })
 }

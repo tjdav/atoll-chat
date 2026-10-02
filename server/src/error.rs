@@ -173,6 +173,14 @@ impl From<RoomMessageError> for ApiError {
             RoomMessageError::NoEpochEstablished => {
                 ApiError::BadRequest("no_epoch_established".to_string())
             }
+            RoomMessageError::InvalidReplyTarget { reason } => match reason {
+                Some(r) => ApiError::InternalWithDetails(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_reply_target".to_string(),
+                    serde_json::json!({ "reason": r }),
+                ),
+                None => ApiError::BadRequest("invalid_reply_target".to_string()),
+            },
         }
     }
 }
