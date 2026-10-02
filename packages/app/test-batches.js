@@ -27,6 +27,7 @@ export default [
     description: 'Smoke tests for component rendering and Playwright pipeline.',
     files: [
       'tests/component/smoke.spec.js',
+      'tests/component/tokens.spec.js',
     ],
   },
 ]

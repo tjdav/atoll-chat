@@ -109,3 +109,17 @@ build task runs.
 | `component-smoke` batch result | Passed (2 passed, 12.2s execution time, well under 60-second budget) |
 | `unit-smoke` batch result | Passed (3 passed, 0.09s execution time) |
 | `check-batches` validation | OK — 2 test files across 2 batches |
+
+### C-INFRA-5 — Design System Tokens Vocabulary & Base CSS Layer
+
+**Verified:** 2026-10-02
+
+| Fact | Value |
+|---|---|
+| CSS Layer Structure | `tokens.css` structured in `@layer tokens` (Primitives -> Non-color scales -> Semantic `:root` -> Dark-mode remap `[data-theme="dark"]`); `main.css` extended with `@layer base` |
+| Primitives Ramps | Cool neutral (`--neutral-0`..`--neutral-950`), warm neutral (`--neutral-warm-50`, `--neutral-warm-200`), accent (`--accent-500: #2FB6AA`, `--accent-700: #297370`), warm accent (`--accent-warm-500: #EC7562`), destructive (`--destructive-500`, `--destructive-700`), status (`--success-500`, `--warning-500`, `--info-500`) |
+| Non-color Scales | Spacing (`--space-0`..`--space-24`), typography (`--font-sans`, `--font-mono`, `--text-xs`..`--text-3xl`, `--weight-*`, `--leading-*`), radii (`--radius-sm`..`--radius-full`), shadows (`--shadow-sm`..`--shadow-xl`), motion (`--duration-*`, `--ease-*`), z-index ladder (`--z-base`..`--z-toast`), layout metrics (`--rail-width: 64px`, `--list-panel-min: 320px`, `--list-panel-max: 400px`, `--bubble-max-width: min(75%, 600px)`, `--mobile-nav-height: 56px`), safe areas (`env()`) |
+| Semantic Vocabulary | Surfaces (`--surface-0`..`--surface-3`), text (`--text-primary`, `--text-muted`, `--text-inverse`), borders/dividers (`--border-subtle`, `--border-default`, `--divider`), bubbles (`--bubble-incoming`, `--bubble-outgoing`, `--bubble-outgoing-text`), accent (`--accent-fill`, `--accent-text`, `--accent-warm`), status (`--status-success`..`--status-error`) |
+| Dark-mode Remap Mechanism | Selector `[data-theme="dark"]` overriding primitive `--accent-500: #4DD0C4` and remapping surface, text, border, bubble, and accent semantic tokens |
+| Base CSS Layer | `@layer base` reset setting `*, *::before, *::after { box-sizing: border-box; }`, `html { height: 100dvh; font-family: var(--font-sans); ... }`, `body`, `#app`, and `@media (prefers-reduced-motion: reduce)` animation/transition override |
+| Playwright Test Verification | `tests/component/tokens.spec.js` added and registered under `component-smoke` batch in `test-batches.js` |

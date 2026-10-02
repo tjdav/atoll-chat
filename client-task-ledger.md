@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 11 |
-| Done | 9 |
+| Pending | 10 |
+| Done | 10 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -30,7 +30,7 @@ or modify the server's ledger.
 | C-INFRA-2b | Unblock Coralite Build Pipeline | done | C-INFRA-2 | — |
 | C-INFRA-3 | Establish Client Test Infrastructure and Batch Model | done | C-INFRA-1 | unit-smoke |
 | C-INFRA-4 | Playwright Browser Testing Setup | done | C-INFRA-2, C-INFRA-3 | component-smoke |
-| C-INFRA-5 | Design System Tokens & Base CSS | pending | C-INFRA-1 | — |
+| C-INFRA-5 | Design System Tokens & Base CSS | done | C-INFRA-1 | component-smoke |
 | C-AUTH-1 | Auth Gate Shell & Routing | pending | C-INFRA-2, C-INFRA-5 | — |
 | C-AUTH-2 | OPRF Blinding Client & API Client | pending | C-INFRA-2 | — |
 | C-AUTH-3 | OPAQUE Login & Registration Flows | pending | C-AUTH-1, C-AUTH-2, C-INFRA-4 | — |
@@ -184,3 +184,9 @@ On completion:
   - Extended `packages/app/scripts/check-batches.js` to validate `runner` fields and check `tests/component/` and `tests/e2e/` for orphans.
   - Created `packages/app/tests/component/smoke.spec.js` asserting placeholder headings on `/app.html` (`Messenger Shell`) and `/index.html` (`Auth Gate`).
   - Updated `packages/app/TESTING.md` with Playwright workflow documentation.
+- **C-INFRA-5 Deliverables & Status:**
+  - Status: `done`.
+  - Populated `packages/app/src/styles/tokens.css` with primitives (cool neutrals, warm neutrals, Lagoon Blue/Dark Aquamarine accent `--accent-500: #2FB6AA` / `--accent-700: #297370`, Coral Reef `--accent-warm-500: #EC7562`, destructive, status), non-color scales (spacing `--space-0`..`--space-24`, font families, font sizes `--text-xs`..`--text-3xl`, weights, line-heights, radii `--radius-sm`..`--radius-full`, shadows, motion, z-index ladder, layout metrics, safe areas), semantic tokens (`:root`), and dark-mode remap (`[data-theme="dark"]`).
+  - Extended `packages/app/src/styles/main.css` with `@layer base` containing `box-sizing` reset, `html` (`100dvh`, font family, line height, primary text, surface-0 background), `body` / `#app` height, and `prefers-reduced-motion` override.
+  - Created `packages/app/tests/component/tokens.spec.js` asserting light mode token resolution, dark-mode remap behavior, non-color scales, and reduced motion override.
+  - Registered `tests/component/tokens.spec.js` in `packages/app/test-batches.js` under `component-smoke` batch.
