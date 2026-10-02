@@ -4,25 +4,32 @@ use sqlx::SqlitePool;
 
 mod common;
 
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
+
 async fn setup_db_with_user_and_device(pool: &SqlitePool, user_id: &str, device_id: &str) {
+    let mut token_bytes = [0u8; 64];
+    let user_bytes = user_id.as_bytes();
+    let len = user_bytes.len().min(64);
+    token_bytes[..len].copy_from_slice(&user_bytes[..len]);
+    let token = URL_SAFE_NO_PAD.encode(token_bytes);
+
     sqlx::query(
-        "INSERT OR IGNORE INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES (?, ?, 'hash', X'00', '')",
+        "INSERT OR IGNORE INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES (?, ?, X'00', '')",
     )
     .bind(user_id)
-    .bind(user_id)
+    .bind(token)
     .execute(pool)
     .await
     .unwrap();
 
-    sqlx::query(
-        "INSERT OR IGNORE INTO devices (id, user_id, client_id, name) VALUES (?, ?, ?, 'Device')",
-    )
-    .bind(device_id)
-    .bind(user_id)
-    .bind(format!("client_{}", device_id))
-    .execute(pool)
-    .await
-    .unwrap();
+    sqlx::query("INSERT OR IGNORE INTO devices (id, user_id, client_id) VALUES (?, ?, ?)")
+        .bind(device_id)
+        .bind(user_id)
+        .bind(format!("client_{}", device_id))
+        .execute(pool)
+        .await
+        .unwrap();
 }
 
 async fn insert_session(

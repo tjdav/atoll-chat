@@ -41,3 +41,11 @@
 - **Spec sections affected:** §2.1, §4.2, §5.6, §7.6, §8.5, §8.8, §14.8
 - **Question asked:** What was the initial schema state of the `reactions` table prior to migration 0028?
 - **Answer found:** Case A — `reactions` table did not exist. Migration `0028_reactions.sql` created the `reactions` table with composite `UNIQUE (message_id, sender_user_id, sender_client_id, reaction)` and partial index on `reactions(message_id) WHERE deleted_at IS NULL`.
+
+## Task 15b-R — Push Payload `sender_ref` Wire Format
+- **ID:** Task 15b-R
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical.
+- **Spec sections affected:** §5.10, §16.12
+- **Question asked:** What is the exact canonical wire format for `sender_ref` in push notification payloads?
+- **Answer found:** `sender_ref` is a 22-character unpadded base64url string derived by decoding the sender's 86-character `username_token` (unpadded base64url -> 64 bytes), taking the first 16 bytes, and re-encoding as unpadded base64url. It replaces `sender_user_id` in push notification envelopes across Web Push, APNs, and FCM.

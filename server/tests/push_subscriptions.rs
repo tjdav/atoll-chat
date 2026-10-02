@@ -4,6 +4,8 @@ use axum::{
     body::Body,
     http::{header, Request, StatusCode},
 };
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use common::{login_user, login_user_with_device_name, register_user, setup_test_app};
 use serde_json::{json, Value};
 use tower::ServiceExt;
@@ -461,13 +463,14 @@ async fn test_list_subscriptions_returns_non_secrets_and_excludes_revoked() {
 async fn test_device_revocation_deletes_linked_subscriptions() {
     let (app, _pool) = setup_test_app().await;
     register_user(&app, "cascade_user", "password123", None).await;
+    let valid_dev_name = URL_SAFE_NO_PAD.encode([0u8; 32]);
     let (_, login_1) = login_user_with_device_name(
         &app,
         "cascade_user",
         "password123",
         CLIENT_A,
         None,
-        Some("Phone"),
+        Some(&valid_dev_name),
     )
     .await;
     let token1 = login_1["session_token"].as_str().unwrap();
@@ -517,7 +520,7 @@ async fn test_device_revocation_deletes_linked_subscriptions() {
         "password123",
         CLIENT_B,
         None,
-        Some("Laptop"),
+        Some(&valid_dev_name),
     )
     .await;
     let token2 = login_2["session_token"].as_str().unwrap();

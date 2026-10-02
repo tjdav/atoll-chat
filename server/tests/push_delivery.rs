@@ -28,13 +28,17 @@ use sqlx::SqlitePool;
 mod common;
 
 async fn setup_user(pool: &SqlitePool, user_id: &str, username: &str) {
-    let hash = format!("hash_{}", username);
+    let mut token_bytes = [0u8; 64];
+    let user_bytes = username.as_bytes();
+    let len = user_bytes.len().min(64);
+    token_bytes[..len].copy_from_slice(&user_bytes[..len]);
+    let token = URL_SAFE_NO_PAD.encode(token_bytes);
+
     sqlx::query(
-        "INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES (?, ?, ?, X'00', '')",
+        "INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES (?, ?, X'00', '')",
     )
     .bind(user_id)
-    .bind(username)
-    .bind(hash)
+    .bind(token)
     .execute(pool)
     .await
     .unwrap();
@@ -256,7 +260,7 @@ async fn test_suppressed_devices_do_not_receive() {
 
     // Add device for B
     sqlx::query(
-        "INSERT INTO devices (id, user_id, client_id, name) VALUES ('dev-b', 'user-b', 'client-b', 'B Device')",
+        "INSERT INTO devices (id, user_id, client_id) VALUES ('dev-b', 'user-b', 'client-b')",
     )
     .execute(&pool)
     .await
@@ -714,6 +718,56 @@ async fn test_unsupported_platform_skipped() {
 
     coordinator
         .dispatch_message_notification("room-1", "user-a")
+        .await;
+}
+
+#[tokio::test]
+async fn test_anonymized_or_deleted_sender_delivers_valid_sender_ref() {
+    let pool = common::setup_test_db().await;
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/send/anon"))
+        .respond_with(ResponseTemplate::new(201))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // Create user A with random anonymized 86-char base64url username_token (§14.2)
+    let anon_token = URL_SAFE_NO_PAD.encode([7u8; 64]);
+    sqlx::query(
+        "INSERT INTO users (id, username_token, opaque_registration, identity_pubkey, deleted_at) VALUES ('user-anon', ?, X'00', '', CURRENT_TIMESTAMP)",
+    )
+    .bind(&anon_token)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    setup_user(&pool, "user-b", "bob").await;
+    setup_room(&pool, "room-1", "user-anon").await;
+    add_member(&pool, "room-1", "user-b").await;
+
+    register_subscription(
+        &pool,
+        RegisterRequest {
+            user_id: "user-b".to_string(),
+            platform: "web".to_string(),
+            device_id: None,
+            endpoint: Some(format!("{}/send/anon", mock_server.uri())),
+            p256dh: Some(dummy_p256dh()),
+            auth: Some(dummy_auth()),
+            push_token: None,
+            browser_id: Some("browser-b".to_string()),
+            user_agent: None,
+        },
+    )
+    .await
+    .unwrap();
+
+    let (coordinator, _) = create_coordinator(pool, |_| {}).await;
+
+    coordinator
+        .dispatch_message_notification("room-1", "user-anon")
         .await;
 }
 

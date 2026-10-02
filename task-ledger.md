@@ -49,9 +49,12 @@
   - **Migration:** `0029_message_reply_to.sql` (Case A: added `reply_to TEXT REFERENCES room_messages(id)` column and `idx_room_messages_reply_to` partial index).
   - **Delivered:** `0029_message_reply_to.sql`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/routes/capabilities.rs`, `server/src/error.rs`, `message_threading.rs`.
   - **Batch:** `messaging`
+- **Task 15b-R — Push Payload `sender_ref` Retrofit**: done
+  - **Delivered:** `server/src/identity/token.rs`, `server/src/push/payload.rs`, `server/src/push/delivery.rs`, `server/src/push/apns.rs`, `server/src/push/fcm.rs`, `server/tests/push_payload.rs`, `server/tests/push_delivery.rs`, `server/tests/push_delivery_native.rs`, `server/tests/push_subscriptions.rs`, `server/tests/push_suppression.rs`.
+  - **Batch:** `push`
 
 ## Summary
-- **Total Tasks Tracked:** 17
-- **Done:** 17
+- **Total Tasks Tracked:** 18
+- **Done:** 18
 - **Pending:** 0
 - **Mismatches:** 0
