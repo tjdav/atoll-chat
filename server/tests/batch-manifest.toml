@@ -73,7 +73,7 @@ timeout_seconds = 60
 
 [[batch]]
 name = "storage"
-description = "Attachments, backups, admin backups, retention, storage migration"
+description = "Attachments, backups, admin backups, retention, storage migration, user avatar"
 files = [
     "admin_backups",
     "attachment_retention",
@@ -85,6 +85,7 @@ files = [
     "cli_storage_migrate",
     "storage",
     "storage_migrate",
+    "user_avatar",
 ]
 timeout_seconds = 60
 

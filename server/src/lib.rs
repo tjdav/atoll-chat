@@ -245,6 +245,7 @@ pub fn build_app(state: AppState) -> Router {
                 .patch(routes::users::patch_me)
                 .delete(routes::users::delete_me),
         )
+        .route("/users/me/avatar", post(routes::attachments::upload_avatar))
         .route("/users/me/export", get(routes::users::export_me))
         .route("/users/me/sessions", get(routes::sessions::list))
         .route("/users/me/sessions/{id}", delete(routes::sessions::revoke))

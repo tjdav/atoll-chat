@@ -112,3 +112,14 @@
   - **Terminology Reconciliation:** `ui-profile` in Client Spec v1.0 §7.1 is the client-side UI Web Component renderer tag, while `users.profile` in Server Spec v2.0 §7.1 is the server database column storing the client-encrypted profile payload.
   - **Task 32 Status:** Task 32 (Avatar Upload) is unblocked under Interpretation A (V-E) without requiring any server schema changes.
 - **Link to report:** [verification/users-profile/report.md](verification/users-profile/report.md)
+
+## Task 32 — Attachments `room_id` Nullability for User-Scoped Attachments
+- **ID:** Task 32
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical.
+- **Spec sections affected:** §2.1, §7.7, §8.2.7
+- **Question asked:** What is the schema contract for `attachments.room_id` for user-scoped attachments such as `POST /users/me/avatar`?
+- **Answer found:**
+  - `attachments.room_id` is nullable (`TEXT REFERENCES rooms(id) ON DELETE CASCADE`).
+  - User-scoped attachments (such as user avatar uploads via `POST /users/me/avatar`) store `room_id = NULL` and set `uploader_id` to the calling user's ID.
+  - The C2SP purpose string `"user-avatar"` is client-side only (used for C2SP encryption context derivation) and is not stored or validated server-side.

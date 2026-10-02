@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 
@@ -7,10 +7,10 @@ use crate::config::Config;
 use crate::limits::{InstanceLimits, ServerHardMax};
 use crate::storage::{Storage, StorageError};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AttachmentView {
     pub id: String,
-    pub room_id: String,
+    pub room_id: Option<String>,
     pub uploader_id: String,
     pub uploader_client_id: Option<String>,
     pub storage_backend: String,
@@ -37,7 +37,7 @@ impl AttachmentView {
 }
 
 pub struct UploadRequest {
-    pub room_id: String,
+    pub room_id: Option<String>,
     pub uploader_id: String,
     pub uploader_client_id: Option<String>,
     pub content_type: String,
@@ -182,22 +182,24 @@ pub async fn upload_attachment(
         });
     }
 
-    // Step 3 — Membership check
-    let member_exists: Option<i32> =
-        sqlx::query_scalar("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
-            .bind(&req.room_id)
-            .bind(&req.uploader_id)
-            .fetch_optional(pool)
-            .await?;
+    // Step 3 — Membership check (for room-scoped attachments)
+    if let Some(ref room_id) = req.room_id {
+        let member_exists: Option<i32> =
+            sqlx::query_scalar("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
+                .bind(room_id)
+                .bind(&req.uploader_id)
+                .fetch_optional(pool)
+                .await?;
 
-    if member_exists.is_none() {
-        return Err(AttachmentError::NotAMember);
+        if member_exists.is_none() {
+            return Err(AttachmentError::NotAMember);
+        }
     }
 
     let storage_key = storage_key_for_id(&req.claimed_id);
 
     // Step 4 — Existing row check
-    let existing_row: Option<(String, String, String)> =
+    let existing_row: Option<(String, Option<String>, String)> =
         sqlx::query_as("SELECT id, room_id, uploader_id FROM attachments WHERE id = ?")
             .bind(&req.claimed_id)
             .fetch_optional(pool)
@@ -266,10 +268,11 @@ pub async fn get_attachment(
             a.chunk_size, a.chunk_count, a.nonce_prefix, a.base_counter,
             a.content_type, a.created_at
         FROM attachments a
-        JOIN room_members rm ON rm.room_id = a.room_id
-        WHERE a.id = ? AND rm.user_id = ?
+        LEFT JOIN room_members rm ON rm.room_id = a.room_id AND rm.user_id = ?
+        WHERE a.id = ? AND (a.uploader_id = ? OR rm.user_id IS NOT NULL)
         "#,
     )
+    .bind(requester_id)
     .bind(attachment_id)
     .bind(requester_id)
     .fetch_optional(pool)
@@ -494,7 +497,7 @@ pub async fn prune_expired(
 #[derive(Debug, sqlx::FromRow)]
 struct AttachmentRow {
     id: String,
-    room_id: String,
+    room_id: Option<String>,
     uploader_id: String,
     uploader_client_id: Option<String>,
     storage_backend: String,

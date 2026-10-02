@@ -71,13 +71,17 @@
   - **Migration:** None (Case A: pure read-only preview using existing tables).
   - **Delivered:** `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/lib.rs`, `server/tests/retention_preview.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `messaging`
+- **Task 32 — User Avatar Upload**: done
+  - **Migration:** `0031_attachments_nullable_room_id.sql` (Case B: recreated `attachments` table to make `room_id` nullable for user-scoped attachments).
+  - **Delivered:** `0031_attachments_nullable_room_id.sql`, `server/src/attachments.rs`, `server/src/routes/attachments.rs`, `server/src/lib.rs`, `server/tests/user_avatar.rs`, `server/tests/batch-manifest.toml`.
+  - **Batch:** `storage`
 
 ## Annotations for Future Tasks
 
-- **Task 32 — Avatar Upload (`POST /users/me/avatar`)**: Unblocked per Verification V-F (and V-E). Image asset is processed via the attachment pipeline with C2SP purpose `"user-avatar"` and returns the attachment record DTO. Client stores resulting attachment ID inside its client-encrypted profile payload and updates `users.profile` via `PATCH /users/me`. No server database schema change required.
+None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 24
-- **Done:** 24
+- **Total Verifications/Tasks Tracked:** 25
+- **Done:** 25
 - **Pending:** 0
 - **Mismatches:** 0
