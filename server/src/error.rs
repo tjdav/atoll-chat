@@ -152,6 +152,12 @@ impl From<RoomMessageError> for ApiError {
             RoomMessageError::AlreadyDeleted => ApiError::Conflict("already_deleted".to_string()),
             RoomMessageError::Forbidden => ApiError::Forbidden("forbidden".to_string()),
             RoomMessageError::MessageDeleted => ApiError::NotFound("message_deleted".to_string()),
+            RoomMessageError::EditDeleted => ApiError::Conflict("message_deleted".to_string()),
+            RoomMessageError::NotSender => ApiError::Forbidden("forbidden".to_string()),
+            RoomMessageError::NotEditable => ApiError::BadRequest("not_editable".to_string()),
+            RoomMessageError::WindowExpired => {
+                ApiError::Forbidden("edit_window_expired".to_string())
+            }
             RoomMessageError::EpochMismatch { expected, received } => {
                 ApiError::ConflictWithDetails(
                     "epoch_mismatch".to_string(),
