@@ -227,3 +227,24 @@ build task runs.
 | Output bundle verification | `packages/app/tests/unit/css-bundle.test.js` runs production build and asserts file size >500B, absence of `@import` statements, and presence of design tokens and layers |
 | Visual verification pattern | `packages/app/tests/component/css-applied.spec.js` asserts computed tokens, served CSS content, and captures `test-results/css-applied.png` screenshot and video |
 | Recorded Coralite feedback | CF-004 (Tier 4 enhancement for dev/prod CSS `@import` resolution divergence) |
+
+### C-AUTH-4 — Session Boot Sequence & Gate Contract on `app.html`
+
+**Verified:** 2026-10-03
+
+| Fact / Symbol | Value / Signature & Contract |
+|---|---|
+| Module location | `packages/app/src/lib/auth/boot.js` |
+| Boot function factory | `createBootFlow(deps)` returning `async function bootFlow()` |
+| Default export | `bootFlow = createBootFlow()` |
+| Error class | `export class BootError extends Error { constructor(code, message) }` |
+| Return shape | `{ redirected: boolean, reason?: string, hasOprfToken?: boolean, user?: Object \| null }` |
+| Redirect reasons | `'no_session'`, `'no_username'`, `'session_expired'` (401), `'account_disabled'` (403) |
+| Offline / Network failure handling | Network failure on `GET /users/me` continues without redirect with `user = null` |
+| OPRF failure handling | OPRF re-derivation failure continues without redirect with `hasOprfToken = false` |
+| Token re-derivation lifecycle | OPRF token is re-derived on every page boot load (module-scoped memory handle, not persisted) |
+| Component tag | `<messenger-boot>` in `packages/app/src/components/containers/messenger-boot.html` |
+| Page integration | `packages/app/src/pages/app.html` renders `<messenger-boot></messenger-boot>` |
+| Test IDs & states | `data-testid="boot"` on inner container; `data-state` values: `'booting'`, `'ready'`, `'error'` |
+| Event contract | Emits `app:ready` (`{ hasOprfToken, user }`) on success; `app:error` (`{ message }`) on unexpected error |
+| Visual & test verification | Captured screenshot `packages/app/test-results/messenger-boot.png` and test execution video |
