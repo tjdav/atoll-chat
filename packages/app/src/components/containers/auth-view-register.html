@@ -3,15 +3,12 @@
     <header>
       <h1>Create account</h1>
     </header>
-    <p ref="errorRegion" role="alert" class="error-message" hidden="{{ errorHidden }}">{{ error }}</p>
     <form ref="form" novalidate>
       <label class="field">
         <span class="field-label">Invite code</span>
         <input ref="inviteCode" type="text" name="inviteCode" autocomplete="off" autocapitalize="characters" maxlength="8" spellcheck="false" required>
       </label>
-      <div class="field">
-        <altcha-widget ref="altcha" challengeurl="/api/v1/auth/register/challenge"></altcha-widget>
-      </div>
+      <div ref="altcha" data-altcha></div>
       <label class="field">
         <span class="field-label">Username</span>
         <input ref="username" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
@@ -24,7 +21,7 @@
         <span class="field-label">Password</span>
         <input ref="password" type="password" name="password" autocomplete="new-password" required>
       </label>
-      <button ref="submit" type="submit" class="primary" disabled="{{ pending }}">{{ submitLabel }}</button>
+      <button ref="submit" type="submit" class="primary">Create account</button>
     </form>
     <footer>
       <button ref="backLink" type="button" class="link">← Back to log in</button>
@@ -48,15 +45,6 @@
     font-size: var(--text-2xl);
     font-weight: var(--weight-bold);
     color: var(--text-primary);
-  }
-  .error-message {
-    margin: 0;
-    padding: var(--space-2) var(--space-3);
-    background-color: var(--surface-1);
-    color: var(--destructive-500, #e53e3e);
-    border: 1px solid var(--destructive-500, #e53e3e);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
   }
   form {
     display: flex;
@@ -121,72 +109,20 @@
 <script type="module">
 export default {
   attributes: {
-    active: { type: Boolean, default: false },
-    pending: { type: Boolean, default: false },
-    error: { type: String, default: '' }
-  },
-  getters: {
-    submitLabel: ({ state }) => (state.pending ? 'Creating account…' : 'Create account'),
-    errorHidden: ({ state }) => !state.error
+    active: { type: Boolean, default: false }
   },
   style: {
     display: (state) => (state.active ? 'block' : 'none')
   },
-  client({ refs, emit, state, signal }) {
-    const messages = {
-      invite_invalid: 'That invite code is not valid or has expired.',
-      altcha_failed: 'Verification failed. Try again.',
-      username_taken: 'That username is already in use.',
-      display_name_invalid: 'Display name is too long.',
-      opaque_failed: 'Registration failed. Try again.',
-      network: 'The server had a problem. Try again.',
-      unknown: 'Something went wrong. Try again.'
-    }
-
-    refs('form').addEventListener('submit', async (event) => {
+  client({ refs, emit, signal }) {
+    refs('form').addEventListener('submit', (event) => {
       event.preventDefault()
-
-      const inviteCode = refs('inviteCode').value
-      const username = refs('username').value
-      const displayName = refs('displayName').value
-      const password = refs('password').value
-      const altchaEl = refs('altcha')
-      const altcha = altchaEl?.value || altchaEl?.getAttribute?.('value') || ''
-
-      const payload = {
-        inviteCode,
-        altcha,
-        username,
-        displayName,
-        password
-      }
-
-      emit('auth:register:submit', payload)
-
-      state.pending = true
-      state.error = ''
-
-      try {
-        const { registerFlow, RegisterError } = await import('../../../lib/auth/flows.js')
-        const result = await registerFlow(payload)
-
-        const { setPendingRegistration } = await import('../../../lib/auth/pending-registration.js')
-        setPendingRegistration(result)
-
-        emit('auth:register:success', { userId: result.userId })
-      } catch (err) {
-        if (err && typeof err === 'object' && err.code) {
-          if (err.code === 'display_name_invalid' && err.message) {
-            state.error = err.message
-          } else {
-            state.error = messages[err.code] || messages.unknown
-          }
-        } else {
-          state.error = messages.unknown
-        }
-      } finally {
-        state.pending = false
-      }
+      emit('auth:register:submit', {
+        inviteCode: refs('inviteCode').value,
+        username: refs('username').value,
+        displayName: refs('displayName').value,
+        password: refs('password').value
+      })
     }, { signal })
 
     refs('backLink').addEventListener('click', () => {

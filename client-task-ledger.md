@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 6 |
-| Done | 18 |
+| Pending | 7 |
+| Done | 17 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -38,7 +38,7 @@ or modify the server's ledger.
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
 | C-AUTH-3a | OPAQUE Login Flow and Session Storage | done | C-AUTH-1, C-AUTH-2, C-V-D | unit-smoke, component-smoke |
 | C-AUTH-3b | OPAQUE Registration Flow & Display Name Encryption | done | C-AUTH-3a, C-INFRA-4 | unit-smoke |
-| C-AUTH-3b2 | Register Form Wiring & ALTCHA Integration | done | C-AUTH-3b, C-AUTH-1 | component-auth |
+| C-AUTH-3b2 | Register Form Wiring & ALTCHA Integration | pending | C-AUTH-3b, C-AUTH-1 | component-smoke |
 | C-AUTH-3b3 | Recovery Code Display & Confirmation Screen | pending | C-AUTH-3b2 | component-smoke |
 | C-AUTH-4 | Session Persistence & Boot Sequence | pending | C-AUTH-3a, C-INFRA-3 | — |
 | C-AUTH-5 | Recovery Code Flow & Account Recovery | pending | C-AUTH-3a | — |
@@ -257,12 +257,3 @@ On completion:
   - Updated `packages/app/TESTING.md` with CSS Bundle Verification section.
   - Registered test files in `packages/app/test-batches.js` under `unit-smoke` and `component-smoke`.
   - Recorded CF-004 in `client-coralite-feedback.md` and `client-task-ledger.md`.
-- **C-AUTH-3b2 Deliverables & Status:**
-  - Status: `done`.
-  - Installed `altcha` (`^3.2.4` -> `3.2.4`) as a runtime dependency of `@atoll/app`.
-  - Registered ALTCHA script asset (`dist/external/altcha.js` -> `assets/js/altcha.js`) in `packages/app/coralite.config.js`.
-  - Created `packages/app/src/lib/auth/pending-registration.js` in-memory staging module with `setPendingRegistration`, `getPendingRegistration`, `clearPendingRegistration`, and `hasPendingRegistration`.
-  - Created `packages/app/src/components/containers/auth-view-confirm.html` stub view for stage-handoff confirmation.
-  - Extended `packages/app/src/components/containers/auth-gate.html` to accept `'confirm'` view state and listen for `auth:register:success`.
-  - Updated `packages/app/src/components/containers/auth-view-register.html` to mount `<altcha-widget ref="altcha" challengeurl="/api/v1/auth/register/challenge">`, manage reactive pending/error state, call `registerFlow`, stage result via `setPendingRegistration`, and emit `auth:register:success` with `{ userId }`.
-  - Created `packages/app/tests/component/register-form.spec.js` and registered it in `packages/app/test-batches.js` under `component-auth` batch.
