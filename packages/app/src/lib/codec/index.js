@@ -54,6 +54,61 @@ export function bytesToBase64url(bytes) {
 }
 
 /**
+ * Converts a Uint8Array byte sequence to a standard Base64 string.
+ *
+ * @param {Uint8Array} bytes Byte array to encode
+ * @returns {string} Standard Base64 string
+ */
+export function bytesToBase64(bytes) {
+  if (!(bytes instanceof Uint8Array)) {
+    throw new TypeError('bytes must be a Uint8Array');
+  }
+  if (bytes.length === 0) {
+    return '';
+  }
+
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64');
+  }
+  let bin = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    bin += String.fromCharCode(bytes[i]);
+  }
+  return btoa(bin);
+}
+
+/**
+ * Converts a standard Base64 string to a Uint8Array byte array.
+ *
+ * @param {string} s Standard Base64 string
+ * @returns {Uint8Array} Decoded Uint8Array byte array
+ */
+export function base64ToBytes(s) {
+  if (typeof s !== 'string') {
+    throw new TypeError('s must be a string');
+  }
+  if (s === '') {
+    return new Uint8Array(0);
+  }
+
+  if (typeof Buffer !== 'undefined') {
+    const buf = Buffer.from(s, 'base64');
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+  }
+  let padded = s;
+  while (padded.length % 4 !== 0) {
+    padded += '=';
+  }
+  const bin = atob(padded);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) {
+    bytes[i] = bin.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
  * Converts an unpadded Base64URL string to a Uint8Array byte array.
  *
  * @param {string} s Unpadded Base64URL string

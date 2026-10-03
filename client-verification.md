@@ -200,6 +200,21 @@ build task runs.
 | Username Key | `atoll.session.username` | `localStorage` persistent storage string |
 | OPRF Token Key | Module-scoped variable | Ephemeral `Uint8Array` in JS memory, never persisted |
 
+### C-AUTH-3b — OPAQUE Registration Flow & Display Name Encryption Contracts
+
+**Verified:** 2026-10-03
+
+| Endpoint / Method / Key | Request Payload / Storage Key | Response Payload / Encoding & Format |
+|---|---|---|
+| `POST /api/v1/oprf/blind` | `{ "blinded": "<base64>" }` | `{ "evaluated": "<base64>" }` (Standard Base64 32-byte Ristretto255 points) |
+| `POST /api/v1/auth/register/start` (Inferred) | `{ "username_token": "<b64url>", "opaque_client_registration_state": "<b64url>", "altcha": "<string>" }` | `{ "registration_response": "<base64>" }` |
+| `POST /api/v1/auth/register/finish` | `{ "username_token": "<b64url>", "encrypted_display": "<b64url>", "opaque_record": "<b64url>", "identity_pubkey": "<b64url>" }` | `{ "session_token": "<string>", "user_id": "<string>", "recovery_codes": ["<string>", ...] }` |
+| Display Name Encryption Format | `nonce (12 bytes) || ciphertext || tag (16 bytes)` | AES-256-GCM via Web Crypto (`encryptDisplayName`), max 256 UTF-8 bytes plaintext |
+| Identity Public Key | `atoll.identity.public` | Ed25519 32-byte public key encoded as Base64URL string in `localStorage` |
+| Identity Private Key | `atoll.identity.private` | Ed25519 32-byte private key encoded as Base64URL string in `localStorage` |
+| Codec Helpers | `bytesToBase64(bytes)`, `base64ToBytes(s)` | Standard Base64 conversion helpers added to `packages/app/src/lib/codec/index.js` |
+| Deferred Persistence Constraint | `registerFlow` does NOT persist credentials | Returns uncommitted session token, userId, recovery codes, identity keys, OPRF token, and username; caller persists after recovery code confirmation |
+
 ### C-INFRA-5b — Global CSS Bundling & Visual Verification Pattern
 
 **Verified:** 2026-10-03
