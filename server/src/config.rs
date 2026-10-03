@@ -39,6 +39,11 @@ pub struct Config {
     pub opaque_oprf_key_path: String,
     pub oprf_blind_enabled: bool,
     pub username_oprf_enabled: bool,
+    pub key_transparency_enabled: bool,
+    // used by Task 34b
+    pub key_transparency_log_path: String,
+    // used by Task 34b
+    pub key_transparency_auditor_keys: Option<String>,
     pub altcha_enabled: bool,
     pub altcha_hmac_secret: String,
     pub altcha_algorithm: String,
@@ -150,6 +155,18 @@ impl Config {
         let username_oprf_enabled = env::var("USERNAME_OPRF_ENABLED")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
             .unwrap_or(true);
+
+        let key_transparency_enabled = env::var("KEY_TRANSPARENCY_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let key_transparency_log_path =
+            env::var("KEY_TRANSPARENCY_LOG_PATH").unwrap_or_else(|_| "/data/kt-log".to_string());
+
+        let key_transparency_auditor_keys = env::var("KEY_TRANSPARENCY_AUDITOR_KEYS")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
 
         let altcha_enabled = env::var("ALTCHA_ENABLED")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
@@ -697,6 +714,9 @@ impl Config {
             opaque_oprf_key_path,
             oprf_blind_enabled,
             username_oprf_enabled,
+            key_transparency_enabled,
+            key_transparency_log_path,
+            key_transparency_auditor_keys,
             altcha_enabled,
             altcha_hmac_secret,
             altcha_algorithm,
@@ -777,6 +797,9 @@ impl Config {
             opaque_oprf_key_path: "/tmp/test-oprf.key".to_string(),
             oprf_blind_enabled: true,
             username_oprf_enabled: true,
+            key_transparency_enabled: true,
+            key_transparency_log_path: "/tmp/test-kt-log".to_string(),
+            key_transparency_auditor_keys: None,
             altcha_enabled: false,
             altcha_hmac_secret: "auto".to_string(),
             altcha_algorithm: "PBKDF2/SHA-256".to_string(),

@@ -144,3 +144,15 @@
     - Response body: `{ "id": "<add_id>", "consumed_at": "<iso_timestamp>" }`. Returns `Cache-Control: no-store`.
     - Error responses: HTTP 404 `pending_add_not_found` if missing or from another room; HTTP 409 `already_consumed` if previously consumed; HTTP 404 `room_not_found` if caller is not a room member.
   - **Spec Gap Note (`mls.welcome_ready`):** `mls.welcome_ready` is expected by Client Spec v1.0 but is absent from Server Spec v2.0 §8.8. It is not implemented by Task 33 and is flagged in the proposed §8.8 amendment.
+
+## Task 34a — Key Transparency Log Insertion Point and Anonymization Invariants
+- **ID:** Task 34a
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §2.1, §7.10, §8.3, §14.2, §14.8
+- **Question asked:** What are the leaf insertion point, anonymization placeholder format, feature flag behavior, and cascade deletion invariants for `key_transparency_log`?
+- **Answer found:**
+  - **Insertion Point:** Leaves are appended to `key_transparency_log` inside the same database transaction as the `users` row insert during `POST /auth/register/finish`. Rollback of user registration guarantees rollback of the log append.
+  - **Anonymization Placeholder Format:** During GDPR account deletion (`anonymise_user`), `key_transparency_log.user_id` is replaced with `anon_<32 hex>` (`anon_` followed by 32 lowercase hex characters). `username_token` and `identity_pubkey` remain unchanged as public audit records per §14.2.
+  - **Feature Flag Behavior:** `KEY_TRANSPARENCY_ENABLED=false` prevents future leaf appends at registration time. Pre-existing log rows remain stored in the database and continue to be reported by `GET /api/v1/admin/key-transparency`.
+  - **Cascade Note:** The foreign key `user_id REFERENCES users(id)` has `ON DELETE CASCADE`. Normal account deletion anonymizes `users` without deleting the row, so the cascade does not trigger. Hard SQL deletion of a user row will trigger cascade deletion of their log entries.

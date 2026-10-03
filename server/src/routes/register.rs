@@ -244,19 +244,37 @@ pub async fn register_finish(
     rand::thread_rng().fill_bytes(&mut id_bytes);
     let user_id = URL_SAFE_NO_PAD.encode(id_bytes);
 
+    let initial_identity_pubkey = "";
+
     // Insert user into DB
     sqlx::query(
         r#"
         INSERT INTO users (id, username_token, encrypted_display, opaque_registration, identity_pubkey, profile_version)
-        VALUES (?, ?, ?, ?, '', 1)
+        VALUES (?, ?, ?, ?, ?, 1)
         "#,
     )
     .bind(&user_id)
     .bind(&pending.username_token)
     .bind(&encrypted_display)
     .bind(&opaque_registration_bytes)
+    .bind(initial_identity_pubkey)
     .execute(&mut *tx)
     .await?;
+
+    // Append leaf to Key Transparency log if enabled
+    if state.config.key_transparency_enabled {
+        sqlx::query(
+            r#"
+            INSERT INTO key_transparency_log (user_id, username_token, identity_pubkey)
+            VALUES (?, ?, ?)
+            "#,
+        )
+        .bind(&user_id)
+        .bind(&pending.username_token)
+        .bind(initial_identity_pubkey)
+        .execute(&mut *tx)
+        .await?;
+    }
 
     if is_owner {
         let owner_role: Option<(String,)> =
