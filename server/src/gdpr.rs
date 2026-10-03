@@ -228,6 +228,17 @@ pub async fn anonymise_user(
         Err(e) => return Err(GdprError::Database(e)),
     };
 
+    // 11. Delete all starred items for the user
+    match sqlx::query("DELETE FROM starred_items WHERE user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+    {
+        Ok(_) => {}
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => {}
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
     // Commit transaction
     tx.commit().await?;
 
@@ -436,7 +447,39 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
         Err(e) => return Err(GdprError::Database(e)),
     };
 
-    // 6. Audit
+    // 6. Starred items
+    let starred_rows = match sqlx::query(
+        "SELECT user_id, item_id, item_type, room_id, user_seq, starred_at, deleted_at FROM starred_items WHERE user_id = ? ORDER BY starred_at ASC",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await {
+        Ok(rows) => rows,
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => vec![],
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
+    let mut starred_list = Vec::new();
+    for row in starred_rows {
+        let st_item_id: String = row.get("item_id");
+        let st_item_type: String = row.get("item_type");
+        let st_room_id: String = row.get("room_id");
+        let st_user_seq: i64 = row.get("user_seq");
+        let st_starred_at: DateTime<Utc> = row.get("starred_at");
+        let st_deleted_at: Option<DateTime<Utc>> = row.get("deleted_at");
+
+        starred_list.push(json!({
+            "item_id": st_item_id,
+            "item_type": st_item_type,
+            "room_id": st_room_id,
+            "user_seq": st_user_seq,
+            "starred_at": st_starred_at.to_rfc3339(),
+            "deleted_at": st_deleted_at.map(|t| t.to_rfc3339())
+        }));
+    }
+    let starred_json = json!({ "starred_items": starred_list });
+
+    // 7. Audit
     let audit_rows = sqlx::query(
         "SELECT id, action, target_type, target_id, metadata, created_at FROM audit_log WHERE actor_id = ? ORDER BY created_at ASC",
     )
@@ -534,6 +577,15 @@ Store this archive securely. It contains personal data.
             .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
         zip.write_all(
             serde_json::to_string_pretty(&messages_res)
+                .map_err(|e| GdprError::ExportFailed(e.to_string()))?
+                .as_bytes(),
+        )
+        .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+
+        zip.start_file("starred_items.json", options)
+            .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+        zip.write_all(
+            serde_json::to_string_pretty(&starred_json)
                 .map_err(|e| GdprError::ExportFailed(e.to_string()))?
                 .as_bytes(),
         )

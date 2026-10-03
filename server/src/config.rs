@@ -73,6 +73,7 @@ pub struct Config {
     pub room_invite_code_length: usize,
     pub max_room_metadata_bytes: usize,
     pub edit_window_seconds: i64,
+    pub max_starred_items_per_user: u32,
     pub rate_limits: RateLimitConfig,
     pub cleanup_enabled: bool,
     pub cleanup_interval_minutes: u64,
@@ -338,6 +339,18 @@ impl Config {
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(900);
+
+        let max_starred_items_per_user: u32 = env::var("SERVER_MAX_STARRED_ITEMS_PER_USER")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10000);
+
+        if !(100..=100000).contains(&max_starred_items_per_user) {
+            anyhow::bail!(
+                "SERVER_MAX_STARRED_ITEMS_PER_USER must be between 100 and 100000 (got {})",
+                max_starred_items_per_user
+            );
+        }
 
         let rate_edit_per_min = env::var("RATE_EDIT_PER_MIN")
             .ok()
@@ -861,6 +874,7 @@ impl Config {
             room_invite_code_length,
             max_room_metadata_bytes,
             edit_window_seconds,
+            max_starred_items_per_user,
             rate_limits,
             cleanup_enabled,
             cleanup_interval_minutes,
@@ -979,6 +993,7 @@ impl Config {
             session_occupancy_debounce_ms: 1000,
             session_types_config_path: "/data/session-types.toml".to_string(),
             edit_window_seconds: 900,
+            max_starred_items_per_user: 10000,
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,
             cleanup_startup_delay_secs: 0,

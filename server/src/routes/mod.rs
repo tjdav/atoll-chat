@@ -24,6 +24,7 @@ pub mod room_messages;
 pub mod rooms;
 pub mod sessions;
 pub mod sockudo;
+pub mod starred;
 pub mod r#static;
 pub mod sync;
 pub mod users;

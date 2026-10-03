@@ -95,13 +95,17 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** `server/src/sessions/mod.rs`, `server/src/sessions/types_config.rs`, `server/src/routes/admin.rs`, `server/src/routes/capabilities.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/audit.rs`, `server/src/cli.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/Cargo.toml`, `server/tests/session_types_config.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `auth`
+- **Task 42 — Starred Items**: done
+  - **Migration:** `0034_starred_items.sql` (Case B: created `starred_items` table per §7.2 with composite primary key `(user_id, item_id, item_type)` and indexes `idx_starred_items_seq` and `idx_starred_items_room`).
+  - **Delivered:** `0034_starred_items.sql`, `server/src/starred/mod.rs`, `server/src/starred/write.rs`, `server/src/starred/list.rs`, `server/src/routes/starred.rs`, `server/src/sync/starred.rs`, `server/src/sync/query.rs`, `server/src/sync/mod.rs`, `server/src/gdpr.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/lib.rs`, `server/src/routes/mod.rs`, `server/tests/starred_items.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `sync`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 30
-- **Done:** 30
+- **Total Verifications/Tasks Tracked:** 31
+- **Done:** 31
 - **Pending:** 0
 - **Mismatches:** 0

@@ -235,3 +235,20 @@
   - **Capabilities vs Admin Reload Response Shapes:**
     - Capabilities (`GET /api/v1/capabilities`): 3 fields in `session_types[]` (`extension_id`, `type`, `max_participants`), sorted by `type` ascending.
     - Admin Reload (`POST /api/v1/admin/session-types/reload`): 4 fields in `session_types[]` (`type`, `extension_id`, `max_participants`, `max_per_room`).
+
+## Task 42 — Starred Items Architecture, Cursor Format, Limit, and Event Contracts
+- **ID:** Task 42
+- **Date:** 2026-10-03
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §2.1, §4.2, §5.6, §5.29, §7.2, §8.2.4, §8.2.9, §8.8, §14.2, §14.3, §16.15
+- **Question asked:** What are the cursor format, limit semantics, tombstone model, event shapes, rate limit decision, sync integration, and GDPR handling for starred items?
+- **Answer found:**
+  - **Relational Schema:** `starred_items` table created in `0034_starred_items.sql` with composite PK `(user_id, item_id, item_type)`, FKs `users(id)` and `rooms(id)` `ON DELETE CASCADE`, `user_seq`, `starred_at`, and nullable `deleted_at`. Indexes `idx_starred_items_seq` on `(user_id, user_seq)` and `idx_starred_items_room` on `(user_id, room_id, starred_at DESC)`.
+  - **Config & Limit Semantics:** `SERVER_MAX_STARRED_ITEMS_PER_USER` default 10,000, validated range `100..=100000`. Limits count active stars (`deleted_at IS NULL`). Exceeding limit returns HTTP 409 `starred_items_limit_reached` (no silent eviction).
+  - **POST /users/me/starred-items:** Requires room membership (returns 404 `room_not_found` if non-member), validates `item_type` (`attachment`, `message`, `link`), idempotent 200 OK for existing active star, 201 Created for fresh star or re-star (clearing `deleted_at`, bumping `user_seq`, updating `starred_at = now`). Post-commit publishes `starred_item.added` (`{ "item_id": "...", "item_type": "...", "room_id": "...", "user_seq": N }`) to `private-user-{user_id}`.
+  - **DELETE /users/me/starred-items/:item_id?item_type=:** Sets `deleted_at = now`, bumps `user_seq`, returns 204 No Content (404 `starred_item_not_found` if missing or already tombstoned). Post-commit publishes `starred_item.removed` (`{ "item_id": "...", "item_type": "...", "user_seq": N }` - note: NO `room_id` per §8.8) to `private-user-{user_id}`.
+  - **Rate Limit:** Reuses `RateLimitKey::Edit` (`RATE_EDIT_PER_MIN`, default 30/min, key format `edit:{user_id}:min:{boundary}`).
+  - **List Endpoint (`GET /users/me/starred-items`):** Filters by `type` and `room_id`, `include_deleted` (default false), limit (default 100, clamped to max 500). Orders by `(starred_at DESC, item_id ASC, item_type ASC)`.
+  - **Cursor Format:** Opaque unpadded base64url JSON struct `{"user_id": "<uid>", "last_item_id": "<id>", "last_item_type": "<type>"}` (server also includes optional `last_starred_at`). Mismatched `user_id` or malformed payload returns HTTP 400 `invalid_cursor`.
+  - **Sync Integration (`GET /users/me/sync`):** Returns `starred_items` filtered by `user_seq > since_seq` ordered by `user_seq ASC` (including tombstones) and incorporates `max_starred_seq` into response `max_seq`.
+  - **GDPR:** Account deletion explicitly deletes user rows in `anonymise_user`. Data export includes `starred_items.json` in the ZIP archive.
