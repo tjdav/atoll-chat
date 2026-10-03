@@ -342,3 +342,26 @@
     - Subsequent `/end` requests on an already-ended call return HTTP 200 with the existing session state (`ended_at` set) without re-writing database rows, re-publishing `call.ended`, or re-writing audit logs.
   - **Abandoned Call Gap Note:**
     - Calls that are never explicitly ended retain `ended_at = NULL`. §4.5 call state cleanup only cleans up rows where `ended_at` is set (`ended_at < now - 24h`). Auto-termination for abandoned calls is flagged for future spec amendment.
+
+## Task 37 — TURN Credentials HMAC Format, Response Shape, and Startup Rules
+- **ID:** Task 37
+- **Date:** 2026-10-03
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §2.1, §5.6, §5.24, §8.7, §8.7.1
+- **Question asked:** What are the exact username format, HMAC construction, response shape, multi-URL splitting convention, rate limit, and startup validation rules for TURN credentials?
+- **Answer found:**
+  - **Username Format:** `<expiry_timestamp>:<opaque>` where `expiry_timestamp` is Unix epoch seconds (`now + TURN_TTL_SECONDS`) and `opaque` is 16 random bytes encoded using unpadded Base64URL (`URL_SAFE_NO_PAD`). The user ID is explicitly excluded to protect privacy in coturn server logs.
+  - **HMAC Construction:** Standard Base64 encoded `HMAC-SHA1(TURN_SHARED_SECRET, username)`. HMAC-SHA1 is used per coturn REST API convention for native compatibility.
+  - **Response Shape:**
+    ```json
+    {
+      "urls": ["turn:turn.example.com:3478", "turns:turn.example.com:5349"],
+      "username": "1735689600:AbCdEfGhIjKlMnOp",
+      "credential": "dGVzdC1jcmVkZW50aWFs==",
+      "ttl": 600
+    }
+    ```
+  - **URL Splitting:** `TURN_URL` supports comma-separated URLs (e.g. `turn:1.2.3.4:3478,turns:5.6.7.8:5349`). The server splits on commas and trims whitespace into the `urls` array response.
+  - **Rate Limiting:** `RATE_TURN_CREDENTIALS_PER_MIN` (default 10) per user, rate limit key `turn_credentials:{user_id}:min:{boundary}`.
+  - **Startup Validation:** If `TURN_URL` is set (non-empty), `TURN_SHARED_SECRET` MUST also be non-empty; otherwise server startup bails with `"TURN_URL is set but TURN_SHARED_SECRET is empty"`. Conversely, an empty `TURN_URL` denotes TURN is disabled (`POST /calls/turn-credentials` returns 501 `turn_not_configured`).
+  - **No Audit / No Events:** Endpoint generates short-lived credentials without state persistence, audit logging, or Sockudo event publishing.

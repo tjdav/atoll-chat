@@ -30,6 +30,7 @@ pub enum RateLimitKey {
     RecoverStart { ip: String, window: Window },
     LinkPreview { user_id: String },
     ModelDownload { ip: String },
+    TurnCredentials { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -316,6 +317,16 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_model_download_per_min,
+            )
+        }
+        RateLimitKey::TurnCredentials { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("turn_credentials:{user_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_turn_credentials_per_min,
             )
         }
     };

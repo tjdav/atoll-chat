@@ -26,6 +26,7 @@ pub struct RateLimitConfig {
     pub rate_recover_start_per_hour: u32,
     pub rate_link_preview_per_min: u32,
     pub rate_model_download_per_min: u32,
+    pub rate_turn_credentials_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -406,6 +407,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(30);
 
+        let rate_turn_credentials_per_min = env::var("RATE_TURN_CREDENTIALS_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -430,6 +436,7 @@ impl Config {
             rate_recover_start_per_hour,
             rate_link_preview_per_min,
             rate_model_download_per_min,
+            rate_turn_credentials_per_min,
         };
 
         let link_preview_proxy_enabled = env::var("LINK_PREVIEW_PROXY_ENABLED")
@@ -540,6 +547,10 @@ impl Config {
         let turn_shared_secret = env::var("TURN_SHARED_SECRET")
             .map(|s| s.trim().to_string())
             .unwrap_or_default();
+
+        if !turn_url.is_empty() && turn_shared_secret.is_empty() {
+            anyhow::bail!("TURN_URL is set but TURN_SHARED_SECRET is empty");
+        }
 
         let turn_ttl_seconds: u64 = match env::var("TURN_TTL_SECONDS") {
             Ok(v) => match v.trim().parse() {
@@ -1129,6 +1140,7 @@ impl Config {
                 rate_recover_start_per_hour: 20,
                 rate_link_preview_per_min: 10,
                 rate_model_download_per_min: 30,
+                rate_turn_credentials_per_min: 10,
             },
             link_preview_proxy_enabled: false,
             link_preview_proxy_timeout_seconds: 5,

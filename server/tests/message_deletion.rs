@@ -447,7 +447,10 @@ async fn test_13_deletion_does_not_accelerate_retention() {
     // Run cleanup jobs
     use server::CleanupJob;
     std::env::set_var("APP_ENV", "development");
-    let config = std::sync::Arc::new(server::Config::from_env().unwrap());
+    let config = std::sync::Arc::new(server::Config {
+        app_env: "development".to_string(),
+        ..server::Config::test_default()
+    });
     let reg_store = std::sync::Arc::new(server::RegistrationStore::new());
     let login_store = std::sync::Arc::new(server::LoginStore::new());
     let storage = server::build_storage(&config).unwrap();
