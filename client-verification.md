@@ -227,3 +227,20 @@ build task runs.
 | Output bundle verification | `packages/app/tests/unit/css-bundle.test.js` runs production build and asserts file size >500B, absence of `@import` statements, and presence of design tokens and layers |
 | Visual verification pattern | `packages/app/tests/component/css-applied.spec.js` asserts computed tokens, served CSS content, and captures `test-results/css-applied.png` screenshot and video |
 | Recorded Coralite feedback | CF-004 (Tier 4 enhancement for dev/prod CSS `@import` resolution divergence) |
+
+### C-AUTH-3b2 — Register Form Wiring, ALTCHA Integration & Staging Contracts
+
+**Verified:** 2026-10-03
+
+| Symbol / Mechanism | Property / Signature | Behavior / Spec Contract |
+|---|---|---|
+| `altcha` package | `3.2.4` | Runtime dependency installed in `packages/app/package.json` |
+| Asset Registration | `dist/external/altcha.js` -> `assets/js/altcha.js` | Configured in `packages/app/coralite.config.js` with SRI injection on `index.html` |
+| Challenge URL | `/api/v1/auth/register/challenge` | Server Spec §8.1. Configured via `challengeurl` attribute on `<altcha-widget>` |
+| Widget Element | `<altcha-widget ref="altcha" challengeurl="/api/v1/auth/register/challenge"></altcha-widget>` | Mounted in `auth-view-register.html`. Payload retrieved via `refs('altcha').value || refs('altcha').getAttribute('value') || ''` |
+| Payload emit | `auth:register:submit` | Detail object: `{ inviteCode, altcha, username, displayName, password }` |
+| View States | `'login' \| 'register' \| 'recovery' \| 'confirm'` | Accepted by `auth-gate.html` `auth:view-change` listener |
+| Success Event | `auth:register:success` | Emitted by `auth-view-register.html` on flow completion with detail `{ userId: result.userId }` |
+| Staging Module | `packages/app/src/lib/auth/pending-registration.js` | Memory-only staging helpers: `setPendingRegistration`, `getPendingRegistration`, `clearPendingRegistration`, `hasPendingRegistration` |
+| Stub Confirmation View | `auth-view-confirm.html` | Renders placeholder "Check your recovery codes" card; clears pending registration and switches view to `'login'` on back-to-login click |
+| Test Suite & Batch | `packages/app/tests/component/register-form.spec.js` | Registered in `packages/app/test-batches.js` under `component-auth` batch |

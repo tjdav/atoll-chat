@@ -19,6 +19,9 @@ importers:
       '@serenity-kit/opaque':
         specifier: 1.1.0
         version: 1.1.0
+      altcha:
+        specifier: ^3.2.4
+        version: 3.2.4
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.10.0
@@ -396,6 +399,9 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+  altcha@3.2.4:
+    resolution: {integrity: sha512-+PN+MTzDtrXn7SBkliE+EYaojwLLS2rTtyk/O/wkQWNwl7PI91fXB8yiNa07Xy8b6rGD05oB8zpMfK/oEx00Og==}
+
   ansi-regex@6.4.0:
     resolution: {integrity: sha512-KzTVk2tCWAHtYrvvvaP8bJKJq2pVinhLcGEQdtLIYPbmNGNyYe8QwNaTUYQp2J7/vIsUKt5QCqAfUkYyG9DkOw==}
     engines: {node: '>=12'}
@@ -642,6 +648,9 @@ packages:
   has-symbols@1.1.0:
     resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
     engines: {node: '>= 0.4'}
+
+  hash-wasm@4.12.0:
+    resolution: {integrity: sha512-+/2B2rYLb48I/evdOIhP+K/DD2ca2fgBjp6O+GBEnCDk2e4rpeXIK8GvIyRPjTezgmWn9gmKwkQjjx6BtqDHVQ==}
 
   hasown@2.0.4:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
@@ -1326,6 +1335,10 @@ snapshots:
 
   acorn@8.18.0: {}
 
+  altcha@3.2.4:
+    dependencies:
+      hash-wasm: 4.12.0
+
   ansi-regex@6.4.0: {}
 
   async@3.2.6: {}
@@ -1634,6 +1647,8 @@ snapshots:
   gopd@1.2.0: {}
 
   has-symbols@1.1.0: {}
+
+  hash-wasm@4.12.0: {}
 
   hasown@2.0.4:
     dependencies:
