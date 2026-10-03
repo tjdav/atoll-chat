@@ -98,3 +98,10 @@ For v1, tests target Chromium (`Desktop Chrome`). Firefox and WebKit are not ins
 
 ### Execution Budget
 Each Playwright batch is subject to the strict 60-second budget enforced by `scripts/run-batch.js`.
+
+## CSS Bundle Verification
+
+- Production CSS must contain no `@import` statements. `postcss-import` inlines them at build time.
+- The regression guard is `tests/unit/css-bundle.test.js`. It runs the production build and inspects the output.
+- Visual verification of applied CSS is at `tests/component/css-applied.spec.js`. It captures a screenshot and a video to `packages/app/test-results/`.
+- When a task changes `coralite.config.js`'s `styles` block or any file under `src/styles/`, run both tests before declaring the task done.

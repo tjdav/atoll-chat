@@ -199,3 +199,16 @@ build task runs.
 | Session Token Key | `atoll.session.token` | `localStorage` persistent storage string |
 | Username Key | `atoll.session.username` | `localStorage` persistent storage string |
 | OPRF Token Key | Module-scoped variable | Ephemeral `Uint8Array` in JS memory, never persisted |
+
+### C-INFRA-5b — Global CSS Bundling & Visual Verification Pattern
+
+**Verified:** 2026-10-03
+
+| Fact | Value |
+|---|---|
+| `postcss-import` installed version | `16.1.0` (`devDependencies` in `@atoll/app`) |
+| Config location | `styles.processors.postcss.plugins: [postcssImport()]` in `packages/app/coralite.config.js` |
+| Default build behavior | `coralite-scripts build` preserves native `@import` statements verbatim unless `postcss-import` is explicitly configured |
+| Output bundle verification | `packages/app/tests/unit/css-bundle.test.js` runs production build and asserts file size >500B, absence of `@import` statements, and presence of design tokens and layers |
+| Visual verification pattern | `packages/app/tests/component/css-applied.spec.js` asserts computed tokens, served CSS content, and captures `test-results/css-applied.png` screenshot and video |
+| Recorded Coralite feedback | CF-004 (Tier 4 enhancement for dev/prod CSS `@import` resolution divergence) |
