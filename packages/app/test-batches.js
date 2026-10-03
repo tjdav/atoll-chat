@@ -24,6 +24,7 @@ export default [
       'tests/unit/auth-opaque.test.js',
       'tests/unit/auth-session.test.js',
       'tests/unit/auth-login-flow.test.js',
+      'tests/unit/css-bundle.test.js',
     ],
   },
   {
@@ -36,6 +37,7 @@ export default [
       'tests/component/tokens.spec.js',
       'tests/component/auth-gate.spec.js',
       'tests/component/auth-login-flow.spec.js',
+      'tests/component/css-applied.spec.js',
     ],
   },
 ]

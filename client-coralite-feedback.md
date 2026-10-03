@@ -39,3 +39,14 @@ Status: Active — tracks client-team friction with Coralite and its upstream di
 - **Component:** `coralite-scripts` v1.0.0-rc.5
 - **Description:** During `coralite-scripts test`, the testing HTTP server SSR-renders custom components into static HTML with `active` attribute markup but does not inject client script tag bundle references (`manifest.js` / component JS modules) into HTML responses served at `/index.html`. As a result, client-side event listeners defined in component `<script>` blocks do not hydrate during Playwright test execution against the dev server.
 - **Impact:** Playwright tests against `coralite-scripts test` verify static SSR component structure and markup, while interactive client behavior is wired via hydrated client scripts produced by `coralite-scripts build`.
+
+### CF-004 — Dev/Prod CSS `@import` resolution divergence in default build pipeline
+
+- **Task:** C-INFRA-5b
+- **Tier:** T4 — Enhancement / optimization
+- **Status:** filed-upstream; client-mitigated-by-configuration
+- **Client-side action taken:** Configured `styles.processors.postcss.plugins: [postcssImport()]` in `coralite.config.js` and added build-output unit test.
+- **Issue URL:** https://codeberg.org/tjdavid/coralite/issues
+- **Component:** `coralite-scripts` v1.0.0-rc.5
+- **Description:** `coralite-scripts dev`/`test` server resolves native CSS `@import` statements when serving styles, whereas `coralite-scripts build` preserves `@import` statements verbatim in `dist/assets/css/main.css` unless `postcss-import` is explicitly configured. This dev/prod divergence allows unbundled `@import` statements to silently ship to production where relative CSS import paths fail to load.
+- **Impact:** Production build output contained unbundled `@import` statements resulting in unstyled pages until `postcss-import` was explicitly added as a PostCSS plugin.

@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 6 |
-| Done | 15 |
+| Done | 16 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -33,6 +33,7 @@ or modify the server's ledger.
 | C-INFRA-3 | Establish Client Test Infrastructure and Batch Model | done | C-INFRA-1 | unit-smoke |
 | C-INFRA-4 | Playwright Browser Testing Setup | done | C-INFRA-2, C-INFRA-3 | component-smoke |
 | C-INFRA-5 | Design System Tokens & Base CSS | done | C-INFRA-1 | component-smoke |
+| C-INFRA-5b | Bundle Global CSS with postcss-import | done | C-INFRA-5, C-INFRA-3, C-INFRA-4 | unit-smoke, component-smoke |
 | C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
 | C-AUTH-3a | OPAQUE Login Flow and Session Storage | done | C-AUTH-1, C-AUTH-2, C-V-D | unit-smoke, component-smoke |
@@ -136,6 +137,7 @@ On completion:
 | CF-001 | C-INFRA-2 | Bug (missing `src/components` directory causes `CoraliteError` crash) | T1 | filed-upstream; client-mitigated-by-input |
 | CF-002 | C-INFRA-2 | Bug (missing `public` directory causes `ENOENT` `copyDirectory` crash) | T1 | filed-upstream; client-mitigated-by-input |
 | CF-003 | C-AUTH-1 | Missing feature (`coralite-scripts test` dev server omits client JS script bundle links) | T2 | filed-upstream; client-mitigated-by-architecture |
+| CF-004 | C-INFRA-5b | Enhancement (dev/prod CSS `@import` resolution divergence in default build pipeline) | T4 | filed-upstream; client-mitigated-by-configuration |
 
 ## Notes
 
@@ -235,3 +237,12 @@ On completion:
   - Updated `packages/app/src/components/containers/auth-view-login.html` to run `loginFlow` on submit, set reactive pending/error UI state, and redirect to `/app.html` on success.
   - Created unit tests (`codec.test.js`, `auth-opaque.test.js`, `auth-session.test.js`, `auth-login-flow.test.js`) and component test (`auth-login-flow.spec.js`), registered under `unit-smoke` and `component-smoke` in `test-batches.js`.
   - Verified `pnpm check-batches`, `pnpm test:batch unit-smoke` (33 passing unit tests), and `pnpm --filter @atoll/app build`.
+- **C-INFRA-5b Deliverables & Status:**
+  - Status: `done`.
+  - Installed `postcss-import` (`^16.1.0` -> `16.1.0`) as devDependency in `packages/app/package.json`.
+  - Configured `styles.processors.postcss.plugins: [postcssImport()]` in `packages/app/coralite.config.js`.
+  - Created `packages/app/tests/unit/css-bundle.test.js` asserting build output size (> 500B), lack of `@import` statements, and presence of design tokens and layers.
+  - Created `packages/app/tests/component/css-applied.spec.js` asserting computed tokens, served CSS content, and capturing visual artifacts (`test-results/css-applied.png` and video).
+  - Updated `packages/app/TESTING.md` with CSS Bundle Verification section.
+  - Registered test files in `packages/app/test-batches.js` under `unit-smoke` and `component-smoke`.
+  - Recorded CF-004 in `client-coralite-feedback.md` and `client-task-ledger.md`.
