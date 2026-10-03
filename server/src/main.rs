@@ -217,6 +217,20 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
+    let link_preview_keys = if config.link_preview_proxy_enabled {
+        match server::link_preview::LinkPreviewKeys::load_or_generate(
+            &config.link_preview_proxy_key_path,
+        ) {
+            Ok(k) => Some(Arc::new(k)),
+            Err(e) => {
+                tracing::warn!("Failed to load or generate link preview keys: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -234,6 +248,7 @@ async fn main() -> anyhow::Result<()> {
         push_delivery,
         oprf: oprf_evaluator,
         oprf_audit: oprf_audit.clone(),
+        link_preview_keys,
     };
 
     // 7. Check bootstrap state

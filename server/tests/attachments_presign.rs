@@ -174,6 +174,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         push_delivery: None,
         oprf,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     let app = server::build_app(state);

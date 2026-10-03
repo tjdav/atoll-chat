@@ -83,6 +83,7 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
         push_delivery: None,
         oprf,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     server::build_app(state)

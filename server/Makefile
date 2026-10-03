@@ -16,6 +16,7 @@ help:
 	@echo "  make test-sockudo      Sockudo, events, pending removes"
 	@echo "  make test-push         Push subscriptions, Web Push, VAPID, delivery, APNs, FCM"
 	@echo "  make test-sync         User-scoped sync foundation, sequence allocation, sync endpoint, channel auth"
+	@echo "  make test-link-preview Link preview proxy, Content Key encryption, SSRF guard, size limits, and rate limiting"
 	@echo "  make test-all          Run all batches sequentially"
 	@echo "  make check-batches     Verify no orphan test files"
 	@echo ""
@@ -62,8 +63,12 @@ test-push:
 test-sync:
 	$(CARGO) test --test device_name_login --test device_name_sync --test device_name_validation --test device_name_write --test preferences_crud --test preferences_sync --test preferences_validation --test read_state_sync --test read_state_write --test sync_channel_auth --test sync_endpoint --test sync_seq
 
+.PHONY: test-link-preview
+test-link-preview:
+	$(CARGO) test --test link_preview
+
 .PHONY: test-all
-test-all: check-batches test-identity test-auth test-messaging test-storage test-oprf test-operations test-transport test-sockudo test-push test-sync
+test-all: check-batches test-identity test-auth test-messaging test-storage test-oprf test-operations test-transport test-sockudo test-push test-sync test-link-preview
 	@echo ""
 	@echo "All batches passed."
 

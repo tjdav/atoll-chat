@@ -84,6 +84,7 @@ async fn test_end_to_end_backup_and_restore() {
         push_delivery: None,
         oprf,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     let app = server::build_app(state);

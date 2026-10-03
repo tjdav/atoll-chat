@@ -87,13 +87,17 @@
   - **Migration:** None (Case A: reuses `key_transparency_snapshots` table from Task 34a).
   - **Delivered:** `server/src/key_transparency/signing.rs`, `server/src/key_transparency/merkle.rs`, `server/src/key_transparency/snapshot.rs`, `server/src/key_transparency/mod.rs`, `server/src/routes/admin.rs`, `server/src/audit.rs`, `server/src/cli.rs`, `server/src/main.rs`, `server/src/lib.rs`, `server/Cargo.toml`, `server/tests/key_transparency_snapshots.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `identity`
+- **Task 35 — Link Preview Proxy**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/link_preview/mod.rs`, `server/src/link_preview/content_key.rs`, `server/src/link_preview/ssrf.rs`, `server/src/routes/link_preview.rs`, `server/src/routes/capabilities.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/rate_limit.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/link_preview.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `link_preview`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 28
-- **Done:** 28
+- **Total Verifications/Tasks Tracked:** 29
+- **Done:** 29
 - **Pending:** 0
 - **Mismatches:** 0

@@ -188,6 +188,7 @@ async fn test_04_trigger_fails_when_backup_disabled() {
         push_delivery: None,
         oprf,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     let app = server::build_app(state);

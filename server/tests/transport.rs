@@ -92,6 +92,7 @@ async fn setup_app_with_custom_config(
         push_delivery: None,
         oprf,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     server::build_app(state)

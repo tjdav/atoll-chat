@@ -7,6 +7,7 @@ pub mod devices;
 pub mod health;
 pub mod invites;
 pub mod key_packages;
+pub mod link_preview;
 pub mod login;
 pub mod oprf;
 pub mod pending_removes;

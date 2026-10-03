@@ -181,3 +181,31 @@
   - **Anonymization Placeholder Format:** During GDPR account deletion (`anonymise_user`), `key_transparency_log.user_id` is replaced with `anon_<32 hex>` (`anon_` followed by 32 lowercase hex characters). `username_token` and `identity_pubkey` remain unchanged as public audit records per §14.2.
   - **Feature Flag Behavior:** `KEY_TRANSPARENCY_ENABLED=false` prevents future leaf appends at registration time. Pre-existing log rows remain stored in the database and continue to be reported by `GET /api/v1/admin/key-transparency`.
   - **Cascade Note:** The foreign key `user_id REFERENCES users(id)` has `ON DELETE CASCADE`. Normal account deletion anonymizes `users` without deleting the row, so the cascade does not trigger. Hard SQL deletion of a user row will trigger cascade deletion of their log entries.
+
+## Task 35 — Link Preview Proxy Mechanism and SSRF Guard Specifications
+- **ID:** Task 35
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §2.1, §5.23, §5.6, §8.1.2
+- **Question asked:** What are the Content Key encryption mechanism, request/response payload shapes, SSRF guard rules, and key configuration for the link preview proxy?
+- **Answer found:**
+  - **Content Key Mechanism:**
+    - Server static keypair: 32-byte X25519 static key saved to `LINK_PREVIEW_PROXY_KEY_PATH` (0600 file permissions on Unix). Public key exposed in `GET /capabilities` as `link_preview_proxy_key`.
+    - Key Agreement: Ephemeral-Static X25519 ECDH between client's ephemeral public key and server's static secret.
+    - KDF: HKDF-SHA256 with `info = b"link-preview-content-key-v1"` deriving 32-byte Content Key.
+    - Cipher: AES-256-GCM with 12-byte random nonce.
+  - **Payload Shapes:**
+    - Request Envelope: `{ "ephemeral_pubkey": "<base64_32B>", "nonce": "<base64_12B>", "ciphertext": "<base64>" }`
+    - Response Envelope: `{ "nonce": "<base64_12B>", "ciphertext": "<base64>" }`
+    - Request Plaintext: `{ "url": "<https URL>", "request_id": "<string>" }`
+    - Response Plaintext: `{ "status": <u16>, "headers": { ... }, "body": "<base64>", "request_id": "<string>" }`
+    - Error Plaintext: `{ "error": "<code_string>", "request_id": "<string>" }`
+  - **SSRF Guard Rules:**
+    - Scheme: `https://` required in production (`http://` rejected with `url_blocked`).
+    - IP Range Checks: Loopback (`127.0.0.0/8`, `::1`), private (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `fc00::/7`), link-local (`169.254.0.0/16`, `fe80::/10`), multicast (`224.0.0.0/4`, `ff00::/8`), reserved (`0.0.0.0/8`, `240.0.0.0/4`, `100.64.0.0/10`, `192.0.2.0/24`, `198.18.0.0/15`, `198.51.100.0/24`, `203.0.113.0/24`), IPv4-mapped IPv6, and metadata services (`169.254.169.254`, `fd00:ec2::254`) are blocked (`url_blocked`).
+    - Rebinding Protection: Connections are pinned to the verified target IP address while retaining original hostname for SNI and Host header.
+    - Redirect Handling: Max 5 redirects; target URL scheme and IP resolution re-evaluated per redirect hop.
+  - **Configuration & Operational Invariants:**
+    - Rate limit: `RATE_LINK_PREVIEW_PER_MIN` (default 10) per user, key `link_preview:{user_id}:min:{boundary}`.
+    - Response size cap: `LINK_PREVIEW_PROXY_MAX_BYTES` (default 1,048,576 bytes). Incremental decompression cap for gzip/deflate.
+    - Plaintext non-persistence & no-audit: Plaintext URLs are decrypted solely in memory, never logged, and never written to audit logs or database tables.

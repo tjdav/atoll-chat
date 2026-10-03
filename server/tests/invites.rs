@@ -882,6 +882,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         push_delivery: None,
         oprf,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     let app = axum::Router::new()

@@ -16,6 +16,7 @@ pub mod invites;
 pub mod key_packages;
 pub mod key_transparency;
 pub mod limits;
+pub mod link_preview;
 pub mod login;
 pub mod middleware;
 pub mod opaque;
@@ -113,6 +114,7 @@ pub struct AppState {
     pub push_delivery: Option<Arc<push::delivery::DeliveryCoordinator>>,
     pub oprf: Arc<oprf::OprfEvaluator>,
     pub oprf_audit: Arc<oprf::OprfAuditCounter>,
+    pub link_preview_keys: Option<Arc<link_preview::LinkPreviewKeys>>,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -226,6 +228,10 @@ pub fn build_app(state: AppState) -> Router {
         )
         .route("/admin/oprf/rotate", post(routes::admin_oprf::rotate))
         .route("/capabilities", get(routes::capabilities::handler))
+        .route(
+            "/link-preview/proxy",
+            post(routes::link_preview::proxy_handler),
+        )
         .route("/roles", get(routes::roles::handler))
         .route(
             "/auth/register/challenge",
