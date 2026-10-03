@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
 
-test('app.html renders the messenger shell placeholder', async ({ page }) => {
+test('app.html redirects to index.html when no session exists', async ({ page }) => {
   await page.goto('/app.html')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Messenger Shell')
+  await page.waitForURL('**/index.html')
+  await expect(page.locator('auth-gate')).toBeVisible()
 })
 
 test('index.html renders the auth gate shell', async ({ page }) => {

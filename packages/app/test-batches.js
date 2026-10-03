@@ -28,6 +28,7 @@ export default [
       'tests/unit/crypto-display-name.test.js',
       'tests/unit/auth-identity.test.js',
       'tests/unit/auth-register-flow.test.js',
+      'tests/unit/auth-boot.test.js',
     ],
   },
   {
@@ -50,6 +51,7 @@ export default [
       'tests/component/auth-gate.spec.js',
       'tests/component/auth-login-flow.spec.js',
       'tests/component/register-form.spec.js',
+      'tests/component/messenger-boot.spec.js',
     ],
   },
 ]
