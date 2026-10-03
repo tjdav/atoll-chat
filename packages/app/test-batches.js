@@ -25,6 +25,9 @@ export default [
       'tests/unit/auth-session.test.js',
       'tests/unit/auth-login-flow.test.js',
       'tests/unit/css-bundle.test.js',
+      'tests/unit/crypto-display-name.test.js',
+      'tests/unit/auth-identity.test.js',
+      'tests/unit/auth-register-flow.test.js',
     ],
   },
   {

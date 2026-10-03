@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 6 |
-| Done | 16 |
+| Pending | 7 |
+| Done | 17 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -37,7 +37,9 @@ or modify the server's ledger.
 | C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
 | C-AUTH-3a | OPAQUE Login Flow and Session Storage | done | C-AUTH-1, C-AUTH-2, C-V-D | unit-smoke, component-smoke |
-| C-AUTH-3b | OPAQUE Registration Flow & Display Name Encryption | pending | C-AUTH-3a, C-INFRA-4 | — |
+| C-AUTH-3b | OPAQUE Registration Flow & Display Name Encryption | done | C-AUTH-3a, C-INFRA-4 | unit-smoke |
+| C-AUTH-3b2 | Register Form Wiring & ALTCHA Integration | pending | C-AUTH-3b, C-AUTH-1 | component-smoke |
+| C-AUTH-3b3 | Recovery Code Display & Confirmation Screen | pending | C-AUTH-3b2 | component-smoke |
 | C-AUTH-4 | Session Persistence & Boot Sequence | pending | C-AUTH-3a, C-INFRA-3 | — |
 | C-AUTH-5 | Recovery Code Flow & Account Recovery | pending | C-AUTH-3a | — |
 | C-CHAT-1 | Messenger Shell & Three-Panel Layout | pending | C-INFRA-2, C-INFRA-5 | — |
@@ -237,6 +239,15 @@ On completion:
   - Updated `packages/app/src/components/containers/auth-view-login.html` to run `loginFlow` on submit, set reactive pending/error UI state, and redirect to `/app.html` on success.
   - Created unit tests (`codec.test.js`, `auth-opaque.test.js`, `auth-session.test.js`, `auth-login-flow.test.js`) and component test (`auth-login-flow.spec.js`), registered under `unit-smoke` and `component-smoke` in `test-batches.js`.
   - Verified `pnpm check-batches`, `pnpm test:batch unit-smoke` (33 passing unit tests), and `pnpm --filter @atoll/app build`.
+- **C-AUTH-3b Deliverables & Status:**
+  - Status: `done`.
+  - Added `bytesToBase64` and `base64ToBytes` helper functions to `packages/app/src/lib/codec/index.js`.
+  - Created `packages/app/src/lib/crypto/display-name.js` exporting `encryptDisplayName` and `decryptDisplayName` using Web Crypto AES-256-GCM per client spec §6.20.
+  - Created `packages/app/src/lib/auth/identity.js` exporting `generateIdentityKeypair`, `getIdentityPublicKey`, `getIdentityPrivateKey`, `setIdentityKeypair`, `clearIdentityKeypair` using Ed25519 (`@noble/curves/ed25519.js`) with Base64URL `localStorage` storage (`atoll.identity.private`, `atoll.identity.public`) and in-memory fallback.
+  - Extended `packages/app/src/lib/auth/opaque.js` with `startRegistration({ password })` and `finishRegistration({ clientRegistrationState, registrationResponse, password })`.
+  - Extended `packages/app/src/lib/auth/flows.js` exporting `RegisterError`, `createRegisterFlow(deps)`, and `registerFlow` executing OPRF blinding/finalization, display name encryption, OPAQUE registration, Ed25519 keypair generation, without unconfirmed persistence.
+  - Created unit test suites (`crypto-display-name.test.js`, `auth-identity.test.js`, `auth-register-flow.test.js` with simulated OPAQUE server) registered in `unit-smoke` in `test-batches.js`.
+  - Added C-AUTH-3b2 and C-AUTH-3b3 to task ledger as `pending`.
 - **C-INFRA-5b Deliverables & Status:**
   - Status: `done`.
   - Installed `postcss-import` (`^16.1.0` -> `16.1.0`) as devDependency in `packages/app/package.json`.
