@@ -146,6 +146,20 @@ where
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let link_preview_keys = if config_arc.link_preview_proxy_enabled {
+        match server::link_preview::LinkPreviewKeys::load_or_generate(
+            &config_arc.link_preview_proxy_key_path,
+        ) {
+            Ok(k) => Some(Arc::new(k)),
+            Err(e) => {
+                tracing::warn!("Failed to load or generate link preview keys: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -163,6 +177,7 @@ where
         push_delivery,
         oprf,
         oprf_audit,
+        link_preview_keys,
     };
 
     let app = server::build_app(state);
@@ -270,6 +285,20 @@ pub async fn setup_test_app_with_config(
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let link_preview_keys = if config_arc.link_preview_proxy_enabled {
+        match server::link_preview::LinkPreviewKeys::load_or_generate(
+            &config_arc.link_preview_proxy_key_path,
+        ) {
+            Ok(k) => Some(Arc::new(k)),
+            Err(e) => {
+                tracing::warn!("Failed to load or generate link preview keys: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -287,6 +316,7 @@ pub async fn setup_test_app_with_config(
         push_delivery,
         oprf,
         oprf_audit,
+        link_preview_keys,
     };
 
     let app = server::build_app(state);

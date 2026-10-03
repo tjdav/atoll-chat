@@ -28,6 +28,7 @@ pub enum RateLimitKey {
     Reaction { user_id: String },
     MemberList { user_id: String },
     RecoverStart { ip: String, window: Window },
+    LinkPreview { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -294,6 +295,16 @@ pub async fn check(
                 start,
                 reset,
                 limit,
+            )
+        }
+        RateLimitKey::LinkPreview { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("link_preview:{user_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_link_preview_per_min,
             )
         }
     };

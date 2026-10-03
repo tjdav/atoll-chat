@@ -26,6 +26,8 @@ pub struct CapabilitiesResponse {
     pub username_oprf_enabled: bool,
     pub oprf_suite: String,
     pub threading_enabled: bool,
+    pub link_preview_proxy_enabled: bool,
+    pub link_preview_proxy_key: Option<String>,
 }
 
 pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -76,6 +78,15 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         None
     };
 
+    let link_preview_proxy_key = if state.config.link_preview_proxy_enabled {
+        state
+            .link_preview_keys
+            .as_ref()
+            .map(|k| k.public_key_base64.clone())
+    } else {
+        None
+    };
+
     Json(CapabilitiesResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         calling: false,
@@ -97,5 +108,7 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         username_oprf_enabled: state.config.username_oprf_enabled,
         oprf_suite: "ristretto255-sha512".to_string(),
         threading_enabled: true,
+        link_preview_proxy_enabled: state.config.link_preview_proxy_enabled,
+        link_preview_proxy_key,
     })
 }

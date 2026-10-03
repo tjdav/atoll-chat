@@ -167,3 +167,11 @@ files = [
     "sync_seq",
 ]
 timeout_seconds = 60
+
+[[batch]]
+name = "link_preview"
+description = "Link preview proxy, Content Key encryption, SSRF guard, size limits, and rate limiting"
+files = [
+    "link_preview",
+]
+timeout_seconds = 60

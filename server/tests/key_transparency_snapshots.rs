@@ -88,6 +88,7 @@ async fn setup_test_app() -> TestEnv {
         push_delivery: None,
         oprf: oprf_evaluator,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     TestEnv { state, _dir: dir }

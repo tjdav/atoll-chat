@@ -88,6 +88,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         push_delivery: None,
         oprf,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     let app = server::build_app(state);
@@ -520,6 +521,7 @@ async fn test_mls_add_pending_publish_failure_does_not_fail_member_add() {
         push_delivery: None,
         oprf,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     let app = server::build_app(state);

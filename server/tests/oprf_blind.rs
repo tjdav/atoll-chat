@@ -65,6 +65,7 @@ async fn setup_test_app(config_override: impl FnOnce(&mut Config)) -> (axum::Rou
         push_delivery: None,
         oprf: oprf_evaluator,
         oprf_audit,
+        link_preview_keys: None,
     };
 
     let app = server::build_app(state.clone());
