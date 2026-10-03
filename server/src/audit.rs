@@ -30,6 +30,8 @@ pub mod action {
     pub const KT_SNAPSHOT: &str = "kt.snapshot";
     pub const SESSION_TYPES_RELOAD: &str = "session_types.reload";
     pub const MODEL_MANIFEST_RELOAD: &str = "model.manifest_reload";
+    pub const CALL_START: &str = "call.start";
+    pub const CALL_END: &str = "call.end";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -316,3 +316,29 @@
     - Document that `call_id` in `/rooms/:id/calls/:call_id/signal` is chosen by the client and lazily initializes the `call_sessions` row on first signal.
     - Document that `call.signal` is user-scoped (`private-user-{user_id}`), broadcast-only (relayed to all other active call participants), and non-durable.
     - Document that the `call_participants` table is authoritative over the `rooms.call_participants` text column.
+
+## Task 36b — Call Lifecycle Events, End Endpoint, and Authorization
+- **ID:** Task 36b
+- **Date:** 2026-10-03
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §2.1, §4.5, §8.7, §8.8, §14.8
+- **Question asked:** When do `call.started` and `call.ended` fire, who may end a call, what happens to call participants on end, and what are the idempotency and audit requirements?
+- **Answer found:**
+  - **`call.started` Event & `call.start` Audit:** Fires exactly once following the atomic creation commit of a `call_sessions` row during first signal in `send_signal`.
+    - Event channel: `private-room-{room_id}` (room channel).
+    - Event payload: `{ "call_id": "<call_id>", "room_id": "<room_id>", "initiator_id": "<user_id>", "started_at": "<iso8601>" }`.
+    - Audit entry: `call.start` with metadata `{ "call_id": "<call_id>", "room_id": "<room_id>" }`.
+    - Subsequent signals on an existing call session do NOT re-publish `call.started` or re-write `call.start` audit log.
+  - **`POST /api/v1/rooms/:id/calls/:call_id/end` Endpoint:**
+    - Unauthenticated -> 401 Unauthorized.
+    - Non-room member -> 404 `room_not_found`.
+    - Call not found or belonging to a different room -> 404 `call_not_found`.
+    - `CALLING_ENABLED=false` -> 501 `calling_disabled`.
+    - Authorization: Requires caller to be the call initiator (`initiator_id`) or the room owner (`rooms.owner_id`). Non-initiator non-owner members receive HTTP 403 `forbidden`.
+  - **Participant Disposition & End Execution:**
+    - Updates `call_sessions.ended_at = CURRENT_TIMESTAMP` and sets `call_participants.left_at = CURRENT_TIMESTAMP` for all active participants (`left_at IS NULL`) in a single transaction.
+    - Post-commit: publishes `call.ended` on `private-room-{room_id}` with payload `{ "call_id": "<call_id>", "room_id": "<room_id>", "ended_at": "<iso8601>" }` and logs `call.end` audit entry with metadata `{ "call_id": "<call_id>", "room_id": "<room_id>" }`.
+  - **Idempotency:**
+    - Subsequent `/end` requests on an already-ended call return HTTP 200 with the existing session state (`ended_at` set) without re-writing database rows, re-publishing `call.ended`, or re-writing audit logs.
+  - **Abandoned Call Gap Note:**
+    - Calls that are never explicitly ended retain `ended_at = NULL`. §4.5 call state cleanup only cleans up rows where `ended_at` is set (`ended_at < now - 24h`). Auto-termination for abandoned calls is flagged for future spec amendment.
