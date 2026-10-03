@@ -29,6 +29,9 @@ export default [
       'tests/unit/auth-identity.test.js',
       'tests/unit/auth-register-flow.test.js',
       'tests/unit/auth-boot.test.js',
+      'tests/unit/i18n.test.js',
+      'tests/unit/i18n-locales.test.js',
+      'tests/unit/i18n-plugin.test.js',
     ],
   },
   {

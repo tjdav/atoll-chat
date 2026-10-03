@@ -263,3 +263,22 @@ build task runs.
 | `client()` reactivity mechanism | `state.x = val` in `client()` marks key dirty and schedules DOM update without `attributes` declaration |
 | C-INFRA-6 symptom root cause | Flat destructuring of `t` instead of `ctx.i18n.t(...)`, causing unhandled `TypeError` in `client()` |
 | Report location | `client-verification/cv-e/report.md` |
+
+### C-INFRA-6a — i18n Plugin & Locale Infrastructure Contracts
+
+**Verified:** 2026-10-03
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Factory module location | `packages/app/src/lib/i18n/index.js` |
+| Factory export | `createI18n({ defaultLocale = 'en', locales = {}, initialLocale })` |
+| Returned engine interface | `{ t(key, vars?), getLocale(), setLocale(locale), subscribe(cb), availableLocales() }` |
+| Locale Storage Key | `atoll.preference.locale` (in `localStorage`) |
+| Supported Locales | `['en', 'fr', 'de', 'ja', 'pt', 'it', 'es']` (`SUPPORTED_LOCALES`) |
+| Default Locale | `'en'` (`DEFAULT_LOCALE`) |
+| Fallback Chain | `active locale` → `default locale` → `verbatim key string` |
+| Key set coverage | 35 user-facing string keys defined across all seven locale files (`en.js` through `es.js`) |
+| Plugin definition location | `packages/app/src/plugins/i18n-plugin.js` |
+| Plugin name | `i18n` |
+| Required access pattern | `ctx.i18n.t(key, vars)` in `client()` and `server()`; NOT available in `getters` |
+| `coralite.config.js` registration | Configured under `plugins: [ i18nPlugin({ defaultLocale: 'en' }) ]` |

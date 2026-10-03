@@ -1,0 +1,41 @@
+export default {
+  'auth.login.title': 'Iniciar sessão',
+  'auth.login.username_label': 'Nome de utilizador',
+  'auth.login.password_label': 'Palavra-passe',
+  'auth.login.submit_button': 'Iniciar sessão',
+  'auth.login.submit_pending': 'A iniciar sessão…',
+  'auth.login.biometric_button': 'Iniciar sessão com Face ID',
+  'auth.login.register_link': 'Registar com código de convite →',
+  'auth.login.recovery_link': 'Perdeu o acesso? Usar recuperação →',
+  'auth.login.error_failed': 'Falha ao iniciar sessão.',
+
+  'auth.register.title': 'Criar conta',
+  'auth.register.invite_code_label': 'Código de convite',
+  'auth.register.username_label': 'Nome de utilizador',
+  'auth.register.display_name_label': 'Nome de exibição',
+  'auth.register.password_label': 'Palavra-passe',
+  'auth.register.submit_button': 'Criar conta',
+  'auth.register.submit_pending': 'A criar conta…',
+  'auth.register.back_link': '← Voltar ao início de sessão',
+  'auth.register.error_invite_invalid': 'Esse código de convite não é válido ou expirou.',
+  'auth.register.error_altcha_failed': 'A verificação falhou. Tente novamente.',
+  'auth.register.error_username_taken': 'Esse nome de utilizador já está em uso.',
+  'auth.register.error_display_name_invalid': 'O nome de exibição é demasiado longo.',
+  'auth.register.error_opaque_failed': 'O registo falhou. Tente novamente.',
+  'auth.register.error_network': 'O servidor encontrou um problema. Tente novamente.',
+  'auth.register.error_unknown': 'Algo correr mal. Tente novamente.',
+
+  'auth.recovery.title': 'Recuperar acesso',
+  'auth.recovery.username_label': 'Nome de utilizador',
+  'auth.recovery.recovery_code_label': 'Código de recuperação',
+  'auth.recovery.new_password_label': 'Nova palavra-passe',
+  'auth.recovery.submit_button': 'Recuperar acesso',
+  'auth.recovery.back_link': '← Voltar ao início de sessão',
+
+  'auth.confirm.title': 'Verifique os seus códigos de recuperação',
+  'auth.confirm.description': 'A exibição e confirmação dos códigos de recuperação serão implementadas numa tarefa posterior. Por agora, utilize a palavra-passe que acabou de definir para iniciar sessão.',
+  'auth.confirm.back_link': '← Voltar ao início de sessão',
+
+  'boot.loading': 'A carregar…',
+  'boot.error_failed': 'Falha na inicialização.'
+}

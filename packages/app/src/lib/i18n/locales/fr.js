@@ -1,0 +1,41 @@
+export default {
+  'auth.login.title': 'Connexion',
+  'auth.login.username_label': "Nom d'utilisateur",
+  'auth.login.password_label': 'Mot de passe',
+  'auth.login.submit_button': 'Se connecter',
+  'auth.login.submit_pending': 'Connexion en cours…',
+  'auth.login.biometric_button': 'Se connecter avec Face ID',
+  'auth.login.register_link': "S'inscrire avec un code d'invitation →",
+  'auth.login.recovery_link': 'Accès perdu ? Utiliser la récupération →',
+  'auth.login.error_failed': 'Échec de la connexion.',
+
+  'auth.register.title': 'Créer un compte',
+  'auth.register.invite_code_label': "Code d'invitation",
+  'auth.register.username_label': "Nom d'utilisateur",
+  'auth.register.display_name_label': 'Nom d’affichage',
+  'auth.register.password_label': 'Mot de passe',
+  'auth.register.submit_button': 'Créer un compte',
+  'auth.register.submit_pending': 'Création du compte…',
+  'auth.register.back_link': '← Retour à la connexion',
+  'auth.register.error_invite_invalid': "Ce code d'invitation n'est pas valide ou a expiré.",
+  'auth.register.error_altcha_failed': 'La vérification a échoué. Réessayez.',
+  'auth.register.error_username_taken': "Ce nom d'utilisateur est déjà utilisé.",
+  'auth.register.error_display_name_invalid': 'Le nom d’affichage est trop long.',
+  'auth.register.error_opaque_failed': "L'inscription a échoué. Réessayez.",
+  'auth.register.error_network': 'Le serveur a rencontré un problème. Réessayez.',
+  'auth.register.error_unknown': "Une erreur s'est produite. Réessayez.",
+
+  'auth.recovery.title': "Récupérer l'accès",
+  'auth.recovery.username_label': "Nom d'utilisateur",
+  'auth.recovery.recovery_code_label': 'Code de récupération',
+  'auth.recovery.new_password_label': 'Nouveau mot de passe',
+  'auth.recovery.submit_button': "Récupérer l'accès",
+  'auth.recovery.back_link': '← Retour à la connexion',
+
+  'auth.confirm.title': 'Vérifiez vos codes de récupération',
+  'auth.confirm.description': "L'affichage et la confirmation des codes de récupération seront implémentés dans une tâche ultérieure. Pour l'instant, utilisez le mot de passe que vous venez de définir pour vous connecter.",
+  'auth.confirm.back_link': '← Retour à la connexion',
+
+  'boot.loading': 'Chargement…',
+  'boot.error_failed': 'Échec du démarrage.'
+}

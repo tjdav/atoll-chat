@@ -1,0 +1,41 @@
+export default {
+  'auth.login.title': 'Iniciar sesión',
+  'auth.login.username_label': 'Nombre de usuario',
+  'auth.login.password_label': 'Contraseña',
+  'auth.login.submit_button': 'Iniciar sesión',
+  'auth.login.submit_pending': 'Iniciando sesión…',
+  'auth.login.biometric_button': 'Iniciar sesión con Face ID',
+  'auth.login.register_link': 'Registrarse con código de invitación →',
+  'auth.login.recovery_link': '¿Perdiste el acceso? Usar recuperación →',
+  'auth.login.error_failed': 'Error al iniciar sesión.',
+
+  'auth.register.title': 'Crear cuenta',
+  'auth.register.invite_code_label': 'Código de invitación',
+  'auth.register.username_label': 'Nombre de usuario',
+  'auth.register.display_name_label': 'Nombre visible',
+  'auth.register.password_label': 'Contraseña',
+  'auth.register.submit_button': 'Crear cuenta',
+  'auth.register.submit_pending': 'Creando cuenta…',
+  'auth.register.back_link': '← Volver al inicio de sesión',
+  'auth.register.error_invite_invalid': 'Ese código de invitación no es válido o ha expirado.',
+  'auth.register.error_altcha_failed': 'Error en la verificación. Inténtalo de nuevo.',
+  'auth.register.error_username_taken': 'Ese nombre de usuario ya está en uso.',
+  'auth.register.error_display_name_invalid': 'El nombre visible es demasiado largo.',
+  'auth.register.error_opaque_failed': 'Error en el registro. Inténtalo de nuevo.',
+  'auth.register.error_network': 'El servidor tuvo un problema. Inténtalo de nuevo.',
+  'auth.register.error_unknown': 'Algo salió mal. Inténtalo de nuevo.',
+
+  'auth.recovery.title': 'Recuperar acceso',
+  'auth.recovery.username_label': 'Nombre de usuario',
+  'auth.recovery.recovery_code_label': 'Código de recuperación',
+  'auth.recovery.new_password_label': 'Nueva contraseña',
+  'auth.recovery.submit_button': 'Recuperar acceso',
+  'auth.recovery.back_link': '← Volver al inicio de sesión',
+
+  'auth.confirm.title': 'Revisa tus códigos de recuperación',
+  'auth.confirm.description': 'La visualización y confirmación de los códigos de recuperación se implementará en una tarea posterior. Por ahora, usa la contraseña que acabas de establecer para iniciar sesión.',
+  'auth.confirm.back_link': '← Volver al inicio de sesión',
+
+  'boot.loading': 'Cargando…',
+  'boot.error_failed': 'Error al iniciar.'
+}

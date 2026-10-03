@@ -1,0 +1,41 @@
+export default {
+  'auth.login.title': 'ログイン',
+  'auth.login.username_label': 'ユーザー名',
+  'auth.login.password_label': 'パスワード',
+  'auth.login.submit_button': 'ログイン',
+  'auth.login.submit_pending': 'ログイン中…',
+  'auth.login.biometric_button': 'Face ID でログイン',
+  'auth.login.register_link': '招待コードで登録 →',
+  'auth.login.recovery_link': 'アクセス権をお忘れですか？復元を使用 →',
+  'auth.login.error_failed': 'ログインに失敗しました。',
+
+  'auth.register.title': 'アカウント作成',
+  'auth.register.invite_code_label': '招待コード',
+  'auth.register.username_label': 'ユーザー名',
+  'auth.register.display_name_label': '表示名',
+  'auth.register.password_label': 'パスワード',
+  'auth.register.submit_button': 'アカウント作成',
+  'auth.register.submit_pending': 'アカウント作成中…',
+  'auth.register.back_link': '← ログインに戻る',
+  'auth.register.error_invite_invalid': 'この招待コードは無効か期限切れです。',
+  'auth.register.error_altcha_failed': '検証に失敗しました。もう一度お試しください。',
+  'auth.register.error_username_taken': 'そのユーザー名は既に使用されています。',
+  'auth.register.error_display_name_invalid': '表示名が長すぎます。',
+  'auth.register.error_opaque_failed': '登録に失敗しました。もう一度お試しください。',
+  'auth.register.error_network': 'サーバーで問題が発生しました。もう一度お試しください。',
+  'auth.register.error_unknown': 'エラーが発生しました。もう一度お試しください。',
+
+  'auth.recovery.title': 'アクセス権の復元',
+  'auth.recovery.username_label': 'ユーザー名',
+  'auth.recovery.recovery_code_label': '復元コード',
+  'auth.recovery.new_password_label': '新しいパスワード',
+  'auth.recovery.submit_button': 'アクセス権を復元',
+  'auth.recovery.back_link': '← ログインに戻る',
+
+  'auth.confirm.title': '復元コードを確認してください',
+  'auth.confirm.description': '復元コードの表示と確認は後続のタスクで実装されます。現在は設定したパスワードを使用してログインしてください。',
+  'auth.confirm.back_link': '← ログインに戻る',
+
+  'boot.loading': '読み込み中…',
+  'boot.error_failed': '起動に失敗しました。'
+}
