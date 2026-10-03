@@ -12,6 +12,7 @@ use axum::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::Row;
 
 #[derive(Serialize)]
 pub struct LimitsResponse {
@@ -216,4 +217,43 @@ pub async fn post_rotate_altcha_handler(
         .map_err(|e| ApiError::Internal(e.into()))?;
 
     Ok(Json(RotateAltchaResponse { ok: true }))
+}
+
+#[derive(Serialize)]
+pub struct KeyTransparencyStatsResponse {
+    pub enabled: bool,
+    pub tree_size: i64,
+    pub oldest_leaf_added_at: Option<DateTime<Utc>>,
+    pub newest_leaf_added_at: Option<DateTime<Utc>>,
+}
+
+pub async fn get_key_transparency_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    _: RequirePermission<ConfigEdit>,
+) -> Result<Json<KeyTransparencyStatsResponse>, ApiError> {
+    let _ = auth;
+
+    let row = sqlx::query(
+        r#"
+        SELECT
+            COUNT(*) as tree_size,
+            MIN(added_at) as oldest_leaf_added_at,
+            MAX(added_at) as newest_leaf_added_at
+        FROM key_transparency_log
+        "#,
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    let tree_size: i64 = row.get("tree_size");
+    let oldest_leaf_added_at: Option<DateTime<Utc>> = row.get("oldest_leaf_added_at");
+    let newest_leaf_added_at: Option<DateTime<Utc>> = row.get("newest_leaf_added_at");
+
+    Ok(Json(KeyTransparencyStatsResponse {
+        enabled: state.config.key_transparency_enabled,
+        tree_size,
+        oldest_leaf_added_at,
+        newest_leaf_added_at,
+    }))
 }

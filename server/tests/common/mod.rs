@@ -44,6 +44,133 @@ pub async fn setup_test_app() -> (Router, SqlitePool) {
 }
 
 #[allow(dead_code)]
+pub async fn setup_test_app_with_custom_config<F>(
+    modify: F,
+) -> (Router, SqlitePool, Arc<AltchaConfig>)
+where
+    F: FnOnce(&mut Config),
+{
+    let temp_dir = std::env::temp_dir().join(format!("test_run_{}", ulid::Ulid::new()));
+    let _ = std::fs::create_dir_all(&temp_dir);
+    let db_path = temp_dir.join("app.db");
+    let key_path = temp_dir.join("oprf.key");
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&format!("sqlite:{}?mode=rwc", db_path.display()))
+        .await
+        .expect("Failed to connect to test DB");
+
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Failed to run migrations on test DB");
+
+    let opaque_server =
+        Arc::new(OpaqueServer::load_or_generate(&key_path).expect("Failed to create OpaqueServer"));
+    let registration_store = Arc::new(RegistrationStore::new());
+    let login_store = Arc::new(LoginStore::new());
+    let recovery_store = Arc::new(RecoveryStore::new());
+
+    let mut config = Config {
+        db_path: db_path.to_string_lossy().to_string(),
+        opaque_oprf_key_path: key_path.to_str().unwrap().to_string(),
+        altcha_enabled: true,
+        altcha_hmac_secret: "auto".to_string(),
+        altcha_cost: 100,
+        cleanup_enabled: true,
+        cleanup_startup_delay_secs: 30,
+        storage_fs_path: temp_dir.join("attachments"),
+        backup_path: temp_dir.join("backups"),
+        ..Config::test_default()
+    };
+
+    modify(&mut config);
+
+    let storage = server::build_storage(&config).expect("Failed to build test storage");
+
+    let altcha_config = Arc::new(
+        AltchaConfig::from_env(&config, &pool)
+            .await
+            .expect("Failed to init AltchaConfig"),
+    );
+
+    let config_arc = Arc::new(config);
+
+    let server_hard_max = Arc::new(server::ServerHardMax {
+        file_size_bytes: config_arc.max_file_size_bytes as i64,
+        room_size: 1000,
+        rooms_per_user: 500,
+        devices_per_user: config_arc.server_max_devices_per_user as i64,
+        keypackages_per_device: 50,
+        message_size_bytes: 65536,
+        attachment_retention_days: 365,
+        call_max_participants: 50,
+        reactions_per_message: 50,
+    });
+
+    let sockudo_config = server::SockudoConfig {
+        http_base: "http://localhost:6001".to_string(),
+        app_id: "chat".to_string(),
+        app_key: "test-key".to_string(),
+        app_secret: "test-secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+
+    let vapid_keys = server::push::vapid::VapidKeys::load_or_generate(&pool, &config_arc)
+        .await
+        .ok()
+        .flatten()
+        .map(Arc::new);
+
+    let push_delivery = if config_arc.push_delivery_enabled {
+        if let Some(keys) = vapid_keys.as_ref() {
+            server::push::delivery::DeliveryCoordinator::new(
+                pool.clone(),
+                &config_arc,
+                keys.clone(),
+            )
+            .await
+            .ok()
+            .map(Arc::new)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let oprf_keys =
+        server::oprf::OprfKeys::load(&opaque_server.setup).expect("Failed to load OprfKeys");
+    let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
+    let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
+
+    let state = AppState {
+        pool: pool.clone(),
+        opaque_server,
+        registration_store,
+        login_store,
+        recovery_store,
+        altcha_config: altcha_config.clone(),
+        config: config_arc,
+        server_hard_max,
+        publisher,
+        storage,
+        backup_lock: Arc::new(tokio::sync::Mutex::new(())),
+        oprf_rotation_lock: Arc::new(tokio::sync::Mutex::new(())),
+        vapid_keys,
+        push_delivery,
+        oprf,
+        oprf_audit,
+    };
+
+    let app = server::build_app(state);
+
+    (app, pool, altcha_config)
+}
+
+#[allow(dead_code)]
 pub async fn setup_test_app_with_config(
     enabled: bool,
     hmac_secret: &str,

@@ -135,7 +135,48 @@ pub async fn anonymise_user(
         .await?;
     let sessions_deleted = sessions_res.rows_affected();
 
-    // 8. Anonymise the user row: overwrite username_token with random 86-char base64url string
+    // 8. Anonymise Key Transparency log entries for the user (§14.2)
+    let mut anon_rand_bytes = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut anon_rand_bytes);
+    let anon_placeholder = format!("anon_{}", hex::encode(anon_rand_bytes));
+
+    let mut anon_token_bytes = [0u8; 64];
+    rand::thread_rng().fill_bytes(&mut anon_token_bytes);
+    let anon_placeholder_token = URL_SAFE_NO_PAD.encode(anon_token_bytes);
+
+    // Enable defer_foreign_keys so key_transparency_log.user_id update and users insert resolve in transaction
+    sqlx::query("PRAGMA defer_foreign_keys = ON;")
+        .execute(&mut *tx)
+        .await?;
+
+    match sqlx::query("UPDATE key_transparency_log SET user_id = ? WHERE user_id = ?")
+        .bind(&anon_placeholder)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+    {
+        Ok(res) if res.rows_affected() > 0 => {
+            // Insert anonymized tombstone user row to satisfy FOREIGN KEY (user_id REFERENCES users(id))
+            sqlx::query(
+                r#"
+                INSERT INTO users (id, username_token, opaque_registration, identity_pubkey, disabled_at, deleted_at)
+                VALUES (?, ?, randomblob(32), '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                "#,
+            )
+            .bind(&anon_placeholder)
+            .bind(&anon_placeholder_token)
+            .execute(&mut *tx)
+            .await?;
+        }
+        Ok(_) => {}
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => {}
+        Err(e) => {
+            tracing::error!("gdpr: failed to anonymise key_transparency_log: {:?}", e);
+            return Err(GdprError::Database(e));
+        }
+    };
+
+    // 9. Anonymise the user row: overwrite username_token with random 86-char base64url string
     let mut rand_bytes = [0u8; 64];
     rand::thread_rng().fill_bytes(&mut rand_bytes);
     let random_token = URL_SAFE_NO_PAD.encode(rand_bytes);
@@ -158,6 +199,12 @@ pub async fn anonymise_user(
     .bind(user_id)
     .execute(&mut *tx)
     .await?;
+
+    // 10. Remove user roles for the anonymised user
+    sqlx::query("DELETE FROM user_roles WHERE user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
 
     // 9. Remove user from all room memberships
     match sqlx::query("DELETE FROM room_members WHERE user_id = ?")
@@ -254,25 +301,43 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
     });
 
     // 2. Devices
-    let device_rows = sqlx::query(
-        "SELECT id, client_id, name, created_at, last_seen FROM devices WHERE user_id = ? ORDER BY created_at ASC",
+    let device_rows = match sqlx::query(
+        r#"
+        SELECT d.id, d.client_id, dn.encrypted_device_name, d.created_at, d.last_seen
+        FROM devices d
+        LEFT JOIN device_names dn ON dn.user_id = d.user_id AND dn.device_id = d.id AND dn.deleted_at IS NULL
+        WHERE d.user_id = ?
+        ORDER BY d.created_at ASC
+        "#,
     )
     .bind(user_id)
     .fetch_all(pool)
-    .await?;
+    .await
+    {
+        Ok(rows) => rows,
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") || e.message().contains("no such column") => {
+            sqlx::query(
+                "SELECT id, client_id, NULL as encrypted_device_name, created_at, last_seen FROM devices WHERE user_id = ? ORDER BY created_at ASC",
+            )
+            .bind(user_id)
+            .fetch_all(pool)
+            .await?
+        }
+        Err(e) => return Err(GdprError::Database(e)),
+    };
 
     let mut devices_list = Vec::new();
     for row in device_rows {
         let d_id: String = row.get("id");
         let d_client_id: String = row.get("client_id");
-        let d_name: Option<String> = row.get("name");
+        let d_encrypted_device_name: Option<String> = row.get("encrypted_device_name");
         let d_created_at: DateTime<Utc> = row.get("created_at");
         let d_last_seen: Option<DateTime<Utc>> = row.get("last_seen");
 
         devices_list.push(json!({
             "id": d_id,
             "client_id": d_client_id,
-            "name": d_name,
+            "encrypted_device_name": d_encrypted_device_name,
             "created_at": d_created_at.to_rfc3339(),
             "last_seen": d_last_seen.map(|t| t.to_rfc3339())
         }));

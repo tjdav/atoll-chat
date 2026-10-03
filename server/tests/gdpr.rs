@@ -164,15 +164,15 @@ async fn test_deletion_succeeds_with_fresh_session_and_confirmation() {
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 
-    let row = sqlx::query("SELECT username, deleted_at FROM users WHERE id = ?")
+    let row = sqlx::query("SELECT username_token, deleted_at FROM users WHERE id = ?")
         .bind(&alice_id)
         .fetch_one(&pool)
         .await
         .unwrap();
 
-    let username: String = row.get("username");
+    let username_token: String = row.get("username_token");
     let deleted_at: Option<chrono::DateTime<chrono::Utc>> = row.get("deleted_at");
-    assert!(username.starts_with("deleted_"));
+    assert_eq!(username_token.len(), 86);
     assert!(deleted_at.is_some());
 }
 
@@ -202,23 +202,23 @@ async fn test_deletion_anonymises_user_record() {
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 
     let row = sqlx::query(
-        "SELECT username, display_name, profile_blob, identity_pubkey, disabled_at, deleted_at FROM users WHERE id = ?",
+        "SELECT username_token, encrypted_display, profile, identity_pubkey, disabled_at, deleted_at FROM users WHERE id = ?",
     )
     .bind(&alice_id)
     .fetch_one(&pool)
     .await
     .unwrap();
 
-    let username: String = row.get("username");
-    let display_name: Option<String> = row.get("display_name");
-    let profile_blob: Option<String> = row.get("profile_blob");
+    let username_token: String = row.get("username_token");
+    let encrypted_display: Option<String> = row.get("encrypted_display");
+    let profile: Option<String> = row.get("profile");
     let identity_pubkey: String = row.get("identity_pubkey");
     let disabled_at: Option<chrono::DateTime<chrono::Utc>> = row.get("disabled_at");
     let deleted_at: Option<chrono::DateTime<chrono::Utc>> = row.get("deleted_at");
 
-    assert!(username.starts_with("deleted_"));
-    assert!(display_name.is_none());
-    assert!(profile_blob.is_none());
+    assert_eq!(username_token.len(), 86);
+    assert!(encrypted_display.is_none());
+    assert!(profile.is_none());
     assert_eq!(identity_pubkey, "");
     assert!(disabled_at.is_some());
     assert!(deleted_at.is_some());
@@ -635,7 +635,7 @@ async fn test_export_profile_contains_correct_user() {
 
     let profile_json: Value = serde_json::from_str(&profile_str).unwrap();
     assert_eq!(profile_json["user_id"], user_id);
-    assert_eq!(profile_json["username"], "alice");
+    assert!(profile_json["username_token"].is_string());
 }
 
 // 16. Export excludes other users' data.

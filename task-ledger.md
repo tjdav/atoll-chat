@@ -79,13 +79,17 @@
   - **Migration:** `0032_pending_mls_adds.sql` (Case B: created `pending_mls_adds` table per §7.5 and partial index `idx_pending_mls_adds_active`).
   - **Delivered:** `0032_pending_mls_adds.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/error.rs`, `server/src/lib.rs`, `server/tests/pending_adds.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `sockudo`
+- **Task 34a — Key Transparency Log**: done
+  - **Migration:** `0033_key_transparency.sql` (Case B: created `key_transparency_log` and `key_transparency_snapshots` tables and indexes per §7.10).
+  - **Delivered:** `0033_key_transparency.sql`, `server/src/config.rs`, `server/src/routes/register.rs`, `server/src/gdpr.rs`, `server/src/routes/admin.rs`, `server/src/lib.rs`, `server/.env.example`, `server/tests/key_transparency_log.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `identity`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 26
-- **Done:** 26
+- **Total Verifications/Tasks Tracked:** 27
+- **Done:** 27
 - **Pending:** 0
 - **Mismatches:** 0

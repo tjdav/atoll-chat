@@ -358,7 +358,10 @@ pub async fn export_me(
     // 2. Build ZIP export
     let zip_bytes = gdpr::build_export(&state.pool, &auth.user_id)
         .await
-        .map_err(|e| ApiError::Internal(e.into()))?;
+        .map_err(|e| {
+            eprintln!("DEBUG: build_export error for {}: {:?}", auth.user_id, e);
+            ApiError::Internal(e.into())
+        })?;
 
     // 3. Log audit entry
     let _ = audit::log(

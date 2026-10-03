@@ -204,6 +204,10 @@ pub fn build_app(state: AppState) -> Router {
         )
         .route("/admin/audit", get(routes::admin::get_audit_handler))
         .route(
+            "/admin/key-transparency",
+            get(routes::admin::get_key_transparency_handler),
+        )
+        .route(
             "/admin/backups",
             get(routes::admin_backups::list).post(routes::admin_backups::trigger),
         )
