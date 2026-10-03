@@ -17,19 +17,6 @@ export default defineConfig({
       }
     }
   },
-  assets: [
-    {
-      pkg: 'altcha',
-      path: 'dist/external/altcha.js',
-      dest: 'assets/js/altcha.js',
-      inject: {
-        type: 'script',
-        placement: 'body-end',
-        sri: true,
-        pages: ['index.html']
-      }
-    }
-  ],
   csp: {
     enabled: true,
     hashAlgorithm: 'sha256',
