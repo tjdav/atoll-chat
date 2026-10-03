@@ -50,3 +50,14 @@ Status: Active — tracks client-team friction with Coralite and its upstream di
 - **Component:** `coralite-scripts` v1.0.0-rc.5
 - **Description:** `coralite-scripts dev`/`test` server resolves native CSS `@import` statements when serving styles, whereas `coralite-scripts build` preserves `@import` statements verbatim in `dist/assets/css/main.css` unless `postcss-import` is explicitly configured. This dev/prod divergence allows unbundled `@import` statements to silently ship to production where relative CSS import paths fail to load.
 - **Impact:** Production build output contained unbundled `@import` statements resulting in unstyled pages until `postcss-import` was explicitly added as a PostCSS plugin.
+
+### CF-005 — LLM Reference §6.4 vs Runtime Discrepancy: Getters Context Excludes Plugin Context
+
+- **Task:** C-V-E
+- **Tier:** T4 — Documentation bug / enhancement
+- **Status:** filed-upstream; client-mitigated-by-architecture
+- **Client-side action taken:** Empirical verification confirmed that getters receive strictly `{ state, root, refs, slots, signal }` without plugin context. Updated component migration patterns to access plugin context in `client()` or `server()`.
+- **Issue URL:** https://codeberg.org/tjdavid/coralite/issues
+- **Component:** `coralite` v1.0.0-rc.5
+- **Description:** Client Spec §26.4 and Design Decision #28 asserted that `t()` is available in getters, whereas Coralite LLM Reference §6.4 defined getter context as `{ state, root, refs, slots, signal }`. Inspection of `coralite-element.js` (lines 1858–1865) and `index.js` (line 11630) confirmed that `getter(context)` receives strictly `{ state, root, refs, slots, signal }` and does NOT receive plugin context.
+- **Impact:** Attempting to call `t()` or access plugin context inside `getters` results in `undefined` errors.

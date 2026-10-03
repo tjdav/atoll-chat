@@ -88,7 +88,7 @@ build task runs.
 
 | Fact | Value |
 |---|---|
-| `coralite-scripts test` behavior | Launches testing-mode HTTP server on port 3000; does NOT execute test files or apply filters |
+| `coralite-scripts test` behavior | Launches testing-mode HTTP server on port 3000; does NOT execute test files or accept file filters |
 | Testing mode (`mode: 'testing'`) | Injects velocity CSS, prototype patching, static `data-testid` retention, and testing symbol |
 | Invocation granularity | Process-level server; batch filtering maps to runner level (`node --test <files>` or `playwright test <files>`) |
 | Viable test runners | Node.js built-in runner (`node --test`) for unit tests; Playwright + `@axe-core/playwright` for component/E2E tests |
@@ -248,3 +248,18 @@ build task runs.
 | Test IDs & states | `data-testid="boot"` on inner container; `data-state` values: `'booting'`, `'ready'`, `'error'` |
 | Event contract | Emits `app:ready` (`{ hasOprfToken, user }`) on success; `app:error` (`{ message }`) on unexpected error |
 | Visual & test verification | Captured screenshot `packages/app/test-results/messenger-boot.png` and test execution video |
+
+### C-V-E — Coralite rc.5 Plugin Context Delivery & c-token Reactivity
+
+**Verified:** 2026-10-03
+
+| Fact | Value |
+|---|---|
+| `client.context` runtime shape | Two-phase curried function `(pluginContext) => (instanceContext) => contextObject` |
+| Context delivery targets | `client()` ONLY; `getters` receive `{ state, root, refs, slots, signal }`; `server()` receives server context |
+| Plugin context namespacing | Namespaced under `ctx.<pluginName>` (e.g., `ctx.i18n.t(...)`) |
+| Flat destructuring behavior | `client(({ state, t }) => ...)` fails with `TypeError: t is not a function` because `t` is `undefined` |
+| `server()` `<c-token>` binding | `server()` return values merge into server state; populates `{{ key }}` tokens during SSR without `attributes` declaration |
+| `client()` reactivity mechanism | `state.x = val` in `client()` marks key dirty and schedules DOM update without `attributes` declaration |
+| C-INFRA-6 symptom root cause | Flat destructuring of `t` instead of `ctx.i18n.t(...)`, causing unhandled `TypeError` in `client()` |
+| Report location | `client-verification/cv-e/report.md` |
