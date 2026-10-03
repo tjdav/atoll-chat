@@ -2,8 +2,16 @@ use axum::{extract::State, response::IntoResponse, Json};
 use serde::Serialize;
 use std::env;
 
+use crate::models::TtsCapabilityModelView;
 use crate::sessions::SessionTypeCapView;
 use crate::AppState;
+
+fn construct_base_url(app_url: Option<&str>, path_suffix: &str) -> String {
+    let base = app_url
+        .unwrap_or("http://localhost:8080")
+        .trim_end_matches('/');
+    format!("{}{}", base, path_suffix)
+}
 
 #[derive(Serialize)]
 pub struct CapabilitiesResponse {
@@ -33,6 +41,21 @@ pub struct CapabilitiesResponse {
     pub max_sessions_per_room: u32,
     pub max_session_participants: u32,
     pub session_types: Vec<SessionTypeCapView>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_hosting_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_hosting_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stt_models_base_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stt_default_model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tts_models_base_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tts_default_model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tts_models: Option<Vec<TtsCapabilityModelView>>,
 }
 
 pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -92,6 +115,30 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         None
     };
 
+    let (
+        model_hosting_enabled,
+        model_hosting_mode,
+        stt_models_base_url,
+        stt_default_model,
+        tts_models_base_url,
+        tts_default_model,
+        tts_models,
+    ) = if state.config.model_hosting_enabled {
+        let stt_base = construct_base_url(state.config.app_url.as_deref(), "/models/stt/v1/");
+        let tts_base = construct_base_url(state.config.app_url.as_deref(), "/models/tts/v1/");
+        (
+            Some(true),
+            Some(state.config.model_hosting_mode.clone()),
+            Some(stt_base),
+            Some(state.config.stt_default_model.clone()),
+            Some(tts_base),
+            Some(state.config.tts_default_model.clone()),
+            Some(state.models.tts_capability_models()),
+        )
+    } else {
+        (None, None, None, None, None, None, None)
+    };
+
     Json(CapabilitiesResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         calling: false,
@@ -119,5 +166,12 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         max_sessions_per_room: state.config.server_max_sessions_per_room,
         max_session_participants: state.config.server_max_session_participants,
         session_types: state.session_types.capabilities_types(),
+        model_hosting_enabled,
+        model_hosting_mode,
+        stt_models_base_url,
+        stt_default_model,
+        tts_models_base_url,
+        tts_default_model,
+        tts_models,
     })
 }

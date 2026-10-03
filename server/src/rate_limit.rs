@@ -29,6 +29,7 @@ pub enum RateLimitKey {
     MemberList { user_id: String },
     RecoverStart { ip: String, window: Window },
     LinkPreview { user_id: String },
+    ModelDownload { ip: String },
 }
 
 #[derive(Debug, Clone)]
@@ -305,6 +306,16 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_link_preview_per_min,
+            )
+        }
+        RateLimitKey::ModelDownload { ip } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("model_download:{ip}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_model_download_per_min,
             )
         }
     };

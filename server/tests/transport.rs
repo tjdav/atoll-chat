@@ -104,6 +104,10 @@ async fn setup_app_with_custom_config(
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     server::build_app(state)
@@ -380,6 +384,7 @@ async fn test_11_app_url_scheme_validation_production_http_fails() {
 async fn test_12_app_url_scheme_validation_permits_development() {
     std::env::set_var("APP_ENV", "development");
     std::env::set_var("APP_URL", "http://localhost:8080");
+    std::env::set_var("MODEL_HOSTING_ENABLED", "false");
     let res = Config::from_env();
     assert!(res.is_ok());
 }

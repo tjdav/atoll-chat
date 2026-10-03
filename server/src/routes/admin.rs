@@ -362,3 +362,70 @@ pub async fn post_reload_session_types_handler(
         session_types: state.session_types.admin_types(),
     }))
 }
+
+#[derive(Serialize)]
+pub struct ModelReloadResponse {
+    pub reloaded: bool,
+    pub stt_models: usize,
+    pub tts_models: usize,
+}
+
+pub async fn post_reload_models_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    _: RequirePermission<ConfigEdit>,
+) -> Result<Json<ModelReloadResponse>, ApiError> {
+    if !state.config.model_hosting_enabled {
+        return Err(ApiError::NotImplemented(
+            "model_hosting_disabled".to_string(),
+        ));
+    }
+
+    let (stt_count, tts_count) = match state.models.reload() {
+        Ok(counts) => counts,
+        Err((kind, err)) => {
+            let manifest_path = if kind == "stt" {
+                state.models.stt_models_path().join("manifest.json")
+            } else {
+                state.models.tts_models_path().join("manifest.json")
+            };
+
+            let mut details = serde_json::Map::new();
+            details.insert("kind".to_string(), serde_json::json!(kind));
+            details.insert(
+                "path".to_string(),
+                serde_json::json!(manifest_path.to_string_lossy()),
+            );
+            details.insert("reason".to_string(), serde_json::json!(err.to_string()));
+
+            return Err(ApiError::CustomShape(
+                axum::http::StatusCode::BAD_REQUEST,
+                serde_json::json!({
+                    "error": "invalid_model_manifest",
+                    "message": "Validation failed",
+                    "details": details,
+                }),
+            ));
+        }
+    };
+
+    audit::log(
+        &state.pool,
+        Some(&auth.user_id),
+        audit::action::MODEL_MANIFEST_RELOAD,
+        Some("model_manifest"),
+        None,
+        Some(serde_json::json!({
+            "stt_models": stt_count,
+            "tts_models": tts_count,
+        })),
+    )
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    Ok(Json(ModelReloadResponse {
+        reloaded: true,
+        stt_models: stt_count,
+        tts_models: tts_count,
+    }))
+}

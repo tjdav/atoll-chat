@@ -100,6 +100,10 @@ async fn setup_test_app() -> TestEnv {
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     TestEnv { state, _dir: dir }

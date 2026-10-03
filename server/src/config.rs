@@ -25,6 +25,7 @@ pub struct RateLimitConfig {
     pub rate_recover_start_per_min: u32,
     pub rate_recover_start_per_hour: u32,
     pub rate_link_preview_per_min: u32,
+    pub rate_model_download_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +57,18 @@ pub struct Config {
     pub session_heartbeat_timeout_seconds: u64,
     pub session_occupancy_debounce_ms: u64,
     pub session_types_config_path: String,
+
+    pub model_hosting_enabled: bool,
+    pub model_hosting_mode: String,
+    // used by Task 41b
+    pub model_external_base_url: Option<String>,
+    pub model_storage_path: PathBuf,
+    pub stt_models_path: PathBuf,
+    pub tts_models_path: PathBuf,
+    pub stt_default_model: String,
+    pub tts_default_model: String,
+    pub backup_include_models: bool,
+
     pub altcha_enabled: bool,
     pub altcha_hmac_secret: String,
     pub altcha_algorithm: String,
@@ -382,6 +395,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(10);
 
+        let rate_model_download_per_min = env::var("RATE_MODEL_DOWNLOAD_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -405,6 +423,7 @@ impl Config {
             rate_recover_start_per_min,
             rate_recover_start_per_hour,
             rate_link_preview_per_min,
+            rate_model_download_per_min,
         };
 
         let link_preview_proxy_enabled = env::var("LINK_PREVIEW_PROXY_ENABLED")
@@ -503,6 +522,81 @@ impl Config {
 
         if sessions_enabled && session_types_config_path.is_empty() {
             anyhow::bail!("SESSION_TYPES_CONFIG_PATH must not be empty when SESSIONS_ENABLED=true");
+        }
+
+        let model_hosting_enabled = env::var("MODEL_HOSTING_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let model_hosting_mode = env::var("MODEL_HOSTING_MODE")
+            .unwrap_or_else(|_| "local".to_string())
+            .trim()
+            .to_lowercase();
+
+        let model_external_base_url = env::var("MODEL_EXTERNAL_BASE_URL")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        let model_storage_path = PathBuf::from(
+            env::var("MODEL_STORAGE_PATH").unwrap_or_else(|_| "/data/models".to_string()),
+        );
+
+        let stt_models_path = PathBuf::from(
+            env::var("STT_MODELS_PATH").unwrap_or_else(|_| "/data/models/stt".to_string()),
+        );
+
+        let tts_models_path = PathBuf::from(
+            env::var("TTS_MODELS_PATH").unwrap_or_else(|_| "/data/models/tts".to_string()),
+        );
+
+        let stt_default_model = env::var("STT_DEFAULT_MODEL")
+            .unwrap_or_else(|_| "moonshine-tiny".to_string())
+            .trim()
+            .to_string();
+
+        let tts_default_model = env::var("TTS_DEFAULT_MODEL")
+            .unwrap_or_else(|_| "supertonic-3".to_string())
+            .trim()
+            .to_string();
+
+        let backup_include_models = env::var("BACKUP_INCLUDE_MODELS")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(false);
+
+        if model_hosting_enabled {
+            if model_hosting_mode == "external" || model_hosting_mode == "proxy" {
+                anyhow::bail!(
+                    "MODEL_HOSTING_MODE={} is not yet supported; see Task 41b",
+                    model_hosting_mode
+                );
+            } else if model_hosting_mode != "local" {
+                anyhow::bail!(
+                    "Invalid MODEL_HOSTING_MODE \"{}\"; must be 'local'",
+                    model_hosting_mode
+                );
+            }
+
+            if stt_default_model.is_empty() {
+                anyhow::bail!("STT_DEFAULT_MODEL must not be empty");
+            }
+            if tts_default_model.is_empty() {
+                anyhow::bail!("TTS_DEFAULT_MODEL must not be empty");
+            }
+
+            if !stt_models_path.exists() || !stt_models_path.is_dir() {
+                anyhow::bail!(
+                    "STT_MODELS_PATH directory does not exist or is not a directory: {:?}",
+                    stt_models_path
+                );
+            }
+
+            if !tts_models_path.exists() || !tts_models_path.is_dir() {
+                anyhow::bail!(
+                    "TTS_MODELS_PATH directory does not exist or is not a directory: {:?}",
+                    tts_models_path
+                );
+            }
         }
 
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
@@ -857,6 +951,15 @@ impl Config {
             session_heartbeat_timeout_seconds,
             session_occupancy_debounce_ms,
             session_types_config_path,
+            model_hosting_enabled,
+            model_hosting_mode,
+            model_external_base_url,
+            model_storage_path,
+            stt_models_path,
+            tts_models_path,
+            stt_default_model,
+            tts_default_model,
+            backup_include_models,
             altcha_enabled,
             altcha_hmac_secret,
             altcha_algorithm,
@@ -980,6 +1083,7 @@ impl Config {
                 rate_recover_start_per_min: 5,
                 rate_recover_start_per_hour: 20,
                 rate_link_preview_per_min: 10,
+                rate_model_download_per_min: 30,
             },
             link_preview_proxy_enabled: false,
             link_preview_proxy_timeout_seconds: 5,
@@ -992,6 +1096,15 @@ impl Config {
             session_heartbeat_timeout_seconds: 45,
             session_occupancy_debounce_ms: 1000,
             session_types_config_path: "/data/session-types.toml".to_string(),
+            model_hosting_enabled: false,
+            model_hosting_mode: "local".to_string(),
+            model_external_base_url: None,
+            model_storage_path: PathBuf::from("/tmp/models"),
+            stt_models_path: PathBuf::from("/tmp/models/stt"),
+            tts_models_path: PathBuf::from("/tmp/models/tts"),
+            stt_default_model: "moonshine-tiny".to_string(),
+            tts_default_model: "supertonic-3".to_string(),
+            backup_include_models: false,
             edit_window_seconds: 900,
             max_starred_items_per_user: 10000,
             cleanup_enabled: false,

@@ -254,6 +254,15 @@ async fn main() -> anyhow::Result<()> {
         session_types_state,
     ));
 
+    let models = Arc::new(server::models::ModelStore::new(
+        config.stt_models_path.clone(),
+        config.tts_models_path.clone(),
+    ));
+
+    if config.model_hosting_enabled {
+        models.load_initial();
+    }
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -273,6 +282,7 @@ async fn main() -> anyhow::Result<()> {
         oprf_audit: oprf_audit.clone(),
         link_preview_keys,
         session_types,
+        models,
     };
 
     // 7. Check bootstrap state

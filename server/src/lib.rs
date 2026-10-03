@@ -19,6 +19,7 @@ pub mod limits;
 pub mod link_preview;
 pub mod login;
 pub mod middleware;
+pub mod models;
 pub mod opaque;
 pub mod oprf;
 pub mod permission_check;
@@ -72,6 +73,7 @@ pub use key_packages::{
 };
 pub use limits::ServerHardMax;
 pub use login::LoginStore;
+pub use models::ModelStore;
 pub use opaque::{DefaultCipherSuite, OpaqueServer};
 pub use permission_check::{ConfigEdit, RequirePermission};
 pub use rate_limit::{RateLimitConfig, RateLimitDecision, RateLimitError, RateLimitKey, Window};
@@ -118,6 +120,7 @@ pub struct AppState {
     pub oprf_audit: Arc<oprf::OprfAuditCounter>,
     pub link_preview_keys: Option<Arc<link_preview::LinkPreviewKeys>>,
     pub session_types: Arc<sessions::SessionTypesStore>,
+    pub models: Arc<models::ModelStore>,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -204,6 +207,12 @@ impl axum::extract::FromRef<AppState> for Arc<sessions::SessionTypesStore> {
     }
 }
 
+impl axum::extract::FromRef<AppState> for Arc<models::ModelStore> {
+    fn from_ref(state: &AppState) -> Self {
+        state.models.clone()
+    }
+}
+
 pub fn build_app(state: AppState) -> Router {
     let api_routes = Router::new()
         .route(
@@ -238,6 +247,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/admin/session-types/reload",
             post(routes::admin::post_reload_session_types_handler),
+        )
+        .route(
+            "/admin/models/reload",
+            post(routes::admin::post_reload_models_handler),
         )
         .route("/admin/oprf/rotate", post(routes::admin_oprf::rotate))
         .route("/capabilities", get(routes::capabilities::handler))
@@ -437,6 +450,18 @@ pub fn build_app(state: AppState) -> Router {
     let mut app = Router::new()
         .route("/health", get(routes::health::handler))
         .route("/ready", get(routes::ready::handler))
+        .route(
+            "/models/manifest.json",
+            get(routes::models::get_manifest_handler),
+        )
+        .route(
+            "/models/stt/v1/{model_id}/{version}/{filename}",
+            get(routes::models::serve_stt_file_handler),
+        )
+        .route(
+            "/models/tts/v1/{model_id}/{version}/{filename}",
+            get(routes::models::serve_tts_file_handler),
+        )
         .nest("/api/v1", api_routes);
 
     if let Some(dir) = &state.config.client_static_dir {

@@ -202,6 +202,10 @@ async fn test_04_device_limit_is_enforced() {
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     let app = axum::Router::new()

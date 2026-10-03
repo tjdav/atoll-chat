@@ -170,6 +170,14 @@ where
         session_types_state,
     ));
 
+    let models = Arc::new(server::models::ModelStore::new(
+        config_arc.stt_models_path.clone(),
+        config_arc.tts_models_path.clone(),
+    ));
+    if config_arc.model_hosting_enabled {
+        models.load_initial();
+    }
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -189,6 +197,7 @@ where
         oprf_audit,
         link_preview_keys,
         session_types,
+        models,
     };
 
     let app = server::build_app(state);
@@ -320,6 +329,14 @@ pub async fn setup_test_app_with_config(
         session_types_state,
     ));
 
+    let models = Arc::new(server::models::ModelStore::new(
+        config_arc.stt_models_path.clone(),
+        config_arc.tts_models_path.clone(),
+    ));
+    if config_arc.model_hosting_enabled {
+        models.load_initial();
+    }
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -339,6 +356,7 @@ pub async fn setup_test_app_with_config(
         oprf_audit,
         link_preview_keys,
         session_types,
+        models,
     };
 
     let app = server::build_app(state);

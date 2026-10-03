@@ -186,6 +186,10 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     let app = server::build_app(state);

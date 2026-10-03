@@ -95,6 +95,10 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     server::build_app(state)

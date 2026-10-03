@@ -391,6 +391,10 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     let app = axum::Router::new()
@@ -1591,6 +1595,10 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     let app = axum::Router::new()
@@ -1767,6 +1775,10 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     let app = axum::Router::new()
