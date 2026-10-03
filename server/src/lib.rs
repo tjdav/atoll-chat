@@ -1,9 +1,9 @@
 pub mod altcha;
 pub mod attachments;
 pub mod audit;
-pub mod calls;
 pub mod auth;
 pub mod backup;
+pub mod calls;
 pub mod cleanup;
 pub mod cli;
 pub mod config;
@@ -424,6 +424,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/calls/{call_id}/signal",
             post(routes::calls::signal_handler),
+        )
+        .route(
+            "/rooms/{id}/calls/{call_id}/end",
+            post(routes::calls::end_handler),
         )
         .route("/rooms/{id}/attachments", post(routes::attachments::upload))
         .route(

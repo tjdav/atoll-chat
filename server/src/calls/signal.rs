@@ -1,7 +1,9 @@
+use crate::audit;
 use crate::calls::CallError;
 use crate::rooms;
 use crate::sockudo::Publisher;
 use crate::sync::envelope::{publish_user_event, UserEventEnvelope};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
@@ -41,26 +43,29 @@ pub async fn send_signal(
     // Option A lazy creation in a transaction
     let mut tx = pool.begin().await?;
 
-    let existing_session: Option<(String,)> = sqlx::query_as(
-        "SELECT room_id FROM call_sessions WHERE id = ?",
-    )
-    .bind(call_id)
-    .fetch_optional(&mut *tx)
-    .await?;
+    let existing_session: Option<(String,)> =
+        sqlx::query_as("SELECT room_id FROM call_sessions WHERE id = ?")
+            .bind(call_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let mut newly_created_started_at: Option<DateTime<Utc>> = None;
 
     if let Some((existing_room_id,)) = existing_session {
         if existing_room_id != room_id {
             return Err(CallError::CallIdConflict);
         }
     } else {
-        sqlx::query(
-            "INSERT INTO call_sessions (id, room_id, initiator_id, started_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+        let (started_at,): (DateTime<Utc>,) = sqlx::query_as(
+            "INSERT INTO call_sessions (id, room_id, initiator_id, started_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) RETURNING started_at",
         )
         .bind(call_id)
         .bind(room_id)
         .bind(caller_id)
-        .execute(&mut *tx)
+        .fetch_one(&mut *tx)
         .await?;
+
+        newly_created_started_at = Some(started_at);
     }
 
     // Upsert participant row for caller
@@ -75,6 +80,42 @@ pub async fn send_signal(
     .await?;
 
     tx.commit().await?;
+
+    // Post-commit: if newly created, publish call.started room event and write audit log
+    if let Some(started_at) = newly_created_started_at {
+        let channel = format!("private-room-{}", room_id);
+        let event_payload = serde_json::json!({
+            "call_id": call_id,
+            "room_id": room_id,
+            "initiator_id": caller_id,
+            "started_at": started_at,
+        });
+
+        if let Err(e) = publisher
+            .publish(&channel, "call.started", event_payload)
+            .await
+        {
+            tracing::warn!(
+                error = %e,
+                call_id = %call_id,
+                room_id = %room_id,
+                "Failed to publish call.started event"
+            );
+        }
+
+        let _ = audit::log(
+            pool,
+            Some(caller_id),
+            audit::action::CALL_START,
+            Some("call"),
+            Some(call_id),
+            Some(serde_json::json!({
+                "call_id": call_id,
+                "room_id": room_id,
+            })),
+        )
+        .await;
+    }
 
     // Query all other active participants
     let other_participants: Vec<(String,)> = sqlx::query_as(

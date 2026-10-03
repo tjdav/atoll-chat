@@ -534,13 +534,19 @@ impl Config {
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
             .unwrap_or(false);
 
-        let turn_url = env::var("TURN_URL").map(|s| s.trim().to_string()).unwrap_or_default();
-        let turn_shared_secret = env::var("TURN_SHARED_SECRET").map(|s| s.trim().to_string()).unwrap_or_default();
+        let turn_url = env::var("TURN_URL")
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
+        let turn_shared_secret = env::var("TURN_SHARED_SECRET")
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
 
         let turn_ttl_seconds: u64 = match env::var("TURN_TTL_SECONDS") {
             Ok(v) => match v.trim().parse() {
                 Ok(val) if (60..=86400).contains(&val) => val,
-                Ok(val) => anyhow::bail!("TURN_TTL_SECONDS must be between 60 and 86400, got {}", val),
+                Ok(val) => {
+                    anyhow::bail!("TURN_TTL_SECONDS must be between 60 and 86400, got {}", val)
+                }
                 Err(_) => anyhow::bail!("Invalid TURN_TTL_SECONDS value: {}", v),
             },
             Err(_) => 600,
@@ -549,7 +555,10 @@ impl Config {
         let call_max_participants: u32 = match env::var("CALL_MAX_PARTICIPANTS") {
             Ok(v) => match v.trim().parse() {
                 Ok(val) if (2..=50).contains(&val) => val,
-                Ok(val) => anyhow::bail!("CALL_MAX_PARTICIPANTS must be between 2 and 50, got {}", val),
+                Ok(val) => anyhow::bail!(
+                    "CALL_MAX_PARTICIPANTS must be between 2 and 50, got {}",
+                    val
+                ),
                 Err(_) => anyhow::bail!("Invalid CALL_MAX_PARTICIPANTS value: {}", v),
             },
             Err(_) => 8,

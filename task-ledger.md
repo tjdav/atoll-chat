@@ -107,13 +107,17 @@
   - **Migration:** `0035_call_sessions.sql` (Case B: created `call_sessions` and `call_participants` tables per §7.9).
   - **Delivered:** `0035_call_sessions.sql`, `server/src/calls/mod.rs`, `server/src/calls/signal.rs`, `server/src/routes/calls.rs`, `server/src/routes/capabilities.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/lib.rs`, `server/src/routes/mod.rs`, `server/tests/call_signaling.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `messaging`
+- **Task 36b — Call Lifecycle**: done
+  - **Migration:** None (reused `call_sessions` and `call_participants` from 36a).
+  - **Delivered:** `server/src/calls/mod.rs`, `server/src/calls/signal.rs`, `server/src/calls/lifecycle.rs`, `server/src/routes/calls.rs`, `server/src/audit.rs`, `server/src/lib.rs`, `server/tests/call_lifecycle.rs`, `server/tests/call_signaling.rs`, `server/tests/batch-manifest.toml`.
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 33
-- **Done:** 33
+- **Total Verifications/Tasks Tracked:** 34
+- **Done:** 34
 - **Pending:** 0
 - **Mismatches:** 0
