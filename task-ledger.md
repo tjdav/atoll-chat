@@ -83,13 +83,17 @@
   - **Migration:** `0033_key_transparency.sql` (Case B: created `key_transparency_log` and `key_transparency_snapshots` tables and indexes per §7.10).
   - **Delivered:** `0033_key_transparency.sql`, `server/src/config.rs`, `server/src/routes/register.rs`, `server/src/gdpr.rs`, `server/src/routes/admin.rs`, `server/src/lib.rs`, `server/.env.example`, `server/tests/key_transparency_log.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `identity`
+- **Task 34b — Key Transparency Merkle Proofs and Snapshots**: done
+  - **Migration:** None (Case A: reuses `key_transparency_snapshots` table from Task 34a).
+  - **Delivered:** `server/src/key_transparency/signing.rs`, `server/src/key_transparency/merkle.rs`, `server/src/key_transparency/snapshot.rs`, `server/src/key_transparency/mod.rs`, `server/src/routes/admin.rs`, `server/src/audit.rs`, `server/src/cli.rs`, `server/src/main.rs`, `server/src/lib.rs`, `server/Cargo.toml`, `server/tests/key_transparency_snapshots.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `identity`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 27
-- **Done:** 27
+- **Total Verifications/Tasks Tracked:** 28
+- **Done:** 28
 - **Pending:** 0
 - **Mismatches:** 0

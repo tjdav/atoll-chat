@@ -145,6 +145,31 @@
     - Error responses: HTTP 404 `pending_add_not_found` if missing or from another room; HTTP 409 `already_consumed` if previously consumed; HTTP 404 `room_not_found` if caller is not a room member.
   - **Spec Gap Note (`mls.welcome_ready`):** `mls.welcome_ready` is expected by Client Spec v1.0 but is absent from Server Spec v2.0 §8.8. It is not implemented by Task 33 and is flagged in the proposed §8.8 amendment.
 
+## Task 34b — Key Transparency Merkle Tree, Signing Key, and Event Fanout
+- **ID:** Task 34b
+- **Date:** 2026-10-02
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §7.10, §8.3, §8.8, §9, §14.8, §16.35
+- **Question asked:** What are the leaf serialization format, hash prefixes, signing key derivation formula, snapshot signing input format, and event fanout strategy for Key Transparency snapshots?
+- **Answer found:**
+  - **Leaf Canonical Serialization:**
+    `serialize_leaf(username_token, identity_pubkey) = I2OSP(len(username_token), 2) || username_token || I2OSP(len(identity_pubkey), 2) || identity_pubkey`
+    where lengths are 16-bit big-endian integers (`u16`) representing UTF-8 byte lengths.
+  - **Leaf and Internal Node Hashing:**
+    - Leaf hash: `SHA-256(0x00 || serialize_leaf(...))`
+    - Node hash: `SHA-256(0x01 || left_hash || right_hash)`
+    - Empty tree (`tree_size = 0`): `root_hash = SHA-256("")`
+    - Single leaf (`tree_size = 1`): `root_hash = leaf_hash`
+    - RFC 6962 split rule: largest power of two strictly less than $N$ (`k = 1 << (31 - (N - 1).leading_zeros())`).
+  - **Ed25519 Signing Key Derivation (Option A):**
+    Derived deterministically from the OPRF `ServerSetup` file:
+    `root_secret = SHA-256(oprf_key_bytes)`
+    `kt_signing_seed = HKDF-Expand(root_secret, info="key-transparency-signing-v1", length=32)`
+  - **Signing Input Format:**
+    `signing_input = I2OSP(tree_size, 8) || root_hash` (8-byte big-endian `u64` size prefix followed by 32-byte binary root hash).
+  - **User Event Fanout (`kt.snapshot`):**
+    Published per-user on channel `private-user-{user_id}` with `user_seq` increment. Payload: `{ "tree_size": tree_size, "root_hash": "<base64url>", "created_at": "<iso8601>" }`. (Note: snapshot signature is excluded from the event per §8.8).
+
 ## Task 34a — Key Transparency Log Insertion Point and Anonymization Invariants
 - **ID:** Task 34a
 - **Date:** 2026-10-02

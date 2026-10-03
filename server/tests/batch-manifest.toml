@@ -18,6 +18,7 @@ files = [
     "gdpr_identity",
     "identity_schema",
     "key_transparency_log",
+    "key_transparency_snapshots",
     "login_oprf",
     "lookup_oprf",
     "profile_oprf",

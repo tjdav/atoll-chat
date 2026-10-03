@@ -95,6 +95,26 @@ async fn main() -> anyhow::Result<()> {
             }
             return Ok(());
         }
+        Command::Kt { command } => match command {
+            server::cli::KtCommand::Snapshot => {
+                if let Err(e) = server::cli::run_kt_snapshot().await {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
+                return Ok(());
+            }
+            server::cli::KtCommand::Verify { from } => {
+                match server::cli::run_kt_verify(from).await {
+                    Ok(exit_code) => {
+                        std::process::exit(exit_code);
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        },
     }
 
     // 3. Load Config
