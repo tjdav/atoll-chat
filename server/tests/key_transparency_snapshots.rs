@@ -71,6 +71,16 @@ async fn setup_test_app() -> TestEnv {
     let oprf_evaluator = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config.sessions_enabled,
+        &config.session_types_config_path,
+        config.server_max_session_participants,
+        config.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool,
         opaque_server,
@@ -89,6 +99,7 @@ async fn setup_test_app() -> TestEnv {
         oprf: oprf_evaluator,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     TestEnv { state, _dir: dir }

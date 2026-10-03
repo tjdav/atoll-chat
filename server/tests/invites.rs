@@ -865,6 +865,16 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
     let oprf = std::sync::Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = std::sync::Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        cfg_arc.sessions_enabled,
+        &cfg_arc.session_types_config_path,
+        cfg_arc.server_max_session_participants,
+        cfg_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = server::AppState {
         pool: pool.clone(),
         opaque_server,
@@ -883,9 +893,14 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         oprf,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = axum::Router::new()
+        .route(
+            "/api/v1/oprf/blind",
+            axum::routing::post(routes::oprf::blind),
+        )
         .route(
             "/api/v1/auth/register/challenge",
             axum::routing::get(routes::register::register_challenge),

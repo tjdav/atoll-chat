@@ -362,6 +362,16 @@ async fn test_08_upload_quota_clamps_to_server_max() {
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config_arc.sessions_enabled,
+        &config_arc.session_types_config_path,
+        config_arc.server_max_session_participants,
+        config_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -380,6 +390,7 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         oprf,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = axum::Router::new()
@@ -1551,6 +1562,16 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config_arc.sessions_enabled,
+        &config_arc.session_types_config_path,
+        config_arc.server_max_session_participants,
+        config_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -1569,6 +1590,7 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
         oprf,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = axum::Router::new()
@@ -1716,6 +1738,16 @@ async fn test_29_rate_limit_is_per_user_not_global() {
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config_arc.sessions_enabled,
+        &config_arc.session_types_config_path,
+        config_arc.server_max_session_participants,
+        config_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -1734,6 +1766,7 @@ async fn test_29_rate_limit_is_per_user_not_global() {
         oprf,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = axum::Router::new()

@@ -31,7 +31,7 @@ timeout_seconds = 60
 
 [[batch]]
 name = "auth"
-description = "Sessions, devices, admin config, ALTCHA, legacy login, permissions, invites, audit, ready"
+description = "Sessions, devices, admin config, ALTCHA, legacy login, permissions, invites, audit, ready, session types config"
 files = [
     "admin",
     "altcha",
@@ -42,6 +42,7 @@ files = [
     "login",
     "permissions",
     "ready",
+    "session_types_config",
 ]
 timeout_seconds = 60
 

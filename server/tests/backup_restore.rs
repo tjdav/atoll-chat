@@ -67,6 +67,16 @@ async fn test_end_to_end_backup_and_restore() {
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config_arc.sessions_enabled,
+        &config_arc.session_types_config_path,
+        config_arc.server_max_session_participants,
+        config_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = server::AppState {
         pool: pool.clone(),
         opaque_server: opaque_server.clone(),
@@ -85,6 +95,7 @@ async fn test_end_to_end_backup_and_restore() {
         oprf,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = server::build_app(state);

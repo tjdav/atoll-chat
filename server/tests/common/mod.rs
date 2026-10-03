@@ -160,6 +160,16 @@ where
         None
     };
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config_arc.sessions_enabled,
+        &config_arc.session_types_config_path,
+        config_arc.server_max_session_participants,
+        config_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -178,6 +188,7 @@ where
         oprf,
         oprf_audit,
         link_preview_keys,
+        session_types,
     };
 
     let app = server::build_app(state);
@@ -299,6 +310,16 @@ pub async fn setup_test_app_with_config(
         None
     };
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config_arc.sessions_enabled,
+        &config_arc.session_types_config_path,
+        config_arc.server_max_session_participants,
+        config_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -317,6 +338,7 @@ pub async fn setup_test_app_with_config(
         oprf,
         oprf_audit,
         link_preview_keys,
+        session_types,
     };
 
     let app = server::build_app(state);

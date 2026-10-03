@@ -209,3 +209,29 @@
     - Rate limit: `RATE_LINK_PREVIEW_PER_MIN` (default 10) per user, key `link_preview:{user_id}:min:{boundary}`.
     - Response size cap: `LINK_PREVIEW_PROXY_MAX_BYTES` (default 1,048,576 bytes). Incremental decompression cap for gzip/deflate.
     - Plaintext non-persistence & no-audit: Plaintext URLs are decrypted solely in memory, never logged, and never written to audit logs or database tables.
+
+## Task 40a — Session Types Configuration & Atomic Reload Contract
+- **ID:** Task 40a
+- **Date:** 2026-10-03
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §5.26, §5.26.1, §8.1, §8.3.1, §9, §14.8
+- **Question asked:** What are the effective state semantics of `sessions_enabled`, the TOML schema/validation rules, the atomic reload guarantee, empty allowlist decision, and response shapes for `GET /capabilities` vs `POST /admin/session-types/reload`?
+- **Answer found:**
+  - **Effective State Semantics:**
+    - `effective_enabled = declared_enabled && allowlist_loaded`.
+    - `SESSIONS_ENABLED=true` + missing/malformed file -> startup logs an error, server continues running, `sessions_enabled` in capabilities reports `false`, `session_types` reports `[]`.
+    - `SESSIONS_ENABLED=false` -> file is not read, capabilities reports `sessions_enabled: false` and `session_types: []`.
+  - **TOML Schema & Validation:**
+    - Schema: Array of tables `[[session_type]]` with `type` (starts with letter, lowercase/digits/hyphen/underscore regex `^[a-z][a-z0-9_-]*$`), `extension_id` (non-empty string), `max_participants` (`≥ 1` and `≤ SERVER_MAX_SESSION_PARTICIPANTS`), `max_per_room` (`≥ 1` and `≤ SERVER_MAX_SESSIONS_PER_ROOM`).
+    - Duplicate `type` values are rejected.
+    - Errors report line number and human-readable reason.
+  - **Empty Allowlist Behavior:**
+    - An empty TOML file or file with `session_type = []` is valid. `sessions_enabled` is reported as `true` (if `SESSIONS_ENABLED=true`), but `session_types` is `[]` (no session types can be created).
+  - **Atomic Reload Guarantee:**
+    - Stores allowlist in `SessionTypesStore` with lock-free atomic `swap`.
+    - `POST /api/v1/admin/session-types/reload` re-reads `SESSION_TYPES_CONFIG_PATH`.
+    - On validation error: leaves previous config unmodified, returns HTTP 400 with `line` and `reason` details, writes no audit log.
+    - On success: swaps in-memory state atomically, updates effective state, writes audit log `session_types.reload` with metadata `{"types_count": N}`, returns HTTP 200.
+  - **Capabilities vs Admin Reload Response Shapes:**
+    - Capabilities (`GET /api/v1/capabilities`): 3 fields in `session_types[]` (`extension_id`, `type`, `max_participants`), sorted by `type` ascending.
+    - Admin Reload (`POST /api/v1/admin/session-types/reload`): 4 fields in `session_types[]` (`type`, `extension_id`, `max_participants`, `max_per_room`).
