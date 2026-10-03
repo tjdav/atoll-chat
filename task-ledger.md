@@ -103,13 +103,17 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** `server/src/models/mod.rs`, `server/src/models/manifest.rs`, `server/src/models/store.rs`, `server/src/routes/models.rs`, `server/src/routes/admin.rs`, `server/src/routes/capabilities.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/rate_limit.rs`, `server/src/audit.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/Cargo.toml`, `server/tests/model_hosting.rs`, `server/tests/batch-manifest.toml`.
   - **Batch:** `transport`
+- **Task 36a — Call Signaling**: done
+  - **Migration:** `0035_call_sessions.sql` (Case B: created `call_sessions` and `call_participants` tables per §7.9).
+  - **Delivered:** `0035_call_sessions.sql`, `server/src/calls/mod.rs`, `server/src/calls/signal.rs`, `server/src/routes/calls.rs`, `server/src/routes/capabilities.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/lib.rs`, `server/src/routes/mod.rs`, `server/tests/call_signaling.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 32
-- **Done:** 32
+- **Total Verifications/Tasks Tracked:** 33
+- **Done:** 33
 - **Pending:** 0
 - **Mismatches:** 0

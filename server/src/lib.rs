@@ -1,6 +1,7 @@
 pub mod altcha;
 pub mod attachments;
 pub mod audit;
+pub mod calls;
 pub mod auth;
 pub mod backup;
 pub mod cleanup;
@@ -419,6 +420,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/pending-adds/{add_id}/consume",
             post(routes::rooms::consume_pending_add),
+        )
+        .route(
+            "/rooms/{id}/calls/{call_id}/signal",
+            post(routes::calls::signal_handler),
         )
         .route("/rooms/{id}/attachments", post(routes::attachments::upload))
         .route(
