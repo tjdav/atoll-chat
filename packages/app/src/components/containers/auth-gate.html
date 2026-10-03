@@ -4,6 +4,7 @@
       <auth-view-login active="{{ loginActive }}"></auth-view-login>
       <auth-view-register active="{{ registerActive }}"></auth-view-register>
       <auth-view-recovery active="{{ recoveryActive }}"></auth-view-recovery>
+      <auth-view-confirm active="{{ confirmActive }}"></auth-view-confirm>
     </div>
   </main>
 </template>
@@ -34,16 +35,21 @@ export default {
     view: { type: String, default: 'login' }
   },
   getters: {
-    loginActive: ({ state }) => state.view === 'login',
-    registerActive: ({ state }) => state.view === 'register',
-    recoveryActive: ({ state }) => state.view === 'recovery'
+    loginActive: ({ state }) => (state.view === 'login' ? 'true' : 'false'),
+    registerActive: ({ state }) => (state.view === 'register' ? 'true' : 'false'),
+    recoveryActive: ({ state }) => (state.view === 'recovery' ? 'true' : 'false'),
+    confirmActive: ({ state }) => (state.view === 'confirm' ? 'true' : 'false')
   },
   client({ root, state, signal }) {
     root.addEventListener('auth:view-change', (event) => {
       const next = event.detail?.view
-      if (next === 'login' || next === 'register' || next === 'recovery') {
+      if (next === 'login' || next === 'register' || next === 'recovery' || next === 'confirm') {
         state.view = next
       }
+    }, { signal })
+
+    root.addEventListener('auth:register:success', () => {
+      state.view = 'confirm'
     }, { signal })
   }
 }

@@ -30,6 +30,12 @@
 </template>
 
 <style>
+  :host(:not([active="true"])) {
+    display: none !important;
+  }
+  :host([active="true"]) {
+    display: block;
+  }
   .card {
     background-color: var(--surface-2);
     border: 1px solid var(--border-subtle);
@@ -109,13 +115,26 @@
 <script type="module">
 export default {
   attributes: {
-    active: { type: Boolean, default: false }
+    active: { type: String, default: 'false' },
+    pending: { type: Boolean, default: false },
+    error: { type: String, default: '' }
   },
-  style: {
-    display: (state) => (state.active ? 'block' : 'none')
+  getters: {
+    submitLabel: ({ state }) => (state.pending ? 'Creating account…' : 'Create account'),
+    errorHidden: ({ state }) => !state.error
   },
-  client({ refs, emit, signal }) {
-    refs('form').addEventListener('submit', (event) => {
+  client({ refs, emit, state, signal }) {
+    const messages = {
+      invite_invalid: 'That invite code is not valid or has expired.',
+      altcha_failed: 'Verification failed. Try again.',
+      username_taken: 'That username is already in use.',
+      display_name_invalid: 'Display name is too long.',
+      opaque_failed: 'Registration failed. Try again.',
+      network: 'The server had a problem. Try again.',
+      unknown: 'Something went wrong. Try again.'
+    }
+
+    refs('form').addEventListener('submit', async (event) => {
       event.preventDefault()
       emit('auth:register:submit', {
         inviteCode: refs('inviteCode').value,

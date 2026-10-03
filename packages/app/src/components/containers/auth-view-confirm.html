@@ -1,0 +1,78 @@
+<template id="auth-view-confirm">
+  <section class="card">
+    <header>
+      <h1>Check your recovery codes</h1>
+    </header>
+    <p>Recovery code display and confirmation is implemented in a subsequent task. For now, use the password you just set to log in.</p>
+    <footer>
+      <button ref="backToLogin" type="button" class="link">← Back to log in</button>
+    </footer>
+  </section>
+</template>
+
+<style>
+  :host(:not([active="true"])) {
+    display: none !important;
+  }
+  :host([active="true"]) {
+    display: block;
+  }
+  .card {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  header h1 {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+  }
+  p {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+  }
+  footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  button.link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent-fill);
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+  }
+  button.link:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<script type="module">
+export default {
+  attributes: {
+    active: { type: String, default: 'false' }
+  },
+  client({ refs, emit, signal }) {
+    refs('backToLogin').addEventListener('click', async () => {
+      try {
+        const { clearPendingRegistration } = await import('../../../lib/auth/pending-registration.js')
+        clearPendingRegistration()
+      } catch (err) {
+        // Ignore module load failure on cleanup
+      }
+      emit('auth:view-change', { view: 'login' })
+    }, { signal })
+  }
+}
+</script>

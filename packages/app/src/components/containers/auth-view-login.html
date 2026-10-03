@@ -24,6 +24,12 @@
 </template>
 
 <style>
+  :host(:not([active="true"])) {
+    display: none !important;
+  }
+  :host([active="true"]) {
+    display: block;
+  }
   .card {
     background-color: var(--surface-2);
     border: 1px solid var(--border-subtle);
@@ -123,7 +129,7 @@
 <script type="module">
 export default {
   attributes: {
-    active: { type: Boolean, default: false },
+    active: { type: String, default: 'false' },
     pending: { type: Boolean, default: false },
     error: { type: String, default: '' }
   },
@@ -131,9 +137,6 @@ export default {
     biometricHidden: () => true,
     submitLabel: ({ state }) => (state.pending ? 'Logging in…' : 'Log in'),
     errorHidden: ({ state }) => !state.error
-  },
-  style: {
-    display: (state) => (state.active ? 'block' : 'none')
   },
   client({ refs, emit, state, signal }) {
     refs('form').addEventListener('submit', async (event) => {
