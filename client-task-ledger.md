@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 6 |
-| Done | 19 |
+| Pending | 7 |
+| Done | 20 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -35,6 +35,8 @@ or modify the server's ledger.
 | C-INFRA-4 | Playwright Browser Testing Setup | done | C-INFRA-2, C-INFRA-3 | component-smoke |
 | C-INFRA-5 | Design System Tokens & Base CSS | done | C-INFRA-1 | component-smoke |
 | C-INFRA-5b | Bundle Global CSS with postcss-import | done | C-INFRA-5, C-INFRA-3, C-INFRA-4 | unit-smoke, component-smoke |
+| C-INFRA-6a | Create i18n Plugin and Locale Infrastructure | done | C-V-E | unit-smoke |
+| C-INFRA-6b | Migrate Component Translations to i18n Plugin | pending | C-INFRA-6a | — |
 | C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
 | C-AUTH-3a | OPAQUE Login Flow and Session Storage | done | C-AUTH-1, C-AUTH-2, C-V-D | unit-smoke, component-smoke |
@@ -269,3 +271,11 @@ On completion:
   - Pinpointed C-INFRA-6 symptom root cause: flat destructuring of `t` instead of namespaced `ctx.i18n.t(...)`, which caused unhandled `TypeError: t is not a function` in `client()`.
   - Confirmed C-INFRA-6c scope is determined by C-V-E's findings (components must use namespaced destructuring `ctx.i18n`). Note: C-INFRA-6b is superseded.
   - Recorded CF-005 in `client-coralite-feedback.md` and `client-task-ledger.md`.
+- **C-INFRA-6a Deliverables & Status:**
+  - Status: `done`.
+  - Created `packages/app/src/lib/i18n/index.js` (i18n factory exporting `createI18n`, `SUPPORTED_LOCALES`, and `DEFAULT_LOCALE`).
+  - Created seven locale files (`en.js`, `fr.js`, `de.js`, `ja.js`, `pt.js`, `it.js`, `es.js`) in `packages/app/src/lib/i18n/locales/` covering 35 user-facing keys across 6 components with 100% key parity.
+  - Created `packages/app/src/lib/i18n/locales/index.js` exporting frozen combined `locales` object.
+  - Created `packages/app/src/plugins/i18n-plugin.js` defining the `i18n` Coralite plugin using two-phase resolvers for `server.context` and `client.context`.
+  - Updated `packages/app/coralite.config.js` to register `i18nPlugin({ defaultLocale: 'en' })`.
+  - Added unit test suites (`i18n.test.js`, `i18n-locales.test.js`, `i18n-plugin.test.js`) registered in `unit-smoke` in `test-batches.js`.

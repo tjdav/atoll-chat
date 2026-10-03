@@ -1,0 +1,41 @@
+export default {
+  'auth.login.title': 'Log in',
+  'auth.login.username_label': 'Username',
+  'auth.login.password_label': 'Password',
+  'auth.login.submit_button': 'Log in',
+  'auth.login.submit_pending': 'Logging in…',
+  'auth.login.biometric_button': 'Log in with Face ID',
+  'auth.login.register_link': 'Register with invite code →',
+  'auth.login.recovery_link': 'Lost access? Use recovery →',
+  'auth.login.error_failed': 'Login failed.',
+
+  'auth.register.title': 'Create account',
+  'auth.register.invite_code_label': 'Invite code',
+  'auth.register.username_label': 'Username',
+  'auth.register.display_name_label': 'Display name',
+  'auth.register.password_label': 'Password',
+  'auth.register.submit_button': 'Create account',
+  'auth.register.submit_pending': 'Creating account…',
+  'auth.register.back_link': '← Back to log in',
+  'auth.register.error_invite_invalid': 'That invite code is not valid or has expired.',
+  'auth.register.error_altcha_failed': 'Verification failed. Try again.',
+  'auth.register.error_username_taken': 'That username is already in use.',
+  'auth.register.error_display_name_invalid': 'Display name is too long.',
+  'auth.register.error_opaque_failed': 'Registration failed. Try again.',
+  'auth.register.error_network': 'The server had a problem. Try again.',
+  'auth.register.error_unknown': 'Something went wrong. Try again.',
+
+  'auth.recovery.title': 'Recover access',
+  'auth.recovery.username_label': 'Username',
+  'auth.recovery.recovery_code_label': 'Recovery code',
+  'auth.recovery.new_password_label': 'New password',
+  'auth.recovery.submit_button': 'Recover access',
+  'auth.recovery.back_link': '← Back to log in',
+
+  'auth.confirm.title': 'Check your recovery codes',
+  'auth.confirm.description': 'Recovery code display and confirmation is implemented in a subsequent task. For now, use the password you just set to log in.',
+  'auth.confirm.back_link': '← Back to log in',
+
+  'boot.loading': 'Loading…',
+  'boot.error_failed': 'Boot failed.'
+}

@@ -1,0 +1,41 @@
+export default {
+  'auth.login.title': 'Accedi',
+  'auth.login.username_label': 'Nome utente',
+  'auth.login.password_label': "Parola d'ordine",
+  'auth.login.submit_button': 'Accedi',
+  'auth.login.submit_pending': 'Accesso in corso…',
+  'auth.login.biometric_button': 'Accedi con Face ID',
+  'auth.login.register_link': 'Registrati con codice di invito →',
+  'auth.login.recovery_link': 'Accesso perso? Usa il recupero →',
+  'auth.login.error_failed': 'Accesso non riuscito.',
+
+  'auth.register.title': 'Crea account',
+  'auth.register.invite_code_label': 'Codice di invito',
+  'auth.register.username_label': 'Nome utente',
+  'auth.register.display_name_label': 'Nome visualizzato',
+  'auth.register.password_label': "Parola d'ordine",
+  'auth.register.submit_button': 'Crea account',
+  'auth.register.submit_pending': 'Creazione account in corso…',
+  'auth.register.back_link': '← Torna all’accesso',
+  'auth.register.error_invite_invalid': 'Quel codice di invito non è valido o è scaduto.',
+  'auth.register.error_altcha_failed': 'Verifica non riuscita. Riprova.',
+  'auth.register.error_username_taken': 'Quel nome utente è già in uso.',
+  'auth.register.error_display_name_invalid': 'Il nome visualizzato è troppo lungo.',
+  'auth.register.error_opaque_failed': 'Registrazione non riuscita. Riprova.',
+  'auth.register.error_network': 'Il server ha riscontrato un problema. Riprova.',
+  'auth.register.error_unknown': 'Qualcosa è andato storto. Riprova.',
+
+  'auth.recovery.title': 'Recupera accesso',
+  'auth.recovery.username_label': 'Nome utente',
+  'auth.recovery.recovery_code_label': 'Codice di recupero',
+  'auth.recovery.new_password_label': 'Nuova password',
+  'auth.recovery.submit_button': 'Recupera accesso',
+  'auth.recovery.back_link': '← Torna all’accesso',
+
+  'auth.confirm.title': 'Controlla i tuoi codici di recupero',
+  'auth.confirm.description': 'La visualizzazione e la conferma dei codici di recupero saranno implementate in una risposta successiva. Per ora, usa la password appena impostata per accedere.',
+  'auth.confirm.back_link': '← Torna all’accesso',
+
+  'boot.loading': 'Caricamento…',
+  'boot.error_failed': 'Avvio non riuscito.'
+}
