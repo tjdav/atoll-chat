@@ -38,9 +38,18 @@ export default [
     files: [
       'tests/component/smoke.spec.js',
       'tests/component/tokens.spec.js',
+      'tests/component/css-applied.spec.js',
+    ],
+  },
+  {
+    name: 'component-auth',
+    type: 'component',
+    runner: 'playwright',
+    description: 'Component tests for authentication gate, login, and registration forms.',
+    files: [
       'tests/component/auth-gate.spec.js',
       'tests/component/auth-login-flow.spec.js',
-      'tests/component/css-applied.spec.js',
+      'tests/component/register-form.spec.js',
     ],
   },
 ]
