@@ -1,6 +1,7 @@
+use crate::starred::StarredItemRow;
 use crate::sync::{
     device_names::{self, DeviceStateRow},
-    preferences, read_state, PreferenceRow, ReadStateRow, SyncError,
+    preferences, read_state, starred, PreferenceRow, ReadStateRow, SyncError,
 };
 use serde::Serialize;
 use sqlx::SqlitePool;
@@ -9,9 +10,6 @@ pub struct SyncQuery {
     pub user_id: String,
     pub since_seq: i64,
 }
-
-#[derive(Debug, Clone, Serialize)]
-pub struct StarredItemRow {}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SyncResponse {
@@ -64,7 +62,19 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         .max()
         .unwrap_or(query.since_seq);
 
+    let starred_items = if query.since_seq == 0 {
+        starred::list_starred_items_all(pool, &query.user_id).await?
+    } else {
+        starred::list_starred_items_since(pool, &query.user_id, query.since_seq).await?
+    };
+
     let max_device_seq = device_state
+        .iter()
+        .map(|r| r.user_seq)
+        .max()
+        .unwrap_or(query.since_seq);
+
+    let max_starred_seq = starred_items
         .iter()
         .map(|r| r.user_seq)
         .max()
@@ -74,7 +84,7 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         query.since_seq,
         std::cmp::max(
             max_read_state_seq,
-            std::cmp::max(max_pref_seq, max_device_seq),
+            std::cmp::max(max_pref_seq, std::cmp::max(max_device_seq, max_starred_seq)),
         ),
     );
 
@@ -82,7 +92,7 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         read_state,
         user_preferences,
         device_state,
-        starred_items: Vec::new(),
+        starred_items,
         max_seq,
         full_resync_required: false,
     })

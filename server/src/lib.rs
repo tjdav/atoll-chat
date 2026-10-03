@@ -37,6 +37,7 @@ pub mod routes;
 pub mod session;
 pub mod sessions;
 pub mod sockudo;
+pub mod starred;
 pub mod storage;
 pub mod sync;
 pub mod welcomes;
@@ -283,6 +284,14 @@ pub fn build_app(state: AppState) -> Router {
             get(routes::preferences::get)
                 .patch(routes::preferences::write)
                 .delete(routes::preferences::delete),
+        )
+        .route(
+            "/users/me/starred-items",
+            get(routes::starred::get_starred_items).post(routes::starred::post_star),
+        )
+        .route(
+            "/users/me/starred-items/{item_id}",
+            delete(routes::starred::delete_star),
         )
         .route(
             "/users/me/devices/{id}",

@@ -163,6 +163,7 @@ files = [
     "preferences_validation",
     "read_state_sync",
     "read_state_write",
+    "starred_items",
     "sync_channel_auth",
     "sync_endpoint",
     "sync_seq",
