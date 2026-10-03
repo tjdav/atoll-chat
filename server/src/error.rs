@@ -30,6 +30,7 @@ pub enum ApiError {
     Gone(String),
     NotImplemented(String),
     InternalWithDetails(StatusCode, String, serde_json::Value),
+    CustomShape(StatusCode, serde_json::Value),
     TooManyRequests {
         message: String,
         reset_at: DateTime<Utc>,
@@ -80,6 +81,9 @@ impl IntoResponse for ApiError {
                             "details": details,
                         }));
                         return (status, body).into_response();
+                    }
+                    ApiError::CustomShape(status, body) => {
+                        return (status, Json(body)).into_response();
                     }
                     ApiError::InternalCustom(status, msg) => (status, msg),
                     ApiError::Internal(err) => {

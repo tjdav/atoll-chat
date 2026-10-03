@@ -49,6 +49,13 @@ pub struct Config {
     pub link_preview_proxy_timeout_seconds: u64,
     pub link_preview_proxy_max_bytes: u64,
     pub link_preview_proxy_key_path: String,
+    pub sessions_enabled: bool,
+    pub server_max_sessions_per_room: u32,
+    pub server_max_session_participants: u32,
+    pub session_heartbeat_interval_seconds: u64,
+    pub session_heartbeat_timeout_seconds: u64,
+    pub session_occupancy_debounce_ms: u64,
+    pub session_types_config_path: String,
     pub altcha_enabled: bool,
     pub altcha_hmac_secret: String,
     pub altcha_algorithm: String,
@@ -404,6 +411,87 @@ impl Config {
         let link_preview_proxy_key_path = env::var("LINK_PREVIEW_PROXY_KEY_PATH")
             .unwrap_or_else(|_| "./data/link-preview.key".to_string());
 
+        let sessions_enabled = env::var("SESSIONS_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let server_max_sessions_per_room: u32 = env::var("SERVER_MAX_SESSIONS_PER_ROOM")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(25);
+
+        if !(1..=25).contains(&server_max_sessions_per_room) {
+            anyhow::bail!(
+                "SERVER_MAX_SESSIONS_PER_ROOM must be between 1 and 25 (got {})",
+                server_max_sessions_per_room
+            );
+        }
+
+        let server_max_session_participants: u32 = env::var("SERVER_MAX_SESSION_PARTICIPANTS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(50);
+
+        if !(2..=100).contains(&server_max_session_participants) {
+            anyhow::bail!(
+                "SERVER_MAX_SESSION_PARTICIPANTS must be between 2 and 100 (got {})",
+                server_max_session_participants
+            );
+        }
+
+        let session_heartbeat_interval_seconds: u64 =
+            env::var("SESSION_HEARTBEAT_INTERVAL_SECONDS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(15);
+
+        if !(5..=60).contains(&session_heartbeat_interval_seconds) {
+            anyhow::bail!(
+                "SESSION_HEARTBEAT_INTERVAL_SECONDS must be between 5 and 60 (got {})",
+                session_heartbeat_interval_seconds
+            );
+        }
+
+        let session_heartbeat_timeout_seconds: u64 = env::var("SESSION_HEARTBEAT_TIMEOUT_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(45);
+
+        if !(15..=180).contains(&session_heartbeat_timeout_seconds) {
+            anyhow::bail!(
+                "SESSION_HEARTBEAT_TIMEOUT_SECONDS must be between 15 and 180 (got {})",
+                session_heartbeat_timeout_seconds
+            );
+        }
+
+        if session_heartbeat_timeout_seconds < 2 * session_heartbeat_interval_seconds {
+            anyhow::bail!(
+                "SESSION_HEARTBEAT_TIMEOUT_SECONDS ({}) must be >= 2 * SESSION_HEARTBEAT_INTERVAL_SECONDS ({})",
+                session_heartbeat_timeout_seconds,
+                session_heartbeat_interval_seconds
+            );
+        }
+
+        let session_occupancy_debounce_ms: u64 = env::var("SESSION_OCCUPANCY_DEBOUNCE_MS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1000);
+
+        if session_occupancy_debounce_ms > 5000 {
+            anyhow::bail!(
+                "SESSION_OCCUPANCY_DEBOUNCE_MS must be between 0 and 5000 (got {})",
+                session_occupancy_debounce_ms
+            );
+        }
+
+        let session_types_config_path = env::var("SESSION_TYPES_CONFIG_PATH")
+            .map(|s| s.trim().to_string())
+            .unwrap_or_else(|_| "/data/session-types.toml".to_string());
+
+        if sessions_enabled && session_types_config_path.is_empty() {
+            anyhow::bail!("SESSION_TYPES_CONFIG_PATH must not be empty when SESSIONS_ENABLED=true");
+        }
+
         let cleanup_enabled = env::var("CLEANUP_ENABLED")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
             .unwrap_or(true);
@@ -749,6 +837,13 @@ impl Config {
             link_preview_proxy_timeout_seconds,
             link_preview_proxy_max_bytes,
             link_preview_proxy_key_path,
+            sessions_enabled,
+            server_max_sessions_per_room,
+            server_max_session_participants,
+            session_heartbeat_interval_seconds,
+            session_heartbeat_timeout_seconds,
+            session_occupancy_debounce_ms,
+            session_types_config_path,
             altcha_enabled,
             altcha_hmac_secret,
             altcha_algorithm,
@@ -876,6 +971,13 @@ impl Config {
             link_preview_proxy_timeout_seconds: 5,
             link_preview_proxy_max_bytes: 1_048_576,
             link_preview_proxy_key_path: "./data/link-preview.key".to_string(),
+            sessions_enabled: true,
+            server_max_sessions_per_room: 25,
+            server_max_session_participants: 50,
+            session_heartbeat_interval_seconds: 15,
+            session_heartbeat_timeout_seconds: 45,
+            session_occupancy_debounce_ms: 1000,
+            session_types_config_path: "/data/session-types.toml".to_string(),
             edit_window_seconds: 900,
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,

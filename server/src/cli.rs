@@ -67,6 +67,22 @@ pub enum Command {
         #[command(subcommand)]
         command: KtCommand,
     },
+
+    /// Session Types operator subcommands
+    SessionTypes {
+        #[command(subcommand)]
+        command: SessionTypesCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SessionTypesCommand {
+    /// Validate session types TOML configuration file
+    Validate {
+        /// Optional path to SESSION_TYPES.toml file
+        #[arg(long)]
+        path: Option<PathBuf>,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -414,4 +430,58 @@ pub async fn run_kt_verify(from: Option<i64>) -> Result<i32, Box<dyn std::error:
 
     println!("{}", serde_json::to_string_pretty(&output)?);
     Ok(0)
+}
+
+pub fn run_session_types_validate(
+    path: Option<PathBuf>,
+) -> Result<i32, Box<dyn std::error::Error>> {
+    let config = Config::from_env()?;
+    let file_path = path.unwrap_or_else(|| PathBuf::from(&config.session_types_config_path));
+
+    match crate::sessions::load_session_types_from_file(
+        &file_path,
+        config.server_max_session_participants,
+        config.server_max_sessions_per_room,
+    ) {
+        Ok(parsed_config) => {
+            let sorted = parsed_config.sorted_types();
+            println!("valid");
+            println!("{} types:", sorted.len());
+            for st in sorted {
+                println!(
+                    "  {} (extension_id={}, max_participants={}, max_per_room={})",
+                    st.r#type, st.extension_id, st.max_participants, st.max_per_room
+                );
+            }
+            Ok(0)
+        }
+        Err(crate::sessions::SessionTypesError::ConfigMissing { path }) => {
+            let err_json = serde_json::json!({
+                "error": "session_types_config_missing",
+                "message": "Configuration file missing",
+                "details": { "path": path }
+            });
+            eprintln!("{}", serde_json::to_string_pretty(&err_json)?);
+            Ok(1)
+        }
+        Err(crate::sessions::SessionTypesError::InvalidConfig { line, reason }) => {
+            let mut details = serde_json::Map::new();
+            if let Some(l) = line {
+                details.insert("line".to_string(), serde_json::json!(l));
+            }
+            details.insert("reason".to_string(), serde_json::json!(reason));
+
+            let err_json = serde_json::json!({
+                "error": "invalid_session_types_config",
+                "message": "Validation failed",
+                "details": details,
+            });
+            eprintln!("{}", serde_json::to_string_pretty(&err_json)?);
+            Ok(1)
+        }
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            Ok(1)
+        }
+    }
 }

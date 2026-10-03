@@ -2,6 +2,7 @@ use axum::{extract::State, response::IntoResponse, Json};
 use serde::Serialize;
 use std::env;
 
+use crate::sessions::SessionTypeCapView;
 use crate::AppState;
 
 #[derive(Serialize)]
@@ -28,6 +29,10 @@ pub struct CapabilitiesResponse {
     pub threading_enabled: bool,
     pub link_preview_proxy_enabled: bool,
     pub link_preview_proxy_key: Option<String>,
+    pub sessions_enabled: bool,
+    pub max_sessions_per_room: u32,
+    pub max_session_participants: u32,
+    pub session_types: Vec<SessionTypeCapView>,
 }
 
 pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -110,5 +115,9 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         threading_enabled: true,
         link_preview_proxy_enabled: state.config.link_preview_proxy_enabled,
         link_preview_proxy_key,
+        sessions_enabled: state.session_types.is_effective_enabled(),
+        max_sessions_per_room: state.config.server_max_sessions_per_room,
+        max_session_participants: state.config.server_max_session_participants,
+        session_types: state.session_types.capabilities_types(),
     })
 }

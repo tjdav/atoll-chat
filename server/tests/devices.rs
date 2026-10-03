@@ -4,7 +4,7 @@ use axum::{
     body::Body,
     http::{header, Request, StatusCode},
 };
-use common::{login_user, login_user_with_device_name, register_user, setup_test_app};
+use common::{login_user, register_user, setup_test_app};
 use serde_json::Value;
 use server::altcha::AltchaConfig;
 use server::config::Config;
@@ -173,6 +173,16 @@ async fn test_04_device_limit_is_enforced() {
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config_arc.sessions_enabled,
+        &config_arc.session_types_config_path,
+        config_arc.server_max_session_participants,
+        config_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -191,6 +201,7 @@ async fn test_04_device_limit_is_enforced() {
         oprf,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = axum::Router::new()
@@ -525,70 +536,80 @@ async fn test_11_revocation_cascade_deletes_sessions() {
 }
 
 #[tokio::test]
-async fn test_12_device_name_is_stored_on_new_devices() {
+async fn test_12_encrypted_device_name_is_stored_on_new_devices() {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+
     let (app, pool) = setup_test_app().await;
 
-    register_user(&app, "alice", "password123", None).await;
+    let user_id = register_user(&app, "alice", "password123", None).await;
+    let enc_name = URL_SAFE_NO_PAD.encode(vec![42u8; 32]);
 
-    let (status, body) = login_user_with_device_name(
+    let (status, body) = common::login_user_with_device_name(
         &app,
         "alice",
         "password123",
         CLIENT_A,
         None,
-        Some("Alice's Laptop"),
+        Some(&enc_name),
     )
     .await;
 
     assert_eq!(status, StatusCode::OK);
     let dev_id = body["device_id"].as_str().unwrap();
 
-    let stored_name: Option<String> = sqlx::query_scalar("SELECT name FROM devices WHERE id = ?")
-        .bind(dev_id)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+    let stored_name: Option<String> = sqlx::query_scalar(
+        "SELECT encrypted_device_name FROM device_names WHERE user_id = ? AND device_id = ?",
+    )
+    .bind(&user_id)
+    .bind(dev_id)
+    .fetch_optional(&pool)
+    .await
+    .unwrap();
 
-    assert_eq!(stored_name.as_deref(), Some("Alice's Laptop"));
+    assert_eq!(stored_name.as_deref(), Some(enc_name.as_str()));
 }
 
 #[tokio::test]
-async fn test_13_missing_device_name_stores_null() {
+async fn test_13_missing_encrypted_device_name_stores_null() {
     let (app, pool) = setup_test_app().await;
 
-    register_user(&app, "alice", "password123", None).await;
+    let user_id = register_user(&app, "alice", "password123", None).await;
 
     let (status, body) = login_user(&app, "alice", "password123", CLIENT_A, None).await;
 
     assert_eq!(status, StatusCode::OK);
     let dev_id = body["device_id"].as_str().unwrap();
 
-    let stored_name: Option<String> = sqlx::query_scalar("SELECT name FROM devices WHERE id = ?")
-        .bind(dev_id)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
+    let stored_name: Option<String> = sqlx::query_scalar(
+        "SELECT encrypted_device_name FROM device_names WHERE user_id = ? AND device_id = ?",
+    )
+    .bind(&user_id)
+    .bind(dev_id)
+    .fetch_optional(&pool)
+    .await
+    .unwrap();
 
     assert_eq!(stored_name, None);
 }
 
 #[tokio::test]
-async fn test_14_invalid_device_name_is_rejected() {
+async fn test_14_invalid_encrypted_device_name_is_rejected() {
     let (app, _pool) = setup_test_app().await;
 
     register_user(&app, "alice", "password123", None).await;
 
-    let long_name = "a".repeat(65);
-    let (status, body) = login_user_with_device_name(
+    let short_name = "invalid_short";
+    let (status, body) = common::login_user_with_device_name(
         &app,
         "alice",
         "password123",
         CLIENT_A,
         None,
-        Some(&long_name),
+        Some(short_name),
     )
     .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert_eq!(body["error"], "invalid device_name");
+    assert_eq!(body["error"], "invalid_encrypted_device_name");
 }

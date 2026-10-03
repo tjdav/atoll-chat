@@ -107,7 +107,8 @@ async fn test_02_limits_update_writes_audit_entry() {
         "keypackages_per_device": 10,
         "message_size_bytes": 8192,
         "attachment_retention_days": 30,
-        "call_max_participants": 4
+        "call_max_participants": 4,
+        "reactions_per_message": 50
     });
 
     let req_patch = Request::builder()

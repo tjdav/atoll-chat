@@ -286,3 +286,79 @@ pub async fn post_key_transparency_snapshot_handler(
 
     Ok(Json(snapshot))
 }
+
+#[derive(Serialize)]
+pub struct SessionTypesReloadResponse {
+    pub reloaded: bool,
+    pub session_types: Vec<crate::sessions::SessionTypeAdminView>,
+}
+
+pub async fn post_reload_session_types_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    _: RequirePermission<ConfigEdit>,
+) -> Result<Json<SessionTypesReloadResponse>, ApiError> {
+    let path = std::path::Path::new(&state.config.session_types_config_path);
+
+    let new_config = match crate::sessions::load_session_types_from_file(
+        path,
+        state.config.server_max_session_participants,
+        state.config.server_max_sessions_per_room,
+    ) {
+        Ok(c) => c,
+        Err(crate::sessions::SessionTypesError::ConfigMissing { path }) => {
+            return Err(ApiError::CustomShape(
+                axum::http::StatusCode::BAD_REQUEST,
+                serde_json::json!({
+                    "error": "session_types_config_missing",
+                    "message": "Configuration file missing",
+                    "details": { "path": path }
+                }),
+            ));
+        }
+        Err(crate::sessions::SessionTypesError::InvalidConfig { line, reason }) => {
+            let mut details = serde_json::Map::new();
+            if let Some(l) = line {
+                details.insert("line".to_string(), serde_json::json!(l));
+            }
+            details.insert("reason".to_string(), serde_json::json!(reason));
+
+            return Err(ApiError::CustomShape(
+                axum::http::StatusCode::BAD_REQUEST,
+                serde_json::json!({
+                    "error": "invalid_session_types_config",
+                    "message": "Validation failed",
+                    "details": details,
+                }),
+            ));
+        }
+        Err(e) => {
+            return Err(ApiError::Internal(e.into()));
+        }
+    };
+
+    let new_state = crate::sessions::SessionTypesState {
+        declared_enabled: state.config.sessions_enabled,
+        allowlist_loaded: true,
+        config: new_config,
+    };
+
+    state.session_types.swap(new_state);
+
+    let types_count = state.session_types.admin_types().len();
+    audit::log(
+        &state.pool,
+        Some(&auth.user_id),
+        audit::action::SESSION_TYPES_RELOAD,
+        Some("session_types"),
+        None,
+        Some(serde_json::json!({ "types_count": types_count })),
+    )
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    Ok(Json(SessionTypesReloadResponse {
+        reloaded: true,
+        session_types: state.session_types.admin_types(),
+    }))
+}

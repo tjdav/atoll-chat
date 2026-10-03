@@ -27,6 +27,16 @@ async fn setup_test_app(config_override: impl FnOnce(&mut Config)) -> (axum::Rou
     let config_arc = Arc::new(config);
     let storage = server::build_storage(&config_arc).expect("Failed to build storage");
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config_arc.sessions_enabled,
+        &config_arc.session_types_config_path,
+        config_arc.server_max_session_participants,
+        config_arc.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool,
         opaque_server,
@@ -66,6 +76,7 @@ async fn setup_test_app(config_override: impl FnOnce(&mut Config)) -> (axum::Rou
         oprf: oprf_evaluator,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = server::build_app(state.clone());

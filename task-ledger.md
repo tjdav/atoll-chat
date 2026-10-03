@@ -91,13 +91,17 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** `server/src/link_preview/mod.rs`, `server/src/link_preview/content_key.rs`, `server/src/link_preview/ssrf.rs`, `server/src/routes/link_preview.rs`, `server/src/routes/capabilities.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/rate_limit.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/link_preview.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `link_preview`
+- **Task 40a — Session Types Configuration**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/sessions/mod.rs`, `server/src/sessions/types_config.rs`, `server/src/routes/admin.rs`, `server/src/routes/capabilities.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/audit.rs`, `server/src/cli.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/Cargo.toml`, `server/tests/session_types_config.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `auth`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 29
-- **Done:** 29
+- **Total Verifications/Tasks Tracked:** 30
+- **Done:** 30
 - **Pending:** 0
 - **Mismatches:** 0

@@ -35,6 +35,7 @@ pub mod room_messages;
 pub mod rooms;
 pub mod routes;
 pub mod session;
+pub mod sessions;
 pub mod sockudo;
 pub mod storage;
 pub mod sync;
@@ -115,6 +116,7 @@ pub struct AppState {
     pub oprf: Arc<oprf::OprfEvaluator>,
     pub oprf_audit: Arc<oprf::OprfAuditCounter>,
     pub link_preview_keys: Option<Arc<link_preview::LinkPreviewKeys>>,
+    pub session_types: Arc<sessions::SessionTypesStore>,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -195,6 +197,12 @@ impl axum::extract::FromRef<AppState> for Arc<oprf::OprfAuditCounter> {
     }
 }
 
+impl axum::extract::FromRef<AppState> for Arc<sessions::SessionTypesStore> {
+    fn from_ref(state: &AppState) -> Self {
+        state.session_types.clone()
+    }
+}
+
 pub fn build_app(state: AppState) -> Router {
     let api_routes = Router::new()
         .route(
@@ -225,6 +233,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/admin/altcha/rotate",
             post(routes::admin::post_rotate_altcha_handler),
+        )
+        .route(
+            "/admin/session-types/reload",
+            post(routes::admin::post_reload_session_types_handler),
         )
         .route("/admin/oprf/rotate", post(routes::admin_oprf::rotate))
         .route("/capabilities", get(routes::capabilities::handler))

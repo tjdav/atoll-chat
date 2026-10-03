@@ -73,6 +73,16 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config.sessions_enabled,
+        &config.session_types_config_path,
+        config.server_max_session_participants,
+        config.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = server::AppState {
         pool: pool.clone(),
         opaque_server,
@@ -91,6 +101,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         oprf,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = server::build_app(state);
@@ -259,6 +270,16 @@ async fn test_publisher_failure_does_not_affect_http_response() {
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config.sessions_enabled,
+        &config.session_types_config_path,
+        config.server_max_session_participants,
+        config.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = server::AppState {
         pool: pool.clone(),
         opaque_server,
@@ -277,6 +298,7 @@ async fn test_publisher_failure_does_not_affect_http_response() {
         oprf,
         oprf_audit,
         link_preview_keys: None,
+        session_types,
     };
 
     let app = server::build_app(state);

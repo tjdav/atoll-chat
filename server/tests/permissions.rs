@@ -32,7 +32,7 @@ async fn union_across_roles() {
     let pool = setup_test_db().await;
 
     // Insert a test user
-    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('user1', 'User 1', 'hash1', X'00', 'pubkey1')")
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('user1', 'token1', X'00', 'pubkey1')")
         .execute(&pool)
         .await
         .unwrap();
@@ -66,7 +66,7 @@ async fn no_roles_means_no_permissions() {
     let pool = setup_test_db().await;
 
     // Insert a test user
-    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('user_no_roles', 'User No Roles', 'hash_norole', X'00', 'pubkey_norole')")
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('user_no_roles', 'token_norole', X'00', 'pubkey_norole')")
         .execute(&pool)
         .await
         .unwrap();
@@ -125,7 +125,7 @@ async fn bootstrap_detection() {
     assert!(!roles::has_any_users(&pool).await.unwrap());
 
     // Insert user
-    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('firstuser', 'First User', 'hashfirst', X'00', 'pubkeyfirst')")
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('firstuser', 'tokenfirst', X'00', 'pubkeyfirst')")
         .execute(&pool)
         .await
         .unwrap();

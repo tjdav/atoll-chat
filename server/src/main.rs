@@ -115,6 +115,19 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         },
+        Command::SessionTypes { command } => match command {
+            server::cli::SessionTypesCommand::Validate { path } => {
+                match server::cli::run_session_types_validate(path) {
+                    Ok(exit_code) => {
+                        std::process::exit(exit_code);
+                    }
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        },
     }
 
     // 3. Load Config
@@ -231,6 +244,16 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
+    let session_types_state = server::sessions::init_session_types_state(
+        config.sessions_enabled,
+        &config.session_types_config_path,
+        config.server_max_session_participants,
+        config.server_max_sessions_per_room,
+    );
+    let session_types = Arc::new(server::sessions::SessionTypesStore::new(
+        session_types_state,
+    ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -249,6 +272,7 @@ async fn main() -> anyhow::Result<()> {
         oprf: oprf_evaluator,
         oprf_audit: oprf_audit.clone(),
         link_preview_keys,
+        session_types,
     };
 
     // 7. Check bootstrap state
