@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 6 |
-| Done | 18 |
+| Done | 19 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -25,6 +25,7 @@ or modify the server's ledger.
 | C-V-B | Verify Client Testing Stack and Coralite Test Tooling | done | C-INFRA-2 | — |
 | C-V-C | Verify Client-Side OPRF Library Availability | done | C-AUTH-1 | — |
 | C-V-D | Verify Client OPAQUE Library Availability and Wire Compatibility | done | C-AUTH-2, C-V-C | — |
+| C-V-E | Verify Coralite rc.5 Plugin Context Delivery and c-token Reactivity | done | C-INFRA-6 | — |
 | C-INFRA-0 | Establish client tracking files | done | C-V-A | — |
 | C-CORALITE-FEEDBACK | Establish Coralite Upstream Feedback Policy | done | C-INFRA-0 | — |
 | C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
@@ -140,6 +141,7 @@ On completion:
 | CF-002 | C-INFRA-2 | Bug (missing `public` directory causes `ENOENT` `copyDirectory` crash) | T1 | filed-upstream; client-mitigated-by-input |
 | CF-003 | C-AUTH-1 | Missing feature (`coralite-scripts test` dev server omits client JS script bundle links) | T2 | filed-upstream; client-mitigated-by-architecture |
 | CF-004 | C-INFRA-5b | Enhancement (dev/prod CSS `@import` resolution divergence in default build pipeline) | T4 | filed-upstream; client-mitigated-by-configuration |
+| CF-005 | C-V-E | Documentation bug (Getters context definition in LLM ref §6.4 vs runtime) | T4 | filed-upstream; client-mitigated-by-architecture |
 
 ## Notes
 
@@ -257,3 +259,13 @@ On completion:
   - Updated `packages/app/TESTING.md` with CSS Bundle Verification section.
   - Registered test files in `packages/app/test-batches.js` under `unit-smoke` and `component-smoke`.
   - Recorded CF-004 in `client-coralite-feedback.md` and `client-task-ledger.md`.
+- **C-V-E Deliverables & Status:**
+  - Status: `done`.
+  - Produced verification report at `client-verification/cv-e/report.md`.
+  - Determined ground truth for Coralite rc.5 plugin context delivery: `client.context` uses two-phase curried resolver `(pluginContext) => (instanceContext) => contextObject`; delivers plugin context strictly to `client()` under `ctx.<pluginName>` (e.g. `ctx.i18n.t(...)`).
+  - Proved `getters` receive strictly `{ state, root, refs, slots, signal }` without plugin context.
+  - Proved `server()` returns merge into server state and populate `<c-token>` placeholders without `attributes` declarations.
+  - Proved `state.x = val` in `client()` triggers reactive updates without `attributes` declarations.
+  - Pinpointed C-INFRA-6 symptom root cause: flat destructuring of `t` instead of namespaced `ctx.i18n.t(...)`, which caused unhandled `TypeError: t is not a function` in `client()`.
+  - Confirmed C-INFRA-6c scope is determined by C-V-E's findings (components must use namespaced destructuring `ctx.i18n`). Note: C-INFRA-6b is superseded.
+  - Recorded CF-005 in `client-coralite-feedback.md` and `client-task-ledger.md`.
