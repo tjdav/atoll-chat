@@ -117,8 +117,9 @@ timeout_seconds = 60
 
 [[batch]]
 name = "transport"
-description = "HTTPS enforcement, SPA hosting"
+description = "HTTPS enforcement, SPA hosting, model hosting"
 files = [
+    "model_hosting",
     "static",
     "transport",
 ]

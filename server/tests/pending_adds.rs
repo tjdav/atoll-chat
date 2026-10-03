@@ -100,6 +100,10 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     let app = server::build_app(state);
@@ -544,6 +548,10 @@ async fn test_mls_add_pending_publish_failure_does_not_fail_member_add() {
         oprf_audit,
         link_preview_keys: None,
         session_types,
+        models: std::sync::Arc::new(server::models::ModelStore::new(
+            std::path::PathBuf::from("/tmp/stt"),
+            std::path::PathBuf::from("/tmp/tts"),
+        )),
     };
 
     let app = server::build_app(state);

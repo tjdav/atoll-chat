@@ -29,6 +29,7 @@ pub mod action {
     pub const RECOVER_FINISH: &str = "recover.finish";
     pub const KT_SNAPSHOT: &str = "kt.snapshot";
     pub const SESSION_TYPES_RELOAD: &str = "session_types.reload";
+    pub const MODEL_MANIFEST_RELOAD: &str = "model.manifest_reload";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

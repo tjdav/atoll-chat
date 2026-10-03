@@ -252,3 +252,43 @@
   - **Cursor Format:** Opaque unpadded base64url JSON struct `{"user_id": "<uid>", "last_item_id": "<id>", "last_item_type": "<type>"}` (server also includes optional `last_starred_at`). Mismatched `user_id` or malformed payload returns HTTP 400 `invalid_cursor`.
   - **Sync Integration (`GET /users/me/sync`):** Returns `starred_items` filtered by `user_seq > since_seq` ordered by `user_seq ASC` (including tombstones) and incorporates `max_starred_seq` into response `max_seq`.
   - **GDPR:** Account deletion explicitly deletes user rows in `anonymise_user`. Data export includes `starred_items.json` in the ZIP archive.
+
+## Task 41a — Local Model Hosting Contract and Endpoint Shapes
+- **ID:** Task 41a
+- **Date:** 2026-10-03
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §2.1, §5.6, §5.27, §8.1, §8.1.3, §8.1.4, §8.3, §14.8, §16.14
+- **Question asked:** What are the manifest JSON schema, voice metadata source, URL structure, ETag derivation, capability fields, base URL construction, and rate limiting rules for local mode model hosting?
+- **Answer found:**
+  - **Manifest JSON Schema:**
+    - Schema version: `schema_version == 1`.
+    - `{STT_MODELS_PATH}/manifest.json` and `{TTS_MODELS_PATH}/manifest.json`.
+    - Models array: `[ { "id": "<string>", "version": <u32 >= 1>, "size_bytes": <u64>, "files": [ { "name": "<string>", "size_bytes": <u64>, "sha256": "<64 hex chars>" } ] } ]`.
+    - Validation: Unique model IDs per manifest. Filenames must contain only `[A-Za-z0-9._-]` (no `..`, `/`, `\`).
+  - **Voice Metadata Source:**
+    - TTS model voice metadata is loaded from side file `{TTS_MODELS_PATH}/{model_id}/{version}/voices.json`.
+    - Format: `{ "languages": ["en-US", ...], "voices": [ { "id": "...", "language": "en-US", "gender": "neutral" } ] }`.
+    - If `voices.json` is missing or invalid, falls back to `languages: ["*"]` and `voices: []`.
+  - **URL Structure & File Serving:**
+    - Routes: `GET /models/stt/v1/:model_id/:version/:filename` and `GET /models/tts/v1/:model_id/:version/:filename`.
+    - Public, unauthenticated endpoints.
+    - Path traversal rejection: Any byte outside `[A-Za-z0-9._-]` or presence of `..`, `/`, `\` returns HTTP 400 `invalid_filename`.
+    - ETag Derivation: `ETag: "<sha256>"` where `<sha256>` is taken directly from the manifest's file entry (quoted). Not re-hashed at serve time.
+    - Headers: `Cache-Control: public, max-age=31536000, immutable`, `Content-Type: application/octet-stream`.
+    - Conditional Requests: `If-None-Match` matching ETag returns 304 Not Modified.
+    - Range Requests: Supports single-range `Range: bytes=N-M` returning 206 Partial Content with `Content-Range`. Multi-range (`bytes=a-b,c-d`) returns 416 Range Not Satisfiable.
+  - **Manifest Endpoint (`GET /models/manifest.json`):**
+    - Returns combined JSON `{ "stt": { "default_model": "...", "base_url": "...", "models": [...] }, "tts": { ... } }`.
+    - Headers: `Cache-Control: public, max-age=3600`, `Content-Type: application/json`.
+    - Returns HTTP 200 with empty model lists if manifests are unconfigured/missing.
+  - **Capabilities (`GET /api/v1/capabilities`):**
+    - Exposes 7 fields when `MODEL_HOSTING_ENABLED=true`: `model_hosting_enabled: true`, `model_hosting_mode: "local"`, `stt_models_base_url`, `stt_default_model`, `tts_models_base_url`, `tts_default_model`, and `tts_models[]` (with `languages` and `voices`).
+    - Fields are omitted (or null) when `MODEL_HOSTING_ENABLED=false`.
+    - Base URLs are constructed from `APP_URL` (or default `http://localhost:8080`) with trailing slashes.
+  - **Admin Reload (`POST /api/v1/admin/models/reload`):**
+    - Re-reads and validates both manifests atomically.
+    - On validation error: leaves previous manifests in place, returns HTTP 400 `invalid_model_manifest`, writes no audit entry.
+    - On success: swaps manifests atomically, writes audit entry `model.manifest_reload` with metadata `{"stt_models": N, "tts_models": M}`, returns HTTP 200 `{ "reloaded": true, "stt_models": N, "tts_models": M }`.
+  - **Rate Limiting:**
+    - File serving routes enforced via `RateLimitKey::ModelDownload { ip }` (`RATE_MODEL_DOWNLOAD_PER_MIN`, default 30/min per IP, key format `model_download:{ip}:min:{boundary}`).
+    - `GET /models/manifest.json` is exempt from rate limiting.
