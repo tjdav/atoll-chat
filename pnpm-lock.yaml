@@ -16,6 +16,9 @@ importers:
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
+      '@serenity-kit/opaque':
+        specifier: 1.1.0
+        version: 1.1.0
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.10.0
@@ -368,6 +371,10 @@ packages:
   '@playwright/test@1.63.0':
     resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
     engines: {node: '>=20'}
+    hasBin: true
+
+  '@serenity-kit/opaque@1.1.0':
+    resolution: {integrity: sha512-Y6v/+hRMn0MdMEk5+/ArM0vPIiFfFEbdTZc7oAx+cWyvGODGezAQ/sMjXBVogf7NsS9z9EV0Ve5paZCVULuedw==}
     hasBin: true
 
   '@types/trusted-types@2.0.7':
@@ -1271,6 +1278,8 @@ snapshots:
   '@playwright/test@1.63.0':
     dependencies:
       playwright: 1.63.0
+
+  '@serenity-kit/opaque@1.1.0': {}
 
   '@types/trusted-types@2.0.7':
     optional: true

@@ -20,6 +20,10 @@ export default [
       'tests/unit/smoke.test.js',
       'tests/unit/oprf.test.js',
       'tests/unit/api.test.js',
+      'tests/unit/codec.test.js',
+      'tests/unit/auth-opaque.test.js',
+      'tests/unit/auth-session.test.js',
+      'tests/unit/auth-login-flow.test.js',
     ],
   },
   {
@@ -31,6 +35,7 @@ export default [
       'tests/component/smoke.spec.js',
       'tests/component/tokens.spec.js',
       'tests/component/auth-gate.spec.js',
+      'tests/component/auth-login-flow.spec.js',
     ],
   },
 ]

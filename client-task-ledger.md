@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 6 |
-| Done | 14 |
+| Done | 15 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -35,9 +35,10 @@ or modify the server's ledger.
 | C-INFRA-5 | Design System Tokens & Base CSS | done | C-INFRA-1 | component-smoke |
 | C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
-| C-AUTH-3 | OPAQUE Login & Registration Flows | pending | C-AUTH-1, C-AUTH-2, C-V-D, C-INFRA-4 | — |
-| C-AUTH-4 | Session Persistence & Boot Sequence | pending | C-AUTH-3, C-INFRA-3 | — |
-| C-AUTH-5 | Recovery Code Flow & Account Recovery | pending | C-AUTH-3 | — |
+| C-AUTH-3a | OPAQUE Login Flow and Session Storage | done | C-AUTH-1, C-AUTH-2, C-V-D | unit-smoke, component-smoke |
+| C-AUTH-3b | OPAQUE Registration Flow & Display Name Encryption | pending | C-AUTH-3a, C-INFRA-4 | — |
+| C-AUTH-4 | Session Persistence & Boot Sequence | pending | C-AUTH-3a, C-INFRA-3 | — |
+| C-AUTH-5 | Recovery Code Flow & Account Recovery | pending | C-AUTH-3a | — |
 | C-CHAT-1 | Messenger Shell & Three-Panel Layout | pending | C-INFRA-2, C-INFRA-5 | — |
 | C-CHAT-2 | Extension SDK (@atoll/extend) Core Implementation | pending | C-INFRA-1 | — |
 | C-CHAT-3 | Extension System Validation & Vocabulary Command | pending | C-CHAT-2 | — |
@@ -223,3 +224,14 @@ On completion:
   - Produced verification report at `client-verification/cv-d/report.md`.
   - Conducted differential execution test between `@serenity-kit/opaque@1.1.0` and `opaque-ke 4.0.1` (Rust crate), establishing 100% byte-exact parity across registration (`RegistrationRequest`, `RegistrationResponse`, `RegistrationUpload`), login (`CredentialRequest`, `CredentialResponse`, `CredentialFinalization`), and 64-byte session key derivation.
   - Recommended Strategy 2 (`@serenity-kit/opaque@1.1.0`). Confirmed C-AUTH-3 is unblocked as a single pure JS task requiring zero custom WASM build steps or pipeline plugins.
+- **C-AUTH-3a Deliverables & Status:**
+  - Status: `done`.
+  - Installed `@serenity-kit/opaque` (`1.1.0`) under `dependencies` in `packages/app/package.json`.
+  - Created `packages/app/src/lib/codec/index.js` exporting `base64ToBase64url`, `base64urlToBase64`, `bytesToBase64url`, `base64urlToBytes`.
+  - Created `packages/app/src/lib/auth/opaque.js` exporting `startLogin({ password })` and `finishLogin({ clientLoginState, loginResponse, password })` with automatic base64url translation for server responses.
+  - Created `packages/app/src/lib/auth/session.js` managing session token (`atoll.session.token`), username (`atoll.session.username`), module-scoped ephemeral OPRF token bytes, and fallback for restricted storage environments.
+  - Created `packages/app/src/lib/api/client.js` exporting configured `api` singleton.
+  - Created `packages/app/src/lib/auth/flows.js` exporting `LoginError`, `createLoginFlow(deps)`, and `loginFlow`.
+  - Updated `packages/app/src/components/containers/auth-view-login.html` to run `loginFlow` on submit, set reactive pending/error UI state, and redirect to `/app.html` on success.
+  - Created unit tests (`codec.test.js`, `auth-opaque.test.js`, `auth-session.test.js`, `auth-login-flow.test.js`) and component test (`auth-login-flow.spec.js`), registered under `unit-smoke` and `component-smoke` in `test-batches.js`.
+  - Verified `pnpm check-batches`, `pnpm test:batch unit-smoke` (33 passing unit tests), and `pnpm --filter @atoll/app build`.

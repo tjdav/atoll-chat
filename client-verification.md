@@ -186,3 +186,16 @@ build task runs.
 | Security Review | Audited via 7ASecurity whitebox review & penetration test (OTF Red Team Lab) |
 | C-AUTH-3 Unblocked Strategy | Single pure JS application task using `@serenity-kit/opaque@1.1.0` |
 | Report Location | `client-verification/cv-d/report.md` |
+
+### C-AUTH-3a — OPAQUE Login Flow API Contract & Session Storage Contracts
+
+**Verified:** 2026-10-02
+
+| Endpoint / Method | Wire Payload / Key | Encoding & Format |
+|---|---|---|
+| `POST /api/v1/oprf/blind` | `{ "blinded": "<base64>" }` -> `{ "evaluated": "<base64>" }` | Standard Base64 32-byte compressed Ristretto255 point |
+| `POST /api/v1/auth/login/start` | `{ "username_token": "<tokenStr>", "opaque_client_auth_state": "<startLoginRequest>" }` -> `{ "credential_response": "<base64>" }` | `username_token`: 86-char unpadded Base64URL; `opaque_client_auth_state`: Base64URL; `credential_response`: Standard Base64 |
+| `POST /api/v1/auth/login/finish` | `{ "username_token": "<tokenStr>", "ke3": "<finishLoginRequest>" }` -> `{ "session_token": "<string>" }` | `ke3`: Base64URL; `session_token`: Bearer token string |
+| Session Token Key | `atoll.session.token` | `localStorage` persistent storage string |
+| Username Key | `atoll.session.username` | `localStorage` persistent storage string |
+| OPRF Token Key | Module-scoped variable | Ephemeral `Uint8Array` in JS memory, never persisted |
