@@ -58,6 +58,12 @@ pub struct Config {
     pub session_occupancy_debounce_ms: u64,
     pub session_types_config_path: String,
 
+    pub calling_enabled: bool,
+    pub turn_url: String,
+    pub turn_shared_secret: String,
+    pub turn_ttl_seconds: u64,
+    pub call_max_participants: u32,
+
     pub model_hosting_enabled: bool,
     pub model_hosting_mode: String,
     // used by Task 41b
@@ -524,6 +530,31 @@ impl Config {
             anyhow::bail!("SESSION_TYPES_CONFIG_PATH must not be empty when SESSIONS_ENABLED=true");
         }
 
+        let calling_enabled = env::var("CALLING_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(false);
+
+        let turn_url = env::var("TURN_URL").map(|s| s.trim().to_string()).unwrap_or_default();
+        let turn_shared_secret = env::var("TURN_SHARED_SECRET").map(|s| s.trim().to_string()).unwrap_or_default();
+
+        let turn_ttl_seconds: u64 = match env::var("TURN_TTL_SECONDS") {
+            Ok(v) => match v.trim().parse() {
+                Ok(val) if (60..=86400).contains(&val) => val,
+                Ok(val) => anyhow::bail!("TURN_TTL_SECONDS must be between 60 and 86400, got {}", val),
+                Err(_) => anyhow::bail!("Invalid TURN_TTL_SECONDS value: {}", v),
+            },
+            Err(_) => 600,
+        };
+
+        let call_max_participants: u32 = match env::var("CALL_MAX_PARTICIPANTS") {
+            Ok(v) => match v.trim().parse() {
+                Ok(val) if (2..=50).contains(&val) => val,
+                Ok(val) => anyhow::bail!("CALL_MAX_PARTICIPANTS must be between 2 and 50, got {}", val),
+                Err(_) => anyhow::bail!("Invalid CALL_MAX_PARTICIPANTS value: {}", v),
+            },
+            Err(_) => 8,
+        };
+
         let model_hosting_enabled = env::var("MODEL_HOSTING_ENABLED")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
             .unwrap_or(true);
@@ -951,6 +982,11 @@ impl Config {
             session_heartbeat_timeout_seconds,
             session_occupancy_debounce_ms,
             session_types_config_path,
+            calling_enabled,
+            turn_url,
+            turn_shared_secret,
+            turn_ttl_seconds,
+            call_max_participants,
             model_hosting_enabled,
             model_hosting_mode,
             model_external_base_url,
@@ -1096,6 +1132,11 @@ impl Config {
             session_heartbeat_timeout_seconds: 45,
             session_occupancy_debounce_ms: 1000,
             session_types_config_path: "/data/session-types.toml".to_string(),
+            calling_enabled: false,
+            turn_url: String::new(),
+            turn_shared_secret: String::new(),
+            turn_ttl_seconds: 600,
+            call_max_participants: 8,
             model_hosting_enabled: false,
             model_hosting_mode: "local".to_string(),
             model_external_base_url: None,

@@ -41,6 +41,7 @@ pub struct CapabilitiesResponse {
     pub max_sessions_per_room: u32,
     pub max_session_participants: u32,
     pub session_types: Vec<SessionTypeCapView>,
+    pub call_max_participants: u32,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model_hosting_enabled: Option<bool>,
@@ -141,7 +142,7 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
 
     Json(CapabilitiesResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        calling: false,
+        calling: state.config.calling_enabled,
         push_enabled: state.config.push_enabled,
         push_vapid_public_key,
         safety_number_mode,
@@ -166,6 +167,7 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         max_sessions_per_room: state.config.server_max_sessions_per_room,
         max_session_participants: state.config.server_max_session_participants,
         session_types: state.session_types.capabilities_types(),
+        call_max_participants: state.config.call_max_participants,
         model_hosting_enabled,
         model_hosting_mode,
         stt_models_base_url,
