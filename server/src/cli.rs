@@ -61,6 +61,25 @@ pub enum Command {
         #[arg(long)]
         dry_run: bool,
     },
+
+    /// Key Transparency operator subcommands
+    Kt {
+        #[command(subcommand)]
+        command: KtCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum KtCommand {
+    /// Compute key transparency Merkle tree root and create signed snapshot
+    Snapshot,
+
+    /// Verify key transparency Merkle tree and snapshot signature
+    Verify {
+        /// Starting leaf index for tree computation (performance hint)
+        #[arg(long)]
+        from: Option<i64>,
+    },
 }
 
 pub async fn run_migrate() -> Result<(), Box<dyn std::error::Error>> {
@@ -242,4 +261,157 @@ pub async fn run_storage_migrate(
         )
         .into())
     }
+}
+
+pub async fn run_kt_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    use crate::key_transparency;
+    use crate::opaque::OpaqueServer;
+    use crate::sockudo::{Publisher, SockudoConfig};
+    use std::path::Path;
+
+    let config = Config::from_env()?;
+    if !config.key_transparency_enabled {
+        eprintln!("ERROR: Key transparency is disabled (KEY_TRANSPARENCY_ENABLED=false)");
+        return Err("key_transparency_disabled".into());
+    }
+
+    let pool = db::init_pool(&config).await?;
+    let key_path = Path::new(&config.opaque_oprf_key_path);
+    let opaque_server = OpaqueServer::load_or_generate(key_path)?;
+    let sockudo_config = SockudoConfig::load_or_initialize(&pool, &config).await?;
+    let publisher = Publisher::new(sockudo_config);
+
+    let snapshot =
+        key_transparency::create_snapshot(&pool, &opaque_server, &publisher, &config, None).await?;
+
+    let json = serde_json::to_string_pretty(&snapshot)?;
+    println!("{}", json);
+    Ok(())
+}
+
+pub async fn run_kt_verify(from: Option<i64>) -> Result<i32, Box<dyn std::error::Error>> {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+    use ed25519_dalek::{Signature, Verifier};
+    use sqlx::Row;
+    use std::path::Path;
+
+    let config = Config::from_env()?;
+    let pool = db::init_pool(&config).await?;
+
+    let key_path = Path::new(&config.opaque_oprf_key_path);
+    let opaque_server = crate::opaque::OpaqueServer::load_or_generate(key_path)?;
+
+    let kt_keys =
+        crate::key_transparency::signing::KeyTransparencyKeys::derive(&opaque_server.setup)?;
+
+    // Query latest snapshot
+    let snapshot_row = sqlx::query(
+        "SELECT id, tree_size, root_hash, signature FROM key_transparency_snapshots ORDER BY created_at DESC, id DESC LIMIT 1"
+    )
+    .fetch_optional(&pool)
+    .await?;
+
+    let Some(snapshot_row) = snapshot_row else {
+        eprintln!("ERROR: no key transparency snapshots found");
+        return Ok(1);
+    };
+
+    let snapshot_id: String = snapshot_row.get("id");
+    let tree_size: i64 = snapshot_row.get("tree_size");
+    let snapshot_root_hash_bytes: Vec<u8> = snapshot_row.get("root_hash");
+    let signature_bytes: Vec<u8> = snapshot_row.get("signature");
+
+    if snapshot_root_hash_bytes.len() != 32 {
+        eprintln!(
+            "ERROR: invalid root hash length in snapshot {}",
+            snapshot_id
+        );
+        return Ok(1);
+    }
+    let mut snapshot_root_hash = [0u8; 32];
+    snapshot_root_hash.copy_from_slice(&snapshot_root_hash_bytes);
+
+    if signature_bytes.len() != 64 {
+        eprintln!(
+            "ERROR: invalid signature length in snapshot {}",
+            snapshot_id
+        );
+        return Ok(1);
+    }
+    let signature = match Signature::from_slice(&signature_bytes) {
+        Ok(s) => s,
+        Err(_) => {
+            eprintln!(
+                "ERROR: failed to parse signature in snapshot {}",
+                snapshot_id
+            );
+            return Ok(1);
+        }
+    };
+
+    // Verify snapshot signature over (tree_size || root_hash)
+    let signing_input = crate::key_transparency::snapshot::format_signing_input(
+        tree_size as u64,
+        &snapshot_root_hash,
+    );
+    if let Err(e) = kt_keys.verifying_key.verify(&signing_input, &signature) {
+        eprintln!(
+            "ERROR: snapshot signature verification failed for {}: {}",
+            snapshot_id, e
+        );
+        return Ok(1);
+    }
+
+    // Recompute root over log up to tree_size
+    let start_index = from.unwrap_or(0);
+    let rows = sqlx::query(
+        "SELECT username_token, identity_pubkey FROM key_transparency_log WHERE leaf_index >= ? ORDER BY leaf_index ASC"
+    )
+    .bind(start_index)
+    .fetch_all(&pool)
+    .await?;
+
+    let all_leaves: Vec<crate::key_transparency::merkle::LogLeaf> = rows
+        .into_iter()
+        .map(|r| crate::key_transparency::merkle::LogLeaf {
+            username_token: r.get("username_token"),
+            identity_pubkey: r.get("identity_pubkey"),
+        })
+        .collect();
+
+    let snapshot_leaves = if (tree_size as usize) <= all_leaves.len() {
+        &all_leaves[..tree_size as usize]
+    } else {
+        eprintln!(
+            "ERROR: log size {} is smaller than snapshot tree_size {}",
+            all_leaves.len(),
+            tree_size
+        );
+        return Ok(1);
+    };
+
+    let recomputed_root_hash = crate::key_transparency::merkle::compute_root(snapshot_leaves);
+
+    if recomputed_root_hash != snapshot_root_hash {
+        eprintln!("ERROR: recomputed root hash does not match snapshot root hash");
+        return Ok(1);
+    }
+
+    let total_log_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM key_transparency_log")
+        .fetch_one(&pool)
+        .await?;
+
+    let unverified_leaves = total_log_count.saturating_sub(tree_size);
+
+    let output = serde_json::json!({
+        "verified": true,
+        "snapshot_id": snapshot_id,
+        "tree_size": tree_size,
+        "root_hash": URL_SAFE_NO_PAD.encode(snapshot_root_hash),
+        "unverified_leaves_since_snapshot": unverified_leaves,
+    });
+
+    println!("{}", serde_json::to_string_pretty(&output)?);
+    Ok(0)
 }

@@ -257,3 +257,32 @@ pub async fn get_key_transparency_handler(
         newest_leaf_added_at,
     }))
 }
+
+pub async fn post_key_transparency_snapshot_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    _: RequirePermission<ConfigEdit>,
+) -> Result<Json<crate::key_transparency::SnapshotView>, ApiError> {
+    let snapshot = crate::key_transparency::create_snapshot(
+        &state.pool,
+        &state.opaque_server,
+        &state.publisher,
+        &state.config,
+        Some(&auth.user_id),
+    )
+    .await
+    .map_err(|e| match e {
+        crate::key_transparency::SnapshotError::Disabled => {
+            ApiError::NotImplemented("key_transparency_disabled".to_string())
+        }
+        crate::key_transparency::SnapshotError::KeyDerivation(err) => {
+            ApiError::Internal(anyhow::anyhow!("key derivation error: {}", err))
+        }
+        crate::key_transparency::SnapshotError::Database(err) => ApiError::Internal(err.into()),
+        crate::key_transparency::SnapshotError::Serialization(err) => {
+            ApiError::Internal(err.into())
+        }
+    })?;
+
+    Ok(Json(snapshot))
+}

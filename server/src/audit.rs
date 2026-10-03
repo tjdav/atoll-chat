@@ -27,6 +27,7 @@ pub mod action {
     pub const REACTION_DELETE: &str = "reaction.delete";
     pub const RECOVER_START: &str = "recover.start";
     pub const RECOVER_FINISH: &str = "recover.finish";
+    pub const KT_SNAPSHOT: &str = "kt.snapshot";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

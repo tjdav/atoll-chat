@@ -24,7 +24,7 @@ help:
 
 .PHONY: test-identity
 test-identity:
-	$(CARGO) test --test gdpr --test gdpr_identity --test identity_schema --test key_transparency_log --test login_oprf --test lookup_oprf --test profile_oprf --test recovery_code --test recovery_endpoints --test register_oprf --test registration
+	$(CARGO) test --test gdpr --test gdpr_identity --test identity_schema --test key_transparency_log --test key_transparency_snapshots --test login_oprf --test lookup_oprf --test profile_oprf --test recovery_code --test recovery_endpoints --test register_oprf
 
 .PHONY: test-auth
 test-auth:

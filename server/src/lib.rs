@@ -14,6 +14,7 @@ pub mod gdpr;
 pub mod identity;
 pub mod invites;
 pub mod key_packages;
+pub mod key_transparency;
 pub mod limits;
 pub mod login;
 pub mod middleware;
@@ -206,6 +207,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/admin/key-transparency",
             get(routes::admin::get_key_transparency_handler),
+        )
+        .route(
+            "/admin/key-transparency/snapshot",
+            post(routes::admin::post_key_transparency_snapshot_handler),
         )
         .route(
             "/admin/backups",
