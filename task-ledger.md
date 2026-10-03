@@ -111,13 +111,17 @@
   - **Migration:** None (reused `call_sessions` and `call_participants` from 36a).
   - **Delivered:** `server/src/calls/mod.rs`, `server/src/calls/signal.rs`, `server/src/calls/lifecycle.rs`, `server/src/routes/calls.rs`, `server/src/audit.rs`, `server/src/lib.rs`, `server/tests/call_lifecycle.rs`, `server/tests/call_signaling.rs`, `server/tests/batch-manifest.toml`.
   - **Batch:** `messaging`
+- **Task 37 — TURN Credentials**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/calls/turn.rs`, `server/src/calls/mod.rs`, `server/src/routes/calls.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/rate_limit.rs`, `server/src/lib.rs`, `server/Cargo.toml`, `server/tests/call_turn.rs`, `server/tests/batch-manifest.toml`.
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 34
-- **Done:** 34
+- **Total Verifications/Tasks Tracked:** 35
+- **Done:** 35
 - **Pending:** 0
 - **Mismatches:** 0

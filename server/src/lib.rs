@@ -422,6 +422,10 @@ pub fn build_app(state: AppState) -> Router {
             post(routes::rooms::consume_pending_add),
         )
         .route(
+            "/calls/turn-credentials",
+            post(routes::calls::turn_credentials_handler),
+        )
+        .route(
             "/rooms/{id}/calls/{call_id}/signal",
             post(routes::calls::signal_handler),
         )

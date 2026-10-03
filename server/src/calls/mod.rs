@@ -51,6 +51,8 @@ impl From<CallError> for ApiError {
 
 pub mod lifecycle;
 pub mod signal;
+pub mod turn;
 
 pub use lifecycle::{end_call, EndCallResponse};
 pub use signal::{send_signal, SignalRequest, SignalResponse};
+pub use turn::{generate_turn_credentials, TurnCredentialsResponse};
