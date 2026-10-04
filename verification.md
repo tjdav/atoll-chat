@@ -457,6 +457,34 @@
   - **Opacity Invariants:** Server validates `signal_type` length ($\le 128$ bytes) and `payload` Base64 decoding size ($\le 64\text{ KiB}$), but never inspects, parses, logs, or stores signal content. Locks on `OccupancyStore` are released before pub/sub event emission. No audit entries are written (§14.8).
   - **Disabled Mode:** When `sessions_enabled == false`, returns HTTP 501 `sessions_disabled` per §8.7.13.
 
+## Task 45.3 — Extension Proxy Configuration, Capabilities, Domain Blocklist, Audit
+- **ID:** Task 45.3
+- **Date:** 2026-10-04
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec / Amendment references:** Amendment 38 (§5.1, §6, §7, §8.3, §9, §14.8), Client Spec v1.0 (§26.11)
+- **Domain Blocklist Store & Loading Semantics:**
+  - `DomainBlocklistStore` manages `DomainBlocklist` wrapped in `RwLock`.
+  - Normalizes entries: trims, lowercases, and validates syntax against regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$`.
+  - Combines sources: `EXTENSION_PROXY_DENY_DOMAINS` (comma-separated string) and `EXTENSION_PROXY_DENY_DOMAINS_PATH` (file on disk, one per line, `#` comments allowed).
+  - Malformed entries in config or file generate warnings and are skipped without failing startup or blocklist reloads.
+- **Blocklist Enforcement & Order of Checks:**
+  - Evaluated post-decryption during outbound fetch execution (`execute_outbound_fetch`).
+  - IP literals and private IPs are evaluated first by the SSRF guard (`is_ip_blocked`), returning HTTP 400 `url_blocked`.
+  - Blocklist matching rule: host `H` matches suffix `S` if `H == S` or `H` ends with `.<S>` (whole label boundary matching). Case-insensitive.
+  - On match, rejects with HTTP 400 `domain_blocked` ("Domain is blocked by the operator") using encrypted error envelope without revealing host or matching suffix in response.
+- **Capabilities Advertisement (`GET /capabilities`):**
+  - Exposes five fields: `extension_proxy_enabled` (bool), `extension_proxy_max_request_bytes` (u64), `extension_proxy_max_response_bytes` (u64), `extension_proxy_supports_streaming` (`false`), and `extension_proxy_key` (Base64 string of X25519 public key when enabled, `null` when disabled).
+- **Hourly Audit Aggregation (`extension.proxy_request`):**
+  - Scheduled background task runs hourly (`run_hourly_audit_aggregation_job`).
+  - Reads request counts from `rate_limits` table (`extension_proxy:{user_id}:{extension_id}:hour:{boundary}`) for the closed hour boundary.
+  - Writes single `extension.proxy_request` audit entry per active `(user_id, extension_id)` pair with `metadata: { "extension_id": "<id>", "request_count": <int> }`.
+  - Zero-count pairs write no audit entries.
+- **Admin Blocklist Reload Endpoint:**
+  - `POST /api/v1/admin/extension-proxy/reload-blocklist` requires admin authorization (`ConfigEdit` permission).
+  - Re-reads file and env sources, validates, and performs an atomic swap on `DomainBlocklistStore`.
+  - Returns HTTP 200 `{ "reloaded": true, "suffix_count": N }`. If file is missing, returns HTTP 400 `blocklist_file_not_found`; on read error, returns HTTP 400 `blocklist_load_failed` without mutating previous blocklist.
+  - Writes no audit log entry (§14.8).
+
 ## Task 45.2 — Extension Proxy Rate Limiting and Bandwidth Accounting
 - **ID:** Task 45.2
 - **Date:** 2026-10-04

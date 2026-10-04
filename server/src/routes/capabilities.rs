@@ -37,6 +37,11 @@ pub struct CapabilitiesResponse {
     pub threading_enabled: bool,
     pub link_preview_proxy_enabled: bool,
     pub link_preview_proxy_key: Option<String>,
+    pub extension_proxy_enabled: bool,
+    pub extension_proxy_max_request_bytes: u64,
+    pub extension_proxy_max_response_bytes: u64,
+    pub extension_proxy_supports_streaming: bool,
+    pub extension_proxy_key: Option<String>,
     pub sessions_enabled: bool,
     pub max_sessions_per_room: u32,
     pub max_session_participants: u32,
@@ -103,6 +108,15 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
 
     let push_vapid_public_key = if state.config.push_enabled {
         state.vapid_keys.as_ref().map(|k| k.public_key.clone())
+    } else {
+        None
+    };
+
+    let extension_proxy_key = if state.config.extension_proxy_enabled {
+        state
+            .link_preview_keys
+            .as_ref()
+            .map(|k| k.public_key_base64.clone())
     } else {
         None
     };
@@ -184,6 +198,11 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         threading_enabled: true,
         link_preview_proxy_enabled: state.config.link_preview_proxy_enabled,
         link_preview_proxy_key,
+        extension_proxy_enabled: state.config.extension_proxy_enabled,
+        extension_proxy_max_request_bytes: state.config.extension_proxy_max_request_bytes,
+        extension_proxy_max_response_bytes: state.config.extension_proxy_max_response_bytes,
+        extension_proxy_supports_streaming: false,
+        extension_proxy_key,
         sessions_enabled: state.session_types.is_effective_enabled(),
         max_sessions_per_room: state.config.server_max_sessions_per_room,
         max_session_participants: state.config.server_max_session_participants,

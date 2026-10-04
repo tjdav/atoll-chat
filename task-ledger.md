@@ -139,13 +139,17 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** `server/src/models/mode.rs`, `server/src/models/cache.rs`, `server/src/models/store.rs`, `server/src/models/mod.rs`, `server/src/routes/models.rs`, `server/src/routes/capabilities.rs`, `server/src/routes/admin.rs`, `server/src/config.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/model_hosting_modes.rs`, `server/tests/batch-manifest.toml`.
   - **Batch:** `transport`
+- **Task 45.3 — Extension Proxy Configuration, Capabilities, Domain Blocklist, Audit**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/extensions_proxy/blocklist.rs`, `server/src/extensions_proxy/audit_task.rs`, `server/src/extensions_proxy/mod.rs`, `server/src/routes/admin.rs`, `server/src/routes/capabilities.rs`, `server/src/routes/extensions_proxy.rs`, `server/src/extensions_proxy/relay.rs`, `server/src/audit.rs`, `server/src/config.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/extension_proxy.rs`.
+  - **Batch:** `link_preview`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 41
-- **Done:** 41
+- **Total Verifications/Tasks Tracked:** 42
+- **Done:** 42
 - **Pending:** 0
 - **Mismatches:** 0

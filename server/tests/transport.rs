@@ -109,6 +109,9 @@ async fn setup_app_with_custom_config(
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist: std::sync::Arc::new(
+            server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
+        ),
     };
 
     server::build_app(state)

@@ -396,6 +396,9 @@ async fn test_08_upload_quota_clamps_to_server_max() {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist: std::sync::Arc::new(
+            server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
+        ),
     };
 
     let app = axum::Router::new()
@@ -1601,6 +1604,9 @@ async fn test_28_rate_limit_per_minute_is_enforced() {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist: std::sync::Arc::new(
+            server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
+        ),
     };
 
     let app = axum::Router::new()
@@ -1782,6 +1788,9 @@ async fn test_29_rate_limit_is_per_user_not_global() {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist: std::sync::Arc::new(
+            server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
+        ),
     };
 
     let app = axum::Router::new()

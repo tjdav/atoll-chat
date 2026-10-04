@@ -8,6 +8,7 @@ use std::time::Duration;
 use tokio::net::lookup_host;
 use url::Url;
 
+use crate::extensions_proxy::blocklist::DomainBlocklist;
 use crate::extensions_proxy::validate::{ExtensionRequestPlaintext, RESPONSE_HEADER_ALLOWLIST};
 use crate::proxy_common::ssrf::{decompress_deflate, decompress_gzip, is_ip_blocked, SsrfError};
 
@@ -18,6 +19,7 @@ pub struct OutboundFetchOptions<'a> {
     pub max_response_bytes: u64,
     pub user_agent: &'a str,
     pub allow_local_for_test: bool,
+    pub blocklist: Option<&'a DomainBlocklist>,
 }
 
 pub struct OutboundFetchResult {
@@ -46,6 +48,19 @@ pub async fn execute_outbound_fetch(
             }
 
             let host_str = current_url.host_str().ok_or(SsrfError::UrlBlocked)?;
+
+            if let Ok(ip) = host_str.parse::<std::net::IpAddr>() {
+                if !opts.allow_local_for_test && is_ip_blocked(ip) {
+                    return Err(SsrfError::UrlBlocked);
+                }
+            }
+
+            if let Some(blocklist) = opts.blocklist {
+                if blocklist.is_blocked(host_str) {
+                    return Err(SsrfError::DomainBlocked);
+                }
+            }
+
             let port = current_url
                 .port_or_known_default()
                 .ok_or(SsrfError::UrlBlocked)?;

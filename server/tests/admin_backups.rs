@@ -205,6 +205,9 @@ async fn test_04_trigger_fails_when_backup_disabled() {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist: std::sync::Arc::new(
+            server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
+        ),
     };
 
     let app = server::build_app(state);
