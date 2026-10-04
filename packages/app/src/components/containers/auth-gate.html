@@ -30,7 +30,9 @@
 </style>
 
 <script type="module">
-export default {
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
   attributes: {
     view: { type: String, default: 'login' }
   },
@@ -52,5 +54,5 @@ export default {
       state.view = 'confirm'
     }, { signal })
   }
-}
+})
 </script>

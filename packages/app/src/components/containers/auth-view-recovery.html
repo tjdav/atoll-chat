@@ -108,7 +108,9 @@
 </style>
 
 <script type="module">
-export default {
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
   attributes: {
     active: { type: String, default: 'false' }
   },
@@ -126,7 +128,7 @@ export default {
     }
   },
   client({ refs, emit, state, signal, i18n }) {
-    i18n.subscribeLocale((locale) => {
+    const syncLocale = (locale) => {
       state.locale = locale
       Object.assign(state, i18n.strings([
         'auth_recovery_title',
@@ -136,7 +138,12 @@ export default {
         'auth_recovery_submit_button',
         'auth_recovery_back_link'
       ]))
-    }, { signal })
+    }
+
+    i18n.subscribeLocale(syncLocale, { signal })
+    if (state.locale !== i18n.getLocale()) {
+      syncLocale(i18n.getLocale())
+    }
 
     refs('form').addEventListener('submit', (event) => {
       event.preventDefault()
@@ -151,5 +158,5 @@ export default {
       emit('auth:view-change', { view: 'login' })
     }, { signal })
   }
-}
+})
 </script>

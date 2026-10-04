@@ -123,7 +123,9 @@
 </style>
 
 <script type="module">
-export default {
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
   attributes: {
     active: { type: String, default: 'false' },
     pending: { type: Boolean, default: false },
@@ -149,7 +151,7 @@ export default {
     errorHidden: ({ state }) => !state.error
   },
   client({ refs, emit, state, signal, i18n }) {
-    i18n.subscribeLocale((locale) => {
+    const syncLocale = (locale) => {
       state.locale = locale
       Object.assign(state, i18n.strings([
         'auth_register_title',
@@ -161,7 +163,12 @@ export default {
         'auth_register_submit_pending',
         'auth_register_back_link'
       ]))
-    }, { signal })
+    }
+
+    i18n.subscribeLocale(syncLocale, { signal })
+    if (state.locale !== i18n.getLocale()) {
+      syncLocale(i18n.getLocale())
+    }
 
     refs('form').addEventListener('submit', async (event) => {
       event.preventDefault()
@@ -177,5 +184,5 @@ export default {
       emit('auth:view-change', { view: 'login' })
     }, { signal })
   }
-}
+})
 </script>
