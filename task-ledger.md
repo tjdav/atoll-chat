@@ -119,13 +119,17 @@
   - **Migration:** `0036_room_sessions.sql` (Case B: created `room_sessions` table with `idx_room_sessions_room_pos` and `idx_room_sessions_created_by` per §7.9 and Amendment 36).
   - **Delivered:** `0036_room_sessions.sql`, `server/src/sessions/mod.rs`, `server/src/sessions/crud.rs`, `server/src/routes/room_sessions.rs`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/audit.rs`, `server/src/lib.rs`, `server/src/routes/mod.rs`, `server/tests/room_sessions.rs`, `server/tests/batch-manifest.toml`.
   - **Batch:** `messaging`
+- **Task 40c — Sessions Occupancy, Join, Leave, Heartbeat, Roster**: done
+  - **Migration:** None (in-memory only).
+  - **Delivered:** `server/src/sessions/occupancy.rs`, `server/src/sessions/cleanup.rs`, `server/src/sessions/mod.rs`, `server/src/routes/room_sessions.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/error.rs`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/room_session_occupancy.rs`, `server/tests/batch-manifest.toml`.
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 36
-- **Done:** 36
+- **Total Verifications/Tasks Tracked:** 37
+- **Done:** 37
 - **Pending:** 0
 - **Mismatches:** 0

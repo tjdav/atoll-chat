@@ -32,6 +32,8 @@ pub enum RateLimitKey {
     ModelDownload { ip: String },
     TurnCredentials { user_id: String },
     SessionCreate { user_id: String, window: Window },
+    SessionJoin { user_id: String },
+    SessionHeartbeat { user_id: String, session_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -356,6 +358,29 @@ pub async fn check(
                 start,
                 reset,
                 limit,
+            )
+        }
+        RateLimitKey::SessionJoin { user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("session_join:{user_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_session_join_per_min,
+            )
+        }
+        RateLimitKey::SessionHeartbeat {
+            user_id,
+            session_id,
+        } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("session_heartbeat:{user_id}:{session_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_session_heartbeat_per_min,
             )
         }
     };

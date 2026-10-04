@@ -100,6 +100,7 @@ async fn test_end_to_end_backup_and_restore() {
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     let app = server::build_app(state);

@@ -263,6 +263,14 @@ async fn main() -> anyhow::Result<()> {
         models.load_initial();
     }
 
+    let occupancy = server::sessions::OccupancyStore::new();
+
+    tokio::spawn(server::sessions::run_occupancy_cleanup_job(
+        occupancy.clone(),
+        config.clone(),
+        publisher.clone(),
+    ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -283,6 +291,7 @@ async fn main() -> anyhow::Result<()> {
         link_preview_keys,
         session_types,
         models,
+        occupancy,
     };
 
     // 7. Check bootstrap state

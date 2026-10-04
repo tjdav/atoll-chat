@@ -99,6 +99,7 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     server::build_app(state)

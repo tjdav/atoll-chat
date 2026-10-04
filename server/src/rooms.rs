@@ -634,6 +634,7 @@ pub async fn get_room_for_user(
 async fn publish_room_sessions_deleted(
     tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     publisher: &Publisher,
+    occupancy: Option<&crate::sessions::OccupancyStore>,
     room_id: &str,
 ) {
     let sessions: Vec<(String, String)> =
@@ -648,6 +649,9 @@ async fn publish_room_sessions_deleted(
 
     let channel = format!("private-room-{}", room_id);
     for (session_id, extension_id) in sessions {
+        if let Some(occ) = occupancy {
+            occ.teardown_session(publisher, room_id, &session_id).await;
+        }
         let event_payload = serde_json::json!({
             "room_id": room_id,
             "session_id": session_id,
@@ -665,6 +669,7 @@ async fn publish_room_sessions_deleted(
 pub async fn delete_room(
     pool: &SqlitePool,
     publisher: &Publisher,
+    occupancy: &crate::sessions::OccupancyStore,
     room_id: &str,
     user_id: &str,
 ) -> Result<(), RoomError> {
@@ -699,7 +704,7 @@ pub async fn delete_room(
     }
 
     // Publish session.deleted for every session in room prior to deletion
-    publish_room_sessions_deleted(&mut tx, publisher, room_id).await;
+    publish_room_sessions_deleted(&mut tx, publisher, Some(occupancy), room_id).await;
 
     // 4. Delete room (ON DELETE CASCADE handles relations)
     sqlx::query("DELETE FROM rooms WHERE id = ?")
@@ -800,6 +805,7 @@ pub async fn consume_pending_remove(
 pub async fn leave_room(
     pool: &SqlitePool,
     publisher: &Publisher,
+    occupancy: &crate::sessions::OccupancyStore,
     room_id: &str,
     user_id: &str,
 ) -> Result<LeaveOutcome, RoomError> {
@@ -837,7 +843,7 @@ pub async fn leave_room(
             .await?;
 
     if other_count.0 == 0 {
-        publish_room_sessions_deleted(&mut tx, publisher, room_id).await;
+        publish_room_sessions_deleted(&mut tx, publisher, Some(occupancy), room_id).await;
         // Delete room
         sqlx::query("DELETE FROM rooms WHERE id = ?")
             .bind(room_id)
@@ -881,7 +887,7 @@ pub async fn leave_room(
     let new_owner_id = match successor {
         Some((id,)) => id,
         None => {
-            publish_room_sessions_deleted(&mut tx, publisher, room_id).await;
+            publish_room_sessions_deleted(&mut tx, publisher, Some(occupancy), room_id).await;
             // Fallback: delete room if no successor found
             sqlx::query("DELETE FROM rooms WHERE id = ?")
                 .bind(room_id)

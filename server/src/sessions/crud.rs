@@ -2,6 +2,7 @@ use crate::audit;
 use crate::config::Config;
 use crate::config_ops;
 use crate::error::ApiError;
+use crate::sessions::occupancy::OccupancyStore;
 use crate::sessions::SessionTypesStore;
 use crate::sockudo::Publisher;
 use base64::engine::general_purpose::{URL_SAFE, URL_SAFE_NO_PAD};
@@ -191,6 +192,7 @@ async fn resequence_positions(
 
 pub async fn list_room_sessions(
     pool: &SqlitePool,
+    occupancy: &OccupancyStore,
     room_id: &str,
     user_id: &str,
     query: ListRoomSessionsQuery,
@@ -235,6 +237,8 @@ pub async fn list_room_sessions(
         let position: i32 = row.get("position");
         let created_at: DateTime<Utc> = row.get("created_at");
 
+        let participant_count = occupancy.get_participant_count(&id).await;
+
         sessions.push(RoomSessionView {
             id,
             extension_id,
@@ -242,7 +246,7 @@ pub async fn list_room_sessions(
             metadata,
             metadata_version: metadata_version as u32,
             position,
-            participant_count: 0,
+            participant_count,
             created_at,
         });
     }
@@ -589,6 +593,7 @@ pub async fn patch_room_session(
 pub async fn delete_room_session(
     pool: &SqlitePool,
     publisher: &Publisher,
+    occupancy: &OccupancyStore,
     _config: &Config,
     room_id: &str,
     session_id: &str,
@@ -628,6 +633,10 @@ pub async fn delete_room_session(
     resequence_positions(&mut tx, room_id).await?;
 
     tx.commit().await?;
+
+    occupancy
+        .teardown_session(publisher, room_id, session_id)
+        .await;
 
     let channel = format!("private-room-{}", room_id);
     let event_payload = serde_json::json!({

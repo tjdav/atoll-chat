@@ -29,6 +29,8 @@ pub struct RateLimitConfig {
     pub rate_turn_credentials_per_min: u32,
     pub rate_session_create_hourly: u32,
     pub rate_session_create_daily: u32,
+    pub rate_session_join_per_min: u32,
+    pub rate_session_heartbeat_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -424,6 +426,16 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(100);
 
+        let rate_session_join_per_min = env::var("RATE_SESSION_JOIN_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let rate_session_heartbeat_per_min = env::var("RATE_SESSION_HEARTBEAT_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -451,6 +463,8 @@ impl Config {
             rate_turn_credentials_per_min,
             rate_session_create_hourly,
             rate_session_create_daily,
+            rate_session_join_per_min,
+            rate_session_heartbeat_per_min,
         };
 
         let link_preview_proxy_enabled = env::var("LINK_PREVIEW_PROXY_ENABLED")
@@ -1157,6 +1171,8 @@ impl Config {
                 rate_turn_credentials_per_min: 10,
                 rate_session_create_hourly: 20,
                 rate_session_create_daily: 100,
+                rate_session_join_per_min: 30,
+                rate_session_heartbeat_per_min: 10,
             },
             link_preview_proxy_enabled: false,
             link_preview_proxy_timeout_seconds: 5,
