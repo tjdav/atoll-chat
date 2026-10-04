@@ -381,28 +381,50 @@ pub async fn post_reload_models_handler(
         ));
     }
 
-    let (stt_count, tts_count) = match state.models.reload() {
+    let (stt_count, tts_count) = match state.models.reload().await {
         Ok(counts) => counts,
-        Err((kind, err)) => {
-            let manifest_path = if kind == "stt" {
-                state.models.stt_models_path().join("manifest.json")
-            } else {
-                state.models.tts_models_path().join("manifest.json")
-            };
-
+        Err(crate::models::ModelReloadError::LocalValidation { kind, path, reason }) => {
             let mut details = serde_json::Map::new();
             details.insert("kind".to_string(), serde_json::json!(kind));
             details.insert(
                 "path".to_string(),
-                serde_json::json!(manifest_path.to_string_lossy()),
+                serde_json::json!(path.to_string_lossy()),
             );
-            details.insert("reason".to_string(), serde_json::json!(err.to_string()));
+            details.insert("reason".to_string(), serde_json::json!(reason));
 
             return Err(ApiError::CustomShape(
                 axum::http::StatusCode::BAD_REQUEST,
                 serde_json::json!({
                     "error": "invalid_model_manifest",
                     "message": "Validation failed",
+                    "details": details,
+                }),
+            ));
+        }
+        Err(crate::models::ModelReloadError::ExternalValidation { url, reason }) => {
+            let mut details = serde_json::Map::new();
+            details.insert("url".to_string(), serde_json::json!(url));
+            details.insert("reason".to_string(), serde_json::json!(reason));
+
+            return Err(ApiError::CustomShape(
+                axum::http::StatusCode::BAD_REQUEST,
+                serde_json::json!({
+                    "error": "invalid_model_manifest",
+                    "message": "Validation failed",
+                    "details": details,
+                }),
+            ));
+        }
+        Err(crate::models::ModelReloadError::ExternalNetwork { url, reason }) => {
+            let mut details = serde_json::Map::new();
+            details.insert("upstream".to_string(), serde_json::json!(url));
+            details.insert("reason".to_string(), serde_json::json!(reason));
+
+            return Err(ApiError::CustomShape(
+                axum::http::StatusCode::BAD_GATEWAY,
+                serde_json::json!({
+                    "error": "model_fetch_failed",
+                    "message": "Failed to fetch external model manifest",
                     "details": details,
                 }),
             ));
@@ -416,6 +438,7 @@ pub async fn post_reload_models_handler(
         Some("model_manifest"),
         None,
         Some(serde_json::json!({
+            "mode": state.models.mode().as_str(),
             "stt_models": stt_count,
             "tts_models": tts_count,
         })),

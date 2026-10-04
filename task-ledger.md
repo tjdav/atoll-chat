@@ -135,13 +135,17 @@
   - **Migration:** None (reuses `rate_limits` table).
   - **Delivered:** `server/src/extensions_proxy/limits.rs`, `server/src/routes/extensions_proxy.rs`, `server/src/extensions_proxy/validate.rs`, `server/src/config.rs`, `server/tests/extension_proxy.rs`.
   - **Batch:** `link_preview`
+- **Task 41b — Model Hosting: External and Proxy Modes**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/models/mode.rs`, `server/src/models/cache.rs`, `server/src/models/store.rs`, `server/src/models/mod.rs`, `server/src/routes/models.rs`, `server/src/routes/capabilities.rs`, `server/src/routes/admin.rs`, `server/src/config.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/model_hosting_modes.rs`, `server/tests/batch-manifest.toml`.
+  - **Batch:** `transport`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 40
-- **Done:** 40
+- **Total Verifications/Tasks Tracked:** 41
+- **Done:** 41
 - **Pending:** 0
 - **Mismatches:** 0

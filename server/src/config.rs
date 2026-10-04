@@ -99,7 +99,6 @@ pub struct Config {
 
     pub model_hosting_enabled: bool,
     pub model_hosting_mode: String,
-    // used by Task 41b
     pub model_external_base_url: Option<String>,
     pub model_storage_path: PathBuf,
     pub stt_models_path: PathBuf,
@@ -772,14 +771,12 @@ impl Config {
             .unwrap_or(false);
 
         if model_hosting_enabled {
-            if model_hosting_mode == "external" || model_hosting_mode == "proxy" {
+            if model_hosting_mode != "local"
+                && model_hosting_mode != "external"
+                && model_hosting_mode != "proxy"
+            {
                 anyhow::bail!(
-                    "MODEL_HOSTING_MODE={} is not yet supported; see Task 41b",
-                    model_hosting_mode
-                );
-            } else if model_hosting_mode != "local" {
-                anyhow::bail!(
-                    "Invalid MODEL_HOSTING_MODE \"{}\"; must be 'local'",
+                    "Invalid MODEL_HOSTING_MODE \"{}\"; must be 'local', 'external', or 'proxy'",
                     model_hosting_mode
                 );
             }
@@ -791,18 +788,59 @@ impl Config {
                 anyhow::bail!("TTS_DEFAULT_MODEL must not be empty");
             }
 
-            if !stt_models_path.exists() || !stt_models_path.is_dir() {
-                anyhow::bail!(
-                    "STT_MODELS_PATH directory does not exist or is not a directory: {:?}",
-                    stt_models_path
-                );
+            if model_hosting_mode == "external" || model_hosting_mode == "proxy" {
+                let ext_url = match &model_external_base_url {
+                    Some(url) => url,
+                    None => anyhow::bail!(
+                        "MODEL_EXTERNAL_BASE_URL must be set when MODEL_HOSTING_MODE is '{}'",
+                        model_hosting_mode
+                    ),
+                };
+
+                if app_env == "production" && !ext_url.starts_with("https://") {
+                    anyhow::bail!(
+                        "MODEL_EXTERNAL_BASE_URL must begin with https:// in production when MODEL_HOSTING_MODE is '{}'",
+                        model_hosting_mode
+                    );
+                }
             }
 
-            if !tts_models_path.exists() || !tts_models_path.is_dir() {
-                anyhow::bail!(
-                    "TTS_MODELS_PATH directory does not exist or is not a directory: {:?}",
-                    tts_models_path
-                );
+            if model_hosting_mode == "local" {
+                if !stt_models_path.exists() || !stt_models_path.is_dir() {
+                    anyhow::bail!(
+                        "STT_MODELS_PATH directory does not exist or is not a directory: {:?}",
+                        stt_models_path
+                    );
+                }
+
+                if !tts_models_path.exists() || !tts_models_path.is_dir() {
+                    anyhow::bail!(
+                        "TTS_MODELS_PATH directory does not exist or is not a directory: {:?}",
+                        tts_models_path
+                    );
+                }
+            } else if model_hosting_mode == "proxy" {
+                if let Err(e) = std::fs::create_dir_all(&model_storage_path) {
+                    anyhow::bail!(
+                        "Failed to create MODEL_STORAGE_PATH directory {:?}: {}",
+                        model_storage_path,
+                        e
+                    );
+                }
+                if let Err(e) = std::fs::create_dir_all(&stt_models_path) {
+                    anyhow::bail!(
+                        "Failed to create STT_MODELS_PATH directory {:?}: {}",
+                        stt_models_path,
+                        e
+                    );
+                }
+                if let Err(e) = std::fs::create_dir_all(&tts_models_path) {
+                    anyhow::bail!(
+                        "Failed to create TTS_MODELS_PATH directory {:?}: {}",
+                        tts_models_path,
+                        e
+                    );
+                }
             }
         }
 

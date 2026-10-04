@@ -126,6 +126,7 @@ name = "transport"
 description = "HTTPS enforcement, SPA hosting, model hosting"
 files = [
     "model_hosting",
+    "model_hosting_modes",
     "static",
     "transport",
 ]

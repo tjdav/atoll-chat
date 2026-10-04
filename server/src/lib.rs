@@ -503,20 +503,31 @@ pub fn build_app(state: AppState) -> Router {
 
     let mut app = Router::new()
         .route("/health", get(routes::health::handler))
-        .route("/ready", get(routes::ready::handler))
-        .route(
-            "/models/manifest.json",
-            get(routes::models::get_manifest_handler),
-        )
-        .route(
-            "/models/stt/v1/{model_id}/{version}/{filename}",
-            get(routes::models::serve_stt_file_handler),
-        )
-        .route(
-            "/models/tts/v1/{model_id}/{version}/{filename}",
-            get(routes::models::serve_tts_file_handler),
-        )
-        .nest("/api/v1", api_routes);
+        .route("/ready", get(routes::ready::handler));
+
+    let hosting_mode = state
+        .config
+        .model_hosting_mode
+        .parse()
+        .unwrap_or(models::ModelHostingMode::Local);
+
+    if hosting_mode.registers_routes() {
+        app = app
+            .route(
+                "/models/manifest.json",
+                get(routes::models::get_manifest_handler),
+            )
+            .route(
+                "/models/stt/v1/{model_id}/{version}/{filename}",
+                get(routes::models::serve_stt_file_handler),
+            )
+            .route(
+                "/models/tts/v1/{model_id}/{version}/{filename}",
+                get(routes::models::serve_tts_file_handler),
+            );
+    }
+
+    app = app.nest("/api/v1", api_routes);
 
     if let Some(dir) = &state.config.client_static_dir {
         app = app.fallback_service(routes::r#static::build_spa_service(dir));

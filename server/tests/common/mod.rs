@@ -171,9 +171,16 @@ where
         session_types_state,
     ));
 
-    let models = Arc::new(server::models::ModelStore::new(
+    let hosting_mode_1 = config_arc
+        .model_hosting_mode
+        .parse()
+        .unwrap_or(server::models::ModelHostingMode::Local);
+
+    let models = Arc::new(server::models::ModelStore::new_with_mode(
+        hosting_mode_1,
         config_arc.stt_models_path.clone(),
         config_arc.tts_models_path.clone(),
+        config_arc.model_external_base_url.clone(),
     ));
     if config_arc.model_hosting_enabled {
         models.load_initial();
@@ -331,9 +338,16 @@ pub async fn setup_test_app_with_config(
         session_types_state,
     ));
 
-    let models = Arc::new(server::models::ModelStore::new(
+    let hosting_mode_2 = config_arc
+        .model_hosting_mode
+        .parse()
+        .unwrap_or(server::models::ModelHostingMode::Local);
+
+    let models = Arc::new(server::models::ModelStore::new_with_mode(
+        hosting_mode_2,
         config_arc.stt_models_path.clone(),
         config_arc.tts_models_path.clone(),
+        config_arc.model_external_base_url.clone(),
     ));
     if config_arc.model_hosting_enabled {
         models.load_initial();
