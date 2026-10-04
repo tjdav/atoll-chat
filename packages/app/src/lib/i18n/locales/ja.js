@@ -28,9 +28,12 @@ export default {
   'auth_recovery_title': 'アクセス権の復元',
   'auth_recovery_username_label': 'ユーザー名',
   'auth_recovery_recovery_code_label': '復元コード',
+  'auth_recovery_display_name_label': '表示名',
   'auth_recovery_new_password_label': '新しいパスワード',
   'auth_recovery_submit_button': 'アクセス権を復元',
+  'auth_recovery_submit_pending': '復元中…',
   'auth_recovery_back_link': '← ログインに戻る',
+  'auth_recovery_error_generic': '復元に失敗しました。もう一度お試しください。',
 
   'auth_confirm_title': '復元コードを確認してください',
   'auth_confirm_description': '復元コードの表示と確認は後続のタスクで実装されます。現在は設定したパスワードを使用してログインしてください。',

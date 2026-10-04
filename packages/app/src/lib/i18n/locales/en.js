@@ -28,9 +28,12 @@ export default {
   'auth_recovery_title': 'Recover access',
   'auth_recovery_username_label': 'Username',
   'auth_recovery_recovery_code_label': 'Recovery code',
+  'auth_recovery_display_name_label': 'Display name',
   'auth_recovery_new_password_label': 'New password',
   'auth_recovery_submit_button': 'Recover access',
+  'auth_recovery_submit_pending': 'Recovering…',
   'auth_recovery_back_link': '← Back to log in',
+  'auth_recovery_error_generic': 'Recovery failed. Try again.',
 
   'auth_confirm_title': 'Check your recovery codes',
   'auth_confirm_description': 'Recovery code display and confirmation is implemented in a subsequent task. For now, use the password you just set to log in.',

@@ -45,7 +45,7 @@ or modify the server's ledger.
 | C-AUTH-3b2 | Register Form Wiring & ALTCHA Integration | pending | C-AUTH-3b, C-AUTH-1 | component-smoke |
 | C-AUTH-3b3 | Recovery Code Display & Confirmation Screen | pending | C-AUTH-3b2 | component-smoke |
 | C-AUTH-4 | Session Persistence & Boot Sequence | done | C-AUTH-3a, C-INFRA-3 | unit-smoke, component-auth |
-| C-AUTH-5 | Recovery Code Flow & Account Recovery | pending | C-AUTH-3a | — |
+| C-AUTH-5 | Account Recovery Flow and Session Revocation | done | C-AUTH-3a | — |
 | C-CHAT-1 | Messenger Shell & Three-Panel Layout | pending | C-INFRA-2, C-INFRA-5 | — |
 | C-CHAT-2 | Extension SDK (@atoll/extend) Core Implementation | pending | C-INFRA-1 | — |
 | C-CHAT-3 | Extension System Validation & Vocabulary Command | pending | C-CHAT-2 | — |

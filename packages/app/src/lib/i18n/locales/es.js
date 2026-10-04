@@ -28,9 +28,12 @@ export default {
   'auth_recovery_title': 'Recuperar acceso',
   'auth_recovery_username_label': 'Nombre de usuario',
   'auth_recovery_recovery_code_label': 'Código de recuperación',
+  'auth_recovery_display_name_label': 'Nombre de visualización',
   'auth_recovery_new_password_label': 'Nueva contraseña',
   'auth_recovery_submit_button': 'Recuperar acceso',
+  'auth_recovery_submit_pending': 'Recuperando…',
   'auth_recovery_back_link': '← Volver al inicio de sesión',
+  'auth_recovery_error_generic': 'La recuperación falló. Inténtalo de nuevo.',
 
   'auth_confirm_title': 'Revisa tus códigos de recuperación',
   'auth_confirm_description': 'La visualización y confirmación de los códigos de recuperación se implementará en una tarea posterior. Por ahora, usa la contraseña que acabas de establecer para iniciar sesión.',
