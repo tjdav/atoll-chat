@@ -254,9 +254,16 @@ async fn main() -> anyhow::Result<()> {
         session_types_state,
     ));
 
-    let models = Arc::new(server::models::ModelStore::new(
+    let hosting_mode = config
+        .model_hosting_mode
+        .parse()
+        .unwrap_or(server::models::ModelHostingMode::Local);
+
+    let models = Arc::new(server::models::ModelStore::new_with_mode(
+        hosting_mode,
         config.stt_models_path.clone(),
         config.tts_models_path.clone(),
+        config.model_external_base_url.clone(),
     ));
 
     if config.model_hosting_enabled {

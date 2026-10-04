@@ -527,3 +527,31 @@
   - `502 fetch_failed`: Outbound connect/read timeout or connection error.
   - `502 upstream_response_too_large`: Decompressed response body > `EXTENSION_PROXY_MAX_RESPONSE_BYTES`.
 - **Zero Plaintext Logging Discipline:** Plaintext URLs, hosts, headers, and request/response bodies are never logged or persisted.
+
+## Task 41b — Model Hosting External and Proxy Modes
+- **ID:** Task 41b
+- **Date:** 2026-10-04
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec / Amendment references:** Amendment 26 (§5.27, §8.1.3, §8.1.4)
+- **Mode-Specific Behavior Matrix:**
+  | Property / Behavior | `local` | `external` | `proxy` |
+  |---|---|---|---|
+  | Routes Registered (`/models/...`) | Yes | **No** (404) | Yes |
+  | Capabilities Base URLs | `{APP_URL}/models/...` | `{MODEL_EXTERNAL_BASE_URL}/...` | `{APP_URL}/models/...` |
+  | `tts_models[]` Source | Local disk manifest | External manifest cache | Local disk manifest |
+  | Manifest Source | `{STT/TTS_MODELS_PATH}/manifest.json` | `{MODEL_EXTERNAL_BASE_URL}/manifest.json` | Local disk manifest |
+- **External Mode Manifest Cache & TTL:**
+  - `{MODEL_EXTERNAL_BASE_URL}/manifest.json` is fetched on first capabilities request after startup (or reload) and cached in memory with a 1-hour TTL (`MANIFEST_TTL = 3600s`).
+  - Validation: Parsed manifest is validated against schema v1 (schema_version 1, valid model IDs, version >= 1, file sha256 64 hex, path restrictions).
+  - Validation/Network failure during background/reload refresh retains the previous valid cached manifest.
+- **Proxy Mode Cache & Atomic Rename Semantics:**
+  - Cache Hit: Files existing locally at `{KIND_MODELS_PATH}/{model_id}/{version}/{filename}` are served directly from disk.
+  - Cache Miss: Fetches from `{MODEL_EXTERNAL_BASE_URL}/{kind}/v1/{model_id}/{version}/{filename}` using `reqwest` (10s connect, 60s read timeouts) to a temp file in the same directory (`{filename}.tmp.<pid>.<time>`).
+  - Verification: Validates total downloaded bytes against `model.files[].size_bytes` and SHA-256 hex string against `model.files[].sha256`. On mismatch or network error, temp file is deleted, failure recorded in a 30-second failure cache, and HTTP 502 `model_fetch_failed` returned (`details.upstream`). On success, temp file is atomically renamed to destination.
+  - Range Requests: On cache miss, fetches full file into cache first, then serves HTTP 206 Partial Content from local disk.
+- **`POST /admin/models/reload` Behavior:**
+  - Local & Proxy: Re-reads local disk manifests atomically.
+  - External: Forces re-fetch of `{MODEL_EXTERNAL_BASE_URL}/manifest.json`. Network errors return HTTP 502 `model_fetch_failed`; validation errors return HTTP 400 `invalid_model_manifest`. Previous valid cache is preserved on error.
+  - Audit: Writes `model.manifest_reload` audit log with metadata `{ "mode": "<mode>", "stt_models": N, "tts_models": M }`.
+- **Operational Note for Proxy Mode:**
+  - Adding a model requires updating the local manifest and calling `POST /admin/models/reload` (or letting first client request hit a model already in local manifest).

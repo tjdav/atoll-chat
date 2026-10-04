@@ -184,16 +184,34 @@ async fn serve_model_file(
         }
     }
 
-    let base_dir = if kind == "stt" {
-        state.models.stt_models_path()
-    } else {
-        state.models.tts_models_path()
+    let file_path = match state
+        .models
+        .ensure_model_file(kind, model_id, version, filename)
+        .await
+    {
+        Ok(path) => path,
+        Err(crate::models::ProxyFetchError::NotFound) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({"error": "model_not_found"})),
+            )
+                .into_response();
+        }
+        Err(_) => {
+            let ext_url = state.models.external_base_url().unwrap_or("unknown");
+            return (
+                StatusCode::BAD_GATEWAY,
+                Json(json!({
+                    "error": "model_fetch_failed",
+                    "message": "Failed to fetch model file from upstream",
+                    "details": {
+                        "upstream": ext_url
+                    }
+                })),
+            )
+                .into_response();
+        }
     };
-
-    let file_path = base_dir
-        .join(model_id)
-        .join(version.to_string())
-        .join(filename);
 
     let mut file = match File::open(&file_path).await {
         Ok(f) => f,

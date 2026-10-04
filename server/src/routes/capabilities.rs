@@ -125,8 +125,29 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         tts_default_model,
         tts_models,
     ) = if state.config.model_hosting_enabled {
-        let stt_base = construct_base_url(state.config.app_url.as_deref(), "/models/stt/v1/");
-        let tts_base = construct_base_url(state.config.app_url.as_deref(), "/models/tts/v1/");
+        let (stt_base, tts_base) = if state.config.model_hosting_mode == "external" {
+            if let Some(cache) = state.models.external_cache() {
+                if cache.get_cached().is_none() {
+                    let _ = cache.fetch_manifest(false).await;
+                }
+            }
+            let ext_base = state
+                .config
+                .model_external_base_url
+                .as_deref()
+                .unwrap_or("https://localhost")
+                .trim_end_matches('/');
+            (
+                format!("{}/stt/v1/", ext_base),
+                format!("{}/tts/v1/", ext_base),
+            )
+        } else {
+            (
+                construct_base_url(state.config.app_url.as_deref(), "/models/stt/v1/"),
+                construct_base_url(state.config.app_url.as_deref(), "/models/tts/v1/"),
+            )
+        };
+
         (
             Some(true),
             Some(state.config.model_hosting_mode.clone()),
