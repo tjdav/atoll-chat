@@ -287,7 +287,6 @@ async fn test_channel_auth_endpoints() {
         cap_json["sockudo_channel_prefix"].as_str().unwrap(),
         "private-room-"
     );
-    assert!(cap_json["sockudo_client_events"].as_bool().unwrap());
 
     let _ = pool;
 }

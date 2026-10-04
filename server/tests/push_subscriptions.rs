@@ -570,6 +570,5 @@ async fn test_capabilities_push_fields() {
         .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap();
 
-    assert_eq!(body["push_enabled"], true);
     assert!(body["push_vapid_public_key"].is_string());
 }

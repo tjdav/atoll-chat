@@ -126,6 +126,7 @@ timeout_seconds = 60
 name = "transport"
 description = "HTTPS enforcement, SPA hosting, model hosting"
 files = [
+    "capabilities_audit",
     "model_hosting",
     "model_hosting_modes",
     "static",

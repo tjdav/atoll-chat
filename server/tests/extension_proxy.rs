@@ -147,7 +147,7 @@ async fn test_roundtrip_get_success() {
         .await
         .unwrap();
     let cap_json: Value = serde_json::from_slice(&cap_bytes).unwrap();
-    let server_pubkey_b64 = cap_json["link_preview_proxy_key"].as_str().unwrap();
+    let server_pubkey_b64 = cap_json["extension_proxy_key"].as_str().unwrap();
 
     let target_url = format!("{}/feed.xml", mock_server.uri());
     let req_payload = json!({
@@ -225,7 +225,7 @@ async fn test_roundtrip_head_success() {
             .unwrap(),
     )
     .unwrap();
-    let server_pubkey_b64 = cap_json["link_preview_proxy_key"].as_str().unwrap();
+    let server_pubkey_b64 = cap_json["extension_proxy_key"].as_str().unwrap();
 
     let target_url = format!("{}/check", mock_server.uri());
     let req_payload = json!({
@@ -299,7 +299,7 @@ async fn test_roundtrip_post_success() {
             .unwrap(),
     )
     .unwrap();
-    let server_pubkey_b64 = cap_json["link_preview_proxy_key"].as_str().unwrap();
+    let server_pubkey_b64 = cap_json["extension_proxy_key"].as_str().unwrap();
 
     let target_url = format!("{}/api/submit", mock_server.uri());
     let req_payload = json!({
@@ -366,7 +366,7 @@ async fn test_method_and_header_rejections() {
             .unwrap(),
     )
     .unwrap();
-    let server_pubkey_b64 = cap_json["link_preview_proxy_key"].as_str().unwrap();
+    let server_pubkey_b64 = cap_json["extension_proxy_key"].as_str().unwrap();
 
     // 1. Method PUT rejected
     let req_payload1 = json!({
@@ -505,7 +505,7 @@ async fn test_url_validation_and_ssrf() {
             .unwrap(),
     )
     .unwrap();
-    let server_pubkey_b64 = cap_json["link_preview_proxy_key"].as_str().unwrap();
+    let server_pubkey_b64 = cap_json["extension_proxy_key"].as_str().unwrap();
 
     // 1. http:// rejected when app_env is production
     let (prod_app, _pool, _) = setup_test_app_with_custom_config(|c| {
@@ -651,7 +651,7 @@ async fn test_redirect_policy_get_and_post() {
             .unwrap(),
     )
     .unwrap();
-    let server_pubkey_b64 = cap_json["link_preview_proxy_key"].as_str().unwrap();
+    let server_pubkey_b64 = cap_json["extension_proxy_key"].as_str().unwrap();
 
     // 1. GET 302 follows
     let target_url_get = format!("{}/redirect-get", mock_server.uri());
@@ -759,7 +759,7 @@ async fn test_gzip_decompression_and_bomb() {
             .unwrap(),
     )
     .unwrap();
-    let server_pubkey_b64 = cap_json["link_preview_proxy_key"].as_str().unwrap();
+    let server_pubkey_b64 = cap_json["extension_proxy_key"].as_str().unwrap();
 
     let target_url = format!("{}/gzip-doc", mock_server.uri());
     let req_payload = json!({

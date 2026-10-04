@@ -43,7 +43,7 @@ async fn test_link_preview_disabled_by_default() {
         .unwrap();
     let json_val: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(json_val["link_preview_proxy_enabled"], false);
-    assert!(json_val["link_preview_proxy_key"].is_null());
+    assert!(json_val["extension_proxy_key"].is_null());
 
     // 2. Register user & login -> attempt request -> 501
     common::register_user(&app, "disabled_user", "Password123!", None).await;
@@ -96,8 +96,8 @@ async fn test_capabilities_enabled() {
         .unwrap();
     let json_val: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(json_val["link_preview_proxy_enabled"], true);
-    assert!(json_val["link_preview_proxy_key"].is_string());
-    let pubkey_str = json_val["link_preview_proxy_key"].as_str().unwrap();
+    assert!(json_val["extension_proxy_key"].is_string());
+    let pubkey_str = json_val["extension_proxy_key"].as_str().unwrap();
     let pubkey_bytes = decode_base64_flexible(pubkey_str).unwrap();
     assert_eq!(pubkey_bytes.len(), 32);
 }
@@ -148,7 +148,7 @@ async fn test_roundtrip_fetch_success() {
         .unwrap();
     let cap_json: Value = serde_json::from_slice(&body_bytes).unwrap();
     let server_pubkey_bytes: [u8; 32] =
-        decode_base64_flexible(cap_json["link_preview_proxy_key"].as_str().unwrap())
+        decode_base64_flexible(cap_json["extension_proxy_key"].as_str().unwrap())
             .unwrap()
             .try_into()
             .unwrap();
@@ -260,7 +260,7 @@ async fn test_ssrf_blocks_private_ips() {
         .unwrap();
     let cap_json: Value = serde_json::from_slice(&body_bytes).unwrap();
     let server_pubkey_bytes: [u8; 32] =
-        decode_base64_flexible(cap_json["link_preview_proxy_key"].as_str().unwrap())
+        decode_base64_flexible(cap_json["extension_proxy_key"].as_str().unwrap())
             .unwrap()
             .try_into()
             .unwrap();
@@ -354,7 +354,7 @@ async fn test_ssrf_blocks_http_in_production() {
         .unwrap();
     let cap_json: Value = serde_json::from_slice(&body_bytes).unwrap();
     let server_pubkey_bytes: [u8; 32] =
-        decode_base64_flexible(cap_json["link_preview_proxy_key"].as_str().unwrap())
+        decode_base64_flexible(cap_json["extension_proxy_key"].as_str().unwrap())
             .unwrap()
             .try_into()
             .unwrap();
@@ -450,7 +450,7 @@ async fn test_size_limit_exceeded() {
         .unwrap();
     let cap_json: Value = serde_json::from_slice(&body_bytes).unwrap();
     let server_pubkey_bytes: [u8; 32] =
-        decode_base64_flexible(cap_json["link_preview_proxy_key"].as_str().unwrap())
+        decode_base64_flexible(cap_json["extension_proxy_key"].as_str().unwrap())
             .unwrap()
             .try_into()
             .unwrap();
@@ -557,7 +557,7 @@ async fn test_gzip_bomb_exceeds_cap() {
         .unwrap();
     let cap_json: Value = serde_json::from_slice(&body_bytes).unwrap();
     let server_pubkey_bytes: [u8; 32] =
-        decode_base64_flexible(cap_json["link_preview_proxy_key"].as_str().unwrap())
+        decode_base64_flexible(cap_json["extension_proxy_key"].as_str().unwrap())
             .unwrap()
             .try_into()
             .unwrap();
@@ -657,7 +657,7 @@ async fn test_rate_limiting() {
         .unwrap();
     let cap_json: Value = serde_json::from_slice(&body_bytes).unwrap();
     let server_pubkey_bytes: [u8; 32] =
-        decode_base64_flexible(cap_json["link_preview_proxy_key"].as_str().unwrap())
+        decode_base64_flexible(cap_json["extension_proxy_key"].as_str().unwrap())
             .unwrap()
             .try_into()
             .unwrap();

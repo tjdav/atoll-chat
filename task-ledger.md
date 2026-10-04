@@ -147,13 +147,18 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** `server/src/cli.rs`, `server/src/main.rs`, `server/src/models/verify.rs`, `server/src/models/fetch.rs`, `server/src/models/mod.rs`, `server/tests/cli_models.rs`, `server/tests/batch-manifest.toml`.
   - **Batch:** `operations`
+- **Task 39a — Capabilities Audit and Consolidation**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/routes/capabilities.rs`, `server/tests/capabilities_audit.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `server/tests/push_subscriptions.rs`, `server/tests/sockudo.rs`, `server/tests/link_preview.rs`, `server/tests/extension_proxy.rs`.
+  - **Batch:** `transport`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 43
-- **Done:** 43
+- **Project Status:** Complete
+- **Total Verifications/Tasks Tracked:** 44
+- **Done:** 44
 - **Pending:** 0
 - **Mismatches:** 0
