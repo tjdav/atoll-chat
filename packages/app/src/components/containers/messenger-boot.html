@@ -5,15 +5,22 @@
       <span>{{ boot_loading }}</span>
     </p>
     <p ref="error" class="error" role="alert" hidden="{{ errorHidden }}">{{ error }}</p>
-    <slot name="shell"></slot>
   </div>
 </template>
 
 <style>
   :host {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal, 1000);
     display: block;
     width: 100%;
     height: 100dvh;
+  }
+
+  :host([ready="true"]),
+  :host([ready]) {
+    display: none !important;
   }
 
   .boot {

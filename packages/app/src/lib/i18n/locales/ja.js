@@ -40,5 +40,10 @@ export default {
   'auth_confirm_back_link': '← ログインに戻る',
 
   'boot_loading': '読み込み中…',
-  'boot_error_failed': '起動に失敗しました。'
+  'boot_error_failed': '起動に失敗しました。',
+
+  'app_shell_rail_label': 'メインナビゲーション',
+  'app_shell_bottom_nav_label': 'メインナビゲーション',
+  'app_shell_list_label': '会話一覧',
+  'app_shell_detail_label': 'アクティブビュー'
 }

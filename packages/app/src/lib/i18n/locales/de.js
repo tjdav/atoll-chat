@@ -40,5 +40,10 @@ export default {
   'auth_confirm_back_link': '← Zurück zur Anmeldung',
 
   'boot_loading': 'Laden…',
-  'boot_error_failed': 'Start fehlgeschlagen.'
+  'boot_error_failed': 'Start fehlgeschlagen.',
+
+  'app_shell_rail_label': 'Hauptnavigation',
+  'app_shell_bottom_nav_label': 'Hauptnavigation',
+  'app_shell_list_label': 'Unterhaltungen',
+  'app_shell_detail_label': 'Aktive Ansicht'
 }

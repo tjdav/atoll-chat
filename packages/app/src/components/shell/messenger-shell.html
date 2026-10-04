@@ -1,0 +1,123 @@
+<template id="messenger-shell">
+  <div class="shell" data-testid="shell">
+    <rail-host class="shell__rail" aria-label="{{ app_shell_rail_label }}"></rail-host>
+    <surface-host class="shell__surface"></surface-host>
+    <nav class="shell__bottom-nav" aria-label="{{ app_shell_bottom_nav_label }}" data-testid="bottom-nav">
+      <!-- Bottom nav items arrive with the extension system (C-CHAT-2 onward). -->
+    </nav>
+  </div>
+</template>
+
+<style>
+  :host {
+    display: block;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+  }
+
+  .shell {
+    display: grid;
+    height: 100%;
+    width: 100%;
+
+    /* Mobile default: single column with a bottom nav bar. */
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr var(--mobile-nav-height);
+
+    /* Safe areas: apply as padding on the shell so content sits inside. */
+    padding-top: var(--safe-top);
+    padding-right: var(--safe-right);
+    padding-bottom: var(--safe-bottom);
+    padding-left: var(--safe-left);
+    box-sizing: border-box;
+  }
+
+  .shell__rail {
+    display: none;
+  }
+
+  .shell__surface {
+    grid-column: 1;
+    grid-row: 1;
+    overflow: hidden;
+  }
+
+  .shell__bottom-nav {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    background: var(--surface-1);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  /* Desktop: ≥1024px. Rail + list + detail. No bottom nav. */
+  @media (min-width: 1024px) {
+    .shell {
+      grid-template-columns: var(--rail-width) 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    .shell__rail {
+      display: block;
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .shell__surface {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .shell__bottom-nav {
+      display: none;
+    }
+  }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  attributes: {
+    ready: { type: Boolean, default: false }
+  },
+
+  style: {
+    display: (state) => (state.ready ? 'block' : 'none')
+  },
+
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'app_shell_rail_label',
+        'app_shell_bottom_nav_label'
+      ])
+    }
+  },
+
+  client({ state, i18n, signal }) {
+    const syncLocale = (locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'app_shell_rail_label',
+        'app_shell_bottom_nav_label'
+      ]))
+    }
+
+    i18n.subscribeLocale(syncLocale, { signal })
+    if (state.locale !== i18n.getLocale()) {
+      syncLocale(i18n.getLocale())
+    }
+
+    window.addEventListener('app:ready', () => {
+      state.ready = true
+    }, { signal })
+  }
+})
+</script>
