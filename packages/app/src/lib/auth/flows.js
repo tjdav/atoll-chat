@@ -17,6 +17,21 @@ export class LoginError extends Error {
 }
 
 /**
+ * Error thrown during recovery flow execution.
+ */
+export class RecoverError extends Error {
+  /**
+   * @param {string} code Error code string (e.g. "recovery_invalid", "rate_limited", "recovery_expired", "opaque_failed", "display_name_invalid", "network", "unknown")
+   * @param {string} message Descriptive error message
+   */
+  constructor(code, message) {
+    super(message);
+    this.name = 'RecoverError';
+    this.code = code;
+  }
+}
+
+/**
  * Error thrown during registration flow execution.
  */
 export class RegisterError extends Error {
@@ -358,3 +373,211 @@ export function createRegisterFlow(deps = {}) {
  * Default singleton registration flow function using standard lazy-loaded module dependencies.
  */
 export const registerFlow = createRegisterFlow();
+
+/**
+ * Factory creating a recovery flow function with injectable dependencies.
+ *
+ * Recovery flow executes OPRF blinding/finalization, display name encryption,
+ * recovery start request, local OPAQUE registration, identity keypair regeneration,
+ * and recovery finish request.
+ *
+ * Does NOT persist session credentials or identity keys internally.
+ *
+ * @param {Object} [deps={}] Dependency overrides
+ * @param {Object} [deps.oprf] OPRF library module
+ * @param {Object} [deps.opaque] OPAQUE wrapper module
+ * @param {Object} [deps.crypto] Display name crypto module
+ * @param {Object} [deps.identity] Identity keypair module
+ * @param {Object} [deps.api] API client instance
+ * @param {Object} [deps.codec] Codec module
+ * @returns {(params: { username: string, recoveryCode: string, displayName: string, newPassword: string }) => Promise<{ sessionToken: string, userId: string, identityPrivateKey: Uint8Array, identityPublicKey: Uint8Array, oprfToken: Uint8Array, username: string }>} Recovery flow execution function
+ */
+export function createRecoverFlow(deps = {}) {
+  return async function recoverFlow({ username, recoveryCode, displayName, newPassword }) {
+    const d = {
+      oprf: deps.oprf ?? (await import('../oprf/index.js')),
+      opaque: deps.opaque ?? (await import('./opaque.js')),
+      crypto: deps.crypto ?? (await import('../crypto/display-name.js')),
+      identity: deps.identity ?? (await import('./identity.js')),
+      api: deps.api ?? (await import('../api/client.js')).api,
+      codec: deps.codec ?? (await import('../codec/index.js')),
+    };
+
+    let blindResult;
+    let blindedBytes;
+    let blindedStr;
+    try {
+      blindResult = await d.oprf.blind(username);
+      blindedBytes = blindResult.blindedBytes ?? blindResult;
+      blindedStr = d.codec.bytesToBase64 ? d.codec.bytesToBase64(blindedBytes) : bytesToBase64(blindedBytes);
+    } catch (err) {
+      if (err instanceof RecoverError) throw err;
+      throw new RecoverError('unknown', err.message || 'OPRF blinding failed.');
+    }
+
+    let evaluatedStr;
+    try {
+      const { evaluated } = await d.api.post('/oprf/blind', {
+        body: { blinded: blindedStr }
+      });
+      evaluatedStr = evaluated;
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status >= 500) {
+          const recErr = new RecoverError('network', 'The server had a problem. Try again.');
+          recErr.cause = err;
+          throw recErr;
+        }
+      }
+      if (err instanceof TypeError) {
+        const recErr = new RecoverError('network', err.message || 'Network request failed.');
+        recErr.cause = err;
+        throw recErr;
+      }
+      const recErr = new RecoverError('unknown', err.message || 'OPRF request failed.');
+      recErr.cause = err;
+      throw recErr;
+    }
+
+    let tokenBytes;
+    let tokenStr;
+    try {
+      const decodeB64 = d.codec.base64ToBytes ? d.codec.base64ToBytes : base64ToBytes;
+      const evaluatedBytes = typeof evaluatedStr === 'string' ? decodeB64(evaluatedStr) : evaluatedStr;
+      tokenBytes = await d.oprf.finalize(username, evaluatedBytes, blindResult.state);
+      tokenStr = d.codec.bytesToBase64url(tokenBytes);
+    } catch (err) {
+      if (err instanceof RecoverError) throw err;
+      throw new RecoverError('unknown', err.message || 'OPRF finalization failed.');
+    }
+
+    let encryptedDisplayStr;
+    try {
+      const displayNameKey = await d.oprf.deriveDisplayNameKey(tokenBytes);
+      const encryptedBytes = await d.crypto.encryptDisplayName(displayName, displayNameKey);
+      encryptedDisplayStr = d.codec.bytesToBase64url(encryptedBytes);
+    } catch (err) {
+      throw new RecoverError('display_name_invalid', err.message || 'Invalid display name.');
+    }
+
+    let startResponse;
+    try {
+      startResponse = await d.api.post('/auth/recover/start', {
+        body: { recovery_code: recoveryCode, username_token: tokenStr }
+      });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 404) {
+          const recErr = new RecoverError('recovery_invalid', 'That recovery code does not match this account.');
+          recErr.cause = err;
+          throw recErr;
+        }
+        if (err.status === 429) {
+          const recErr = new RecoverError('rate_limited', 'Too many attempts. Try again in a moment.');
+          recErr.cause = err;
+          throw recErr;
+        }
+        if (err.status >= 500) {
+          const recErr = new RecoverError('network', 'The server had a problem. Try again.');
+          recErr.cause = err;
+          throw recErr;
+        }
+        const recErr = new RecoverError('unknown', err.message || 'Recovery start failed.');
+        recErr.cause = err;
+        throw recErr;
+      }
+      if (err instanceof TypeError) {
+        const recErr = new RecoverError('network', err.message || 'Network request failed.');
+        recErr.cause = err;
+        throw recErr;
+      }
+      const recErr = new RecoverError('unknown', err.message || 'Recovery start failed.');
+      recErr.cause = err;
+      throw recErr;
+    }
+
+    let clientRegistrationState;
+    let _registrationRequest;
+    try {
+      const startRes = await d.opaque.startRegistration({ password: newPassword });
+      clientRegistrationState = startRes.clientRegistrationState;
+      _registrationRequest = startRes.registrationRequest;
+    } catch (err) {
+      throw new RecoverError('opaque_failed', err.message || 'Recovery failed. Try again.');
+    }
+
+    let finished;
+    try {
+      finished = await d.opaque.finishRegistration({
+        clientRegistrationState,
+        registrationResponse: startResponse.registration_response,
+        password: newPassword
+      });
+    } catch (err) {
+      throw new RecoverError('opaque_failed', 'Recovery failed. Try again.');
+    }
+    if (!finished || !finished.registrationRecord) {
+      throw new RecoverError('opaque_failed', 'Recovery failed. Try again.');
+    }
+
+    let identity;
+    let identityPublicB64;
+    try {
+      identity = await d.identity.generateIdentityKeypair();
+      identityPublicB64 = d.codec.bytesToBase64url(identity.publicKey);
+    } catch (err) {
+      throw new RecoverError('unknown', err.message || 'Identity keypair generation failed.');
+    }
+
+    let finishResponse;
+    try {
+      finishResponse = await d.api.post('/auth/recover/finish', {
+        body: {
+          username_token: tokenStr,
+          recovery_session: startResponse.recovery_session,
+          opaque_record: finished.registrationRecord,
+          encrypted_display: encryptedDisplayStr,
+          identity_pubkey: identityPublicB64
+        }
+      });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401 || err.status === 403) {
+          const recErr = new RecoverError('recovery_expired', 'Your recovery session expired. Start again.');
+          recErr.cause = err;
+          throw recErr;
+        }
+        if (err.status >= 500) {
+          const recErr = new RecoverError('network', 'The server had a problem. Try again.');
+          recErr.cause = err;
+          throw recErr;
+        }
+        const recErr = new RecoverError('unknown', err.message || 'Recovery finish failed.');
+        recErr.cause = err;
+        throw recErr;
+      }
+      if (err instanceof TypeError) {
+        const recErr = new RecoverError('network', err.message || 'Network request failed.');
+        recErr.cause = err;
+        throw recErr;
+      }
+      const recErr = new RecoverError('unknown', err.message || 'Recovery finish failed.');
+      recErr.cause = err;
+      throw recErr;
+    }
+
+    return {
+      sessionToken: finishResponse.session_token,
+      userId: finishResponse.user_id,
+      identityPrivateKey: identity.privateKey,
+      identityPublicKey: identity.publicKey,
+      oprfToken: tokenBytes,
+      username
+    };
+  };
+}
+
+/**
+ * Default singleton recovery flow function using standard lazy-loaded module dependencies.
+ */
+export const recoverFlow = createRecoverFlow();

@@ -3,6 +3,7 @@
     <header>
       <h1>{{ auth_recovery_title }}</h1>
     </header>
+    <p ref="errorRegion" role="alert" class="error-message" hidden="{{ errorHidden }}">{{ error }}</p>
     <form ref="form" novalidate>
       <label class="field">
         <span class="field-label">{{ auth_recovery_username_label }}</span>
@@ -13,10 +14,14 @@
         <input ref="recoveryCode" type="text" name="recoveryCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required>
       </label>
       <label class="field">
+        <span class="field-label">{{ auth_recovery_display_name_label }}</span>
+        <input ref="displayName" type="text" name="displayName" autocomplete="nickname" required>
+      </label>
+      <label class="field">
         <span class="field-label">{{ auth_recovery_new_password_label }}</span>
         <input ref="newPassword" type="password" name="newPassword" autocomplete="new-password" required>
       </label>
-      <button ref="submit" type="submit" class="primary">{{ auth_recovery_submit_button }}</button>
+      <button ref="submit" type="submit" class="primary" disabled="{{ pending }}">{{ submitLabel }}</button>
     </form>
     <footer>
       <button ref="backLink" type="button" class="link">{{ auth_recovery_back_link }}</button>
@@ -46,6 +51,15 @@
     font-size: var(--text-2xl);
     font-weight: var(--weight-bold);
     color: var(--text-primary);
+  }
+  .error-message {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--surface-1);
+    color: var(--destructive-500, #e53e3e);
+    border: 1px solid var(--destructive-500, #e53e3e);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
   }
   form {
     display: flex;
@@ -112,7 +126,9 @@ import { defineComponent } from 'coralite'
 
 export default defineComponent({
   attributes: {
-    active: { type: String, default: 'false' }
+    active: { type: String, default: 'false' },
+    pending: { type: Boolean, default: false },
+    error: { type: String, default: '' }
   },
   server({ i18n }) {
     return {
@@ -121,11 +137,18 @@ export default defineComponent({
         'auth_recovery_title',
         'auth_recovery_username_label',
         'auth_recovery_recovery_code_label',
+        'auth_recovery_display_name_label',
         'auth_recovery_new_password_label',
         'auth_recovery_submit_button',
-        'auth_recovery_back_link'
+        'auth_recovery_submit_pending',
+        'auth_recovery_back_link',
+        'auth_recovery_error_generic'
       ])
     }
+  },
+  getters: {
+    submitLabel: ({ state }) => (state.pending ? state.auth_recovery_submit_pending : state.auth_recovery_submit_button),
+    errorHidden: ({ state }) => !state.error
   },
   client({ refs, emit, state, signal, i18n }) {
     const syncLocale = (locale) => {
@@ -134,9 +157,12 @@ export default defineComponent({
         'auth_recovery_title',
         'auth_recovery_username_label',
         'auth_recovery_recovery_code_label',
+        'auth_recovery_display_name_label',
         'auth_recovery_new_password_label',
         'auth_recovery_submit_button',
-        'auth_recovery_back_link'
+        'auth_recovery_submit_pending',
+        'auth_recovery_back_link',
+        'auth_recovery_error_generic'
       ]))
     }
 
@@ -145,13 +171,36 @@ export default defineComponent({
       syncLocale(i18n.getLocale())
     }
 
-    refs('form').addEventListener('submit', (event) => {
+    refs('form').addEventListener('submit', async (event) => {
       event.preventDefault()
-      emit('auth:recovery:submit', {
-        username: refs('username').value,
-        recoveryCode: refs('recoveryCode').value,
-        newPassword: refs('newPassword').value
-      })
+
+      const username = refs('username').value
+      const recoveryCode = refs('recoveryCode').value
+      const displayName = refs('displayName').value
+      const newPassword = refs('newPassword').value
+
+      emit('auth:recovery:submit', { username, recoveryCode, displayName, newPassword })
+
+      state.pending = true
+      state.error = ''
+      try {
+        const { recoverFlow } = await import('../../lib/auth/flows.js')
+        const result = await recoverFlow({ username, recoveryCode, displayName, newPassword })
+
+        const { setSessionToken, setOprfToken, setUsername } = await import('../../lib/auth/session.js')
+        const { setIdentityKeypair } = await import('../../lib/auth/identity.js')
+
+        setSessionToken(result.sessionToken)
+        setUsername(result.username)
+        setOprfToken(result.oprfToken)
+        setIdentityKeypair(result.identityPrivateKey, result.identityPublicKey)
+
+        window.location.href = '/app.html'
+      } catch (err) {
+        state.error = err instanceof Error ? err.message : i18n.t('auth_recovery_error_generic')
+      } finally {
+        state.pending = false
+      }
     }, { signal })
 
     refs('backLink').addEventListener('click', () => {

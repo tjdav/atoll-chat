@@ -33,6 +33,8 @@ export default [
       'tests/unit/i18n-locales.test.js',
       'tests/unit/i18n-plugin.test.js',
       'tests/unit/components-defineComponent.test.js',
+      'tests/unit/auth-recover-flow.test.js',
+      'tests/unit/auth-revocation.test.js',
     ],
   },
   {
@@ -57,6 +59,7 @@ export default [
       'tests/component/auth-login-flow.spec.js',
       'tests/component/register-form.spec.js',
       'tests/component/messenger-boot.spec.js',
+      'tests/component/auth-recovery.spec.js',
     ],
   },
   {

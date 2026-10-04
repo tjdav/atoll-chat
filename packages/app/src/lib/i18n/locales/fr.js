@@ -28,9 +28,12 @@ export default {
   'auth_recovery_title': "Récupérer l'accès",
   'auth_recovery_username_label': "Nom d'utilisateur",
   'auth_recovery_recovery_code_label': 'Code de récupération',
+  'auth_recovery_display_name_label': 'Nom d’affichage',
   'auth_recovery_new_password_label': 'Nouveau mot de passe',
   'auth_recovery_submit_button': "Récupérer l'accès",
+  'auth_recovery_submit_pending': 'Récupération…',
   'auth_recovery_back_link': '← Retour à la connexion',
+  'auth_recovery_error_generic': 'La récupération a échoué. Réessayez.',
 
   'auth_confirm_title': 'Vérifiez vos codes de récupération',
   'auth_confirm_description': "L'affichage et la confirmation des codes de récupération seront implémentés dans une tâche ultérieure. Pour l'instant, utilisez le mot de passe que vous venez de définir pour vous connecter.",

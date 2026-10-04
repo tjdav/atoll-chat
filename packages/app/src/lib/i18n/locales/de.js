@@ -28,9 +28,12 @@ export default {
   'auth_recovery_title': 'Zugriff wiederherstellen',
   'auth_recovery_username_label': 'Benutzername',
   'auth_recovery_recovery_code_label': 'Wiederherstellungscode',
+  'auth_recovery_display_name_label': 'Anzeigename',
   'auth_recovery_new_password_label': 'Neues Passwort',
   'auth_recovery_submit_button': 'Zugriff wiederherstellen',
+  'auth_recovery_submit_pending': 'Wiederherstellung…',
   'auth_recovery_back_link': '← Zurück zur Anmeldung',
+  'auth_recovery_error_generic': 'Wiederherstellung fehlgeschlagen. Erneut versuchen.',
 
   'auth_confirm_title': 'Prüfen Sie Ihre Wiederherstellungscodes',
   'auth_confirm_description': 'Anzeige und Bestätigung der Wiederherstellungscodes werden in einer späteren Aufgabe implementiert. Verwenden Sie vorerst das gerade festgelegte Passwort zum Anmelden.',

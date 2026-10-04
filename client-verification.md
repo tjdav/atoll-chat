@@ -311,3 +311,14 @@ build task runs.
 | Scoped CSS Delivery Path | Component `<style>` blocks are emitted into `<head>` under `<style id="coralite-inline-styles">` using `@layer components` and `@scope` rules, NOT into `dist/assets/css/main.css` |
 | Component Hydration Tests | `packages/app/tests/component/hydration.spec.js` asserting login, register, confirm, recovery, boot views, and runtime locale switching to French |
 | Screenshots Produced | `packages/app/test-results/hydration-login.png` and `packages/app/test-results/hydration-fr.png` |
+
+## Task C-AUTH-5 — Account Recovery Flow and Session Revocation
+
+- **Recovery Flow Wire Contract**:
+  - `POST /auth/recover/start` body: `{ recovery_code, username_token }`, response: `{ recovery_session, registration_response }`.
+  - `POST /auth/recover/finish` body: `{ username_token, recovery_session, opaque_record, encrypted_display, identity_pubkey }`, response: `{ session_token, user_id }`.
+- **Error Codes (`RecoverError`)**: `recovery_invalid`, `rate_limited`, `recovery_expired`, `opaque_failed`, `display_name_invalid`, `network`, `unknown`.
+- **Display Name Form Field**: User re-enters display name on recovery form. Display name is encrypted with OPRF-derived key before initial start request.
+- **Identity Keypair**: Regenerates Ed25519 identity keypair during recovery flow.
+- **Revocation Handler Contract**: `RevocationHandler({ session, navigate })` exposes `handle(eventType, payload)`. Triggers `clearSession()` and redirects to `/index.html` on `session.revoked`, `account.disabled`, and `account.deleted` events.
+- **Limitation**: `RecoverError.message` strings are English-only. Translation at component layer deferred to a future task.
