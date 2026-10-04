@@ -1,11 +1,11 @@
 <template id="auth-view-confirm">
   <section class="card">
     <header>
-      <h1>{{ title }}</h1>
+      <h1>{{ auth_confirm_title }}</h1>
     </header>
-    <p>{{ description }}</p>
+    <p>{{ auth_confirm_description }}</p>
     <footer>
-      <button ref="backToLogin" type="button" class="link">{{ backLinkLabel }}</button>
+      <button ref="backToLogin" type="button" class="link">{{ auth_confirm_back_link }}</button>
     </footer>
   </section>
 </template>
@@ -72,11 +72,6 @@ export default {
         'auth_confirm_back_link'
       ])
     }
-  },
-  getters: {
-    title: ({ state }) => state.auth_confirm_title,
-    description: ({ state }) => state.auth_confirm_description,
-    backLinkLabel: ({ state }) => state.auth_confirm_back_link
   },
   client({ refs, emit, state, signal, i18n }) {
     i18n.subscribeLocale((locale) => {

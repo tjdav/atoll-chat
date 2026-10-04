@@ -1,25 +1,25 @@
 <template id="auth-view-recovery">
   <section class="card">
     <header>
-      <h1>{{ title }}</h1>
+      <h1>{{ auth_recovery_title }}</h1>
     </header>
     <form ref="form" novalidate>
       <label class="field">
-        <span class="field-label">{{ usernameLabel }}</span>
+        <span class="field-label">{{ auth_recovery_username_label }}</span>
         <input ref="username" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       </label>
       <label class="field">
-        <span class="field-label">{{ recoveryCodeLabel }}</span>
+        <span class="field-label">{{ auth_recovery_recovery_code_label }}</span>
         <input ref="recoveryCode" type="text" name="recoveryCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required>
       </label>
       <label class="field">
-        <span class="field-label">{{ newPasswordLabel }}</span>
+        <span class="field-label">{{ auth_recovery_new_password_label }}</span>
         <input ref="newPassword" type="password" name="newPassword" autocomplete="new-password" required>
       </label>
-      <button ref="submit" type="submit" class="primary">{{ submitLabel }}</button>
+      <button ref="submit" type="submit" class="primary">{{ auth_recovery_submit_button }}</button>
     </form>
     <footer>
-      <button ref="backLink" type="button" class="link">{{ backLinkLabel }}</button>
+      <button ref="backLink" type="button" class="link">{{ auth_recovery_back_link }}</button>
     </footer>
   </section>
 </template>
@@ -124,14 +124,6 @@ export default {
         'auth_recovery_back_link'
       ])
     }
-  },
-  getters: {
-    title: ({ state }) => state.auth_recovery_title,
-    usernameLabel: ({ state }) => state.auth_recovery_username_label,
-    recoveryCodeLabel: ({ state }) => state.auth_recovery_recovery_code_label,
-    newPasswordLabel: ({ state }) => state.auth_recovery_new_password_label,
-    submitLabel: ({ state }) => state.auth_recovery_submit_button,
-    backLinkLabel: ({ state }) => state.auth_recovery_back_link
   },
   client({ refs, emit, state, signal, i18n }) {
     i18n.subscribeLocale((locale) => {

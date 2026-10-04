@@ -1,31 +1,31 @@
 <template id="auth-view-register">
   <section class="card">
     <header>
-      <h1>{{ title }}</h1>
+      <h1>{{ auth_register_title }}</h1>
     </header>
     <p ref="errorRegion" role="alert" class="error-message" hidden="{{ errorHidden }}">{{ error }}</p>
     <form ref="form" novalidate>
       <label class="field">
-        <span class="field-label">{{ inviteCodeLabel }}</span>
+        <span class="field-label">{{ auth_register_invite_code_label }}</span>
         <input ref="inviteCode" type="text" name="inviteCode" autocomplete="off" autocapitalize="characters" maxlength="8" spellcheck="false" required>
       </label>
       <div ref="altcha" data-altcha></div>
       <label class="field">
-        <span class="field-label">{{ usernameLabel }}</span>
+        <span class="field-label">{{ auth_register_username_label }}</span>
         <input ref="username" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       </label>
       <label class="field">
-        <span class="field-label">{{ displayNameLabel }}</span>
+        <span class="field-label">{{ auth_register_display_name_label }}</span>
         <input ref="displayName" type="text" name="displayName" autocomplete="nickname" required>
       </label>
       <label class="field">
-        <span class="field-label">{{ passwordLabel }}</span>
+        <span class="field-label">{{ auth_register_password_label }}</span>
         <input ref="password" type="password" name="password" autocomplete="new-password" required>
       </label>
       <button ref="submit" type="submit" class="primary" disabled="{{ pending }}">{{ submitLabel }}</button>
     </form>
     <footer>
-      <button ref="backLink" type="button" class="link">{{ backLinkLabel }}</button>
+      <button ref="backLink" type="button" class="link">{{ auth_register_back_link }}</button>
     </footer>
   </section>
 </template>
@@ -145,13 +145,7 @@ export default {
     }
   },
   getters: {
-    title: ({ state }) => state.auth_register_title,
-    inviteCodeLabel: ({ state }) => state.auth_register_invite_code_label,
-    usernameLabel: ({ state }) => state.auth_register_username_label,
-    displayNameLabel: ({ state }) => state.auth_register_display_name_label,
-    passwordLabel: ({ state }) => state.auth_register_password_label,
     submitLabel: ({ state }) => (state.pending ? state.auth_register_submit_pending : state.auth_register_submit_button),
-    backLinkLabel: ({ state }) => state.auth_register_back_link,
     errorHidden: ({ state }) => !state.error
   },
   client({ refs, emit, state, signal, i18n }) {
