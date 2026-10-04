@@ -135,4 +135,46 @@ describe('createI18n factory', () => {
     assert.equal(i18n.t(123), 'Number key 123')
     assert.equal(i18n.t(null), 'Null key')
   })
+
+  it('17. strings() returns key-value map for key array', () => {
+    const i18n = createI18n({ defaultLocale: 'en', locales: testLocales, initialLocale: 'en' })
+    assert.deepEqual(i18n.strings(['greeting', 'welcome']), {
+      greeting: 'Hello',
+      welcome: 'Welcome, {name}!'
+    })
+  })
+
+  it('18. strings([]) returns empty object', () => {
+    const i18n = createI18n({ defaultLocale: 'en', locales: testLocales, initialLocale: 'en' })
+    assert.deepEqual(i18n.strings([]), {})
+  })
+
+  it('19. strings() reflects active locale after setLocale', () => {
+    const i18n = createI18n({ defaultLocale: 'en', locales: testLocales, initialLocale: 'en' })
+    assert.deepEqual(i18n.strings(['greeting']), { greeting: 'Hello' })
+    i18n.setLocale('fr')
+    assert.deepEqual(i18n.strings(['greeting']), { greeting: 'Bonjour' })
+  })
+
+  it('20. strings() falls back per key using default locale', () => {
+    const i18n = createI18n({ defaultLocale: 'en', locales: testLocales, initialLocale: 'fr' })
+    assert.deepEqual(i18n.strings(['greeting', 'items']), {
+      greeting: 'Bonjour',
+      items: 'You have {count} items in {folder}.'
+    })
+  })
+
+  it('21. strings() throws TypeError on non-array argument', () => {
+    const i18n = createI18n({ defaultLocale: 'en', locales: testLocales, initialLocale: 'en' })
+    assert.throws(() => i18n.strings('not an array'), /strings\(\) requires an array of keys/)
+    assert.throws(() => i18n.strings(null), /strings\(\) requires an array of keys/)
+  })
+
+  it('22. Unknown keys in strings() map to key verbatim', () => {
+    const i18n = createI18n({ defaultLocale: 'en', locales: testLocales, initialLocale: 'en' })
+    assert.deepEqual(i18n.strings(['missing_one', 'greeting']), {
+      missing_one: 'missing_one',
+      greeting: 'Hello'
+    })
+  })
 })

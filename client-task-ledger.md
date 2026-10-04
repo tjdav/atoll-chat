@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 7 |
-| Done | 20 |
+| Pending | 6 |
+| Done | 21 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -36,7 +36,7 @@ or modify the server's ledger.
 | C-INFRA-5 | Design System Tokens & Base CSS | done | C-INFRA-1 | component-smoke |
 | C-INFRA-5b | Bundle Global CSS with postcss-import | done | C-INFRA-5, C-INFRA-3, C-INFRA-4 | unit-smoke, component-smoke |
 | C-INFRA-6a | Create i18n Plugin and Locale Infrastructure | done | C-V-E | unit-smoke |
-| C-INFRA-6b | Migrate Component Translations to i18n Plugin | pending | C-INFRA-6a | — |
+| C-INFRA-6b | Migrate Component Translations to i18n Plugin | done | C-INFRA-6a | component-i18n |
 | C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
 | C-AUTH-3a | OPAQUE Login Flow and Session Storage | done | C-AUTH-1, C-AUTH-2, C-V-D | unit-smoke, component-smoke |
@@ -135,6 +135,10 @@ On completion:
 4. Do not modify `task-ledger.md` or `verification.md`.
 ````
 
+## Plugin Documentation Policy
+
+Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the same commit that lands the plugin and adds a row to `packages/app/docs/plugins/README.md`.
+
 ## Coralite Feedback IDs
 
 | ID | Task | Type | Tier | Status |
@@ -144,6 +148,7 @@ On completion:
 | CF-003 | C-AUTH-1 | Missing feature (`coralite-scripts test` dev server omits client JS script bundle links) | T2 | filed-upstream; client-mitigated-by-architecture |
 | CF-004 | C-INFRA-5b | Enhancement (dev/prod CSS `@import` resolution divergence in default build pipeline) | T4 | filed-upstream; client-mitigated-by-configuration |
 | CF-005 | C-V-E | Documentation bug (Getters context definition in LLM ref §6.4 vs runtime) | T4 | filed-upstream; client-mitigated-by-architecture |
+| CF-006 | C-INFRA-6b | Bug / Framework constraint (SSR in-place AST token mutation prevents multi-render token substitution) | T1/T2 | filed-upstream; client-mitigated-by-architecture |
 
 ## Notes
 
@@ -279,3 +284,11 @@ On completion:
   - Created `packages/app/src/plugins/i18n-plugin.js` defining the `i18n` Coralite plugin using two-phase resolvers for `server.context` and `client.context`.
   - Updated `packages/app/coralite.config.js` to register `i18nPlugin({ defaultLocale: 'en' })`.
   - Added unit test suites (`i18n.test.js`, `i18n-locales.test.js`, `i18n-plugin.test.js`) registered in `unit-smoke` in `test-batches.js`.
+- **C-INFRA-6b Deliverables & Status:**
+  - Status: `done`.
+  - Extended `createI18n` with `strings(keys)` helper and `i18n-plugin.js` with server/client context exposure and `{ signal }` subscriber cleanup.
+  - Re-keyed all 35 translation strings across all 7 locale files to valid identifier underscore keys (`auth_login_title`).
+  - Migrated 5 container components (`auth-view-login`, `auth-view-register`, `auth-view-recovery`, `auth-view-confirm`, `messenger-boot`; `auth-gate` confirmed stringless).
+  - Created plugin documentation at `packages/app/docs/plugins/README.md` and `packages/app/docs/plugins/i18n.md`.
+  - Created Playwright component test `tests/component/i18n-migration.spec.js` registered under `component-i18n` batch in `test-batches.js`.
+  - Recorded CF-006 in `client-coralite-feedback.md` and `client-task-ledger.md`.

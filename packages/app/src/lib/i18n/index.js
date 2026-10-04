@@ -120,11 +120,29 @@ export function createI18n({ defaultLocale = DEFAULT_LOCALE, locales = {}, initi
     return Object.freeze(Object.keys(locales))
   }
 
+  /**
+   * Returns a key-value dictionary for an array of translation keys.
+   *
+   * @param {string[]} keys Array of translation key strings.
+   * @returns {Record<string, string>} Object mapping each key to its resolved string.
+   */
+  function strings(keys) {
+    if (!Array.isArray(keys)) {
+      throw new TypeError('strings() requires an array of keys')
+    }
+    const out = {}
+    for (const key of keys) {
+      out[key] = t(key)
+    }
+    return out
+  }
+
   return {
     t,
     getLocale,
     setLocale,
     subscribe,
-    availableLocales
+    availableLocales,
+    strings
   }
 }

@@ -61,3 +61,14 @@ Status: Active — tracks client-team friction with Coralite and its upstream di
 - **Component:** `coralite` v1.0.0-rc.5
 - **Description:** Client Spec §26.4 and Design Decision #28 asserted that `t()` is available in getters, whereas Coralite LLM Reference §6.4 defined getter context as `{ state, root, refs, slots, signal }`. Inspection of `coralite-element.js` (lines 1858–1865) and `index.js` (line 11630) confirmed that `getter(context)` receives strictly `{ state, root, refs, slots, signal }` and does NOT receive plugin context.
 - **Impact:** Attempting to call `t()` or access plugin context inside `getters` results in `undefined` errors.
+
+### CF-006 — In-place SSR AST token mutation prevents multi-render SSR token substitution
+
+- **Task:** C-INFRA-6b
+- **Tier:** T1 — Bug / T2 Framework Constraint
+- **Status:** filed-upstream; client-mitigated-by-architecture
+- **Client-side action taken:** Migrated all translation key naming conventions to valid identifier underscore notation (`auth_login_title`), updated factory/plugin helpers, and documented client-rendered SPA hydration pattern.
+- **Issue URL:** https://codeberg.org/tjdavid/coralite/issues
+- **Component:** `coralite` v1.0.0-rc.5
+- **Description:** In `index.js` (`replaceToken`), Coralite performs SSR `<c-token>` substitution by directly mutating cached component AST text nodes (`node.data = node.data.replace(content, value)`). On subsequent SSR render passes, the cached AST nodes no longer contain the `{{ token }}` string pattern, leaving `<c-token></c-token>` placeholders empty in HTML responses.
+- **Impact:** SSR renders empty `<c-token>` tags after the first render pass across all custom elements using server state bindings.

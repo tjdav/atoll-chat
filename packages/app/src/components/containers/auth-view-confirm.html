@@ -1,11 +1,11 @@
 <template id="auth-view-confirm">
   <section class="card">
     <header>
-      <h1>Check your recovery codes</h1>
+      <h1>{{ title }}</h1>
     </header>
-    <p>Recovery code display and confirmation is implemented in a subsequent task. For now, use the password you just set to log in.</p>
+    <p>{{ description }}</p>
     <footer>
-      <button ref="backToLogin" type="button" class="link">← Back to log in</button>
+      <button ref="backToLogin" type="button" class="link">{{ backLinkLabel }}</button>
     </footer>
   </section>
 </template>
@@ -63,7 +63,31 @@ export default {
   attributes: {
     active: { type: String, default: 'false' }
   },
-  client({ refs, emit, signal }) {
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'auth_confirm_title',
+        'auth_confirm_description',
+        'auth_confirm_back_link'
+      ])
+    }
+  },
+  getters: {
+    title: ({ state }) => state.auth_confirm_title,
+    description: ({ state }) => state.auth_confirm_description,
+    backLinkLabel: ({ state }) => state.auth_confirm_back_link
+  },
+  client({ refs, emit, state, signal, i18n }) {
+    i18n.subscribeLocale((locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'auth_confirm_title',
+        'auth_confirm_description',
+        'auth_confirm_back_link'
+      ]))
+    }, { signal })
+
     refs('backToLogin').addEventListener('click', async () => {
       try {
         const { clearPendingRegistration } = await import('../../../lib/auth/pending-registration.js')
