@@ -123,13 +123,17 @@
   - **Migration:** None (in-memory only).
   - **Delivered:** `server/src/sessions/occupancy.rs`, `server/src/sessions/cleanup.rs`, `server/src/sessions/mod.rs`, `server/src/routes/room_sessions.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/error.rs`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/room_session_occupancy.rs`, `server/tests/batch-manifest.toml`.
   - **Batch:** `messaging`
+- **Task 40d — Session Signaling**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/sessions/signal.rs`, `server/src/routes/room_sessions.rs`, `server/src/sessions/occupancy.rs`, `server/src/sessions/mod.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/error.rs`, `server/src/lib.rs`, `server/tests/room_session_signal.rs`, `server/tests/batch-manifest.toml`.
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 37
-- **Done:** 37
+- **Total Verifications/Tasks Tracked:** 38
+- **Done:** 38
 - **Pending:** 0
 - **Mismatches:** 0

@@ -34,6 +34,7 @@ pub enum RateLimitKey {
     SessionCreate { user_id: String, window: Window },
     SessionJoin { user_id: String },
     SessionHeartbeat { user_id: String, session_id: String },
+    SessionSignal { user_id: String, session_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -381,6 +382,19 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_session_heartbeat_per_min,
+            )
+        }
+        RateLimitKey::SessionSignal {
+            user_id,
+            session_id,
+        } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("session_signal:{user_id}:{session_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_session_signal_per_min,
             )
         }
     };

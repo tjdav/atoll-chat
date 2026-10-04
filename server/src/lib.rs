@@ -464,6 +464,10 @@ pub fn build_app(state: AppState) -> Router {
             "/rooms/{id}/sessions/{session_id}/roster",
             get(routes::room_sessions::roster),
         )
+        .route(
+            "/rooms/{id}/sessions/{session_id}/signal",
+            post(routes::room_sessions::signal),
+        )
         .route("/rooms/{id}/attachments", post(routes::attachments::upload))
         .route(
             "/attachments/{id}",
