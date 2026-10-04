@@ -181,6 +181,7 @@ timeout_seconds = 60
 name = "link_preview"
 description = "Link preview proxy, Content Key encryption, SSRF guard, size limits, and rate limiting"
 files = [
+    "extension_proxy",
     "link_preview",
 ]
 timeout_seconds = 60

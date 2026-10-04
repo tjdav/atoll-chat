@@ -11,6 +11,7 @@ pub mod config_ops;
 pub mod db;
 pub mod devices;
 pub mod error;
+pub mod extensions_proxy;
 pub mod gdpr;
 pub mod identity;
 pub mod invites;
@@ -25,6 +26,7 @@ pub mod opaque;
 pub mod oprf;
 pub mod permission_check;
 pub mod permissions;
+pub mod proxy_common;
 pub mod push;
 pub mod rate_limit;
 pub mod reactions;
@@ -265,6 +267,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/link-preview/proxy",
             post(routes::link_preview::proxy_handler),
+        )
+        .route(
+            "/extensions/proxy",
+            post(routes::extensions_proxy::proxy_handler),
         )
         .route("/roles", get(routes::roles::handler))
         .route(

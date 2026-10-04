@@ -5,6 +5,7 @@ pub mod attachments;
 pub mod calls;
 pub mod capabilities;
 pub mod devices;
+pub mod extensions_proxy;
 pub mod health;
 pub mod invites;
 pub mod key_packages;

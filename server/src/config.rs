@@ -56,6 +56,33 @@ pub struct Config {
     pub link_preview_proxy_timeout_seconds: u64,
     pub link_preview_proxy_max_bytes: u64,
     pub link_preview_proxy_key_path: String,
+
+    pub extension_proxy_enabled: bool,
+    // used by Task 45.2
+    pub extension_proxy_max_requests_per_min: u32,
+    // used by Task 45.2
+    pub extension_proxy_max_requests_per_hour: u32,
+    // used by Task 45.2
+    pub extension_proxy_max_requests_per_min_total: u32,
+    // used by Task 45.2
+    pub extension_proxy_max_requests_per_hour_total: u32,
+    // used by Task 45.2
+    pub extension_proxy_max_bandwidth_per_hour_bytes: u64,
+    // used by Task 45.2
+    pub extension_proxy_max_bandwidth_per_day_bytes: u64,
+    // used by Task 45.2
+    pub extension_proxy_max_bandwidth_per_hour_bytes_total: u64,
+    // used by Task 45.2
+    pub extension_proxy_max_bandwidth_per_day_bytes_total: u64,
+    pub extension_proxy_timeout_connect_seconds: u64,
+    pub extension_proxy_timeout_read_seconds: u64,
+    pub extension_proxy_max_response_bytes: u64,
+    pub extension_proxy_max_request_bytes: u64,
+    pub extension_proxy_user_agent: String,
+    // used by Task 45.3
+    pub extension_proxy_deny_domains: String,
+    // used by Task 45.3
+    pub extension_proxy_deny_domains_path: String,
     pub sessions_enabled: bool,
     pub server_max_sessions_per_room: u32,
     pub server_max_session_participants: u32,
@@ -490,6 +517,100 @@ impl Config {
 
         let link_preview_proxy_key_path = env::var("LINK_PREVIEW_PROXY_KEY_PATH")
             .unwrap_or_else(|_| "./data/link-preview.key".to_string());
+
+        let extension_proxy_enabled = env::var("EXTENSION_PROXY_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(false);
+
+        let extension_proxy_max_requests_per_min = env::var("EXTENSION_PROXY_MAX_REQUESTS_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(60);
+
+        let extension_proxy_max_requests_per_hour =
+            env::var("EXTENSION_PROXY_MAX_REQUESTS_PER_HOUR")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(500);
+
+        let extension_proxy_max_requests_per_min_total =
+            env::var("EXTENSION_PROXY_MAX_REQUESTS_PER_MIN_TOTAL")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(120);
+
+        let extension_proxy_max_requests_per_hour_total =
+            env::var("EXTENSION_PROXY_MAX_REQUESTS_PER_HOUR_TOTAL")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1000);
+
+        let extension_proxy_max_bandwidth_per_hour_bytes =
+            env::var("EXTENSION_PROXY_MAX_BANDWIDTH_PER_HOUR_BYTES")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(52_428_800);
+
+        let extension_proxy_max_bandwidth_per_day_bytes =
+            env::var("EXTENSION_PROXY_MAX_BANDWIDTH_PER_DAY_BYTES")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(524_288_000);
+
+        let extension_proxy_max_bandwidth_per_hour_bytes_total =
+            env::var("EXTENSION_PROXY_MAX_BANDWIDTH_PER_HOUR_BYTES_TOTAL")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(104_857_600);
+
+        let extension_proxy_max_bandwidth_per_day_bytes_total =
+            env::var("EXTENSION_PROXY_MAX_BANDWIDTH_PER_DAY_BYTES_TOTAL")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1_073_741_824);
+
+        let extension_proxy_timeout_connect_seconds =
+            env::var("EXTENSION_PROXY_TIMEOUT_CONNECT_SECONDS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(5);
+
+        let extension_proxy_timeout_read_seconds = env::var("EXTENSION_PROXY_TIMEOUT_READ_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let extension_proxy_max_response_bytes = env::var("EXTENSION_PROXY_MAX_RESPONSE_BYTES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10_485_760);
+
+        let extension_proxy_max_request_bytes = env::var("EXTENSION_PROXY_MAX_REQUEST_BYTES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(262_144);
+
+        let extension_proxy_user_agent =
+            env::var("EXTENSION_PROXY_USER_AGENT").unwrap_or_else(|_| "Atoll/2.0".to_string());
+
+        let extension_proxy_deny_domains =
+            env::var("EXTENSION_PROXY_DENY_DOMAINS").unwrap_or_default();
+
+        let extension_proxy_deny_domains_path =
+            env::var("EXTENSION_PROXY_DENY_DOMAINS_PATH").unwrap_or_default();
+
+        if extension_proxy_timeout_connect_seconds == 0 {
+            anyhow::bail!("EXTENSION_PROXY_TIMEOUT_CONNECT_SECONDS must be >= 1");
+        }
+        if extension_proxy_timeout_read_seconds < extension_proxy_timeout_connect_seconds {
+            anyhow::bail!("EXTENSION_PROXY_TIMEOUT_READ_SECONDS must be >= EXTENSION_PROXY_TIMEOUT_CONNECT_SECONDS");
+        }
+        if extension_proxy_max_request_bytes == 0 {
+            anyhow::bail!("EXTENSION_PROXY_MAX_REQUEST_BYTES must be >= 1");
+        }
+        if extension_proxy_max_response_bytes == 0 {
+            anyhow::bail!("EXTENSION_PROXY_MAX_RESPONSE_BYTES must be >= 1");
+        }
 
         let sessions_enabled = env::var("SESSIONS_ENABLED")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
@@ -1030,6 +1151,22 @@ impl Config {
             link_preview_proxy_timeout_seconds,
             link_preview_proxy_max_bytes,
             link_preview_proxy_key_path,
+            extension_proxy_enabled,
+            extension_proxy_max_requests_per_min,
+            extension_proxy_max_requests_per_hour,
+            extension_proxy_max_requests_per_min_total,
+            extension_proxy_max_requests_per_hour_total,
+            extension_proxy_max_bandwidth_per_hour_bytes,
+            extension_proxy_max_bandwidth_per_day_bytes,
+            extension_proxy_max_bandwidth_per_hour_bytes_total,
+            extension_proxy_max_bandwidth_per_day_bytes_total,
+            extension_proxy_timeout_connect_seconds,
+            extension_proxy_timeout_read_seconds,
+            extension_proxy_max_response_bytes,
+            extension_proxy_max_request_bytes,
+            extension_proxy_user_agent,
+            extension_proxy_deny_domains,
+            extension_proxy_deny_domains_path,
             sessions_enabled,
             server_max_sessions_per_room,
             server_max_session_participants,
@@ -1186,6 +1323,22 @@ impl Config {
             link_preview_proxy_timeout_seconds: 5,
             link_preview_proxy_max_bytes: 1_048_576,
             link_preview_proxy_key_path: "./data/link-preview.key".to_string(),
+            extension_proxy_enabled: false,
+            extension_proxy_max_requests_per_min: 60,
+            extension_proxy_max_requests_per_hour: 500,
+            extension_proxy_max_requests_per_min_total: 120,
+            extension_proxy_max_requests_per_hour_total: 1000,
+            extension_proxy_max_bandwidth_per_hour_bytes: 52_428_800,
+            extension_proxy_max_bandwidth_per_day_bytes: 524_288_000,
+            extension_proxy_max_bandwidth_per_hour_bytes_total: 104_857_600,
+            extension_proxy_max_bandwidth_per_day_bytes_total: 1_073_741_824,
+            extension_proxy_timeout_connect_seconds: 5,
+            extension_proxy_timeout_read_seconds: 30,
+            extension_proxy_max_response_bytes: 10_485_760,
+            extension_proxy_max_request_bytes: 262_144,
+            extension_proxy_user_agent: "Atoll/2.0".to_string(),
+            extension_proxy_deny_domains: String::new(),
+            extension_proxy_deny_domains_path: String::new(),
             sessions_enabled: true,
             server_max_sessions_per_room: 25,
             server_max_session_participants: 50,
