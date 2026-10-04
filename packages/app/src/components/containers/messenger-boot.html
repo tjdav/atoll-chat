@@ -2,7 +2,7 @@
   <div class="boot" data-testid="boot" data-state="{{ bootState }}">
     <p ref="loading" class="loading" hidden="{{ loadingHidden }}">
       <span class="spinner" aria-hidden="true"></span>
-      <span>Loading…</span>
+      <span>{{ loadingLabel }}</span>
     </p>
     <p ref="error" class="error" role="alert" hidden="{{ errorHidden }}">{{ error }}</p>
     <slot name="shell"></slot>
@@ -68,14 +68,33 @@ export default {
     hasOprfToken: { type: Boolean, default: false }
   },
 
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'boot_loading',
+        'boot_error_failed'
+      ])
+    }
+  },
+
   getters: {
+    loadingLabel: ({ state }) => state.boot_loading,
     bootState: ({ state }) => state.error ? 'error' : (state.ready ? 'ready' : 'booting'),
     loadingHidden: ({ state }) => state.ready || state.error !== '',
     errorHidden: ({ state }) => state.error === ''
   },
 
-  client({ refs, emit, state, signal }) {
-    (async () => {
+  client({ refs, emit, state, signal, i18n }) {
+    i18n.subscribeLocale((locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'boot_loading',
+        'boot_error_failed'
+      ]))
+    }, { signal })
+
+    ;(async () => {
       try {
         const { bootFlow } = await import('../../lib/auth/boot.js');
         const result = await bootFlow();
@@ -89,7 +108,7 @@ export default {
           user: result.user
         });
       } catch (err) {
-        state.error = err instanceof Error ? err.message : 'Boot failed.';
+        state.error = err instanceof Error ? err.message : i18n.t('boot_error_failed');
         emit('app:error', { message: state.error });
       }
     })();

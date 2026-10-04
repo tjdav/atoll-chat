@@ -66,7 +66,7 @@ export default (options = {}) => {
         return {
           t: (key, vars) => i18n.t(key, vars),
           getLocale: () => i18n.getLocale(),
-          strings: (keys) => Object.fromEntries(keys.map(k => [k, i18n.t(k)]))
+          strings: (keys) => i18n.strings(keys)
         }
       }
     },
@@ -91,7 +91,7 @@ export default (options = {}) => {
         }
 
         if (initialLoc === DEFAULT_LOCALE) {
-          const nav = navigator.language
+          const nav = typeof navigator !== 'undefined' ? navigator.language : null
           if (nav) {
             const short = nav.split('-')[0]
             if (SUPPORTED_LOCALES.includes(short)) {
@@ -114,12 +114,18 @@ export default (options = {}) => {
             i18n.setLocale(locale)
             try { window.localStorage.setItem(storageKey, locale) } catch { /* ignore */ }
           },
-          subscribeLocale: (cb, { signal } = {}) => {
+          strings: (keys) => i18n.strings(keys),
+          subscribeLocale: (cb, opts = {}) => {
             const unsubscribe = i18n.subscribe(cb)
-            signal?.addEventListener('abort', unsubscribe, { once: true })
+            if (opts.signal) {
+              if (opts.signal.aborted) {
+                unsubscribe()
+              } else {
+                opts.signal.addEventListener('abort', unsubscribe, { once: true })
+              }
+            }
             return unsubscribe
-          },
-          strings: (keys) => Object.fromEntries(keys.map(k => [k, i18n.t(k)]))
+          }
         })
       }
     }

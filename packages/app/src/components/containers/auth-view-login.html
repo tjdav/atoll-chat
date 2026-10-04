@@ -1,24 +1,24 @@
 <template id="auth-view-login">
   <section class="card">
     <header>
-      <h1>Log in</h1>
+      <h1>{{ title }}</h1>
     </header>
     <p ref="errorRegion" role="alert" class="error-message" hidden="{{ errorHidden }}">{{ error }}</p>
     <form ref="form" novalidate>
       <label class="field">
-        <span class="field-label">Username</span>
+        <span class="field-label">{{ usernameLabel }}</span>
         <input ref="username" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       </label>
       <label class="field">
-        <span class="field-label">Password</span>
+        <span class="field-label">{{ passwordLabel }}</span>
         <input ref="password" type="password" name="password" autocomplete="current-password" required>
       </label>
       <button ref="submit" type="submit" class="primary" disabled="{{ pending }}">{{ submitLabel }}</button>
     </form>
-    <button ref="biometric" type="button" class="secondary" hidden="{{ biometricHidden }}">Log in with Face ID</button>
+    <button ref="biometric" type="button" class="secondary" hidden="{{ biometricHidden }}">{{ biometricLabel }}</button>
     <footer>
-      <button ref="registerLink" type="button" class="link">Register with invite code →</button>
-      <button ref="recoveryLink" type="button" class="link">Lost access? Use recovery →</button>
+      <button ref="registerLink" type="button" class="link">{{ registerLinkLabel }}</button>
+      <button ref="recoveryLink" type="button" class="link">{{ recoveryLinkLabel }}</button>
     </footer>
   </section>
 </template>
@@ -133,12 +133,47 @@ export default {
     pending: { type: Boolean, default: false },
     error: { type: String, default: '' }
   },
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'auth_login_title',
+        'auth_login_username_label',
+        'auth_login_password_label',
+        'auth_login_submit_button',
+        'auth_login_submit_pending',
+        'auth_login_biometric_button',
+        'auth_login_register_link',
+        'auth_login_recovery_link'
+      ])
+    }
+  },
   getters: {
+    title: ({ state }) => state.auth_login_title,
+    usernameLabel: ({ state }) => state.auth_login_username_label,
+    passwordLabel: ({ state }) => state.auth_login_password_label,
+    submitLabel: ({ state }) => (state.pending ? state.auth_login_submit_pending : state.auth_login_submit_button),
+    biometricLabel: ({ state }) => state.auth_login_biometric_button,
+    registerLinkLabel: ({ state }) => state.auth_login_register_link,
+    recoveryLinkLabel: ({ state }) => state.auth_login_recovery_link,
     biometricHidden: () => true,
-    submitLabel: ({ state }) => (state.pending ? 'Logging in…' : 'Log in'),
     errorHidden: ({ state }) => !state.error
   },
-  client({ refs, emit, state, signal }) {
+  client({ refs, emit, state, signal, i18n }) {
+    i18n.subscribeLocale((locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'auth_login_title',
+        'auth_login_username_label',
+        'auth_login_password_label',
+        'auth_login_submit_button',
+        'auth_login_submit_pending',
+        'auth_login_biometric_button',
+        'auth_login_register_link',
+        'auth_login_recovery_link'
+      ]))
+    }, { signal })
+
     refs('form').addEventListener('submit', async (event) => {
       event.preventDefault()
       const username = refs('username').value
@@ -153,7 +188,7 @@ export default {
         await loginFlow({ username, password })
         window.location.href = '/app.html'
       } catch (err) {
-        state.error = err instanceof Error ? err.message : 'Login failed.'
+        state.error = err instanceof Error ? err.message : i18n.t('auth_login_error_failed')
       } finally {
         state.pending = false
       }

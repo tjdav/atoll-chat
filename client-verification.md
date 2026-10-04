@@ -261,7 +261,7 @@ build task runs.
 | Flat destructuring behavior | `client(({ state, t }) => ...)` fails with `TypeError: t is not a function` because `t` is `undefined` |
 | `server()` `<c-token>` binding | `server()` return values merge into server state; populates `{{ key }}` tokens during SSR without `attributes` declaration |
 | `client()` reactivity mechanism | `state.x = val` in `client()` marks key dirty and schedules DOM update without `attributes` declaration |
-| C-INFRA-6 symptom root cause | Flat destructuring of `t` instead of `ctx.i18n.t(...)`, causing unhandled `TypeError` in `client()` |
+| C-INFRA-6 symptom root cause | Flat destructuring of `t` instead of namespaced `ctx.i18n.t(...)`, causing unhandled `TypeError` in `client()` |
 | Report location | `client-verification/cv-e/report.md` |
 
 ### C-INFRA-6a — i18n Plugin & Locale Infrastructure Contracts
@@ -282,3 +282,18 @@ build task runs.
 | Plugin name | `i18n` |
 | Required access pattern | `ctx.i18n.t(key, vars)` in `client()` and `server()`; NOT available in `getters` |
 | `coralite.config.js` registration | Configured under `plugins: [ i18nPlugin({ defaultLocale: 'en' }) ]` |
+
+### C-INFRA-6b — i18n Component Migration & Plugin Documentation Contracts
+
+**Verified:** 2026-10-04
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Factory Helper | `strings(keys: string[])` added to `createI18n` returning key-value object map (throwing TypeError if not an array) |
+| Extended Plugin Surface | `server.context` returns `t`, `getLocale`, `strings`; `client.context` returns `t`, `getLocale`, `setLocale`, `strings`, `subscribeLocale(cb, { signal })` |
+| Underscore Key Convention (CF-006) | All 35 translation keys across all 7 locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) use valid JS identifier underscore format (e.g. `auth_login_title`) |
+| Migrated Components | `auth-view-login.html`, `auth-view-register.html`, `auth-view-recovery.html`, `auth-view-confirm.html`, `messenger-boot.html` (`auth-gate.html` confirmed stringless) |
+| Component Four-Part Pattern | 1. Underscore key format; 2. `server({ i18n })` seeds state; 3. Getters read state identifiers; 4. `client({ state, i18n, signal })` subscribes with `{ signal }`; 5. Template binds getter identifiers |
+| Plugin Documentation | `packages/app/docs/plugins/README.md` and `packages/app/docs/plugins/i18n.md` created covering overview, contract, component pattern, failure modes, known costs, and workflows |
+| Test Coverage & Batches | Unit tests in `tests/unit/i18n.test.js` and `tests/unit/i18n-plugin.test.js`; Playwright test suite `tests/component/i18n-migration.spec.js` registered under `component-i18n` batch in `test-batches.js` |
+| Verification Commands | `pnpm check-batches`, `pnpm test:batch unit-smoke`, `pnpm test:batch component-i18n`, `pnpm --filter @atoll/app build` exit zero |

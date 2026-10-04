@@ -1,25 +1,25 @@
 <template id="auth-view-recovery">
   <section class="card">
     <header>
-      <h1>Recover access</h1>
+      <h1>{{ title }}</h1>
     </header>
     <form ref="form" novalidate>
       <label class="field">
-        <span class="field-label">Username</span>
+        <span class="field-label">{{ usernameLabel }}</span>
         <input ref="username" type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
       </label>
       <label class="field">
-        <span class="field-label">Recovery code</span>
+        <span class="field-label">{{ recoveryCodeLabel }}</span>
         <input ref="recoveryCode" type="text" name="recoveryCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" required>
       </label>
       <label class="field">
-        <span class="field-label">New password</span>
+        <span class="field-label">{{ newPasswordLabel }}</span>
         <input ref="newPassword" type="password" name="newPassword" autocomplete="new-password" required>
       </label>
-      <button ref="submit" type="submit" class="primary">Recover access</button>
+      <button ref="submit" type="submit" class="primary">{{ submitLabel }}</button>
     </form>
     <footer>
-      <button ref="backLink" type="button" class="link">← Back to log in</button>
+      <button ref="backLink" type="button" class="link">{{ backLinkLabel }}</button>
     </footer>
   </section>
 </template>
@@ -112,7 +112,40 @@ export default {
   attributes: {
     active: { type: String, default: 'false' }
   },
-  client({ refs, emit, signal }) {
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'auth_recovery_title',
+        'auth_recovery_username_label',
+        'auth_recovery_recovery_code_label',
+        'auth_recovery_new_password_label',
+        'auth_recovery_submit_button',
+        'auth_recovery_back_link'
+      ])
+    }
+  },
+  getters: {
+    title: ({ state }) => state.auth_recovery_title,
+    usernameLabel: ({ state }) => state.auth_recovery_username_label,
+    recoveryCodeLabel: ({ state }) => state.auth_recovery_recovery_code_label,
+    newPasswordLabel: ({ state }) => state.auth_recovery_new_password_label,
+    submitLabel: ({ state }) => state.auth_recovery_submit_button,
+    backLinkLabel: ({ state }) => state.auth_recovery_back_link
+  },
+  client({ refs, emit, state, signal, i18n }) {
+    i18n.subscribeLocale((locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'auth_recovery_title',
+        'auth_recovery_username_label',
+        'auth_recovery_recovery_code_label',
+        'auth_recovery_new_password_label',
+        'auth_recovery_submit_button',
+        'auth_recovery_back_link'
+      ]))
+    }, { signal })
+
     refs('form').addEventListener('submit', (event) => {
       event.preventDefault()
       emit('auth:recovery:submit', {

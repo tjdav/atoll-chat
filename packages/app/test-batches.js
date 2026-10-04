@@ -57,4 +57,13 @@ export default [
       'tests/component/messenger-boot.spec.js',
     ],
   },
+  {
+    name: 'component-i18n',
+    type: 'component',
+    runner: 'playwright',
+    description: 'Component tests for i18n locale rendering and migration verification.',
+    files: [
+      'tests/component/i18n-migration.spec.js',
+    ],
+  },
 ]

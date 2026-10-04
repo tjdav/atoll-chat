@@ -51,7 +51,7 @@ describe('i18n-plugin Coralite integration', () => {
     const mockPluginContext = {}
     const instanceResolver = await plugin.client.context(mockPluginContext)
     const clientCtx = instanceResolver({})
-    assert.equal(clientCtx.t('auth.login.title'), 'Log in')
+    assert.equal(clientCtx.t('auth_login_title'), 'Log in')
   })
 
   it('8. The setLocale function changes the translation for a subsequent t call', async () => {
@@ -59,11 +59,11 @@ describe('i18n-plugin Coralite integration', () => {
     const mockPluginContext = {}
     const instanceResolver = await plugin.client.context(mockPluginContext)
     const clientCtx = instanceResolver({})
-    assert.equal(clientCtx.t('auth.login.title'), 'Log in')
+    assert.equal(clientCtx.t('auth_login_title'), 'Log in')
 
     clientCtx.setLocale('fr')
     assert.equal(clientCtx.getLocale(), 'fr')
-    assert.equal(clientCtx.t('auth.login.title'), 'Connexion')
+    assert.equal(clientCtx.t('auth_login_title'), 'Connexion')
   })
 
   it('9. Calling phase-2 resolver twice returns objects backed by the same underlying i18n instance', async () => {
@@ -80,7 +80,7 @@ describe('i18n-plugin Coralite integration', () => {
 
     assert.equal(ctx1.getLocale(), 'de')
     assert.equal(ctx2.getLocale(), 'de')
-    assert.equal(ctx2.t('auth.login.title'), 'Anmelden')
+    assert.equal(ctx2.t('auth_login_title'), 'Anmelden')
   })
 
   it('10. The strings helper maps key array to object dictionary on server and client context', async () => {
@@ -89,10 +89,10 @@ describe('i18n-plugin Coralite integration', () => {
     const clientResolver = await plugin.client.context({})
     const clientCtx = clientResolver({})
 
-    const keys = ['auth.login.title', 'auth.login.submit_button']
+    const keys = ['auth_login_title', 'auth_login_submit_button']
     const expected = {
-      'auth.login.title': 'Log in',
-      'auth.login.submit_button': 'Log in'
+      'auth_login_title': 'Log in',
+      'auth_login_submit_button': 'Log in'
     }
 
     assert.deepEqual(serverCtx.strings(keys), expected)
@@ -115,5 +115,20 @@ describe('i18n-plugin Coralite integration', () => {
 
     clientCtx.setLocale('de')
     assert.equal(calls, 1)
+  })
+
+  it('12. subscribeLocale with pre-aborted signal does not register callback', async () => {
+    const plugin = i18nPluginFactory({ defaultLocale: 'en' })
+    const clientResolver = await plugin.client.context({})
+    const clientCtx = clientResolver({})
+
+    const controller = new AbortController()
+    controller.abort()
+
+    let calls = 0
+    clientCtx.subscribeLocale(() => { calls++ }, { signal: controller.signal })
+
+    clientCtx.setLocale('fr')
+    assert.equal(calls, 0)
   })
 })
