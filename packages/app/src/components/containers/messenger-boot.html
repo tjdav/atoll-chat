@@ -2,7 +2,7 @@
   <div class="boot" data-testid="boot" data-state="{{ bootState }}">
     <p ref="loading" class="loading" hidden="{{ loadingHidden }}">
       <span class="spinner" aria-hidden="true"></span>
-      <span>{{ loadingLabel }}</span>
+      <span>{{ boot_loading }}</span>
     </p>
     <p ref="error" class="error" role="alert" hidden="{{ errorHidden }}">{{ error }}</p>
     <slot name="shell"></slot>
@@ -79,7 +79,6 @@ export default {
   },
 
   getters: {
-    loadingLabel: ({ state }) => state.boot_loading,
     bootState: ({ state }) => state.error ? 'error' : (state.ready ? 'ready' : 'booting'),
     loadingHidden: ({ state }) => state.ready || state.error !== '',
     errorHidden: ({ state }) => state.error === ''
