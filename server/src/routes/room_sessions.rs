@@ -3,7 +3,7 @@ use crate::error::ApiError;
 use crate::rate_limit::{self, RateLimitKey, Window};
 use crate::sessions::{
     self, CreateRoomSessionRequest, JoinResponse, ListRoomSessionsQuery, PatchRoomSessionRequest,
-    RoomSessionView, RosterResponse,
+    RoomSessionView, RosterResponse, SignalRequest, SignalResponse,
 };
 use crate::AppState;
 use axum::{
@@ -197,6 +197,50 @@ pub async fn join(
         .await?;
 
     Ok(Json(resp))
+}
+
+pub async fn signal(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((room_id, session_id)): Path<(String, String)>,
+    Json(req): Json<SignalRequest>,
+) -> Result<(StatusCode, Json<SignalResponse>), ApiError> {
+    if !state.session_types.is_effective_enabled() {
+        return Err(ApiError::NotImplemented("sessions_disabled".to_string()));
+    }
+
+    let signal_key = RateLimitKey::SessionSignal {
+        user_id: auth.user_id.clone(),
+        session_id: session_id.clone(),
+    };
+    let signal_dec = rate_limit::check(&state.pool, &state.config.rate_limits, signal_key).await?;
+    if !signal_dec.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".to_string(),
+            reset_at: signal_dec.reset_at,
+        });
+    }
+
+    let is_unicast = req.target_client_id.is_some();
+    let resp = sessions::send_session_signal(
+        &state.pool,
+        &state.publisher,
+        &state.occupancy,
+        state.session_types.is_effective_enabled(),
+        &room_id,
+        &session_id,
+        &auth.user_id,
+        req,
+    )
+    .await?;
+
+    let status = if is_unicast {
+        StatusCode::OK
+    } else {
+        StatusCode::ACCEPTED
+    };
+
+    Ok((status, Json(resp)))
 }
 
 pub async fn leave(

@@ -329,6 +329,14 @@ impl OccupancyStore {
         }
     }
 
+    pub async fn is_participant(&self, session_id: &str, user_id: &str) -> bool {
+        let lock = self.0.read().await;
+        if let Some(entry) = lock.get(session_id) {
+            return entry.participants.contains_key(user_id);
+        }
+        false
+    }
+
     pub async fn is_participant_of_client(
         &self,
         session_id: &str,
@@ -344,6 +352,23 @@ impl OccupancyStore {
         false
     }
 
+    pub async fn is_client_of(&self, session_id: &str, user_id: &str, client_id: &str) -> bool {
+        self.is_participant_of_client(session_id, user_id, client_id)
+            .await
+    }
+
+    pub async fn find_user_for_client(&self, session_id: &str, client_id: &str) -> Option<String> {
+        let lock = self.0.read().await;
+        if let Some(entry) = lock.get(session_id) {
+            for (user_id, part) in &entry.participants {
+                if part.client_ids.contains(client_id) {
+                    return Some(user_id.clone());
+                }
+            }
+        }
+        None
+    }
+
     pub async fn participant_users(&self, session_id: &str) -> Vec<String> {
         let lock = self.0.read().await;
         if let Some(entry) = lock.get(session_id) {
@@ -352,6 +377,10 @@ impl OccupancyStore {
             return users;
         }
         Vec::new()
+    }
+
+    pub async fn participant_user_ids(&self, session_id: &str) -> Vec<String> {
+        self.participant_users(session_id).await
     }
 }
 

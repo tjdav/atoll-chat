@@ -435,3 +435,24 @@
     1. *Disabled Mode Leave:* Clarify that `POST .../leave` returns HTTP 501 `sessions_disabled` when `sessions_enabled=false`.
     2. *Session Teardown Event Order:* Specify that on session deletion, `session.occupancy` with `participant_count: 0` is published immediately before `session.deleted`.
     3. *Media Config on Calling Disabled:* Clarify that `media_config.ice_servers` in join response is empty when calling is disabled.
+
+## Task 40d — Session Signaling Relay, Event Contract, and Rate Limiting
+- **ID:** Task 40d
+- **Date:** 2026-10-04
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §5.6, §8.7.11, §8.7.13, §8.8, §14.8, §16.23, §16.25
+- **Question asked:** What are the unicast vs broadcast routing rules, `delivered_to` user counting semantics, `session.signal` event payload shapes, self-delivery contract, rate-limit key format, `target_not_found` semantic, and opacity invariants for session signaling?
+- **Answer found:**
+  - **Unicast vs Broadcast Routing Rules:**
+    - **Unicast (`target_client_id` present):** Target device owner user ID is resolved via `OccupancyStore::find_user_for_client`. If target client is not in session -> HTTP 404 `target_not_found`. Event published on `private-user-{target_user_id}`. Returns HTTP 200 `{ "delivered_to": 1 }`.
+    - **Broadcast (`target_client_id` absent):** Participant user IDs enumerated excluding caller's `user_id`. Event published on `private-user-{target_user_id}` for each distinct target user. Returns HTTP 202 Accepted `{ "delivered_to": <user_count> }`.
+  - **`delivered_to` Counting:** Counts human users, NOT device `client_id`s. A broadcast to a session with 1 other user having 3 devices returns `delivered_to: 1`. Broadcast when caller is the only participant returns `delivered_to: 0`.
+  - **`session.signal` Event Payload Shapes (§8.8):**
+    - Unicast payload: `{ "room_id": "...", "session_id": "...", "sender_user_id": "...", "sender_client_id": "...", "target_client_id": "...", "signal_type": "...", "payload": "..." }`.
+    - Broadcast payload: `{ "room_id": "...", "session_id": "...", "sender_user_id": "...", "sender_client_id": "...", "signal_type": "...", "payload": "..." }` (note: `target_client_id` is absent).
+    - Events are non-durable (`user_seq = 0`, live delivery only).
+  - **Self-Delivery Contract:** Unicast targeting caller's own client ID publishes unconditionally on `private-user-{caller_user_id}`. The originating client receives its own event and drops it by matching `sender_client_id` against its own `client_id`.
+  - **Rate Limiting:** Rate limit `RATE_SESSION_SIGNAL_PER_MIN` (default 120/min per user per session) enforced on the sender via key `session_signal:{user_id}:{session_id}:min:{boundary}`. Broadcast amplification does NOT consume additional sender quota (counts as 1 request). Exceeding limit returns HTTP 429 with `Retry-After` header.
+  - **`target_not_found` Semantic:** HTTP 404 with error `"target_not_found"` when `target_client_id` is not present in the session's participant roster. Distinct from URL-level 404; no roster payload returned in error response.
+  - **Opacity Invariants:** Server validates `signal_type` length ($\le 128$ bytes) and `payload` Base64 decoding size ($\le 64\text{ KiB}$), but never inspects, parses, logs, or stores signal content. Locks on `OccupancyStore` are released before pub/sub event emission. No audit entries are written (§14.8).
+  - **Disabled Mode:** When `sessions_enabled == false`, returns HTTP 501 `sessions_disabled` per §8.7.13.

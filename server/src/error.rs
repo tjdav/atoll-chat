@@ -106,6 +106,28 @@ impl IntoResponse for ApiError {
     }
 }
 
+impl From<crate::sessions::SignalError> for ApiError {
+    fn from(err: crate::sessions::SignalError) -> Self {
+        use crate::sessions::SignalError;
+        match err {
+            SignalError::SessionsDisabled => {
+                ApiError::NotImplemented("sessions_disabled".to_string())
+            }
+            SignalError::SessionNotFound => ApiError::NotFound("session_not_found".to_string()),
+            SignalError::RoomNotFound => ApiError::NotFound("room_not_found".to_string()),
+            SignalError::InvalidClientId => ApiError::BadRequest("invalid_client_id".to_string()),
+            SignalError::InvalidSignalType => {
+                ApiError::BadRequest("invalid_signal_type".to_string())
+            }
+            SignalError::InvalidPayload => ApiError::BadRequest("invalid_payload".to_string()),
+            SignalError::NotAParticipant => ApiError::Forbidden("not_a_participant".to_string()),
+            SignalError::TargetNotFound => ApiError::NotFound("target_not_found".to_string()),
+            SignalError::Device(e) => ApiError::from(e),
+            SignalError::Database(e) => ApiError::from(e),
+        }
+    }
+}
+
 // Implement From<DeviceNameSyncError> for ApiError
 impl From<DeviceNameSyncError> for ApiError {
     fn from(err: DeviceNameSyncError) -> Self {
