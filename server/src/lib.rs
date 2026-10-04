@@ -122,6 +122,7 @@ pub struct AppState {
     pub link_preview_keys: Option<Arc<link_preview::LinkPreviewKeys>>,
     pub session_types: Arc<sessions::SessionTypesStore>,
     pub models: Arc<models::ModelStore>,
+    pub occupancy: sessions::OccupancyStore,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -211,6 +212,12 @@ impl axum::extract::FromRef<AppState> for Arc<sessions::SessionTypesStore> {
 impl axum::extract::FromRef<AppState> for Arc<models::ModelStore> {
     fn from_ref(state: &AppState) -> Self {
         state.models.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for sessions::OccupancyStore {
+    fn from_ref(state: &AppState) -> Self {
+        state.occupancy.clone()
     }
 }
 
@@ -440,6 +447,22 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/sessions/{session_id}",
             patch(routes::room_sessions::patch).delete(routes::room_sessions::delete),
+        )
+        .route(
+            "/rooms/{id}/sessions/{session_id}/join",
+            post(routes::room_sessions::join),
+        )
+        .route(
+            "/rooms/{id}/sessions/{session_id}/leave",
+            post(routes::room_sessions::leave),
+        )
+        .route(
+            "/rooms/{id}/sessions/{session_id}/heartbeat",
+            post(routes::room_sessions::heartbeat),
+        )
+        .route(
+            "/rooms/{id}/sessions/{session_id}/roster",
+            get(routes::room_sessions::roster),
         )
         .route("/rooms/{id}/attachments", post(routes::attachments::upload))
         .route(

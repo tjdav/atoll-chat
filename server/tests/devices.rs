@@ -206,6 +206,7 @@ async fn test_04_device_limit_is_enforced() {
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     let app = axum::Router::new()

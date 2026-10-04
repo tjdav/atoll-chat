@@ -71,6 +71,7 @@ files = [
     "room_metadata_events",
     "room_metadata_validation",
     "room_metadata_write",
+    "room_session_occupancy",
     "room_sessions",
     "rooms",
     "message_threading",

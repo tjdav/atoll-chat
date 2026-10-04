@@ -107,6 +107,7 @@ async fn setup_test_app(calling_enabled: bool) -> (Router, SqlitePool, MockServe
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     let app = server::build_app(state);

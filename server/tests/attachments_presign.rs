@@ -190,6 +190,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     let app = server::build_app(state);

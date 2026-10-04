@@ -104,6 +104,7 @@ async fn setup_test_app() -> TestEnv {
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     TestEnv { state, _dir: dir }

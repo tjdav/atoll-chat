@@ -394,3 +394,44 @@
     - `GET`, `PATCH`, and `DELETE` remain available and functional when `sessions_enabled == false` per §8.7.13.
   - **Audit Logging:**
     - `session.create` written on successful create; `session.delete` written on successful delete. No audit log is written on patch.
+
+## Task 40c — Sessions Occupancy, Join, Leave, Heartbeat, Roster
+- **ID:** Task 40c
+- **Date:** 2026-10-04
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §5.6, §5.26, §7.9, §8.7.7, §8.7.8, §8.7.9, §8.7.10, §8.7.13, §8.8, §12, §16.23
+- **Question asked:** What are the canonical occupancy storage guarantees, roster response shape/ordering, participant cap semantics, debounce contract, stale participant timeout, cross-device leave behavior, disabled mode mechanics, media_config ICE server sources, and event ordering on session teardown?
+- **Answer found:**
+  - **In-Memory Occupancy Storage Model:**
+    - Occupancy is strictly in-memory (`OccupancyStore(Arc<RwLock<HashMap<session_id, SessionOccupancy>>>)`).
+    - Never persisted to SQLite or disk, never written to any log line, tracing span, metric, or audit log row.
+    - Dropped on process termination; restarted server begins with empty occupancy requiring clients to rejoin.
+  - **Roster Shape & Ordering:**
+    - Returns `{ "roster": [ { "user_id": "u_1", "client_ids": ["c_a", "c_b"] } ] }`.
+    - Sorted strictly by `user_id ASC`, with `client_ids` array sorted ascending within each user item.
+  - **Participant Cap Semantics:**
+    - Caps distinctly count human users (`participants.len()`), NOT device `client_id`s. A user with multiple devices counts as 1 towards the cap.
+    - Cap is taken from session type's `max_participants` (falling back to `SERVER_MAX_SESSION_PARTICIPANTS`).
+    - Exceeding cap returns HTTP 409 `session_full` without evicting existing participants.
+  - **Debounce Engine & Event Contract:**
+    - `session.occupancy` carries count only: `{ "room_id": "...", "session_id": "...", "participant_count": N }` on `private-room-{room_id}`.
+    - Coalesces changes per session to at most 1 publish per `SESSION_OCCUPANCY_DEBOUNCE_MS` (default 1000ms).
+    - Teardown of empty sessions publishes a final `session.occupancy` with `participant_count: 0` before purging in-memory state.
+  - **Stale Participant Cleanup:**
+    - Background task runs periodically at `max(SESSION_HEARTBEAT_TIMEOUT_SECONDS / 3, 1)` seconds.
+    - Prunes device `client_id`s whose `last_heartbeat` exceeds `SESSION_HEARTBEAT_TIMEOUT_SECONDS`.
+  - **Cross-Device Leave Semantics:**
+    - Accepts any `client_id` belonging to the authenticated user (validated via `devices::find_by_client_id`).
+    - Removing a single `client_id` leaves other devices of the same user active in the session.
+  - **Disabled Mode Semantics (§8.7.13):**
+    - When `sessions_enabled == false`: `POST .../join`, `POST .../leave`, and `POST .../heartbeat` return HTTP 501 `sessions_disabled`.
+    - `GET .../roster` returns HTTP 403 `not_a_participant`.
+    - `GET /rooms/:id/sessions` returns 200 with `participant_count: 0`.
+  - **`media_config.ice_servers` Source:**
+    - Join response calls TURN credential generator from Task 37. Returns empty `ice_servers` array if `TURN_URL` is unconfigured, or if `CALLING_ENABLED=false`.
+  - **Event Ordering on Teardown:**
+    - Session deletion (`DELETE /rooms/:id/sessions/:id` or room deletion) tears down occupancy and emits `session.occupancy` (count 0) immediately before publishing `session.deleted`.
+  - **Proposed Spec Amendments (§16 Amendment 38):**
+    1. *Disabled Mode Leave:* Clarify that `POST .../leave` returns HTTP 501 `sessions_disabled` when `sessions_enabled=false`.
+    2. *Session Teardown Event Order:* Specify that on session deletion, `session.occupancy` with `participant_count: 0` is published immediately before `session.deleted`.
+    3. *Media Config on Calling Disabled:* Clarify that `media_config.ice_servers` in join response is empty when calling is disabled.

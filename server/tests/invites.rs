@@ -898,6 +898,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     let app = axum::Router::new()

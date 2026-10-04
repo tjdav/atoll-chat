@@ -128,6 +128,7 @@ async fn setup_test_app(
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     let app = server::build_app(state);

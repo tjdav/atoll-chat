@@ -268,6 +268,27 @@ impl From<RoomMetadataError> for ApiError {
 }
 
 // Implement From<RoomError> for ApiError
+impl From<crate::sessions::OccupancyError> for ApiError {
+    fn from(err: crate::sessions::OccupancyError) -> Self {
+        use crate::sessions::OccupancyError;
+        match err {
+            OccupancyError::SessionsDisabled => {
+                ApiError::NotImplemented("sessions_disabled".to_string())
+            }
+            OccupancyError::SessionNotFound => ApiError::NotFound("session_not_found".to_string()),
+            OccupancyError::RoomNotFound => ApiError::NotFound("room_not_found".to_string()),
+            OccupancyError::Forbidden => ApiError::Forbidden("forbidden".to_string()),
+            OccupancyError::InvalidClientId => {
+                ApiError::BadRequest("invalid_client_id".to_string())
+            }
+            OccupancyError::SessionFull => ApiError::Conflict("session_full".to_string()),
+            OccupancyError::NotAParticipant => ApiError::Forbidden("not_a_participant".to_string()),
+            OccupancyError::Device(e) => ApiError::from(e),
+            OccupancyError::Database(e) => ApiError::from(e),
+        }
+    }
+}
+
 impl From<RoomError> for ApiError {
     fn from(err: RoomError) -> Self {
         match err {

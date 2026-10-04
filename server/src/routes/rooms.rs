@@ -176,7 +176,14 @@ pub async fn delete(
     auth: AuthUser,
     Path(id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-    rooms::delete_room(&state.pool, &state.publisher, &id, &auth.user_id).await?;
+    rooms::delete_room(
+        &state.pool,
+        &state.publisher,
+        &state.occupancy,
+        &id,
+        &auth.user_id,
+    )
+    .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -185,13 +192,19 @@ pub async fn leave(
     auth: AuthUser,
     Path(id): Path<String>,
 ) -> Result<Json<LeaveResponse>, ApiError> {
-    let outcome = rooms::leave_room(&state.pool, &state.publisher, &id, &auth.user_id)
-        .await
-        .map_err(|e| match e {
-            RoomError::NotAMember => ApiError::BadRequest("not_a_member".to_string()),
-            RoomError::RoomNotFound => ApiError::NotFound("room_not_found".to_string()),
-            other => other.into(),
-        })?;
+    let outcome = rooms::leave_room(
+        &state.pool,
+        &state.publisher,
+        &state.occupancy,
+        &id,
+        &auth.user_id,
+    )
+    .await
+    .map_err(|e| match e {
+        RoomError::NotAMember => ApiError::BadRequest("not_a_member".to_string()),
+        RoomError::RoomNotFound => ApiError::NotFound("room_not_found".to_string()),
+        other => other.into(),
+    })?;
 
     let channel = format!("private-room-{}", id);
     let payload = json!({

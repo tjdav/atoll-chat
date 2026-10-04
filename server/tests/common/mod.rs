@@ -198,6 +198,7 @@ where
         link_preview_keys,
         session_types,
         models,
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     let app = server::build_app(state);
@@ -357,6 +358,7 @@ pub async fn setup_test_app_with_config(
         link_preview_keys,
         session_types,
         models,
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     let app = server::build_app(state);

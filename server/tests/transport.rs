@@ -108,6 +108,7 @@ async fn setup_app_with_custom_config(
             std::path::PathBuf::from("/tmp/stt"),
             std::path::PathBuf::from("/tmp/tts"),
         )),
+        occupancy: server::sessions::OccupancyStore::new(),
     };
 
     server::build_app(state)
