@@ -365,3 +365,32 @@
   - **Rate Limiting:** `RATE_TURN_CREDENTIALS_PER_MIN` (default 10) per user, rate limit key `turn_credentials:{user_id}:min:{boundary}`.
   - **Startup Validation:** If `TURN_URL` is set (non-empty), `TURN_SHARED_SECRET` MUST also be non-empty; otherwise server startup bails with `"TURN_URL is set but TURN_SHARED_SECRET is empty"`. Conversely, an empty `TURN_URL` denotes TURN is disabled (`POST /calls/turn-credentials` returns 501 `turn_not_configured`).
   - **No Audit / No Events:** Endpoint generates short-lived credentials without state persistence, audit logging, or Sockudo event publishing.
+
+## Task 40b — Sessions CRUD, Position Re-sequencing, and Event Contract
+- **ID:** Task 40b
+- **Date:** 2026-10-03
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §2.1, §5.6, §5.26.1, §7.9, §8.7, §8.8, §14.8, §16.23, §16.24, §16.25
+- **Question asked:** What are the position re-sequencing rules, `metadata_version` increment rules, `session.updated` event payload shape, no-op patch behavior, and room-deletion cascade event timing for room sessions?
+- **Answer found:**
+  - **Relational Schema:** `room_sessions` table created in `0036_room_sessions.sql` per §7.9 and Amendment 36 with `idx_room_sessions_room_pos` on `(room_id, position ASC)` and `idx_room_sessions_created_by` on `(created_by)`.
+  - **Dense Position Re-sequencing:** Sessions within a room maintain dense 0..N-1 positions ordered by `position ASC, id ASC` (stable tie-breaking by primary key `id`).
+    - **Create:** Inserting at position $P$ shifts existing sessions at $\ge P$ up by 1 and re-sequences the list to 0..N-1. Omitted position appends at end ($N$).
+    - **Patch:** Moving a session to position $P$ reorders the list and re-sequences remaining sessions to dense 0..N-1.
+    - **Delete:** Deleting a session re-sequences remaining sessions to dense 0..N-1.
+  - **`metadata_version` Increment Rules:**
+    - Increments by 1 on every successful `PATCH` that modifies `metadata`.
+    - Does **not** increment on position-only updates.
+  - **`session.updated` Event Shape:**
+    - Payload includes `changed` array (`["metadata"]`, `["position"]`, or `["metadata", "position"]`).
+    - `metadata` and `metadata_version` fields are present in payload iff `"metadata"` is in `changed`.
+    - `position` field is present in payload iff `"position"` is in `changed`.
+  - **No-Op Patch Behavior:**
+    - A `PATCH` supplying values equal to current state returns HTTP 200 with the current session view item, but publishes no `session.updated` event and writes no audit entry.
+  - **Room-Deletion Cascade Event Timing:**
+    - On room deletion (`DELETE /rooms/:id` or `leave_room` as sole member), `publish_room_sessions_deleted` queries active `room_sessions` and publishes `session.deleted` (`{ "room_id": "...", "session_id": "...", "extension_id": "..." }`) on `private-room-{room_id}` for each session before committing the database room deletion transaction per §8.7.12.
+  - **Disabled Mode Semantics:**
+    - `POST /api/v1/rooms/:id/sessions` returns HTTP 501 `sessions_disabled` when `sessions_enabled == false`.
+    - `GET`, `PATCH`, and `DELETE` remain available and functional when `sessions_enabled == false` per §8.7.13.
+  - **Audit Logging:**
+    - `session.create` written on successful create; `session.delete` written on successful delete. No audit log is written on patch.

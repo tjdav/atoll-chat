@@ -23,6 +23,7 @@ pub mod register;
 pub mod roles;
 pub mod room_invites;
 pub mod room_messages;
+pub mod room_sessions;
 pub mod rooms;
 pub mod sessions;
 pub mod sockudo;

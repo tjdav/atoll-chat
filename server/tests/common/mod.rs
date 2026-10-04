@@ -29,7 +29,7 @@ pub async fn setup_test_db() -> SqlitePool {
         .await
         .expect("Failed to connect to in-memory DB");
 
-    sqlx::migrate!()
+    sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .expect("Failed to run migrations on test DB");
@@ -61,7 +61,7 @@ where
         .await
         .expect("Failed to connect to test DB");
 
-    sqlx::migrate!()
+    sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .expect("Failed to run migrations on test DB");
@@ -222,7 +222,7 @@ pub async fn setup_test_app_with_config(
         .await
         .expect("Failed to connect to test DB");
 
-    sqlx::migrate!()
+    sqlx::migrate!("./migrations")
         .run(&pool)
         .await
         .expect("Failed to run migrations on test DB");

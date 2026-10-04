@@ -631,7 +631,43 @@ pub async fn get_room_for_user(
     }
 }
 
-pub async fn delete_room(pool: &SqlitePool, room_id: &str, user_id: &str) -> Result<(), RoomError> {
+async fn publish_room_sessions_deleted(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    publisher: &Publisher,
+    room_id: &str,
+) {
+    let sessions: Vec<(String, String)> =
+        match sqlx::query_as("SELECT id, extension_id FROM room_sessions WHERE room_id = ?")
+            .bind(room_id)
+            .fetch_all(&mut **tx)
+            .await
+        {
+            Ok(rows) => rows,
+            Err(_) => return,
+        };
+
+    let channel = format!("private-room-{}", room_id);
+    for (session_id, extension_id) in sessions {
+        let event_payload = serde_json::json!({
+            "room_id": room_id,
+            "session_id": session_id,
+            "extension_id": extension_id,
+        });
+        if let Err(e) = publisher
+            .publish(&channel, "session.deleted", event_payload)
+            .await
+        {
+            tracing::warn!(error = %e, room_id = %room_id, session_id = %session_id, "session.deleted publish failed during room deletion");
+        }
+    }
+}
+
+pub async fn delete_room(
+    pool: &SqlitePool,
+    publisher: &Publisher,
+    room_id: &str,
+    user_id: &str,
+) -> Result<(), RoomError> {
     let mut tx = pool.begin().await?;
 
     // 1. Fetch room
@@ -661,6 +697,9 @@ pub async fn delete_room(pool: &SqlitePool, room_id: &str, user_id: &str) -> Res
     if role != "owner" {
         return Err(RoomError::Forbidden);
     }
+
+    // Publish session.deleted for every session in room prior to deletion
+    publish_room_sessions_deleted(&mut tx, publisher, room_id).await;
 
     // 4. Delete room (ON DELETE CASCADE handles relations)
     sqlx::query("DELETE FROM rooms WHERE id = ?")
@@ -760,6 +799,7 @@ pub async fn consume_pending_remove(
 
 pub async fn leave_room(
     pool: &SqlitePool,
+    publisher: &Publisher,
     room_id: &str,
     user_id: &str,
 ) -> Result<LeaveOutcome, RoomError> {
@@ -797,6 +837,7 @@ pub async fn leave_room(
             .await?;
 
     if other_count.0 == 0 {
+        publish_room_sessions_deleted(&mut tx, publisher, room_id).await;
         // Delete room
         sqlx::query("DELETE FROM rooms WHERE id = ?")
             .bind(room_id)
@@ -840,6 +881,7 @@ pub async fn leave_room(
     let new_owner_id = match successor {
         Some((id,)) => id,
         None => {
+            publish_room_sessions_deleted(&mut tx, publisher, room_id).await;
             // Fallback: delete room if no successor found
             sqlx::query("DELETE FROM rooms WHERE id = ?")
                 .bind(room_id)
