@@ -1,5 +1,7 @@
 # Plugin Documentation
 
+> **Component prerequisite:** Every component must wrap its export in `defineComponent` from `'coralite'`. See [i18n.md](./i18n.md) for the pattern and the enforcement test.
+
 Each plugin that ships with the client has a usage guide in this directory.
 
 | Plugin | Guide | Purpose |

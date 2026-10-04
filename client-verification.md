@@ -297,3 +297,17 @@ build task runs.
 | Plugin Documentation | `packages/app/docs/plugins/README.md` and `packages/app/docs/plugins/i18n.md` created covering overview, contract, component pattern, failure modes, known costs, and workflows |
 | Test Coverage & Batches | Unit tests in `tests/unit/i18n.test.js` and `tests/unit/i18n-plugin.test.js`; Playwright test suite `tests/component/i18n-migration.spec.js` registered under `component-i18n` batch in `test-batches.js` |
 | Verification Commands | `pnpm check-batches`, `pnpm test:batch unit-smoke`, `pnpm test:batch component-i18n`, `pnpm --filter @atoll/app build` exit zero |
+
+### C-INFRA-6c — Component Hydration, `defineComponent` Prerequisite & Style Delivery
+
+**Verified:** 2026-10-04
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Component Wrapper Requirement | Every component's `<script type="module">` block MUST `import { defineComponent } from 'coralite'` and `export default defineComponent({ ... })` |
+| Compiler Failure Mode without Wrapper | Without `defineComponent`, Coralite's build-time AST compiler silently drops `client()` from client bundles and omits the runtime loader script (`coralite-runtime`); build succeeds silently but hydration never runs |
+| Enforcement Test Path | `packages/app/tests/unit/components-defineComponent.test.js` (unit test walking all HTML components) |
+| Hydration Marker | `data-coralite-ready` attribute on `<html>` indicates client hydration completion |
+| Scoped CSS Delivery Path | Component `<style>` blocks are emitted into `<head>` under `<style id="coralite-inline-styles">` using `@layer components` and `@scope` rules, NOT into `dist/assets/css/main.css` |
+| Component Hydration Tests | `packages/app/tests/component/hydration.spec.js` asserting login, register, confirm, recovery, boot views, and runtime locale switching to French |
+| Screenshots Produced | `packages/app/test-results/hydration-login.png` and `packages/app/test-results/hydration-fr.png` |

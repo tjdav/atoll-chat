@@ -32,6 +32,7 @@ export default [
       'tests/unit/i18n.test.js',
       'tests/unit/i18n-locales.test.js',
       'tests/unit/i18n-plugin.test.js',
+      'tests/unit/components-defineComponent.test.js',
     ],
   },
   {
@@ -43,6 +44,7 @@ export default [
       'tests/component/smoke.spec.js',
       'tests/component/tokens.spec.js',
       'tests/component/css-applied.spec.js',
+      'tests/component/hydration.spec.js',
     ],
   },
   {

@@ -59,7 +59,9 @@
 </style>
 
 <script type="module">
-export default {
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
   attributes: {
     active: { type: String, default: 'false' }
   },
@@ -74,14 +76,19 @@ export default {
     }
   },
   client({ refs, emit, state, signal, i18n }) {
-    i18n.subscribeLocale((locale) => {
+    const syncLocale = (locale) => {
       state.locale = locale
       Object.assign(state, i18n.strings([
         'auth_confirm_title',
         'auth_confirm_description',
         'auth_confirm_back_link'
       ]))
-    }, { signal })
+    }
+
+    i18n.subscribeLocale(syncLocale, { signal })
+    if (state.locale !== i18n.getLocale()) {
+      syncLocale(i18n.getLocale())
+    }
 
     refs('backToLogin').addEventListener('click', async () => {
       try {
@@ -93,5 +100,5 @@ export default {
       emit('auth:view-change', { view: 'login' })
     }, { signal })
   }
-}
+})
 </script>

@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 6 |
-| Done | 21 |
+| Pending | 3 |
+| Done | 22 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -26,7 +26,7 @@ or modify the server's ledger.
 | C-V-C | Verify Client-Side OPRF Library Availability | done | C-AUTH-1 | — |
 | C-V-D | Verify Client OPAQUE Library Availability and Wire Compatibility | done | C-AUTH-2, C-V-C | — |
 | C-V-E | Verify Coralite rc.5 Plugin Context Delivery and c-token Reactivity | done | C-INFRA-6 | — |
-| C-INFRA-0 | Establish client tracking files | done | C-V-A | — |
+| C-INFRA-0 | Establish client tracking files | done | C-INFRA-0 | — |
 | C-CORALITE-FEEDBACK | Establish Coralite Upstream Feedback Policy | done | C-INFRA-0 | — |
 | C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
 | C-INFRA-2 | Coralite & Plugin Configuration | done | C-INFRA-1 | — |
@@ -37,6 +37,7 @@ or modify the server's ledger.
 | C-INFRA-5b | Bundle Global CSS with postcss-import | done | C-INFRA-5, C-INFRA-3, C-INFRA-4 | unit-smoke, component-smoke |
 | C-INFRA-6a | Create i18n Plugin and Locale Infrastructure | done | C-V-E | unit-smoke |
 | C-INFRA-6b | Migrate Component Translations to i18n Plugin | done | C-INFRA-6a | component-i18n |
+| C-INFRA-6c | Fix Component Hydration by Wrapping in defineComponent | done | C-V-F, C-INFRA-6b | unit-smoke, component-smoke |
 | C-AUTH-1 | Auth Gate Shell & Routing | done | C-INFRA-2, C-INFRA-5 | component-smoke |
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
 | C-AUTH-3a | OPAQUE Login Flow and Session Storage | done | C-AUTH-1, C-AUTH-2, C-V-D | unit-smoke, component-smoke |
@@ -292,3 +293,14 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created plugin documentation at `packages/app/docs/plugins/README.md` and `packages/app/docs/plugins/i18n.md`.
   - Created Playwright component test `tests/component/i18n-migration.spec.js` registered under `component-i18n` batch in `test-batches.js`.
   - Recorded CF-006 in `client-coralite-feedback.md` and `client-task-ledger.md`.
+- **C-INFRA-6c Deliverables & Status:**
+  - Status: `done`.
+  - Wrapped all 6 container components (`auth-gate`, `auth-view-login`, `auth-view-register`, `auth-view-recovery`, `auth-view-confirm`, `messenger-boot`) with `import { defineComponent } from 'coralite'` and `export default defineComponent({ ... })`.
+  - Created repository-wide unit test `packages/app/tests/unit/components-defineComponent.test.js` asserting every component with a script module default export uses `defineComponent`.
+  - Created Playwright component hydration test `packages/app/tests/component/hydration.spec.js` verifying DOM hydration, translated text rendering across components, and runtime locale switching.
+  - Updated `packages/app/docs/plugins/i18n.md` and `packages/app/docs/plugins/README.md` with top-of-document `defineComponent` prerequisite.
+  - Registered `tests/unit/components-defineComponent.test.js` in `unit-smoke` batch and `tests/component/hydration.spec.js` in `component-smoke` batch in `packages/app/test-batches.js`.
+
+## Component Authoring Policy
+
+Every component's `<script type="module">` block MUST `import { defineComponent } from 'coralite'` and `export default defineComponent({ ... })`. Plain object exports are silently ignored by Coralite's compiler. The enforcement test is `packages/app/tests/unit/components-defineComponent.test.js`.
