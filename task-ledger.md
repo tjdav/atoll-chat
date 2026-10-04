@@ -127,13 +127,21 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** `server/src/sessions/signal.rs`, `server/src/routes/room_sessions.rs`, `server/src/sessions/occupancy.rs`, `server/src/sessions/mod.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/error.rs`, `server/src/lib.rs`, `server/tests/room_session_signal.rs`, `server/tests/batch-manifest.toml`.
   - **Batch:** `messaging`
+- **Task 45.1 — Extension Proxy Core**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/proxy_common/mod.rs`, `server/src/proxy_common/content_key.rs`, `server/src/proxy_common/ssrf.rs`, `server/src/extensions_proxy/mod.rs`, `server/src/extensions_proxy/validate.rs`, `server/src/extensions_proxy/relay.rs`, `server/src/routes/extensions_proxy.rs`, `server/src/config.rs`, `server/.env.example`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/extension_proxy.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Batch:** `link_preview`
+- **Task 45.2 — Extension Proxy Rate Limiting and Bandwidth Accounting**: done
+  - **Migration:** None (reuses `rate_limits` table).
+  - **Delivered:** `server/src/extensions_proxy/limits.rs`, `server/src/routes/extensions_proxy.rs`, `server/src/extensions_proxy/validate.rs`, `server/src/config.rs`, `server/tests/extension_proxy.rs`.
+  - **Batch:** `link_preview`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 38
-- **Done:** 38
+- **Total Verifications/Tasks Tracked:** 40
+- **Done:** 40
 - **Pending:** 0
 - **Mismatches:** 0
