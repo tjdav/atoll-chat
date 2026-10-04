@@ -49,7 +49,7 @@ test-operations:
 
 .PHONY: test-transport
 test-transport:
-	$(CARGO) test --test static --test transport
+	$(CARGO) test --test capabilities_audit --test static --test transport
 
 .PHONY: test-sockudo
 test-sockudo:

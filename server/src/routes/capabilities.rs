@@ -14,54 +14,56 @@ fn construct_base_url(app_url: Option<&str>, path_suffix: &str) -> String {
 }
 
 #[derive(Serialize)]
+pub struct AltchaCapView {
+    pub enabled: bool,
+    pub algorithm: String,
+    pub cost: u32,
+}
+
+#[derive(Serialize)]
 pub struct CapabilitiesResponse {
     pub version: String,
     pub calling: bool,
-    pub push_enabled: bool,
+    pub call_max_participants: u32,
+    pub sessions_enabled: bool,
+    pub max_sessions_per_room: u32,
+    pub max_session_participants: u32,
+    pub session_types: Vec<SessionTypeCapView>,
+    pub model_hosting_enabled: bool,
+    pub model_hosting_mode: String,
+    pub stt_models_base_url: String,
+    pub stt_default_model: String,
+    pub tts_models_base_url: String,
+    pub tts_default_model: String,
+    pub tts_models: Vec<TtsCapabilityModelView>,
     pub push_vapid_public_key: Option<String>,
-    pub safety_number_mode: String,
-    pub moderation_mode: String,
     pub websocket_url: String,
     pub sockudo_app_key: String,
     pub sockudo_channel_prefix: String,
-    pub sockudo_client_events: bool,
+    pub altcha: AltchaCapView,
     pub storage_backend: String,
     pub storage_presign_supported: bool,
     pub storage_presign_max_ttl_seconds: u64,
-    pub attachment_accept_ranges: bool,
     pub attachment_format: String,
     pub attachment_chunk_size: u64,
     pub attachment_bucket_sizes: Vec<u64>,
+    pub attachment_accept_ranges: bool,
     pub username_oprf_enabled: bool,
     pub oprf_suite: String,
-    pub threading_enabled: bool,
+    pub key_transparency_enabled: bool,
     pub link_preview_proxy_enabled: bool,
-    pub link_preview_proxy_key: Option<String>,
+    pub safety_number_mode: String,
+    pub moderation_mode: String,
+    pub edit_window_seconds: i64,
+    pub reactions_per_message: i64,
+    pub sync_event_retention_days: u64,
+    pub threading_enabled: bool,
+    pub starred_items_per_user: u32,
     pub extension_proxy_enabled: bool,
     pub extension_proxy_max_request_bytes: u64,
     pub extension_proxy_max_response_bytes: u64,
     pub extension_proxy_supports_streaming: bool,
     pub extension_proxy_key: Option<String>,
-    pub sessions_enabled: bool,
-    pub max_sessions_per_room: u32,
-    pub max_session_participants: u32,
-    pub session_types: Vec<SessionTypeCapView>,
-    pub call_max_participants: u32,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_hosting_enabled: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub model_hosting_mode: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stt_models_base_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub stt_default_model: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tts_models_base_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tts_default_model: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tts_models: Option<Vec<TtsCapabilityModelView>>,
 }
 
 pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -112,37 +114,23 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         None
     };
 
-    let extension_proxy_key = if state.config.extension_proxy_enabled {
-        state
-            .link_preview_keys
-            .as_ref()
-            .map(|k| k.public_key_base64.clone())
-    } else {
-        None
-    };
+    let extension_proxy_key =
+        if state.config.extension_proxy_enabled || state.config.link_preview_proxy_enabled {
+            state
+                .link_preview_keys
+                .as_ref()
+                .map(|k| k.public_key_base64.clone())
+        } else {
+            None
+        };
 
-    let link_preview_proxy_key = if state.config.link_preview_proxy_enabled {
-        state
-            .link_preview_keys
-            .as_ref()
-            .map(|k| k.public_key_base64.clone())
-    } else {
-        None
-    };
-
-    let (
-        model_hosting_enabled,
-        model_hosting_mode,
-        stt_models_base_url,
-        stt_default_model,
-        tts_models_base_url,
-        tts_default_model,
-        tts_models,
-    ) = if state.config.model_hosting_enabled {
-        let (stt_base, tts_base) = if state.config.model_hosting_mode == "external" {
-            if let Some(cache) = state.models.external_cache() {
-                if cache.get_cached().is_none() {
-                    let _ = cache.fetch_manifest(false).await;
+    let (stt_models_base_url, tts_models_base_url, tts_models) =
+        if state.config.model_hosting_mode == "external" {
+            if state.config.model_hosting_enabled {
+                if let Some(cache) = state.models.external_cache() {
+                    if cache.get_cached().is_none() {
+                        let _ = cache.fetch_manifest(false).await;
+                    }
                 }
             }
             let ext_base = state
@@ -154,66 +142,85 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
             (
                 format!("{}/stt/v1/", ext_base),
                 format!("{}/tts/v1/", ext_base),
+                if state.config.model_hosting_enabled {
+                    state.models.tts_capability_models()
+                } else {
+                    Vec::new()
+                },
             )
         } else {
             (
                 construct_base_url(state.config.app_url.as_deref(), "/models/stt/v1/"),
                 construct_base_url(state.config.app_url.as_deref(), "/models/tts/v1/"),
+                if state.config.model_hosting_enabled {
+                    state.models.tts_capability_models()
+                } else {
+                    Vec::new()
+                },
             )
         };
 
-        (
-            Some(true),
-            Some(state.config.model_hosting_mode.clone()),
-            Some(stt_base),
-            Some(state.config.stt_default_model.clone()),
-            Some(tts_base),
-            Some(state.config.tts_default_model.clone()),
-            Some(state.models.tts_capability_models()),
-        )
+    let sessions_enabled = state.session_types.is_effective_enabled();
+    let session_types = if sessions_enabled {
+        state.session_types.capabilities_types()
     } else {
-        (None, None, None, None, None, None, None)
+        Vec::new()
+    };
+
+    let reactions_per_message =
+        match crate::limits::get_limits(&state.pool, &state.server_hard_max).await {
+            Ok(limits) => limits.reactions_per_message,
+            Err(_) => state.server_hard_max.reactions_per_message,
+        };
+
+    let altcha = AltchaCapView {
+        enabled: state.altcha_config.enabled,
+        algorithm: state.altcha_config.algorithm.clone(),
+        cost: state.altcha_config.cost,
     };
 
     Json(CapabilitiesResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         calling: state.config.calling_enabled,
-        push_enabled: state.config.push_enabled,
+        call_max_participants: state.config.call_max_participants,
+        sessions_enabled,
+        max_sessions_per_room: state.config.server_max_sessions_per_room,
+        max_session_participants: state.config.server_max_session_participants,
+        session_types,
+        model_hosting_enabled: state.config.model_hosting_enabled,
+        model_hosting_mode: state.config.model_hosting_mode.clone(),
+        stt_models_base_url,
+        stt_default_model: state.config.stt_default_model.clone(),
+        tts_models_base_url,
+        tts_default_model: state.config.tts_default_model.clone(),
+        tts_models,
         push_vapid_public_key,
-        safety_number_mode,
-        moderation_mode,
         websocket_url,
         sockudo_app_key: state.publisher.app_key().to_string(),
         sockudo_channel_prefix: "private-room-".to_string(),
-        sockudo_client_events: state.publisher.enable_client_events(),
+        altcha,
         storage_backend: state.config.storage_backend.clone(),
         storage_presign_supported,
         storage_presign_max_ttl_seconds,
-        attachment_accept_ranges: true,
         attachment_format: "c2sp-chunked-aes256gcm-v1".to_string(),
         attachment_chunk_size: state.config.attachment_chunk_size,
         attachment_bucket_sizes: state.config.attachment_bucket_sizes.clone(),
+        attachment_accept_ranges: true,
         username_oprf_enabled: state.config.username_oprf_enabled,
         oprf_suite: "ristretto255-sha512".to_string(),
-        threading_enabled: true,
+        key_transparency_enabled: state.config.key_transparency_enabled,
         link_preview_proxy_enabled: state.config.link_preview_proxy_enabled,
-        link_preview_proxy_key,
+        safety_number_mode,
+        moderation_mode,
+        edit_window_seconds: state.config.edit_window_seconds,
+        reactions_per_message,
+        sync_event_retention_days: state.config.data_retention_days,
+        threading_enabled: true,
+        starred_items_per_user: state.config.max_starred_items_per_user,
         extension_proxy_enabled: state.config.extension_proxy_enabled,
         extension_proxy_max_request_bytes: state.config.extension_proxy_max_request_bytes,
         extension_proxy_max_response_bytes: state.config.extension_proxy_max_response_bytes,
         extension_proxy_supports_streaming: false,
         extension_proxy_key,
-        sessions_enabled: state.session_types.is_effective_enabled(),
-        max_sessions_per_room: state.config.server_max_sessions_per_room,
-        max_session_participants: state.config.server_max_session_participants,
-        session_types: state.session_types.capabilities_types(),
-        call_max_participants: state.config.call_max_participants,
-        model_hosting_enabled,
-        model_hosting_mode,
-        stt_models_base_url,
-        stt_default_model,
-        tts_models_base_url,
-        tts_default_model,
-        tts_models,
     })
 }

@@ -134,6 +134,7 @@ static ENV_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 fn test_mixed_auto_explicit_fails_config() {
     let _guard = ENV_MUTEX.lock().unwrap();
     std::env::set_var("APP_ENV", "development");
+    std::env::set_var("MODEL_HOSTING_ENABLED", "false");
     std::env::set_var("PUSH_ENABLED", "true");
     std::env::set_var("PUSH_VAPID_PUBLIC_KEY", "auto");
     std::env::set_var("PUSH_VAPID_PRIVATE_KEY", "explicit-key");
@@ -144,6 +145,7 @@ fn test_mixed_auto_explicit_fails_config() {
     assert!(err_str.contains("must both be \"auto\" or both be explicit values"));
 
     std::env::remove_var("APP_ENV");
+    std::env::remove_var("MODEL_HOSTING_ENABLED");
     std::env::remove_var("PUSH_ENABLED");
     std::env::remove_var("PUSH_VAPID_PUBLIC_KEY");
     std::env::remove_var("PUSH_VAPID_PRIVATE_KEY");
@@ -153,6 +155,7 @@ fn test_mixed_auto_explicit_fails_config() {
 fn test_invalid_public_key_fails_config() {
     let _guard = ENV_MUTEX.lock().unwrap();
     std::env::set_var("APP_ENV", "development");
+    std::env::set_var("MODEL_HOSTING_ENABLED", "false");
     std::env::set_var("PUSH_ENABLED", "true");
     let invalid_pub = URL_SAFE_NO_PAD.encode([0u8; 32]);
     let valid_priv = URL_SAFE_NO_PAD.encode([0u8; 32]);
@@ -165,6 +168,7 @@ fn test_invalid_public_key_fails_config() {
     assert!(err_str.contains("Invalid PUSH_VAPID_PUBLIC_KEY"));
 
     std::env::remove_var("APP_ENV");
+    std::env::remove_var("MODEL_HOSTING_ENABLED");
     std::env::remove_var("PUSH_ENABLED");
     std::env::remove_var("PUSH_VAPID_PUBLIC_KEY");
     std::env::remove_var("PUSH_VAPID_PRIVATE_KEY");
@@ -174,6 +178,7 @@ fn test_invalid_public_key_fails_config() {
 fn test_invalid_private_key_fails_config() {
     let _guard = ENV_MUTEX.lock().unwrap();
     std::env::set_var("APP_ENV", "development");
+    std::env::set_var("MODEL_HOSTING_ENABLED", "false");
     std::env::set_var("PUSH_ENABLED", "true");
     let secret = SecretKey::random(&mut OsRng);
     let public = secret.public_key().to_encoded_point(false);
@@ -190,6 +195,7 @@ fn test_invalid_private_key_fails_config() {
     assert!(err_str.contains("Invalid PUSH_VAPID_PRIVATE_KEY"));
 
     std::env::remove_var("APP_ENV");
+    std::env::remove_var("MODEL_HOSTING_ENABLED");
     std::env::remove_var("PUSH_ENABLED");
     std::env::remove_var("PUSH_VAPID_PUBLIC_KEY");
     std::env::remove_var("PUSH_VAPID_PRIVATE_KEY");

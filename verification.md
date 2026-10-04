@@ -609,3 +609,25 @@
   - Downloads write to atomic temporary files (`{filename}.tmp.<pid>.<nanos>`) in target model directory, verifying size and SHA-256 before atomic rename to target path.
   - Size mismatch or hash mismatch deletes temporary files without touching target file path.
   - Partial failures in `fetch` are non-atomic (successful file downloads persist and are skipped on subsequent runs).
+
+## Task 39a — Capabilities Audit, Consolidated Response Shape, and Disabled-State Invariants
+- **ID:** Task 39a
+- **Date:** 2026-10-04
+- **Status:** Complete. Canonical. Client-facing contract.
+- **Spec / Amendment references:** §8.1
+- **Canonical Response Key Set (42 Keys):**
+  The top-level JSON response object returned by `GET /api/v1/capabilities` contains strictly these 42 keys:
+  `version`, `calling`, `call_max_participants`, `sessions_enabled`, `max_sessions_per_room`, `max_session_participants`, `session_types`, `model_hosting_enabled`, `model_hosting_mode`, `stt_models_base_url`, `stt_default_model`, `tts_models_base_url`, `tts_default_model`, `tts_models`, `push_vapid_public_key`, `websocket_url`, `sockudo_app_key`, `sockudo_channel_prefix`, `altcha`, `storage_backend`, `storage_presign_supported`, `storage_presign_max_ttl_seconds`, `attachment_format`, `attachment_chunk_size`, `attachment_bucket_sizes`, `attachment_accept_ranges`, `username_oprf_enabled`, `oprf_suite`, `key_transparency_enabled`, `link_preview_proxy_enabled`, `safety_number_mode`, `moderation_mode`, `edit_window_seconds`, `reactions_per_message`, `sync_event_retention_days`, `threading_enabled`, `starred_items_per_user`, `extension_proxy_enabled`, `extension_proxy_max_request_bytes`, `extension_proxy_max_response_bytes`, `extension_proxy_supports_streaming`, `extension_proxy_key`.
+- **Constant Key Set & Disabled-State Invariants:**
+  - The key set is constant across all server configurations. Top-level keys are never conditionally omitted when features are disabled (`serde(skip_serializing_if)` is removed).
+  - Primary feature flags (`calling`, `sessions_enabled`, `model_hosting_enabled`, `key_transparency_enabled`, `link_preview_proxy_enabled`, `extension_proxy_enabled`, `altcha.enabled`, `username_oprf_enabled`) report `false` when disabled.
+  - Secondary limit/configuration fields (e.g. `call_max_participants`, `max_sessions_per_room`, `model_hosting_mode`, `stt_models_base_url`, `edit_window_seconds`) remain present with their server configuration/limit values regardless of primary feature flag state.
+  - Array fields (`session_types`, `tts_models`) return `[]` when their respective features are disabled or uninitialized.
+  - `push_vapid_public_key` returns `null` when push is disabled or keys are unconfigured.
+  - `extension_proxy_key` returns the X25519 public key Base64 string when either extension proxy or link preview proxy is enabled, and returns `null` when both are disabled.
+- **Removed Stale Fields:**
+  - `push_enabled` (redundant; push configuration status is represented by presence/absence of `push_vapid_public_key`).
+  - `sockudo_client_events` (internal publisher config not in §8.1).
+  - `link_preview_proxy_key` (superseded by `extension_proxy_key`).
+- **Proposed Spec Amendment:**
+  - Add `extension_proxy_key` to §8.1's `GET /capabilities` response example as a string (Base64 X25519 public key) or `null`.
