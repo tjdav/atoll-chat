@@ -433,6 +433,14 @@ pub fn build_app(state: AppState) -> Router {
             "/rooms/{id}/calls/{call_id}/end",
             post(routes::calls::end_handler),
         )
+        .route(
+            "/rooms/{id}/sessions",
+            get(routes::room_sessions::list).post(routes::room_sessions::create),
+        )
+        .route(
+            "/rooms/{id}/sessions/{session_id}",
+            patch(routes::room_sessions::patch).delete(routes::room_sessions::delete),
+        )
         .route("/rooms/{id}/attachments", post(routes::attachments::upload))
         .route(
             "/attachments/{id}",

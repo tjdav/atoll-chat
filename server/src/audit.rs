@@ -32,6 +32,8 @@ pub mod action {
     pub const MODEL_MANIFEST_RELOAD: &str = "model.manifest_reload";
     pub const CALL_START: &str = "call.start";
     pub const CALL_END: &str = "call.end";
+    pub const SESSION_CREATE: &str = "session.create";
+    pub const SESSION_DELETE: &str = "session.delete";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

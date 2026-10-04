@@ -31,6 +31,7 @@ pub enum RateLimitKey {
     LinkPreview { user_id: String },
     ModelDownload { ip: String },
     TurnCredentials { user_id: String },
+    SessionCreate { user_id: String, window: Window },
 }
 
 #[derive(Debug, Clone)]
@@ -327,6 +328,34 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_turn_credentials_per_min,
+            )
+        }
+        RateLimitKey::SessionCreate { user_id, window } => {
+            let limit = match window {
+                Window::Hour => config.rate_session_create_hourly,
+                Window::Day => config.rate_session_create_daily,
+                Window::Minute => {
+                    return Err(RateLimitError::InvalidKey(
+                        "unsupported window for SessionCreate".into(),
+                    ))
+                }
+            };
+            let win_tag = match window {
+                Window::Hour => "hour",
+                Window::Day => "day",
+                _ => "min",
+            };
+            let (start, reset) = compute_window(now, window);
+            let boundary = if window == Window::Hour {
+                start.format("%Y-%m-%d-%H").to_string()
+            } else {
+                start.format("%Y-%m-%d").to_string()
+            };
+            (
+                format!("session_create:{user_id}:{win_tag}:{boundary}"),
+                start,
+                reset,
+                limit,
             )
         }
     };
