@@ -101,7 +101,7 @@ async fn test_admin_rotate_vapid_and_altcha_endpoints() {
     let a_json: Value = serde_json::from_slice(&a_bytes).unwrap();
     assert_eq!(a_json["ok"], true);
 
-    // 5. Verify no OPRF rotate admin endpoint exists
+    // 5. Verify OPRF rotate admin endpoint requires valid payload (400 Bad Request on empty body)
     let req_oprf = Request::builder()
         .method("POST")
         .uri("/api/v1/admin/oprf/rotate")
@@ -109,5 +109,5 @@ async fn test_admin_rotate_vapid_and_altcha_endpoints() {
         .body(Body::empty())
         .unwrap();
     let resp_oprf = app.clone().oneshot(req_oprf).await.unwrap();
-    assert_eq!(resp_oprf.status(), StatusCode::NOT_FOUND);
+    assert_eq!(resp_oprf.status(), StatusCode::BAD_REQUEST);
 }

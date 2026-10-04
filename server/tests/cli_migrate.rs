@@ -7,6 +7,7 @@ async fn test_cli_migrate_fresh_and_idempotent() {
 
     std::env::set_var("APP_ENV", "development");
     std::env::set_var("DB_PATH", &db_path);
+    std::env::set_var("MODEL_HOSTING_ENABLED", "false");
 
     // 1. Fresh database applies all migrations
     let res = server::cli::run_migrate().await;

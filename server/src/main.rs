@@ -115,6 +115,30 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         },
+        Command::Models { command } => match command {
+            server::cli::ModelsCommand::Verify { json, kind, quiet } => {
+                match server::models::run_models_verify(json, &kind, quiet) {
+                    Ok(exit_code) => std::process::exit(exit_code),
+                    Err(e) => {
+                        eprintln!("Error: {}", e);
+                        std::process::exit(2);
+                    }
+                }
+            }
+            server::cli::ModelsCommand::Fetch {
+                from,
+                kind,
+                json,
+                jobs,
+                force,
+            } => match server::models::run_models_fetch(&from, &kind, json, jobs, force).await {
+                Ok(exit_code) => std::process::exit(exit_code),
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(2);
+                }
+            },
+        },
         Command::SessionTypes { command } => match command {
             server::cli::SessionTypesCommand::Validate { path } => {
                 match server::cli::run_session_types_validate(path) {

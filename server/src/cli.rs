@@ -73,6 +73,53 @@ pub enum Command {
         #[command(subcommand)]
         command: SessionTypesCommand,
     },
+
+    /// Model hosting operator subcommands
+    Models {
+        #[command(subcommand)]
+        command: ModelsCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ModelsCommand {
+    /// Verify model files against manifest hashes
+    Verify {
+        /// Emit structured JSON output
+        #[arg(long, default_value_t = false)]
+        json: bool,
+
+        /// Filter by model kind (stt, tts, all)
+        #[arg(long, default_value = "all")]
+        kind: String,
+
+        /// Suppress per-file output and print only summary
+        #[arg(long, default_value_t = false)]
+        quiet: bool,
+    },
+
+    /// Pre-seed model files from a shared origin
+    Fetch {
+        /// Shared origin base URL
+        #[arg(long)]
+        from: String,
+
+        /// Filter by model kind (stt, tts, all)
+        #[arg(long, default_value = "all")]
+        kind: String,
+
+        /// Emit structured JSON output
+        #[arg(long, default_value_t = false)]
+        json: bool,
+
+        /// Number of parallel download jobs (1 to 8)
+        #[arg(long, default_value_t = 1)]
+        jobs: usize,
+
+        /// Re-download even if file exists and matches
+        #[arg(long, default_value_t = false)]
+        force: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]

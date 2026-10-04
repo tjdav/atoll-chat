@@ -143,13 +143,17 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** `server/src/extensions_proxy/blocklist.rs`, `server/src/extensions_proxy/audit_task.rs`, `server/src/extensions_proxy/mod.rs`, `server/src/routes/admin.rs`, `server/src/routes/capabilities.rs`, `server/src/routes/extensions_proxy.rs`, `server/src/extensions_proxy/relay.rs`, `server/src/audit.rs`, `server/src/config.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/extension_proxy.rs`.
   - **Batch:** `link_preview`
+- **Task 39b — CLI Model Subcommands**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** `server/src/cli.rs`, `server/src/main.rs`, `server/src/models/verify.rs`, `server/src/models/fetch.rs`, `server/src/models/mod.rs`, `server/tests/cli_models.rs`, `server/tests/batch-manifest.toml`.
+  - **Batch:** `operations`
 
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
-- **Total Verifications/Tasks Tracked:** 42
-- **Done:** 42
+- **Total Verifications/Tasks Tracked:** 43
+- **Done:** 43
 - **Pending:** 0
 - **Mismatches:** 0
