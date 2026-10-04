@@ -234,7 +234,9 @@ pub async fn proxy_handler(
         Err(err) => {
             let (status_code, err_code) = match err {
                 SsrfError::UrlTooLong => (StatusCode::BAD_REQUEST, "url_too_long"),
-                SsrfError::UrlBlocked => (StatusCode::BAD_REQUEST, "url_blocked"),
+                SsrfError::UrlBlocked | SsrfError::DomainBlocked => {
+                    (StatusCode::BAD_REQUEST, "url_blocked")
+                }
                 SsrfError::FetchFailed => (StatusCode::BAD_GATEWAY, "fetch_failed"),
                 SsrfError::UpstreamResponseTooLarge => {
                     (StatusCode::BAD_GATEWAY, "upstream_response_too_large")

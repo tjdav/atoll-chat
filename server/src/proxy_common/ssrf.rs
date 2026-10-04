@@ -5,6 +5,8 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 pub enum SsrfError {
     #[error("url_blocked")]
     UrlBlocked,
+    #[error("domain_blocked")]
+    DomainBlocked,
     #[error("url_too_long")]
     UrlTooLong,
     #[error("fetch_failed")]

@@ -452,3 +452,56 @@ pub async fn post_reload_models_handler(
         tts_models: tts_count,
     }))
 }
+
+#[derive(Serialize)]
+pub struct ExtensionProxyBlocklistReloadResponse {
+    pub reloaded: bool,
+    pub suffix_count: usize,
+}
+
+pub async fn post_reload_extension_proxy_blocklist_handler(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    _: RequirePermission<ConfigEdit>,
+) -> Result<Json<ExtensionProxyBlocklistReloadResponse>, ApiError> {
+    let new_blocklist = match crate::extensions_proxy::blocklist::load_blocklist(
+        &state.config.extension_proxy_deny_domains,
+        &state.config.extension_proxy_deny_domains_path,
+    ) {
+        Ok(b) => b,
+        Err(crate::extensions_proxy::blocklist::BlocklistError::FileNotFound { path }) => {
+            return Err(ApiError::CustomShape(
+                axum::http::StatusCode::BAD_REQUEST,
+                serde_json::json!({
+                    "error": "blocklist_file_not_found",
+                    "message": "Blocklist file not found",
+                    "details": { "path": path }
+                }),
+            ));
+        }
+        Err(crate::extensions_proxy::blocklist::BlocklistError::IoError { path, source }) => {
+            return Err(ApiError::CustomShape(
+                axum::http::StatusCode::BAD_REQUEST,
+                serde_json::json!({
+                    "error": "blocklist_load_failed",
+                    "message": format!("Failed to read blocklist file: {}", source),
+                    "details": { "path": path }
+                }),
+            ));
+        }
+    };
+
+    let suffix_count = new_blocklist.len();
+    state.extension_proxy_blocklist.swap(new_blocklist);
+
+    tracing::info!(
+        target: "extension_proxy",
+        "Extension proxy blocklist reloaded: {} domain suffixes active",
+        suffix_count
+    );
+
+    Ok(Json(ExtensionProxyBlocklistReloadResponse {
+        reloaded: true,
+        suffix_count,
+    }))
+}

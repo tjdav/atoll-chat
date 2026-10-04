@@ -79,9 +79,7 @@ pub struct Config {
     pub extension_proxy_max_response_bytes: u64,
     pub extension_proxy_max_request_bytes: u64,
     pub extension_proxy_user_agent: String,
-    // used by Task 45.3
     pub extension_proxy_deny_domains: String,
-    // used by Task 45.3
     pub extension_proxy_deny_domains_path: String,
     pub sessions_enabled: bool,
     pub server_max_sessions_per_room: u32,

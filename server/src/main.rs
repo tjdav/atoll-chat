@@ -278,6 +278,18 @@ async fn main() -> anyhow::Result<()> {
         publisher.clone(),
     ));
 
+    if config.extension_proxy_enabled {
+        tokio::spawn(
+            server::extensions_proxy::audit_task::run_hourly_audit_aggregation_job(pool.clone()),
+        );
+    }
+
+    let extension_proxy_blocklist =
+        Arc::new(server::extensions_proxy::blocklist::init_blocklist_store(
+            &config.extension_proxy_deny_domains,
+            &config.extension_proxy_deny_domains_path,
+        ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -299,6 +311,7 @@ async fn main() -> anyhow::Result<()> {
         session_types,
         models,
         occupancy,
+        extension_proxy_blocklist,
     };
 
     // 7. Check bootstrap state

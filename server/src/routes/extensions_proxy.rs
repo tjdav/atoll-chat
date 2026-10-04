@@ -232,6 +232,7 @@ pub async fn proxy_handler(
         .map(|v| v == "true" || v == "1")
         .unwrap_or(false);
 
+    let blocklist_guard = state.extension_proxy_blocklist.get();
     let fetch_opts = OutboundFetchOptions {
         app_env: &state.config.app_env,
         connect_timeout_seconds: state.config.extension_proxy_timeout_connect_seconds,
@@ -239,6 +240,7 @@ pub async fn proxy_handler(
         max_response_bytes: state.config.extension_proxy_max_response_bytes,
         user_agent: &state.config.extension_proxy_user_agent,
         allow_local_for_test,
+        blocklist: Some(&blocklist_guard),
     };
 
     let fetch_res = execute_outbound_fetch(&req_plain, fetch_opts).await;
@@ -348,6 +350,11 @@ pub async fn proxy_handler(
             let (status_code, err_code, msg) = match err {
                 SsrfError::UrlTooLong => (StatusCode::BAD_REQUEST, "url_too_long", "URL too long"),
                 SsrfError::UrlBlocked => (StatusCode::BAD_REQUEST, "url_blocked", "URL blocked"),
+                SsrfError::DomainBlocked => (
+                    StatusCode::BAD_REQUEST,
+                    "domain_blocked",
+                    "Domain is blocked by the operator",
+                ),
                 SsrfError::FetchFailed => (
                     StatusCode::BAD_GATEWAY,
                     "fetch_failed",

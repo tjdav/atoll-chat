@@ -34,6 +34,7 @@ pub mod action {
     pub const CALL_END: &str = "call.end";
     pub const SESSION_CREATE: &str = "session.create";
     pub const SESSION_DELETE: &str = "session.delete";
+    pub const EXTENSION_PROXY_REQUEST: &str = "extension.proxy_request";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

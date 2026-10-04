@@ -125,6 +125,7 @@ pub struct AppState {
     pub session_types: Arc<sessions::SessionTypesStore>,
     pub models: Arc<models::ModelStore>,
     pub occupancy: sessions::OccupancyStore,
+    pub extension_proxy_blocklist: Arc<extensions_proxy::blocklist::DomainBlocklistStore>,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -261,6 +262,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/admin/models/reload",
             post(routes::admin::post_reload_models_handler),
+        )
+        .route(
+            "/admin/extension-proxy/reload-blocklist",
+            post(routes::admin::post_reload_extension_proxy_blocklist_handler),
         )
         .route("/admin/oprf/rotate", post(routes::admin_oprf::rotate))
         .route("/capabilities", get(routes::capabilities::handler))

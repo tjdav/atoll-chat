@@ -186,6 +186,12 @@ where
         models.load_initial();
     }
 
+    let extension_proxy_blocklist =
+        Arc::new(server::extensions_proxy::blocklist::init_blocklist_store(
+            &config_arc.extension_proxy_deny_domains,
+            &config_arc.extension_proxy_deny_domains_path,
+        ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -207,6 +213,7 @@ where
         session_types,
         models,
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist,
     };
 
     let app = server::build_app(state);
@@ -353,6 +360,12 @@ pub async fn setup_test_app_with_config(
         models.load_initial();
     }
 
+    let extension_proxy_blocklist =
+        Arc::new(server::extensions_proxy::blocklist::init_blocklist_store(
+            &config_arc.extension_proxy_deny_domains,
+            &config_arc.extension_proxy_deny_domains_path,
+        ));
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
@@ -374,6 +387,7 @@ pub async fn setup_test_app_with_config(
         session_types,
         models,
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist,
     };
 
     let app = server::build_app(state);

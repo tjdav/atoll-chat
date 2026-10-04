@@ -899,6 +899,9 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist: std::sync::Arc::new(
+            server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
+        ),
     };
 
     let app = axum::Router::new()

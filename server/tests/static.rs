@@ -100,6 +100,9 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        extension_proxy_blocklist: std::sync::Arc::new(
+            server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
+        ),
     };
 
     server::build_app(state)

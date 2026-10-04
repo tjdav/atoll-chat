@@ -822,3 +822,388 @@ async fn test_request_body_size_limit_before_decryption() {
     let json_val: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(json_val["error"], "request_too_large");
 }
+
+#[tokio::test]
+async fn test_extension_proxy_capabilities() {
+    // 1. When disabled
+    let (app_disabled, _, _) = setup_test_app_with_custom_config(|c| {
+        c.extension_proxy_enabled = false;
+        c.link_preview_proxy_enabled = false;
+    })
+    .await;
+
+    let req = axum::http::Request::builder()
+        .method("GET")
+        .uri("/api/v1/capabilities")
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let resp = tower::ServiceExt::oneshot(app_disabled, req).await.unwrap();
+    let json_val: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(json_val["extension_proxy_enabled"], false);
+    assert_eq!(json_val["extension_proxy_key"], Value::Null);
+    assert_eq!(json_val["extension_proxy_supports_streaming"], false);
+
+    // 2. When enabled
+    let (app_enabled, _, _) = setup_test_app_with_custom_config(|c| {
+        c.extension_proxy_enabled = true;
+        c.link_preview_proxy_enabled = true;
+        c.extension_proxy_max_request_bytes = 262144;
+        c.extension_proxy_max_response_bytes = 10485760;
+    })
+    .await;
+
+    let req2 = axum::http::Request::builder()
+        .method("GET")
+        .uri("/api/v1/capabilities")
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let resp2 = tower::ServiceExt::oneshot(app_enabled, req2).await.unwrap();
+    let json_val2: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp2.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(json_val2["extension_proxy_enabled"], true);
+    assert_eq!(json_val2["extension_proxy_max_request_bytes"], 262144);
+    assert_eq!(json_val2["extension_proxy_max_response_bytes"], 10485760);
+    assert_eq!(json_val2["extension_proxy_supports_streaming"], false);
+    assert!(json_val2["extension_proxy_key"].is_string());
+}
+
+#[tokio::test]
+async fn test_blocklist_config_and_file_loading() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("deny.txt");
+    std::fs::write(
+        &file_path,
+        "# Comment line\n\n  \n  Deny-File.Org  \nmalformed..domain\n  good-domain.com  \n",
+    )
+    .unwrap();
+
+    let env_domains = "  Example.Com , , sub.test.net , invalid..domain ";
+    let blocklist = server::extensions_proxy::blocklist::load_blocklist(
+        env_domains,
+        file_path.to_str().unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(blocklist.len(), 4);
+    assert!(blocklist.is_blocked("example.com"));
+    assert!(blocklist.is_blocked("api.example.com"));
+    assert!(blocklist.is_blocked("sub.test.net"));
+    assert!(blocklist.is_blocked("deny-file.org"));
+    assert!(blocklist.is_blocked("good-domain.com"));
+    assert!(!blocklist.is_blocked("notexample.com"));
+    assert!(!blocklist.is_blocked("allowed.org"));
+}
+
+#[tokio::test]
+async fn test_blocklist_enforcement_and_order_of_checks() {
+    let (app, _pool, _) = setup_test_app_with_custom_config(|c| {
+        c.extension_proxy_enabled = true;
+        c.link_preview_proxy_enabled = true;
+        c.extension_proxy_deny_domains = "deny-me.com, 127.0.0.1".to_string();
+    })
+    .await;
+
+    let _user_id = register_user(&app, "block_user", "Password123!", None).await;
+    let (_, login_json) =
+        common::login_user(&app, "block_user", "Password123!", "client_123456789", None).await;
+    let token = login_json["session_token"].as_str().unwrap();
+
+    let cap_req = axum::http::Request::builder()
+        .method("GET")
+        .uri("/api/v1/capabilities")
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let cap_resp = tower::ServiceExt::oneshot(app.clone(), cap_req)
+        .await
+        .unwrap();
+    let cap_json: Value = serde_json::from_slice(
+        &axum::body::to_bytes(cap_resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let server_pubkey_b64 = cap_json["extension_proxy_key"].as_str().unwrap();
+
+    // 1. Exact match on blocked domain
+    let req_payload1 = json!({
+        "url": "https://deny-me.com/path",
+        "method": "GET",
+        "extension_id": "ext_block",
+        "request_id": "req_b1"
+    });
+    let (body1, key1) = helper_encrypt_request(server_pubkey_b64, &req_payload1);
+    let req1 = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/v1/extensions/proxy")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/octet-stream")
+        .body(axum::body::Body::from(body1))
+        .unwrap();
+    let resp1 = tower::ServiceExt::oneshot(app.clone(), req1).await.unwrap();
+    assert_eq!(resp1.status(), StatusCode::BAD_REQUEST);
+
+    let err1: ExtensionErrorPlaintext = helper_decrypt_response(
+        &axum::body::to_bytes(resp1.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+        &key1,
+    );
+    assert_eq!(err1.error, "domain_blocked");
+    assert_eq!(err1.message, "Domain is blocked by the operator");
+    assert!(!err1.message.contains("deny-me.com")); // Conceals domain in response
+
+    // 2. Subdomain match on blocked domain
+    let req_payload2 = json!({
+        "url": "https://api.sub.deny-me.com/path",
+        "method": "GET",
+        "extension_id": "ext_block",
+        "request_id": "req_b2"
+    });
+    let (body2, key2) = helper_encrypt_request(server_pubkey_b64, &req_payload2);
+    let req2 = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/v1/extensions/proxy")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/octet-stream")
+        .body(axum::body::Body::from(body2))
+        .unwrap();
+    let resp2 = tower::ServiceExt::oneshot(app.clone(), req2).await.unwrap();
+    assert_eq!(resp2.status(), StatusCode::BAD_REQUEST);
+
+    let err2: ExtensionErrorPlaintext = helper_decrypt_response(
+        &axum::body::to_bytes(resp2.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+        &key2,
+    );
+    assert_eq!(err2.error, "domain_blocked");
+
+    // 3. SSRF guard check takes precedence before blocklist check: 127.0.0.1 returns url_blocked
+    let req_payload3 = json!({
+        "url": "https://127.0.0.1/path",
+        "method": "GET",
+        "extension_id": "ext_block",
+        "request_id": "req_b3"
+    });
+    let (body3, key3) = helper_encrypt_request(server_pubkey_b64, &req_payload3);
+    let req3 = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/v1/extensions/proxy")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/octet-stream")
+        .body(axum::body::Body::from(body3))
+        .unwrap();
+    let resp3 = tower::ServiceExt::oneshot(app.clone(), req3).await.unwrap();
+    assert_eq!(resp3.status(), StatusCode::BAD_REQUEST);
+
+    let err3: ExtensionErrorPlaintext = helper_decrypt_response(
+        &axum::body::to_bytes(resp3.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+        &key3,
+    );
+    assert_eq!(err3.error, "url_blocked");
+}
+
+#[tokio::test]
+async fn test_admin_reload_blocklist_endpoint() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let file_path = temp_dir.path().join("reload_deny.txt");
+    std::fs::write(&file_path, "blocked1.com\n").unwrap();
+
+    let (app, pool, _) = setup_test_app_with_custom_config(|c| {
+        c.extension_proxy_enabled = true;
+        c.link_preview_proxy_enabled = true;
+        c.extension_proxy_deny_domains_path = file_path.to_str().unwrap().to_string();
+    })
+    .await;
+
+    // 1st registered user becomes owner during bootstrap
+    let _owner_id = register_user(&app, "owner_user", "Password123!", None).await;
+
+    let test_cfg = server::Config::test_default();
+
+    // 2nd registered user gets default member role (non-admin)
+    let invite1 = server::create_invite(&pool, &_owner_id, Default::default(), &test_cfg)
+        .await
+        .unwrap();
+    let _member_id = register_user(&app, "member_user", "Password123!", Some(&invite1.code)).await;
+    let (_, member_login) = common::login_user(
+        &app,
+        "member_user",
+        "Password123!",
+        "client_member_123",
+        None,
+    )
+    .await;
+    let member_token = member_login["session_token"].as_str().unwrap();
+
+    // 3rd registered user promoted to admin
+    let invite2 = server::create_invite(&pool, &_owner_id, Default::default(), &test_cfg)
+        .await
+        .unwrap();
+    let admin_id = register_user(&app, "admin_user", "Password123!", Some(&invite2.code)).await;
+    server::roles::grant_role(&pool, &admin_id, "admin", None)
+        .await
+        .unwrap();
+    let (admin_status, admin_login) =
+        common::login_user(&app, "admin_user", "Password123!", "client_admin_123", None).await;
+    assert_eq!(
+        admin_status,
+        StatusCode::OK,
+        "admin login failed: {:?}",
+        admin_login
+    );
+    let admin_token = admin_login["session_token"].as_str().unwrap();
+
+    // 1. Non-admin member reload fails with 403
+    let req_member = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/v1/admin/extension-proxy/reload-blocklist")
+        .header(header::AUTHORIZATION, format!("Bearer {}", member_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let resp_member = tower::ServiceExt::oneshot(app.clone(), req_member)
+        .await
+        .unwrap();
+    assert_eq!(resp_member.status(), StatusCode::FORBIDDEN);
+
+    // 2. Admin reload succeeds
+    let req_admin = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/v1/admin/extension-proxy/reload-blocklist")
+        .header(header::AUTHORIZATION, format!("Bearer {}", admin_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let resp_admin = tower::ServiceExt::oneshot(app.clone(), req_admin)
+        .await
+        .unwrap();
+    assert_eq!(resp_admin.status(), StatusCode::OK);
+    let reload_json: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp_admin.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(reload_json["reloaded"], true);
+    assert_eq!(reload_json["suffix_count"], 1);
+
+    // 3. Update file content and reload again
+    std::fs::write(&file_path, "blocked1.com\nblocked2.com\n").unwrap();
+
+    let req_admin2 = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/v1/admin/extension-proxy/reload-blocklist")
+        .header(header::AUTHORIZATION, format!("Bearer {}", admin_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let resp_admin2 = tower::ServiceExt::oneshot(app.clone(), req_admin2)
+        .await
+        .unwrap();
+    assert_eq!(resp_admin2.status(), StatusCode::OK);
+    let reload_json2: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp_admin2.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(reload_json2["suffix_count"], 2);
+
+    // 4. Missing file error returns 400 blocklist_file_not_found
+    std::fs::remove_file(&file_path).unwrap();
+
+    let req_admin3 = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/v1/admin/extension-proxy/reload-blocklist")
+        .header(header::AUTHORIZATION, format!("Bearer {}", admin_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let resp_admin3 = tower::ServiceExt::oneshot(app, req_admin3).await.unwrap();
+    assert_eq!(resp_admin3.status(), StatusCode::BAD_REQUEST);
+    let err_json: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp_admin3.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(err_json["error"], "blocklist_file_not_found");
+}
+
+#[tokio::test]
+async fn test_hourly_audit_aggregation_logic() {
+    let (app, pool, _) = setup_test_app_with_custom_config(|c| {
+        c.extension_proxy_enabled = true;
+        c.link_preview_proxy_enabled = true;
+    })
+    .await;
+
+    let user_id = register_user(&app, "audit_user", "Password123!", None).await;
+
+    let boundary = "2026-10-04-12";
+    let key1 = format!("extension_proxy:{}:rss_ext:hour:{}", user_id, boundary);
+    let key2 = format!("extension_proxy:{}:weather_ext:hour:{}", user_id, boundary);
+
+    // Insert rate limit counts for closed hour window directly
+    sqlx::query(
+        "INSERT INTO rate_limits (key, window_start, count) VALUES (?, CURRENT_TIMESTAMP, 42)",
+    )
+    .bind(&key1)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        "INSERT INTO rate_limits (key, window_start, count) VALUES (?, CURRENT_TIMESTAMP, 15)",
+    )
+    .bind(&key2)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Trigger aggregation for boundary
+    let written =
+        server::extensions_proxy::audit_task::aggregate_extension_proxy_audit_for_boundary(
+            &pool, boundary,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(written, 2);
+
+    // Verify audit_log entries
+    let entries = server::audit::list(
+        &pool,
+        server::audit::AuditFilter {
+            actor_id: Some(user_id.clone()),
+            action: Some("extension.proxy_request".to_string()),
+            ..Default::default()
+        },
+        1,
+        10,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(entries.len(), 2);
+    let counts: Vec<u64> = entries
+        .iter()
+        .map(|e| {
+            e.metadata.as_ref().unwrap()["request_count"]
+                .as_u64()
+                .unwrap()
+        })
+        .collect();
+    assert!(counts.contains(&42));
+    assert!(counts.contains(&15));
+}
