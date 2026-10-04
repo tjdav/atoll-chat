@@ -40,5 +40,10 @@ export default {
   'auth_confirm_back_link': '← Back to log in',
 
   'boot_loading': 'Loading…',
-  'boot_error_failed': 'Boot failed.'
+  'boot_error_failed': 'Boot failed.',
+
+  'app_shell_rail_label': 'Primary navigation',
+  'app_shell_bottom_nav_label': 'Primary navigation',
+  'app_shell_list_label': 'Conversations',
+  'app_shell_detail_label': 'Active view'
 }

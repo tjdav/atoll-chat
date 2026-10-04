@@ -312,7 +312,7 @@ build task runs.
 | Component Hydration Tests | `packages/app/tests/component/hydration.spec.js` asserting login, register, confirm, recovery, boot views, and runtime locale switching to French |
 | Screenshots Produced | `packages/app/test-results/hydration-login.png` and `packages/app/test-results/hydration-fr.png` |
 
-## Task C-AUTH-5 — Account Recovery Flow and Session Revocation
+### C-AUTH-5 — Account Recovery Flow and Session Revocation
 
 - **Recovery Flow Wire Contract**:
   - `POST /auth/recover/start` body: `{ recovery_code, username_token }`, response: `{ recovery_session, registration_response }`.
@@ -322,3 +322,21 @@ build task runs.
 - **Identity Keypair**: Regenerates Ed25519 identity keypair during recovery flow.
 - **Revocation Handler Contract**: `RevocationHandler({ session, navigate })` exposes `handle(eventType, payload)`. Triggers `clearSession()` and redirects to `/index.html` on `session.revoked`, `account.disabled`, and `account.deleted` events.
 - **Limitation**: `RecoverError.message` strings are English-only. Translation at component layer deferred to a future task.
+
+### C-CHAT-1 — Messenger Shell & Three-Panel Layout Architecture
+
+**Verified:** 2026-10-04
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Component Files Created | `packages/app/src/components/shell/messenger-shell.html`, `rail-host.html`, `surface-host.html` wrapped in `defineComponent` |
+| Desktop Layout (≥1024px) | Renders 64px rail (`<rail-host>`), list panel (`320–400px`), and detail panel (`1fr`) side-by-side without bottom nav bar (`.shell__bottom-nav`) |
+| Tablet Layout (768–1023px) | Hides rail, renders list panel and detail panel side-by-side, and displays bottom nav bar at base |
+| Mobile Layout (<768px) | Renders detail panel and bottom nav bar only (`.surface__list` and `.shell__rail` hidden) |
+| Viewport Height & Safe Areas | Height `100dvh`; safe area insets applied as padding on `.shell` (`--safe-top`, `--safe-right`, `--safe-bottom`, `--safe-left`) |
+| Visibility Gate & Boot Coordination | `<messenger-shell>` hides until `app:ready` event sets `state.ready = true`; `<messenger-boot>` applies `:host([ready="true"]) { display: none !important; }` |
+| Page Integration | `packages/app/src/pages/app.html` renders `<messenger-boot></messenger-boot>` and `<messenger-shell></messenger-shell>` as siblings |
+| Accessibility Landmarks | `<rail-host aria-label="{{ railLabel }}">`, `<section class="surface__list" aria-label="{{ listLabel }}">`, `<main class="surface__detail" aria-label="{{ detailLabel }}">`, `<nav class="shell__bottom-nav" aria-label="{{ bottomNavLabel }}">` |
+| Extended Locales | `app.shell.rail_label`, `app.shell.bottom_nav_label`, `app.shell.list_label`, `app.shell.detail_label` extended across all 7 locale files with 100% key parity |
+| Documentation Path | `packages/app/docs/shell.md` covering layout breakpoints, component structure, extension integration points, gating, safe areas, and landmarks |
+| Tests & Screenshots | Unit test `tests/unit/shell.test.js` (unit-smoke) and Playwright component test `tests/component/shell.spec.js` (component-smoke); screenshots captured at `packages/app/test-results/shell-desktop.png`, `shell-tablet.png`, and `shell-mobile.png` |

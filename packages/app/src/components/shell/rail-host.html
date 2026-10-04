@@ -1,0 +1,26 @@
+<template id="rail-host">
+  <div class="rail" data-testid="rail"></div>
+</template>
+
+<style>
+  :host {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
+
+  .rail {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-subtle);
+  }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({})
+</script>

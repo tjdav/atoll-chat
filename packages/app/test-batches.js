@@ -35,6 +35,7 @@ export default [
       'tests/unit/components-defineComponent.test.js',
       'tests/unit/auth-recover-flow.test.js',
       'tests/unit/auth-revocation.test.js',
+      'tests/unit/shell.test.js',
     ],
   },
   {
@@ -47,6 +48,7 @@ export default [
       'tests/component/tokens.spec.js',
       'tests/component/css-applied.spec.js',
       'tests/component/hydration.spec.js',
+      'tests/component/shell.spec.js',
     ],
   },
   {

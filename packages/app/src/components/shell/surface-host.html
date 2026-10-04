@@ -1,0 +1,76 @@
+<template id="surface-host">
+  <div class="surface" data-testid="surface">
+    <section class="surface__list" aria-label="{{ app_shell_list_label }}" data-testid="list-panel"></section>
+    <main class="surface__detail" aria-label="{{ app_shell_detail_label }}" data-testid="detail-panel"></main>
+  </div>
+</template>
+
+<style>
+  :host {
+    display: block;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .surface {
+    display: grid;
+    grid-template-columns: 1fr;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .surface__list {
+    display: none;
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-subtle);
+    overflow-y: auto;
+  }
+
+  .surface__detail {
+    background: var(--surface-0);
+    overflow-y: auto;
+  }
+
+  /* Tablet and desktop: list + detail side by side. */
+  @media (min-width: 768px) {
+    .surface {
+      grid-template-columns: minmax(var(--list-panel-min), var(--list-panel-max)) 1fr;
+    }
+    .surface__list {
+      display: block;
+    }
+  }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'app_shell_list_label',
+        'app_shell_detail_label'
+      ])
+    }
+  },
+
+  client({ state, i18n, signal }) {
+    const syncLocale = (locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'app_shell_list_label',
+        'app_shell_detail_label'
+      ]))
+    }
+
+    i18n.subscribeLocale(syncLocale, { signal })
+    if (state.locale !== i18n.getLocale()) {
+      syncLocale(i18n.getLocale())
+    }
+  }
+})
+</script>

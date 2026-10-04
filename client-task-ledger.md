@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 3 |
-| Done | 22 |
+| Pending | 2 |
+| Done | 23 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -46,7 +46,7 @@ or modify the server's ledger.
 | C-AUTH-3b3 | Recovery Code Display & Confirmation Screen | pending | C-AUTH-3b2 | component-smoke |
 | C-AUTH-4 | Session Persistence & Boot Sequence | done | C-AUTH-3a, C-INFRA-3 | unit-smoke, component-auth |
 | C-AUTH-5 | Account Recovery Flow and Session Revocation | done | C-AUTH-3a | — |
-| C-CHAT-1 | Messenger Shell & Three-Panel Layout | pending | C-INFRA-2, C-INFRA-5 | — |
+| C-CHAT-1 | Messenger Shell & Three-Panel Layout | done | C-INFRA-2, C-INFRA-5 | unit-smoke, component-smoke |
 | C-CHAT-2 | Extension SDK (@atoll/extend) Core Implementation | pending | C-INFRA-1 | — |
 | C-CHAT-3 | Extension System Validation & Vocabulary Command | pending | C-CHAT-2 | — |
 | C-CHAT-4 | First-Party Core Extensions Skeleton | pending | C-CHAT-2, C-CHAT-3 | — |
@@ -300,6 +300,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created Playwright component hydration test `packages/app/tests/component/hydration.spec.js` verifying DOM hydration, translated text rendering across components, and runtime locale switching.
   - Updated `packages/app/docs/plugins/i18n.md` and `packages/app/docs/plugins/README.md` with top-of-document `defineComponent` prerequisite.
   - Registered `tests/unit/components-defineComponent.test.js` in `unit-smoke` batch and `tests/component/hydration.spec.js` in `component-smoke` batch in `packages/app/test-batches.js`.
+- **C-CHAT-1 Deliverables & Status:**
+  - Status: `done`.
+  - Created `packages/app/src/components/shell/messenger-shell.html`, `rail-host.html`, and `surface-host.html` wrapped in `defineComponent`.
+  - Implemented responsive layout frame: Desktop (≥1024px: 64px rail, list 320–400px, detail 1fr), Tablet (768–1023px: list + detail side-by-side, bottom nav), Mobile (<768px: detail + bottom nav).
+  - Updated `packages/app/src/pages/app.html` rendering `messenger-boot` and `messenger-shell` as siblings.
+  - Updated `messenger-boot.html` removing `<slot name="shell">` and adding `:host([ready]) { display: none !important; }` override.
+  - Extended all seven locale files with 4 accessibility label keys (`app.shell.rail_label`, `app.shell.bottom_nav_label`, `app.shell.list_label`, `app.shell.detail_label`) with 100% key parity.
+  - Created documentation at `packages/app/docs/shell.md`.
+  - Added unit test `tests/unit/shell.test.js` and component test `tests/component/shell.spec.js` registered in `unit-smoke` and `component-smoke`.
 
 ## Component Authoring Policy
 

@@ -40,5 +40,10 @@ export default {
   'auth_confirm_back_link': '← Volver al inicio de sesión',
 
   'boot_loading': 'Cargando…',
-  'boot_error_failed': 'Error al iniciar.'
+  'boot_error_failed': 'Error al iniciar.',
+
+  'app_shell_rail_label': 'Navegación principal',
+  'app_shell_bottom_nav_label': 'Navegación principal',
+  'app_shell_list_label': 'Conversaciones',
+  'app_shell_detail_label': 'Vista activa'
 }

@@ -40,5 +40,10 @@ export default {
   'auth_confirm_back_link': '← Retour à la connexion',
 
   'boot_loading': 'Chargement…',
-  'boot_error_failed': 'Échec du démarrage.'
+  'boot_error_failed': 'Échec du démarrage.',
+
+  'app_shell_rail_label': 'Navigation principale',
+  'app_shell_bottom_nav_label': 'Navigation principale',
+  'app_shell_list_label': 'Discussions',
+  'app_shell_detail_label': 'Vue active'
 }
