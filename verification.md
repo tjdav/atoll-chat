@@ -456,3 +456,41 @@
   - **`target_not_found` Semantic:** HTTP 404 with error `"target_not_found"` when `target_client_id` is not present in the session's participant roster. Distinct from URL-level 404; no roster payload returned in error response.
   - **Opacity Invariants:** Server validates `signal_type` length ($\le 128$ bytes) and `payload` Base64 decoding size ($\le 64\text{ KiB}$), but never inspects, parses, logs, or stores signal content. Locks on `OccupancyStore` are released before pub/sub event emission. No audit entries are written (§14.8).
   - **Disabled Mode:** When `sessions_enabled == false`, returns HTTP 501 `sessions_disabled` per §8.7.13.
+
+## Task 45.1 — Extension Proxy Core Relay
+- **ID:** Task 45.1
+- **Date:** 2026-10-04
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec / Amendment references:** Amendment 38 (§3, §4, §5.1, §11, §12)
+- **Reused Mechanism & Content Key Derivation:**
+  - Reuses Task 35's Content Key encryption envelope (`RequestEnvelope`, `ResponseEnvelope`), X25519-ECDH shared secret derivation, and AES-256-GCM cipher.
+  - Distinct HKDF info string for extension proxy: `"extension-proxy-content-key-v1"` (prevents replay between link preview and extension proxy).
+  - Key file reuse: Reuses `LINK_PREVIEW_PROXY_KEY_PATH` X25519 private key. Loaded when `link_preview_proxy_enabled || extension_proxy_enabled`.
+- **Request / Response Plaintext Envelopes:**
+  - Request Plaintext: `{ "url": "https://...", "method": "GET"|"POST"|"HEAD", "headers": Option<HashMap<String, String>>, "body": Option<String>, "extension_id": "<1..128b>", "request_id": "<1..128b>" }`.
+  - Response Plaintext: `{ "status": <u16>, "headers": HashMap<String, String>, "body": "<base64-bytes>", "request_id": "<echoed>" }`.
+  - Encrypted Error Plaintext: `{ "error": "<code>", "message": "<msg>", "request_id": Option<String> }`.
+- **Header Allowlists:**
+  - Request header allowlist: `Accept`, `Accept-Language`, `Accept-Encoding`, `Cache-Control`, `If-None-Match`, `If-Modified-Since`, `If-Range`, `Range`. Any non-allowlisted header (or `Authorization`/`Cookie`) is rejected with 400 `header_not_allowed`.
+  - Response header allowlist: `content-type`, `content-length`, `etag`, `last-modified`, `cache-control`, `expires`, `date`, `vary`, `location`, `retry-after`.
+  - `User-Agent`: Forced to `EXTENSION_PROXY_USER_AGENT` (`Atoll/2.0` default). Client `User-Agent` headers are stripped.
+- **Redirect Policy per Method:**
+  - `GET` / `HEAD`: Follows 301, 302, 303, 307, 308 up to 5 hops max, validating every hop against the SSRF guard.
+  - `POST`: Follows 307 and 308 (preserving POST method and body). 301, 302, 303 are returned to the client without following, with status and `Location` header in the encrypted response.
+- **Content Encoding & Size Limit Enforcement:**
+  - Decompresses `gzip` and `deflate` transparently using bounded stream readers. Strips `content-encoding` and `content-length` from response headers when decompressed.
+  - Response size limit (`EXTENSION_PROXY_MAX_RESPONSE_BYTES`, default 10 MiB) applies strictly to decompressed bytes. If exceeded, returns HTTP 502 `upstream_response_too_large` without truncating.
+  - Request body limit (`EXTENSION_PROXY_MAX_REQUEST_BYTES`, default 256 KiB) enforced on the HTTP layer before decryption (returns HTTP 413 `request_too_large`).
+- **Error Codes & Behavior:**
+  - `400 invalid_request`: Decryption failure, malformed JSON, or missing required fields.
+  - `400 url_blocked`: Non-https scheme (in production) or host resolves to private/loopback/metadata IP.
+  - `400 url_too_long`: URL > 2048 chars.
+  - `400 method_not_allowed`: Method not in GET/POST/HEAD.
+  - `400 header_not_allowed`: Header not in request allowlist, or `Authorization`/`Cookie`.
+  - `400 body_too_large`: POST body > 256 KiB.
+  - `401 unauthorized`: Missing or invalid Bearer session token.
+  - `413 request_too_large`: Encrypted request envelope > `EXTENSION_PROXY_MAX_REQUEST_BYTES`.
+  - `501 proxy_disabled`: `EXTENSION_PROXY_ENABLED=false`.
+  - `502 fetch_failed`: Outbound connect/read timeout or connection error.
+  - `502 upstream_response_too_large`: Decompressed response body > `EXTENSION_PROXY_MAX_RESPONSE_BYTES`.
+- **Zero Plaintext Logging Discipline:** Plaintext URLs, hosts, headers, and request/response bodies are never logged or persisted.

@@ -65,7 +65,7 @@ test-sync:
 
 .PHONY: test-link-preview
 test-link-preview:
-	$(CARGO) test --test link_preview
+	$(CARGO) test --test extension_proxy --test link_preview
 
 .PHONY: test-all
 test-all: check-batches test-identity test-auth test-messaging test-storage test-oprf test-operations test-transport test-sockudo test-push test-sync test-link-preview

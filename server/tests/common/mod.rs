@@ -146,19 +146,20 @@ where
     let oprf = Arc::new(server::oprf::OprfEvaluator::new(&oprf_keys));
     let oprf_audit = Arc::new(server::oprf::OprfAuditCounter::new());
 
-    let link_preview_keys = if config_arc.link_preview_proxy_enabled {
-        match server::link_preview::LinkPreviewKeys::load_or_generate(
-            &config_arc.link_preview_proxy_key_path,
-        ) {
-            Ok(k) => Some(Arc::new(k)),
-            Err(e) => {
-                tracing::warn!("Failed to load or generate link preview keys: {}", e);
-                None
+    let link_preview_keys =
+        if config_arc.link_preview_proxy_enabled || config_arc.extension_proxy_enabled {
+            match server::link_preview::LinkPreviewKeys::load_or_generate(
+                &config_arc.link_preview_proxy_key_path,
+            ) {
+                Ok(k) => Some(Arc::new(k)),
+                Err(e) => {
+                    tracing::warn!("Failed to load or generate link preview keys: {}", e);
+                    None
+                }
             }
-        }
-    } else {
-        None
-    };
+        } else {
+            None
+        };
 
     let session_types_state = server::sessions::init_session_types_state(
         config_arc.sessions_enabled,

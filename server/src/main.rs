@@ -230,7 +230,7 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
-    let link_preview_keys = if config.link_preview_proxy_enabled {
+    let link_preview_keys = if config.link_preview_proxy_enabled || config.extension_proxy_enabled {
         match server::link_preview::LinkPreviewKeys::load_or_generate(
             &config.link_preview_proxy_key_path,
         ) {
