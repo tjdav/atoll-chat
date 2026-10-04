@@ -117,6 +117,7 @@ files = [
     "admin_rotate",
     "cleanup",
     "cli_migrate",
+    "cli_models",
     "cli_rotate",
 ]
 timeout_seconds = 60

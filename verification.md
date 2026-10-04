@@ -583,3 +583,29 @@
   - Audit: Writes `model.manifest_reload` audit log with metadata `{ "mode": "<mode>", "stt_models": N, "tts_models": M }`.
 - **Operational Note for Proxy Mode:**
   - Adding a model requires updating the local manifest and calling `POST /admin/models/reload` (or letting first client request hit a model already in local manifest).
+
+## Task 39b — CLI Model Subcommands Contract and Semantics
+- **ID:** Task 39b
+- **Date:** 2026-10-04
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec / Amendment references:** §9, §16.14 (Amendment 26)
+- **Subcommands & Usage:**
+  - `server models verify [--json] [--kind <stt|tts|all>] [--quiet]`
+  - `server models fetch --from <url> [--kind <stt|tts|all>] [--json] [--jobs <N>] [--force]`
+- **Exit Code Conventions:**
+  - `0`: Success (all files verified / all files fetched or already present).
+  - `1`: Negative outcome (one or more files failed verification, missing, size/hash mismatch, or failed download).
+  - `2`: Invocation / Usage / Config error (invalid flags, missing/unparseable local manifest, production HTTP `--from` URL, or unreachable base URL on initial connect).
+- **Flag Semantics & Rules:**
+  - `--from <url>`: Base URL of shared origin (origin root, e.g. `https://models.example.com`). Must not contain kind path `/stt/v1/` or `/tts/v1/` (returns exit code 2 if present). Must use `https://` in production.
+  - `--jobs <N>`: Bounded parallel async download concurrency (`1..=8`). Defaults to 1 (sequential).
+  - `--force`: Re-downloads model files even if present locally with matching size and SHA-256 hash.
+  - `--kind`: Filters model kinds (`stt`, `tts`, `all`, defaulting to `all`).
+  - `--json`: Outputs structured JSON report.
+  - `--quiet`: Suppresses per-file console output for `verify`.
+- **Operational & Storage Invariants:**
+  - `verify` is read-only and local (never contacts network or modifies files).
+  - `fetch` requires manifests to exist locally prior to invocation (does not fetch manifests from origin).
+  - Downloads write to atomic temporary files (`{filename}.tmp.<pid>.<nanos>`) in target model directory, verifying size and SHA-256 before atomic rename to target path.
+  - Size mismatch or hash mismatch deletes temporary files without touching target file path.
+  - Partial failures in `fetch` are non-atomic (successful file downloads persist and are skipped on subsequent runs).
