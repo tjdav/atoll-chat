@@ -1,17 +1,7 @@
 <template id="rail-host">
   <nav class="rail" aria-label="{{ app_rail_aria_label }}" data-testid="rail">
     <ul class="rail__list" ref="railList">
-      <li class="rail__item" data-extension-id="{{ itemId }}">
-        <button
-          type="button"
-          class="rail__button"
-          data-rail-id="{{ itemId }}"
-          aria-label="{{ itemLabel }}"
-          aria-current="{{ itemCurrent }}"
-        >
-          <span class="rail__placeholder" aria-hidden="true">{{ itemInitial }}</span>
-        </button>
-      </li>
+      <li class="rail__item"></li>
     </ul>
   </nav>
 </template>
@@ -61,24 +51,12 @@
     background: var(--accent-fill);
     color: var(--text-inverse);
   }
-
-  .rail__placeholder {
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
-  }
 </style>
 
 <script type="module">
 import { defineComponent } from 'coralite'
 
 export default defineComponent({
-  attributes: {
-    itemId: { type: String, default: '' },
-    itemLabel: { type: String, default: '' },
-    itemInitial: { type: String, default: '' },
-    itemCurrent: { type: String, default: 'false' }
-  },
-
   server({ i18n }) {
     return {
       locale: i18n.getLocale(),
@@ -111,6 +89,16 @@ export default defineComponent({
       return byOrder.length > 0 ? byOrder[0].id : null
     }
 
+    function createIconElement(name, size = 'md') {
+      const icon = typeof window !== 'undefined' && typeof window.createCoraliteElement === 'function'
+        ? window.createCoraliteElement('ui-icon')
+        : document.createElement('ui-icon')
+      icon.setAttribute('name', name)
+      icon.setAttribute('size', size)
+      icon.setAttribute('label', '')
+      return icon
+    }
+
     function renderRail() {
       renderAbort.abort()
       renderAbort = new AbortController()
@@ -132,12 +120,9 @@ export default defineComponent({
         button.setAttribute('aria-label', ext.label)
         button.setAttribute('aria-current', ext.id === activeId ? 'page' : 'false')
 
-        const placeholder = document.createElement('span')
-        placeholder.className = 'rail__placeholder'
-        placeholder.setAttribute('aria-hidden', 'true')
-        placeholder.textContent = ext.label.slice(0, 1).toUpperCase()
+        const icon = createIconElement(ext.rail.icon.name, 'md')
 
-        button.appendChild(placeholder)
+        button.appendChild(icon)
         li.appendChild(button)
         list.appendChild(li)
 

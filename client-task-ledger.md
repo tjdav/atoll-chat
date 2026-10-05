@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 28 |
+| Done | 29 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -52,6 +52,7 @@ or modify the server's ledger.
 | C-CHAT-4 | First-Party Core Extensions Skeleton | done | C-CHAT-2, C-CHAT-3 | unit-smoke |
 | C-CHAT-5 | Router Plugin & Rail Item Rendering | done | C-CHAT-1, C-CHAT-4, C-INFRA-4 | unit-smoke, component-smoke |
 | C-CHAT-6 | Surface Rendering & Pass-Through Getter Cleanup | done | C-CHAT-5, C-CHAT-4, C-CHAT-1, C-INFRA-6c | unit-smoke, component-smoke |
+| C-CHAT-7 | Icon Plugin and Rail Icon Rendering | done | C-CHAT-5, C-CHAT-4, C-INFRA-6c | unit-smoke, component-smoke |
 
 ## Blockers
 
@@ -369,6 +370,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated documentation at `packages/app/docs/plugins/i18n.md` ("When to use a getter" section) and `packages/app/docs/shell.md` (surface-host resolution, reconciliation, and canonicalization).
   - Added unit test `tests/unit/surface-reconcile.test.js` (registered in `unit-smoke`) and Playwright component test `tests/component/surface.spec.js` (registered in `component-smoke`).
   - Verified test suite (`pnpm check-batches`, `pnpm test:batch unit-smoke`, `pnpm test:batch component-smoke`, `pnpm --filter @atoll/app build`, `pnpm extensions:vocab`). Generated visual verification screenshots `test-results/surface-chat.png` and `test-results/surface-detail.png`.
+- **C-CHAT-7 Deliverables & Status:**
+  - Status: `done`.
+  - Installed `@solar-icons/static@2.3.2` runtime dependency in `packages/app/package.json`.
+  - Created `packages/app/src/lib/icons/index.js` and `solar-map.js` providing `CANONICAL_ICONS` (`chat-round-line`, `gallery`, `document-text`, `link`, `phone`, `settings`), `getIconModule(name)`, `listIcons()`, and `isIconName(name)`.
+  - Implemented `packages/app/src/plugins/icon-plugin.js` registering `icons` plugin in `coralite.config.js` with two-phase resolvers exposing `ctx.icons`.
+  - Created `<ui-icon>` primitive component (`packages/app/src/components/primitives/ui-icon.html`) using `defineComponent` and dynamic attribute observation.
+  - Updated `<rail-host>` component (`packages/app/src/components/shell/rail-host.html`) replacing first-letter placeholders with `<ui-icon>` elements.
+  - Authored documentation at `packages/app/docs/plugins/icons.md` and updated `docs/plugins/README.md`.
+  - Added unit test `tests/unit/icons.test.js` (registered in `unit-smoke`) and Playwright component test `tests/component/ui-icon.spec.js` (registered in `component-smoke`). Updated `tests/component/rail.spec.js` and `test-batches.js`.
 
 ## Component Authoring Policy
 
