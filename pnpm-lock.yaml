@@ -44,6 +44,9 @@ importers:
       '@serenity-kit/opaque':
         specifier: 1.1.0
         version: 1.1.0
+      '@solar-icons/static':
+        specifier: 2.3.2
+        version: 2.3.2
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.10.0
@@ -475,6 +478,10 @@ packages:
   '@serenity-kit/opaque@1.1.0':
     resolution: {integrity: sha512-Y6v/+hRMn0MdMEk5+/ArM0vPIiFfFEbdTZc7oAx+cWyvGODGezAQ/sMjXBVogf7NsS9z9EV0Ve5paZCVULuedw==}
     hasBin: true
+
+  '@solar-icons/static@2.3.2':
+    resolution: {integrity: sha512-y1a4xVjrbjyxRO3912CHHtee7p51OGdDizJ8fo4bsGn8IH9+dRZbXOXUlQchWcdHyEqRMJp3Ai/tccJGChHHlg==}
+    engines: {node: '>=16'}
 
   '@stylistic/eslint-plugin@4.4.1':
     resolution: {integrity: sha512-CEigAk7eOLyHvdgmpZsKFwtiqS2wFwI1fn4j09IU9GmD4euFM4jEBAViWeCqaNLlbX2k2+A/Fq9cje4HQBXuJQ==}
@@ -2238,6 +2245,8 @@ snapshots:
   '@rtsao/scc@1.1.0': {}
 
   '@serenity-kit/opaque@1.1.0': {}
+
+  '@solar-icons/static@2.3.2': {}
 
   '@stylistic/eslint-plugin@4.4.1(eslint@9.39.5)(typescript@5.9.3)':
     dependencies:

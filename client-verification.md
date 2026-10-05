@@ -426,3 +426,18 @@ build task runs.
 | Component Audit | All components audited. `railLabel` removed from `rail-host.html`. Remaining getters across all components confirmed to compute derived values |
 | Documentation Updates | `packages/app/docs/plugins/i18n.md` ("When to use a getter" section) and `packages/app/docs/shell.md` updated |
 | Test Suites & Screenshots | Unit test `tests/unit/surface-reconcile.test.js` (unit-smoke) and Playwright component test `tests/component/surface.spec.js` (component-smoke). Visual verification screenshots generated at `test-results/surface-chat.png` and `test-results/surface-detail.png` |
+
+### C-CHAT-7 — Icon Plugin, `<ui-icon>` Primitive & Rail Icon Rendering
+
+**Verified:** 2026-10-05
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Canonical Icons (`CANONICAL_ICONS`) | `['chat-round-line', 'gallery', 'document-text', 'link', 'phone', 'settings']` exported from `packages/app/src/lib/icons/index.js` |
+| Solar Icon Map (`SOLAR_MAP`) | Maps canonical names to `@solar-icons/static` linear modules in `packages/app/src/lib/icons/solar-map.js`, normalizing default/named/string exports into SVG markup strings |
+| Icon Functions | `getIconModule(name)` (returns raw SVG string or throws for unknown names), `listIcons()` (returns frozen array), `isIconName(name)` (returns boolean) |
+| Icon Plugin (`iconPlugin`) | Defined in `packages/app/src/plugins/icon-plugin.js` with `name: 'icons'`. Registered in `coralite.config.js` between `extensionPlugin` and `routerPlugin`. Exposes `ctx.icons` (`get`, `list`, `has`) across server and client contexts |
+| Primitive Component (`<ui-icon>`) | Defined in `packages/app/src/components/primitives/ui-icon.html` wrapped in `defineComponent`. Accepts attributes `name`, `size` ('sm' -> 16px, 'md' -> 20px, 'lg' -> 24px, or CSS length), `color`, `label`. Client block uses `observe('name')` to dynamically update inner wrapper with trusted SVG markup |
+| Rail Host Integration (`rail-host.html`) | Instantiates `<ui-icon>` custom elements with `ext.rail.icon.name` for each item. Letter placeholders (`.rail__placeholder`) and unused `item*` attributes removed |
+| Plugin Documentation | Created at `packages/app/docs/plugins/icons.md` and registered in `packages/app/docs/plugins/README.md` |
+| Test Suites & Batches | Unit test `packages/app/tests/unit/icons.test.js` registered in `unit-smoke` (222 passing unit tests). Component test `packages/app/tests/component/ui-icon.spec.js` registered in `component-smoke` (33 passing Playwright tests) |

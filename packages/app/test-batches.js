@@ -32,6 +32,7 @@ export default [
       'tests/unit/i18n.test.js',
       'tests/unit/i18n-locales.test.js',
       'tests/unit/i18n-plugin.test.js',
+      'tests/unit/icons.test.js',
       'tests/unit/components-defineComponent.test.js',
       'tests/unit/auth-recover-flow.test.js',
       'tests/unit/auth-revocation.test.js',
@@ -62,6 +63,7 @@ export default [
       'tests/component/shell.spec.js',
       'tests/component/rail.spec.js',
       'tests/component/surface.spec.js',
+      'tests/component/ui-icon.spec.js',
     ],
   },
   {

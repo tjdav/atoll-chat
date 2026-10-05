@@ -40,7 +40,7 @@ async function setupAuthenticatedPage(page) {
 }
 
 test.describe('Rail Host Component Tests', () => {
-  test('Case 1 & 2: Desktop rail rendering, items count, order, and labels', async ({ page }) => {
+  test('Case 1 & 2: Desktop rail rendering, items count, order, ui-icon elements, and labels', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await setupAuthenticatedPage(page)
     await page.goto('/app.html')
@@ -68,8 +68,13 @@ test.describe('Rail Host Component Tests', () => {
       await expect(btn).toHaveAttribute('aria-label', ext.label)
       const expectedCurrent = ext.id === 'core.chat' ? 'page' : 'false'
       await expect(btn).toHaveAttribute('aria-current', expectedCurrent)
+
+      const uiIcon = btn.locator('ui-icon')
+      await expect(uiIcon).toBeAttached()
+      await expect(uiIcon).toHaveAttribute('name', ext.rail.icon.name)
     }
 
+    await page.screenshot({ path: 'test-results/rail-with-icons.png', fullPage: true })
     await page.screenshot({ path: 'test-results/rail-desktop.png', fullPage: true })
   })
 
