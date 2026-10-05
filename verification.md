@@ -724,3 +724,14 @@
   - Valid candidates accumulate into `Vec<i64>` during the classification loop; deletion executes strictly via parameterized `DELETE FROM {table} WHERE rowid IN (...)` queries.
   - If no candidates pass validation, deletion is skipped entirely and `deleted = 0`.
   - Comprehensive test suite in `server/tests/cleanup.rs` asserts database retention across single-run, double-run, all-anomalous, missing `user_seq`, and mixed rowid-scoped scenarios.
+
+## Sync Pruning Database-State Test Assertions Contract
+- **ID:** Task Sync Pruning Database-State Test Assertions
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Foundation contract.
+- **Spec / Amendment references:** V3 Spec §4.5, §5.1
+- **Verified Facts:**
+  - All-anomalous tables retain all N rows in the database following job runs without deleting anomalous tombstones or altering other rows for that user.
+  - Candidates missing a `user_seq` row are verified to be retained in the database table.
+  - Double-run idempotency leaves database table contents identical across consecutive executions.
+  - Mixed-case rowid-scoped deletion in a single table deletes strictly valid `rowid`s while leaving anomalous `rowid`s unmutated (`deleted_at` and `user_seq` unchanged).

@@ -589,7 +589,7 @@ async fn test_12_sync_pruning_handles_missing_tables_gracefully() {
     assert!(!rep.notes.is_empty());
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
     use std::sync::{Arc as StdArc, Mutex as StdMutex};
 
@@ -700,14 +700,16 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
 
     // Database assertions after First Run
     // 1. All-anomalous table (starred_items for u_anom): N=2 tombstones remain in DB
-    let star_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM starred_items WHERE user_id = 'u_anom'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let star_item_ids: Vec<String> = sqlx::query_scalar(
+        "SELECT item_id FROM starred_items WHERE user_id = 'u_anom' ORDER BY item_id ASC",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
     assert_eq!(
-        star_count, 2,
-        "All-anomalous table must retain all N rows in DB"
+        star_item_ids,
+        vec!["item_anom1".to_string(), "item_anom2".to_string()],
+        "All-anomalous table must retain all N rows and no other rows for that user_id"
     );
 
     // 2. Missing user_seq row (u_no_seq in device_names): retained in DB
@@ -777,16 +779,38 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
     assert!(captured2.contains("deleted=0"));
     assert!(captured2.contains("skipped=1"));
 
-    // Database assertions after Second Run: table contains exactly the anomalous row
-    let read_state_rows: Vec<String> =
+    // Database assertions after Second Run: table contents identical to run 1 snapshot
+    let read_state_rows2: Vec<String> =
         sqlx::query_scalar("SELECT room_id FROM read_state WHERE user_id = 'u_mixed'")
             .fetch_all(&pool)
             .await
             .unwrap();
     assert_eq!(
-        read_state_rows,
+        read_state_rows2,
         vec!["r_mixed2".to_string()],
-        "Table must contain exactly the anomalous row after both runs"
+        "read_state must contain exactly the anomalous row after both runs"
+    );
+
+    let star_items2: Vec<String> = sqlx::query_scalar(
+        "SELECT item_id FROM starred_items WHERE user_id = 'u_anom' ORDER BY item_id ASC",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        star_items2, star_item_ids,
+        "starred_items contents must be identical after second run"
+    );
+
+    let noseq_exists2: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM device_names WHERE user_id = 'u_no_seq' AND device_id = 'd_noseq')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(
+        noseq_exists2,
+        "device_names contents must be identical after second run"
     );
 
     // Tables without deleted_at column log debug message
@@ -795,8 +819,33 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
     assert!(captured2.contains("skipping sync table pruning (table absent or missing deleted_at column) table=\"bot_settings\""));
 }
 
-#[tokio::test]
+#[tokio::test(flavor = "current_thread")]
 async fn test_14_sync_pruning_rowid_scoped_deletion() {
+    use std::sync::{Arc as StdArc, Mutex as StdMutex};
+
+    #[derive(Clone, Default)]
+    struct LogWriter(StdArc<StdMutex<Vec<u8>>>);
+    impl std::io::Write for LogWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let logs = LogWriter::default();
+    let logs_clone = logs.clone();
+
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .with_ansi(false)
+        .with_writer(move || logs_clone.clone())
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
     let pool = setup_test_db().await;
     let ctx = build_ctx(pool.clone(), test_config(90));
 
@@ -846,34 +895,79 @@ async fn test_14_sync_pruning_rowid_scoped_deletion() {
         .await
         .unwrap();
 
+    // Capture rowids and initial state of r_anom before running the job
+    let valid1_rowid: i64 =
+        sqlx::query_scalar("SELECT rowid FROM read_state WHERE room_id = 'r_valid1'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    let valid2_rowid: i64 =
+        sqlx::query_scalar("SELECT rowid FROM read_state WHERE room_id = 'r_valid2'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    let (anom_rowid, anom_deleted_at_pre, anom_user_seq_pre): (i64, String, i64) = sqlx::query_as(
+        "SELECT rowid, CAST(deleted_at AS TEXT), user_seq FROM read_state WHERE room_id = 'r_anom'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
     let job = SyncPruningJob;
     let report = job.run(&ctx.as_ctx()).await.unwrap();
 
     // Exactly 2 valid tombstones deleted
     assert_eq!(report.rows_deleted, 2);
 
-    // Query DB to verify rowid-scoped deletion
-    let valid1_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_rowid' AND room_id = 'r_valid1')",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert!(!valid1_exists, "First valid tombstone must be deleted");
+    // Verify info and warn logs
+    let captured = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
 
-    let valid2_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_rowid' AND room_id = 'r_valid2')",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert!(!valid2_exists, "Second valid tombstone must be deleted");
+    assert!(captured.contains("pruned tombstones for sync table"));
+    assert!(captured.contains("table=\"read_state\""));
+    assert!(captured.contains("deleted=2"));
+    assert!(captured.contains("skipped=1"));
 
-    let anom_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_rowid' AND room_id = 'r_anom')",
+    assert!(captured.contains("skipped tombstone violating user_seq invariant"));
+    assert!(captured.contains("user_id=u_rowid"));
+    assert!(!captured.contains("user_seq="));
+
+    // Verify rowid-scoped deletion: valid rowids are gone
+    let valid1_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM read_state WHERE rowid = ?)")
+            .bind(valid1_rowid)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(!valid1_exists, "First valid rowid must be deleted");
+
+    let valid2_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM read_state WHERE rowid = ?)")
+            .bind(valid2_rowid)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(!valid2_exists, "Second valid rowid must be deleted");
+
+    // Verify anomalous rowid remains in DB with unmutated deleted_at and user_seq
+    let (anom_rowid_post, anom_deleted_at_post, anom_user_seq_post): (i64, String, i64) = sqlx::query_as(
+        "SELECT rowid, CAST(deleted_at AS TEXT), user_seq FROM read_state WHERE room_id = 'r_anom'",
     )
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert!(anom_exists, "Anomalous tombstone must remain in DB");
+
+    assert_eq!(
+        anom_rowid_post, anom_rowid,
+        "Anomalous rowid must remain unchanged"
+    );
+    assert_eq!(
+        anom_deleted_at_post, anom_deleted_at_pre,
+        "Anomalous row deleted_at must not be mutated"
+    );
+    assert_eq!(
+        anom_user_seq_post, anom_user_seq_pre,
+        "Anomalous row user_seq must not be mutated"
+    );
 }
