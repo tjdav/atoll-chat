@@ -239,3 +239,35 @@ export class WebhookSignatureInvalidError extends BotError {
   /** @override */
   code = 'webhook_signature_invalid'
 }
+
+/**
+ * Thrown by the HTTP transport when a request fails after retries or
+ * when the server returns a non-2xx status.
+ *
+ * Carries: `status` (HTTP status code or 0 for network failures),
+ * `url`, `method`, `body` (parsed server error envelope, if the
+ * server returned one), `responseErrorCode` (the `error` field from
+ * the server's envelope, if present).
+ */
+export class HttpRequestError extends BotError {
+  /** @override */
+  name = 'HttpRequestError'
+
+  /** @override */
+  code = 'http_request_failed'
+
+  /** @type {number} */
+  status = 0
+
+  /** @type {string} */
+  url = ''
+
+  /** @type {string} */
+  method = ''
+
+  /** @type {unknown} */
+  body = null
+
+  /** @type {string | null} */
+  responseErrorCode = null
+}
