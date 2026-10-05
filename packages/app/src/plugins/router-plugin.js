@@ -37,7 +37,7 @@ export default (options = {}) => {
           getActiveDetail: () => router.getActiveDetail(),
           getSelection: () => router.getSelection(),
           getParams: () => router.getParams(),
-          navigate: (params) => router.navigate(params),
+          navigate: (params, options) => router.navigate(params, options),
           back: () => router.back(),
           subscribe: (cb) => router.subscribe(cb)
         })

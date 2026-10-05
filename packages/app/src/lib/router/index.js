@@ -106,13 +106,15 @@ export function createRouter(options = {}) {
     },
 
     /**
-     * Navigates by updating the query string via history.pushState.
+     * Navigates by updating the query string via history.pushState or history.replaceState.
      * Omits parameters whose values are null or undefined. Coerces other values with String().
      * Fires subscribers synchronously after navigation.
      *
      * @param {NavigationParams} params - Query parameters to update or set.
+     * @param {object} [options] - Navigation options.
+     * @param {boolean} [options.replace=false] - Whether to use replaceState instead of pushState.
      */
-    navigate(params = {}) {
+    navigate(params = {}, options = {}) {
       const url = getCurrentUrl()
       const searchParams = new URLSearchParams()
 
@@ -125,8 +127,11 @@ export function createRouter(options = {}) {
       const queryString = searchParams.toString()
       const newPath = url.pathname + (queryString ? `?${queryString}` : '') + url.hash
 
-      if (win?.history && typeof win.history.pushState === 'function') {
-        win.history.pushState(null, '', newPath)
+      const replace = Boolean(options.replace)
+      const method = replace ? 'replaceState' : 'pushState'
+
+      if (win?.history && typeof win.history[method] === 'function') {
+        win.history[method](null, '', newPath)
       }
 
       notifySubscribers()

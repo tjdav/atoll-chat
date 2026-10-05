@@ -46,6 +46,7 @@ export default [
       'tests/unit/extend-vocab-cli.test.js',
       'tests/unit/extend-first-party.test.js',
       'tests/unit/router.test.js',
+      'tests/unit/surface-reconcile.test.js',
     ],
   },
   {
@@ -60,6 +61,7 @@ export default [
       'tests/component/hydration.spec.js',
       'tests/component/shell.spec.js',
       'tests/component/rail.spec.js',
+      'tests/component/surface.spec.js',
     ],
   },
   {
