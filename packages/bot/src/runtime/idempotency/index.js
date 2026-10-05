@@ -81,9 +81,11 @@ export class IdempotencyStore {
    */
   _enqueue (operation) {
     const res = this._queue
-      .catch(() => {})
+      .catch(() => {
+      })
       .then(() => operation())
-    this._queue = res.catch(() => {})
+    this._queue = res.catch(() => {
+    })
     return res
   }
 

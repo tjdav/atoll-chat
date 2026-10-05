@@ -98,6 +98,26 @@
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
 
+## Task B-017 Verification Fact
+- **HTTP Client Transport (`packages/bot/src/runtime/transport/http.js`)**:
+  - Authored `packages/bot/src/runtime/transport/http.js` exporting `createHttpClient`.
+  - Authored spec amendment in `packages/bot/src/errors.js` adding `HttpRequestError` (code `http_request_failed`) carrying `status`, `url`, `method`, `body`, and `responseErrorCode`.
+  - `createHttpClient` enforces factory-time validation: `serverUrl` must be a non-empty, valid absolute URL with scheme `http` or `https`; `botToken` must be a non-empty string.
+  - The client forces `Authorization: Bearer <botToken>`, `User-Agent`, and `Accept: application/json` headers on all requests. Caller-supplied `Authorization` is ignored and overwritten.
+  - Plain objects and arrays are JSON-stringified; `string` and `Uint8Array` bodies are sent as-is.
+  - Response parsing parses JSON when `Content-Type` includes `application/json`; empty body (204 or `Content-Length: 0`) produces `null`; non-JSON is returned as a string.
+  - 429 retries unconditionally and respects `Retry-After` (parsed as seconds or HTTP-date, clamped to `maxRetryAfterMs` [default 60,000ms]).
+  - 5xx and network/timeout failures retry only when `retry: true` option is set.
+  - Non-429 4xx errors do not retry.
+  - Debug logs emit retry lines (`msg: 'http retry'`) with query strings stripped from paths.
+  - Registered `http` batch in `packages/bot/tests/batch-manifest.toml` and authored 30 unit tests in `packages/bot/tests/unit/http.test.js` using local `node:http` servers.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
 ## Task B-008a Verification Fact
 - **OS Keychain Resolvers (`packages/bot/src/runtime/keystore/resolvers/keychain.js`)**:
   - The keychain entry identification convention uses service `atoll-bot` and account `<bot_id>`. The Windows target name is `atoll-bot:<bot_id>`.

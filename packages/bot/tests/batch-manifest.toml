@@ -89,3 +89,9 @@ name = "settings-crypto"
 files = [
   "unit/settings-crypto.test.js",
 ]
+
+[[batch]]
+name = "http"
+files = [
+  "unit/http.test.js",
+]
