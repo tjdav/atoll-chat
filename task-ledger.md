@@ -178,9 +178,9 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** Step 0 report at `verification/sync-pruning-rowid-delete/report.md`, rowid selection and candidate classification loop in `server/src/cleanup/sync.rs`, `rowid IN (...)` parameter-bound explicit deletion, comprehensive test cases in `server/tests/cleanup.rs` (`test_13` extended, `test_14` added), updated `verification.md`.
   - **Batch:** `operations`
-- **Sync Pruning Database-State Test Assertions**: done
+- **Sync Pruning Database-State Test Assertions Precision**: done
   - **Migration:** None (no schema changes).
-  - **Delivered:** Step 0 report at `verification/sync-pruning-db-state-tests/report.md`, database-state assertions in `server/tests/cleanup.rs` (`test_13` extended, `test_14` added), updated `verification.md`.
+  - **Delivered:** Step 0 report at `verification/sync-pruning-assertion-precision/report.md`, strengthened all-anomalous assertions in `test_13`, extended double-run assertions in `test_13`, updated `test_14_sync_pruning_rowid_scoped_deletion` in `server/tests/cleanup.rs`, updated `verification.md`.
   - **Batch:** `operations`
 
 ## Annotations for Future Tasks

@@ -735,3 +735,13 @@
   - Candidates missing a `user_seq` row are verified to be retained in the database table.
   - Double-run idempotency leaves database table contents identical across consecutive executions.
   - Mixed-case rowid-scoped deletion in a single table deletes strictly valid `rowid`s while leaving anomalous `rowid`s unmutated (`deleted_at` and `user_seq` unchanged).
+
+## Sync Pruning Database-State Test Assertions Precision
+- **ID:** Task Sync Pruning Database-State Test Assertions Precision
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Test-only contract.
+- **Spec / Amendment references:** V3 Spec §4.5, §5.1
+- **Verified Facts:**
+  - `test_13` all-anomalous block verified with set equality and zero unexpected item IDs.
+  - `test_13` double-run block verifies cross-table retention (`starred_items`, `device_names`, `read_state`) and unmutated `deleted_at` / `user_seq` for anomalous row `r_mixed2`.
+  - `test_14_sync_pruning_rowid_scoped_deletion` verifies 2 valid + 1 anomalous tombstone pruning in `read_state` with exact `deleted=2, skipped=1` log assertion, rowid-scoped deletion, unmutated anomalous row attributes, and second-run idempotency (`deleted=0, skipped=1`).

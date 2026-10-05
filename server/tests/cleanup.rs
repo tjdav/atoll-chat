@@ -692,6 +692,13 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
         .await
         .unwrap();
 
+    let (r2_deleted_at_pre, r2_user_seq_pre): (String, i64) = sqlx::query_as(
+        "SELECT CAST(deleted_at AS TEXT), user_seq FROM read_state WHERE user_id = 'u_mixed' AND room_id = 'r_mixed2'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
     let job = SyncPruningJob;
 
     // First Run
@@ -710,6 +717,17 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
         star_item_ids,
         vec!["item_anom1".to_string(), "item_anom2".to_string()],
         "All-anomalous table must retain all N rows and no other rows for that user_id"
+    );
+
+    let star_other_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM starred_items WHERE user_id = 'u_anom' AND item_id NOT IN ('item_anom1', 'item_anom2')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        star_other_count, 0,
+        "No other rows must exist in starred_items for u_anom"
     );
 
     // 2. Missing user_seq row (u_no_seq in device_names): retained in DB
@@ -791,6 +809,21 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
         "read_state must contain exactly the anomalous row after both runs"
     );
 
+    let (r2_deleted_at_post, r2_user_seq_post): (String, i64) = sqlx::query_as(
+        "SELECT CAST(deleted_at AS TEXT), user_seq FROM read_state WHERE user_id = 'u_mixed' AND room_id = 'r_mixed2'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        r2_deleted_at_post, r2_deleted_at_pre,
+        "Anomalous read_state row deleted_at must remain unchanged across runs"
+    );
+    assert_eq!(
+        r2_user_seq_post, r2_user_seq_pre,
+        "Anomalous read_state row user_seq must remain unchanged across runs"
+    );
+
     let star_items2: Vec<String> = sqlx::query_scalar(
         "SELECT item_id FROM starred_items WHERE user_id = 'u_anom' ORDER BY item_id ASC",
     )
@@ -849,14 +882,14 @@ async fn test_14_sync_pruning_rowid_scoped_deletion() {
     let pool = setup_test_db().await;
     let ctx = build_ctx(pool.clone(), test_config(90));
 
-    // Setup user u_rowid with next_seq = 11 (max_seq = 10)
+    // Setup user u_rowid with next_seq = 10 (max_seq = 9)
     sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u_rowid', ?, 'reg', 'pub')")
         .bind(DUMMY_TOKEN)
         .execute(&pool)
         .await
         .unwrap();
 
-    sqlx::query("INSERT INTO user_seq (user_id, next_seq) VALUES ('u_rowid', 11)")
+    sqlx::query("INSERT INTO user_seq (user_id, next_seq) VALUES ('u_rowid', 10)")
         .execute(&pool)
         .await
         .unwrap();
@@ -877,19 +910,19 @@ async fn test_14_sync_pruning_rowid_scoped_deletion() {
         .unwrap();
 
     // 2 valid tombstones + 1 anomalous tombstone in read_state
-    // Valid 1: user_seq = 1 <= 10
-    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_rowid', 'r_valid1', NULL, 1, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+    // Valid 1: user_seq = 3 <= 9
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_rowid', 'r_valid1', NULL, 3, datetime('now', '-100 days'), datetime('now', '-100 days'))")
         .execute(&pool)
         .await
         .unwrap();
 
-    // Valid 2: user_seq = 2 <= 10
-    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_rowid', 'r_valid2', NULL, 2, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+    // Valid 2: user_seq = 7 <= 9
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_rowid', 'r_valid2', NULL, 7, datetime('now', '-100 days'), datetime('now', '-100 days'))")
         .execute(&pool)
         .await
         .unwrap();
 
-    // Anomalous: user_seq = 99 > 10
+    // Anomalous: user_seq = 99 > 9
     sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_rowid', 'r_anom', NULL, 99, datetime('now', '-100 days'), datetime('now', '-100 days'))")
         .execute(&pool)
         .await
@@ -970,4 +1003,38 @@ async fn test_14_sync_pruning_rowid_scoped_deletion() {
         anom_user_seq_post, anom_user_seq_pre,
         "Anomalous row user_seq must not be mutated"
     );
+
+    // Clear logs and run second time
+    logs.0.lock().unwrap().clear();
+
+    let report2 = job.run(&ctx.as_ctx()).await.unwrap();
+    assert_eq!(report2.rows_deleted, 0);
+
+    let captured2 = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
+
+    assert!(captured2.contains("table=\"read_state\""));
+    assert!(captured2.contains("deleted=0"));
+    assert!(captured2.contains("skipped=1"));
+
+    let read_state_rows2: Vec<String> =
+        sqlx::query_scalar("SELECT room_id FROM read_state WHERE user_id = 'u_rowid'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        read_state_rows2,
+        vec!["r_anom".to_string()],
+        "read_state must contain exactly r_anom after second run"
+    );
+
+    let (anom_rowid_run2, anom_deleted_at_run2, anom_user_seq_run2): (i64, String, i64) = sqlx::query_as(
+        "SELECT rowid, CAST(deleted_at AS TEXT), user_seq FROM read_state WHERE room_id = 'r_anom'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    assert_eq!(anom_rowid_run2, anom_rowid);
+    assert_eq!(anom_deleted_at_run2, anom_deleted_at_pre);
+    assert_eq!(anom_user_seq_run2, anom_user_seq_pre);
 }
