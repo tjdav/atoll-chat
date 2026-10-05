@@ -588,3 +588,156 @@ async fn test_12_sync_pruning_handles_missing_tables_gracefully() {
     assert_eq!(rep.rows_deleted, 0);
     assert!(!rep.notes.is_empty());
 }
+
+#[tokio::test]
+async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
+    use std::sync::{Arc as StdArc, Mutex as StdMutex};
+
+    #[derive(Clone, Default)]
+    struct LogWriter(StdArc<StdMutex<Vec<u8>>>);
+    impl std::io::Write for LogWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let logs = LogWriter::default();
+    let logs_clone = logs.clone();
+
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .with_ansi(false)
+        .with_writer(move || logs_clone.clone())
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let pool = setup_test_db().await;
+    let ctx = build_ctx(pool.clone(), test_config(90));
+
+    // 1. Setup user u_mixed with next_seq = 10 (max_seq = 9)
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u_mixed', ?, 'reg', 'pub')")
+        .bind(DUMMY_TOKEN)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO user_seq (user_id, next_seq) VALUES ('u_mixed', 10)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r_mixed1', 'u_mixed')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r_mixed2', 'u_mixed')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Valid tombstone in read_state: user_seq = 5 <= 9
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_mixed', 'r_mixed1', NULL, 5, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Anomalous tombstone in read_state: user_seq = 99 > 9
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_mixed', 'r_mixed2', NULL, 99, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 2. Setup user u_anom with only anomalous tombstones (2 anomalous in starred_items)
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u_anom', 'token_u_anom_1234567890123456789012345678901234567890123456789012345678901234567890123456789012', 'reg', 'pub')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO user_seq (user_id, next_seq) VALUES ('u_anom', 5)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO starred_items (user_id, item_id, item_type, room_id, user_seq, starred_at, deleted_at) VALUES ('u_anom', 'item_anom1', 'message', 'r_mixed1', 50, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO starred_items (user_id, item_id, item_type, room_id, user_seq, starred_at, deleted_at) VALUES ('u_anom', 'item_anom2', 'message', 'r_mixed1', 60, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 3. Setup user u_no_seq with tombstone but NO user_seq row
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u_no_seq', 'token_u_noseq_1234567890123456789012345678901234567890123456789012345678901234567890123456789012', 'reg', 'pub')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query(
+        "INSERT INTO devices (id, user_id, client_id) VALUES ('d_noseq', 'u_no_seq', 'c_noseq')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO device_names (user_id, device_id, encrypted_device_name, user_seq, updated_at, deleted_at) VALUES ('u_no_seq', 'd_noseq', 'enc', 1, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let job = SyncPruningJob;
+
+    // First Run
+    let report1 = job.run(&ctx.as_ctx()).await.unwrap();
+    assert_eq!(report1.rows_deleted, 1); // Only r_mixed1 in read_state deleted
+
+    // Check captured logs
+    let captured = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
+
+    // Verify info log format includes table, deleted, skipped
+    assert!(captured.contains("pruned tombstones for sync table"));
+    assert!(captured.contains("table=\"read_state\""));
+    assert!(captured.contains("deleted=1"));
+    assert!(captured.contains("skipped=1"));
+
+    assert!(captured.contains("table=\"starred_items\""));
+    assert!(captured.contains("deleted=0"));
+    assert!(captured.contains("skipped=2"));
+
+    assert!(captured.contains("table=\"device_names\""));
+    assert!(captured.contains("deleted=0"));
+    assert!(captured.contains("skipped=1"));
+
+    // Verify warn log format includes table and user_id, but NOT user_seq
+    assert!(captured.contains("skipped tombstone violating user_seq invariant"));
+    assert!(captured.contains("user_id=u_mixed"));
+    assert!(captured.contains("user_id=u_anom"));
+    assert!(captured.contains("user_id=u_no_seq"));
+    assert!(!captured.contains("user_seq="));
+
+    // Clear captured log buffer
+    logs.0.lock().unwrap().clear();
+
+    // Second Run (Idempotency check)
+    let report2 = job.run(&ctx.as_ctx()).await.unwrap();
+    assert_eq!(report2.rows_deleted, 0);
+
+    let captured2 = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
+
+    // Check second run logs: deleted = 0 for read_state, skipped = 1 (the remaining anomalous row)
+    assert!(captured2.contains("table=\"read_state\""));
+    assert!(captured2.contains("deleted=0"));
+    assert!(captured2.contains("skipped=1"));
+
+    // Tables without deleted_at column log debug message
+    assert!(captured2.contains("skipping sync table pruning (table absent or missing deleted_at column) table=\"user_preferences\""));
+    assert!(captured2.contains("skipping sync table pruning (table absent or missing deleted_at column) table=\"user_room_order\""));
+    assert!(captured2.contains("skipping sync table pruning (table absent or missing deleted_at column) table=\"bot_settings\""));
+}

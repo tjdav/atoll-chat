@@ -701,3 +701,14 @@
   - Anomalous tombstones (`user_seq > max_seq` or missing `user_seq` row) are skipped and logged as `tracing::warn!(table = table, user_id = %user_id, "skipped tombstone violating user_seq invariant")` without exposing row contents or `user_seq` values.
   - Per-table counts are logged at `info`: `tracing::info!(table = table, deleted = rows_deleted, skipped = skipped_count, "pruned tombstones for sync table")`.
   - Job is idempotent across consecutive executions and advances the `full_resync_required` boundary properly.
+
+## Sync Pruning Candidate Pre-inspection and Logging Contract
+- **ID:** Task Sync Pruning Candidate Inspection and Skipped Logging
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Foundation contract.
+- **Spec / Amendment references:** V3 Spec §4.5, §5.1
+- **Verified Facts:**
+  - `SyncPruningJob` pre-inspects candidate tombstones, selecting `rowid`, `user_id`, `user_seq`, and `max_user_seq`.
+  - Candidates violating `user_seq <= max_user_seq` or missing `user_seq` row are treated as anomalous, incrementing `skipped` count and emitting `tracing::warn!(table = table, user_id = %user_id, "skipped tombstone violating user_seq invariant")`. The `warn` log includes `table` and `user_id`, and omits `user_seq` or other values.
+  - Deletion executes strictly on valid candidate `rowid`s via chunked `DELETE FROM {table} WHERE rowid IN (...)` queries, incrementing `deleted` count.
+  - Per-table `info` log `tracing::info!(table = table, deleted = rows_deleted, skipped = skipped_count, "pruned tombstones for sync table")` is emitted after processing each table, even when both counts are 0.
