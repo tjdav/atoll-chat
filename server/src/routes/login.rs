@@ -39,6 +39,7 @@ pub struct LoginFinishRequest {
     pub credential_finalization: String,
     pub identity_pubkey: Option<String>,
     pub encrypted_device_name: Option<String>,
+    pub platform: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -339,14 +340,75 @@ pub async fn login_finish(
             dev.id
         }
         None => {
+            let platform_input = body
+                .platform
+                .as_deref()
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty());
+
+            let platform = match platform_input {
+                Some("web") | Some("ios") | Some("android") | Some("desktop") => {
+                    platform_input.unwrap()
+                }
+                _ => return Err(ApiError::BadRequest("invalid_platform".to_string())),
+            };
+
             let count = crate::devices::count_devices(&state.pool, &pending.user_id).await?;
             if count >= state.config.server_max_devices_per_user {
                 return Err(ApiError::BadRequest("device_limit_exceeded".to_string()));
             }
-            let new_dev =
-                crate::devices::create_device(&state.pool, &pending.user_id, &pending.client_id)
+
+            let mut tx = state.pool.begin().await?;
+
+            let mut id_bytes = [0u8; 16];
+            rand::thread_rng().fill_bytes(&mut id_bytes);
+            let dev_id = URL_SAFE_NO_PAD.encode(id_bytes);
+
+            sqlx::query(
+                r#"
+                INSERT INTO devices (id, user_id, client_id, platform)
+                VALUES (?, ?, ?, ?)
+                "#,
+            )
+            .bind(&dev_id)
+            .bind(&pending.user_id)
+            .bind(&pending.client_id)
+            .bind(platform)
+            .execute(&mut *tx)
+            .await?;
+
+            let added_at: chrono::DateTime<chrono::Utc> =
+                sqlx::query_scalar("SELECT created_at FROM devices WHERE id = ?")
+                    .bind(&dev_id)
+                    .fetch_one(&mut *tx)
                     .await?;
-            new_dev.id
+
+            let user_seq = crate::sync::allocate_user_seq(&mut tx, &pending.user_id)
+                .await
+                .map_err(|e| {
+                    ApiError::InternalCustom(StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                })?;
+
+            tx.commit().await?;
+
+            let payload = serde_json::json!({
+                "device_id": dev_id,
+                "platform": platform,
+                "added_at": added_at,
+                "user_seq": user_seq,
+            });
+            let envelope = crate::sync::UserEventEnvelope::new("device.added", user_seq, payload);
+            if let Err(e) =
+                crate::sync::publish_user_event(&state.publisher, &pending.user_id, &envelope).await
+            {
+                tracing::warn!(
+                    error = %e,
+                    user_id = %pending.user_id,
+                    "device.added publish failed"
+                );
+            }
+
+            dev_id
         }
     };
 

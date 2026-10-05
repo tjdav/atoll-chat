@@ -761,3 +761,15 @@
   - Device creation occurs during `POST /auth/login/finish` carrying `client_id` (currently missing `platform`).
   - Spec gap resolved with concrete endpoint proposal `PATCH /users/me/devices/:id` sending `{ "encrypted_device_name": "<base64url>" }` returning `DeviceStateRow` and publishing `device.name_updated`.
 - **Link to report:** [verification/device-model-contract/report.md](verification/device-model-contract/report.md)
+
+## Device Event Shapes Fact
+- **ID:** Task Device Model Implementation Events
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §7.1, §8.9
+- **Verified Facts:**
+  - `device.added`: Published on durable user channel `private-user-{user_id}` when a new device is created during `POST /auth/login/finish`. Payload: `{ "device_id": String, "platform": "web" | "ios" | "android" | "desktop", "added_at": ISO8601, "user_seq": i64 }`.
+  - `device.revoked`: Published on durable user channel `private-user-{user_id}` when a device is revoked via `DELETE /users/me/devices/:id`. Payload: `{ "device_id": String, "reason": "revoked_by_user", "user_seq": i64 }`.
+  - `device.name_updated`: Published on durable user channel `private-user-{user_id}` when a device name is updated via `write_device_name`. Payload: `{ "device_id": String, "encrypted_device_name": String, "user_seq": i64 }`.
+  - `device.sync` is no longer published.
+  - `user_seq` for each event is allocated inside the same SQL transaction that inserts or mutates state.

@@ -23,7 +23,7 @@ async fn test_sync_response_contract_bot_settings_and_max_seq() {
     assert_eq!(status, StatusCode::OK);
     let token = login_res["session_token"].as_str().unwrap().to_string();
 
-    // 1. User with no rows: max_seq = 0, bot_settings = []
+    // 1. User with no sync rows: max_seq = 1 (allocated on device creation during login), bot_settings = []
     let req = Request::builder()
         .method("GET")
         .uri("/api/v1/users/me/sync?since_seq=0")
@@ -39,10 +39,10 @@ async fn test_sync_response_contract_bot_settings_and_max_seq() {
     let body: Value = serde_json::from_slice(&bytes).unwrap();
 
     assert_eq!(body["bot_settings"], json!([]));
-    assert_eq!(body["max_seq"], 0);
+    assert_eq!(body["max_seq"], 1);
     assert_eq!(body["full_resync_required"], false);
 
-    // 2. Add room & read state to allocate user_seq = 1
+    // 2. Add room & read state to allocate user_seq = 2
     let req = Request::builder()
         .method("POST")
         .uri("/api/v1/rooms")
@@ -71,7 +71,7 @@ async fn test_sync_response_contract_bot_settings_and_max_seq() {
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 
-    // Now max_seq = 1 (next_seq - 1)
+    // Now max_seq = 2 (next_seq - 1)
     let req = Request::builder()
         .method("GET")
         .uri("/api/v1/users/me/sync?since_seq=0")
@@ -83,7 +83,7 @@ async fn test_sync_response_contract_bot_settings_and_max_seq() {
         .await
         .unwrap();
     let body: Value = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(body["max_seq"], 1);
+    assert_eq!(body["max_seq"], 2);
 
     // 3. Request with higher since_seq (e.g. 5) returns max_seq = since_seq (5) defensively
     let req = Request::builder()
@@ -306,7 +306,7 @@ async fn test_sync_pruning_job_tombstone_active_and_idempotency() {
         .unwrap();
 
     // Insert device for device_names FK constraint
-    sqlx::query("INSERT INTO devices (id, user_id, client_id) VALUES ('d999', 'u_prune', 'c999')")
+    sqlx::query("INSERT INTO devices (id, user_id, client_id, platform) VALUES ('d999', 'u_prune', 'c999', 'web')")
         .execute(&pool)
         .await
         .unwrap();

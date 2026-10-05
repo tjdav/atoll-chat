@@ -260,7 +260,7 @@ async fn test_suppressed_devices_do_not_receive() {
 
     // Add device for B
     sqlx::query(
-        "INSERT INTO devices (id, user_id, client_id) VALUES ('dev-b', 'user-b', 'client-b')",
+        "INSERT INTO devices (id, user_id, client_id, platform) VALUES ('dev-b', 'user-b', 'client-b', 'web')",
     )
     .execute(&pool)
     .await

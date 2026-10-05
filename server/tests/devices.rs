@@ -407,7 +407,7 @@ async fn test_09_revocation_cascade_deletes_unconsumed_key_packages() {
     // Insert 3 unconsumed key packages for (user_id, CLIENT_A)
     for i in 1..=3 {
         sqlx::query(
-            "INSERT INTO key_packages (id, user_id, client_id, key_package_data, consumed) VALUES (?, ?, ?, ?, 0)",
+            "INSERT INTO key_packages (id, user_id, client_id, key_package, consumed) VALUES (?, ?, ?, ?, 0)",
         )
         .bind(format!("kp_{}", i))
         .bind(&user_a_id)
@@ -620,4 +620,135 @@ async fn test_14_invalid_encrypted_device_name_is_rejected() {
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["error"], "invalid_encrypted_device_name");
+}
+use base64::Engine;
+
+#[tokio::test]
+async fn test_15_devices_schema_has_platform_and_lacks_name() {
+    let (_, pool) = setup_test_app().await;
+
+    // Verify table info for devices
+    let rows: Vec<(i64, String, String, i64, Option<String>, i64)> =
+        sqlx::query_as("PRAGMA table_info(devices)")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+    let col_names: Vec<String> = rows.into_iter().map(|r| r.1).collect();
+
+    assert!(
+        col_names.contains(&"platform".to_string()),
+        "devices table must contain platform column"
+    );
+    assert!(
+        !col_names.contains(&"name".to_string()),
+        "devices table must NOT contain legacy name column"
+    );
+}
+
+#[tokio::test]
+async fn test_16_login_finish_platform_validation() {
+    let (app, pool) = setup_test_app().await;
+
+    let _user_id = register_user(&app, "user_plat", "password123", None).await;
+
+    // Valid login with platform = "web" creates device
+    let (status, login_res) = common::login_user_with_device_name(
+        &app,
+        "user_plat",
+        "password123",
+        "c_plat_1234567890",
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let dev_id = login_res["device_id"].as_str().unwrap();
+
+    // Verify platform in DB
+    let stored_platform: String = sqlx::query_scalar("SELECT platform FROM devices WHERE id = ?")
+        .bind(dev_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(stored_platform, "web");
+}
+
+#[tokio::test]
+async fn test_17_device_revocation() {
+    let (app, _) = setup_test_app().await;
+
+    let _user_id = register_user(&app, "user_revoke_evt", "password123", None).await;
+
+    // Login on 2 devices
+    let (_, login1) = common::login_user(
+        &app,
+        "user_revoke_evt",
+        "password123",
+        "c_rev1_123456789",
+        None,
+    )
+    .await;
+    let _dev1_id = login1["device_id"].as_str().unwrap().to_string();
+    let token1 = login1["session_token"].as_str().unwrap().to_string();
+
+    let (_, login2) = common::login_user(
+        &app,
+        "user_revoke_evt",
+        "password123",
+        "c_rev2_123456789",
+        None,
+    )
+    .await;
+    let dev2_id = login2["device_id"].as_str().unwrap().to_string();
+
+    // Delete dev2 using dev1 token
+    let req = axum::http::Request::builder()
+        .method("DELETE")
+        .uri(format!("/api/v1/users/me/devices/{}", dev2_id))
+        .header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token1),
+        )
+        .body(axum::body::Body::empty())
+        .unwrap();
+
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn test_18_device_name_update() {
+    let (app, _) = setup_test_app().await;
+
+    let _user_id = register_user(&app, "user_name_evt", "password123", None).await;
+    let (_, login) = common::login_user(
+        &app,
+        "user_name_evt",
+        "password123",
+        "c_name_123456789",
+        None,
+    )
+    .await;
+    let dev_id = login["device_id"].as_str().unwrap().to_string();
+    let token = login["session_token"].as_str().unwrap().to_string();
+
+    let name_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode([7u8; 32]);
+
+    let req = axum::http::Request::builder()
+        .method("PATCH")
+        .uri(format!("/api/v1/users/me/devices/{}", dev_id))
+        .header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {}", token),
+        )
+        .header(axum::http::header::CONTENT_TYPE, "application/json")
+        .body(axum::body::Body::from(
+            serde_json::json!({ "encrypted_device_name": name_b64 }).to_string(),
+        ))
+        .unwrap();
+
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
 }
