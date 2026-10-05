@@ -8,9 +8,9 @@
  */
 export class BotError extends Error {
   /**
-   * @param {string} message Human-readable error message.
-   * @param {object} [options] Error options.
-   * @param {Error} [options.cause] Optional cause of the error.
+   * @param {string} message - Human-readable error message.
+   * @param {object} [options] - Error options.
+   * @param {Error} [options.cause] - Optional cause of the error.
    */
   constructor (message, options) {
     super(message, options)
