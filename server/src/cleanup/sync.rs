@@ -3,6 +3,15 @@ use async_trait::async_trait;
 
 pub struct SyncPruningJob;
 
+const ALLOWED_SYNC_TABLES: [&str; 6] = [
+    "read_state",
+    "user_preferences",
+    "user_room_order",
+    "device_names",
+    "starred_items",
+    "bot_settings",
+];
+
 #[async_trait]
 impl CleanupJob for SyncPruningJob {
     fn name(&self) -> &'static str {
@@ -17,43 +26,69 @@ impl CleanupJob for SyncPruningJob {
         };
         let cutoff_sql = format!("-{} days", retention_days);
 
-        // 1. Prune tombstones in read_state
-        let res_read_state = sqlx::query(
-            "DELETE FROM read_state WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', ?)",
-        )
-        .bind(&cutoff_sql)
-        .execute(ctx.pool)
-        .await?;
+        let mut total_deleted = 0u64;
+        let mut table_notes = Vec::new();
 
-        // 2. Prune tombstones in device_names
-        let res_device_names = sqlx::query(
-            "DELETE FROM device_names WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', ?)",
-        )
-        .bind(&cutoff_sql)
-        .execute(ctx.pool)
-        .await?;
-
-        // 3. Prune tombstones in starred_items
-        let res_starred_items = sqlx::query(
-            "DELETE FROM starred_items WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', ?)",
-        )
-        .bind(&cutoff_sql)
-        .execute(ctx.pool)
-        .await?;
-
-        let total_deleted = res_read_state.rows_affected()
-            + res_device_names.rows_affected()
-            + res_starred_items.rows_affected();
+        for table in ALLOWED_SYNC_TABLES {
+            if has_deleted_at_column(ctx.pool, table).await? {
+                let sql = format!(
+                    "DELETE FROM {table} WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', ?) AND user_seq <= (SELECT next_seq - 1 FROM user_seq WHERE user_id = {table}.user_id)"
+                );
+                let res = sqlx::query(&sql)
+                    .bind(&cutoff_sql)
+                    .execute(ctx.pool)
+                    .await?;
+                let rows = res.rows_affected();
+                total_deleted += rows;
+                tracing::info!(
+                    table = table,
+                    rows_deleted = rows,
+                    "pruned tombstones for sync table"
+                );
+                table_notes.push(format!("{}={}", table, rows));
+            } else {
+                tracing::debug!(
+                    table = table,
+                    "skipping sync table pruning (table absent or missing deleted_at column)"
+                );
+                table_notes.push(format!("{}=0", table));
+            }
+        }
 
         Ok(CleanupReport {
             rows_deleted: total_deleted,
             notes: vec![format!(
-                "pruned tombstones older than {} days (read_state={}, device_names={}, starred_items={})",
+                "pruned tombstones older than {} days ({})",
                 retention_days,
-                res_read_state.rows_affected(),
-                res_device_names.rows_affected(),
-                res_starred_items.rows_affected()
+                table_notes.join(", ")
             )],
         })
     }
+}
+
+async fn has_deleted_at_column(
+    pool: &sqlx::SqlitePool,
+    table_name: &'static str,
+) -> Result<bool, sqlx::Error> {
+    if !ALLOWED_SYNC_TABLES.contains(&table_name) {
+        return Ok(false);
+    }
+
+    let exists: Option<i32> =
+        sqlx::query_scalar("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")
+            .bind(table_name)
+            .fetch_optional(pool)
+            .await?;
+
+    if exists.is_none() {
+        return Ok(false);
+    }
+
+    let pragma_sql = format!(
+        "SELECT 1 FROM pragma_table_info('{}') WHERE name='deleted_at'",
+        table_name
+    );
+    let has_col: Option<i32> = sqlx::query_scalar(&pragma_sql).fetch_optional(pool).await?;
+
+    Ok(has_col.is_some())
 }

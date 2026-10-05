@@ -162,6 +162,10 @@
   - **Migration:** None.
   - **Delivered:** Step 0 report at `verification/sync-response-contract/report.md`, `BotSettingSyncRow` DTO in `server/src/sync/query.rs`, `SyncResponse.bot_settings` typed array, defensive `max_seq` allocator read, retention boundary logic, `SyncPruningJob` in `server/src/cleanup/sync.rs`, corrected `read.sync` payload in `server/src/sync/read_state.rs`, `server/tests/sync_contract.rs`, `server/tests/batch-manifest.toml`, `verification.md`.
   - **Batch:** `sync`
+- **Task Sync Pruning and Typed Bot Settings**: done
+  - **Migration:** None.
+  - **Delivered:** Step 0 report at `verification/sync-pruning-and-bot-settings-type/report.md`, `BotSettingSyncRow` DTO in `server/src/sync/query.rs` deriving `Deserialize` and re-exported in `server::sync`, `SyncResponse.bot_settings` typed array, corrected `read.sync` payload shape without `updated_at`, expanded `SyncPruningJob` in `server/src/cleanup/sync.rs` checking all 6 sync tables with defensive `user_seq <= max_seq` invariant, `server/tests/sync_contract.rs`, `verification.md`.
+  - **Batch:** `sync`
 
 ## Annotations for Future Tasks
 

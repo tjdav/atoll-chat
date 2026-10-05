@@ -676,3 +676,15 @@
   - Payload published on `private-user-{user_id}` channel contains strictly `{ room_id, last_read_message_id, user_seq }` without `updated_at`.
 - **Sync Tombstone Pruning (§4.5):**
   - `SyncPruningJob` registered on the shared hourly cleanup scheduler deletes tombstoned rows (`deleted_at IS NOT NULL` and `deleted_at < datetime('now', '-N days')` where $N =$ `sync_event_retention_days`) from `read_state`, `device_names`, and `starred_items`.
+
+## Sync Pruning and Typed Bot Settings Verification Fact
+- **ID:** Task Sync Pruning and Typed Bot Settings
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Foundation contract.
+- **Spec / Amendment references:** V3 Spec §4.5, §6.22, §7.2, §8.2.4, §8.9, §11
+- **Verified Facts:**
+  - `BotSettingSyncRow` struct exists in `server/src/sync/query.rs` (and re-exported in `server::sync`) with `{ bot_id, key, is_secret: bool, value_encrypted_client, user_seq }`, deriving `Serialize` and `Deserialize`.
+  - `SyncResponse.bot_settings` is typed `Vec<BotSettingSyncRow>` and serializes as `[]` in JSON when empty.
+  - `read.sync` event published in `server/src/sync/read_state.rs` carries strictly `{ room_id, last_read_message_id, user_seq }` without `updated_at`.
+  - `SyncPruningJob` in `server/src/cleanup/sync.rs` runs on the shared hourly scheduler, dynamically checking table and `deleted_at` column existence across all 6 sync tables (`read_state`, `user_preferences`, `user_room_order`, `device_names`, `starred_items`, `bot_settings`).
+  - `SyncPruningJob` deletes tombstones older than `sync_event_retention_days` enforcing the defensive `user_seq <= (SELECT next_seq - 1 FROM user_seq WHERE user_id = ...)` invariant while preserving active rows (`deleted_at IS NULL`).

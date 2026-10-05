@@ -10,7 +10,7 @@ pub use crate::starred::StarredItemRow;
 pub use device_names::DeviceStateRow;
 pub use envelope::{publish_user_event, UserEventEnvelope};
 pub use preferences::PreferenceRow;
-pub use query::{execute_sync, SyncQuery, SyncResponse};
+pub use query::{execute_sync, BotSettingSyncRow, SyncQuery, SyncResponse};
 pub use read_state::ReadStateRow;
 pub use seq::allocate_user_seq;
 

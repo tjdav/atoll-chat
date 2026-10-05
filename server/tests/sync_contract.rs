@@ -232,3 +232,158 @@ async fn test_read_sync_event_payload_exact_fields() {
     assert_eq!(envelope.payload["user_seq"], 1);
     assert!(envelope.payload.get("updated_at").is_none());
 }
+
+#[test]
+fn test_bot_setting_sync_row_struct_deserialization() {
+    let json_data = json!({
+        "bot_id": "b_123",
+        "key": "test_key",
+        "is_secret": true,
+        "value_encrypted_client": null,
+        "user_seq": 42
+    });
+
+    let row: server::sync::BotSettingSyncRow = serde_json::from_value(json_data).unwrap();
+    assert_eq!(row.bot_id, "b_123");
+    assert_eq!(row.key, "test_key");
+    assert!(row.is_secret);
+    assert_eq!(row.value_encrypted_client, None);
+    assert_eq!(row.user_seq, 42);
+
+    let json_data_false = json!({
+        "bot_id": "b_456",
+        "key": "public_key",
+        "is_secret": false,
+        "value_encrypted_client": "enc_val",
+        "user_seq": 43
+    });
+
+    let row_false: server::sync::BotSettingSyncRow =
+        serde_json::from_value(json_data_false).unwrap();
+    assert!(!row_false.is_secret);
+    assert_eq!(
+        row_false.value_encrypted_client,
+        Some("enc_val".to_string())
+    );
+}
+
+#[tokio::test]
+async fn test_sync_pruning_job_tombstone_active_and_idempotency() {
+    let pool = common::setup_test_db().await;
+
+    // Create user and user_seq = 10 (next_seq = 11)
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u_prune', 'token_prune_1234567890123456789012345678901234567890123456789012345678901234567890123456789012', 'reg', 'pub')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO user_seq (user_id, next_seq) VALUES ('u_prune', 11)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r_prune', 'u_prune')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 1. Tombstone older than 90d with user_seq <= 10 -> MUST BE PRUNED
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_prune', 'r_prune', NULL, 1, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 2. Active row older than 90d with user_seq <= 10 (deleted_at IS NULL) -> MUST NOT BE PRUNED
+    sqlx::query("INSERT INTO user_preferences (user_id, key, value_json, user_seq, updated_at) VALUES ('u_prune', 'pref1', '{}', 2, datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 3. Tombstone within 90d window (deleted_at = 10d ago) -> MUST NOT BE PRUNED
+    sqlx::query("INSERT INTO starred_items (user_id, item_id, item_type, room_id, user_seq, starred_at, deleted_at) VALUES ('u_prune', 'item1', 'message', 'r_prune', 3, datetime('now', '-10 days'), datetime('now', '-10 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Insert device for device_names FK constraint
+    sqlx::query("INSERT INTO devices (id, user_id, client_id) VALUES ('d999', 'u_prune', 'c999')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 4. Tombstone older than 90d with user_seq > 10 (user_seq = 999) -> MUST NOT BE PRUNED (defensive invariant)
+    sqlx::query("INSERT INTO device_names (user_id, device_id, encrypted_device_name, user_seq, updated_at, deleted_at) VALUES ('u_prune', 'd999', 'enc_dev', 999, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let config = server::Config::test_default();
+    let reg_store = std::sync::Arc::new(server::RegistrationStore::new());
+    let login_store = std::sync::Arc::new(server::LoginStore::new());
+    let rec_store = std::sync::Arc::new(server::RecoveryStore::new());
+    let storage = server::build_storage(&config).unwrap();
+    let hard_max = std::sync::Arc::new(server::ServerHardMax {
+        file_size_bytes: 104857600,
+        room_size: 1000,
+        rooms_per_user: 500,
+        devices_per_user: 50,
+        keypackages_per_device: 50,
+        message_size_bytes: 65536,
+        attachment_retention_days: 365,
+        call_max_participants: 50,
+        reactions_per_message: 50,
+    });
+
+    let cleanup_ctx = server::cleanup::CleanupContext {
+        pool: &pool,
+        config: &config,
+        registration_store: &reg_store,
+        login_store: &login_store,
+        recovery_store: &rec_store,
+        storage: &storage,
+        server_max: &hard_max,
+    };
+
+    let job = server::cleanup::sync::SyncPruningJob;
+
+    // Run 1: exactly 1 row (read_state tombstone) pruned
+    let report1 = job.run(&cleanup_ctx).await.unwrap();
+    assert_eq!(report1.rows_deleted, 1);
+
+    // Verify read_state tombstone was deleted
+    let rs_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_prune')")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(!rs_exists);
+
+    // Verify active preference preserved
+    let pref_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM user_preferences WHERE user_id = 'u_prune')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(pref_exists);
+
+    // Verify recent tombstone preserved
+    let star_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM starred_items WHERE user_id = 'u_prune')")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(star_exists);
+
+    // Verify high user_seq tombstone preserved
+    let dev_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM device_names WHERE user_id = 'u_prune')")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(dev_exists);
+
+    // Run 2: Idempotency check -> 0 rows deleted
+    let report2 = job.run(&cleanup_ctx).await.unwrap();
+    assert_eq!(report2.rows_deleted, 0);
+}
