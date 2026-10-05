@@ -11,6 +11,9 @@
 - **V-F — `users.profile` Semantics and Avatar Storage Reconciliation**: done
   - **Delivered:** `verification/users-profile/report.md`
   - **Outcome:** Reconciled `users.profile` and `users.profile_version` as self-only client-encrypted profile payload home (Option A / Interpretation A). Task 32 (Avatar Upload) is unblocked with no server schema changes required.
+- **Device Model Contract Verification**: done
+  - **Delivered:** `verification/device-model-contract/report.md`
+  - **Outcome:** Verified `devices` and `device_names` schemas, endpoint implementations, `device_state` sync array, write paths, and event publishers. Resolved spec gap with concrete proposal for `PATCH /users/me/devices/:id`.
 
 ## Completed Tasks
 
