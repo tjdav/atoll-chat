@@ -23,3 +23,15 @@ name = "keychain-resolver"
 files = [
   "unit/keychain-resolver.test.js",
 ]
+
+[[batch]]
+name = "prompt-resolver"
+files = [
+  "unit/prompt-resolver.test.js",
+]
+
+[[batch]]
+name = "keychain-write"
+files = [
+  "unit/keychain-write.test.js",
+]
