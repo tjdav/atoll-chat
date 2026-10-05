@@ -1,0 +1,35 @@
+{
+  "name": "@atoll/bot",
+  "type": "module",
+  "version": "0.0.0",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "main": "./src/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "atoll-bot": "./src/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./src/testing/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:types": "tsc -p tsconfig.build.json",
+    "build": "pnpm build:types",
+    "lint": "eslint ."
+  }
+}

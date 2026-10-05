@@ -11,5 +11,14 @@
     "build": "pnpm --filter @atoll/app build",
     "test": "pnpm --filter @atoll/app test",
     "lint": "pnpm -r --if-present lint"
+  },
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "^4.2.0",
+    "@types/node": "^22.13.10",
+    "eslint": "^9.21.0",
+    "eslint-plugin-html": "^8.1.2",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-jsdoc": "^50.6.3",
+    "typescript": "^5.8.2"
   }
 }
