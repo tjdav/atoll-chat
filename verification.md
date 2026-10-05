@@ -26,6 +26,19 @@
 - **Question asked:** How to resolve the migration conflict where `requires_reregistration` column was added twice during fresh database migration?
 - **Answer found:** Removed redundant `0025_requires_reregistration.sql` migration file. The `requires_reregistration` column is already defined in `0020_users_oprf_identity.sql`. Database migrations 0001 through 0024 now run sequentially without conflict on a clean database.
 
+## MIG-RESET — Consolidated V2 Baseline Migration
+- **ID:** MIG-RESET
+- **Date:** 2026-10-04
+- **Status:** Complete. Canonical.
+- **Spec sections affected:** §7, §16
+- **Question asked:** How to consolidate all 35 layered migration files (`0001` through `0036`, with `0025` removed) into a single baseline migration without breaking database execution or test environments?
+- **Answer found:**
+  - **Single Migration Baseline:** Consolidated all 35 legacy migration files into `server/migrations/0001_v2_schema.sql`. Deleted all legacy migration files (`0001_initial.sql` through `0036_room_sessions.sql`). `ls server/migrations/` returns strictly `0001_v2_schema.sql`.
+  - **Developer/CI Wipe Requirement:** Pre-existing databases in developer or CI environments must be wiped (`rm data/app.db*`). Future migrations will append starting at `0002_*.sql`.
+  - **Index & Column Reconciliation:** All index definitions and table constraints were reconciled to match V-G's canonical target schema §9.
+  - **Role Seed Source:** Roles seed `INSERT OR IGNORE INTO roles ...` is included directly in `0001_v2_schema.sql` so that clean migrations populate standard RBAC roles (`owner`, `admin`, `inviter`, `member`).
+  - **Verification:** Test `server/tests/migration_schema.rs` asserts single migration file presence, clean migration run, idempotency, foreign key enforcement, role seed integrity, and structural schema equivalence against pre-consolidation canonical snapshot.
+
 ## Task 26 — Room Metadata Schema Migration
 - **ID:** Task 26
 - **Date:** 2026-10-02
