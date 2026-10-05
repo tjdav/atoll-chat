@@ -31,21 +31,47 @@ impl CleanupJob for SyncPruningJob {
 
         for table in ALLOWED_SYNC_TABLES {
             if has_deleted_at_column(ctx.pool, table).await? {
-                let sql = format!(
+                let candidate_sql = format!(
+                    "SELECT {table}.user_id, {table}.user_seq, (SELECT next_seq - 1 FROM user_seq WHERE user_id = {table}.user_id) AS max_user_seq FROM {table} WHERE {table}.deleted_at IS NOT NULL AND {table}.deleted_at < datetime('now', ?)"
+                );
+                let candidates: Vec<(String, i64, Option<i64>)> = sqlx::query_as(&candidate_sql)
+                    .bind(&cutoff_sql)
+                    .fetch_all(ctx.pool)
+                    .await?;
+
+                let mut skipped_count = 0u64;
+                for (user_id, user_seq, max_user_seq) in candidates {
+                    let is_valid = match max_user_seq {
+                        Some(max_seq) => user_seq <= max_seq,
+                        None => false,
+                    };
+                    if !is_valid {
+                        skipped_count += 1;
+                        tracing::warn!(
+                            table = table,
+                            user_id = %user_id,
+                            "skipped tombstone violating user_seq invariant"
+                        );
+                    }
+                }
+
+                let delete_sql = format!(
                     "DELETE FROM {table} WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', ?) AND user_seq <= (SELECT next_seq - 1 FROM user_seq WHERE user_id = {table}.user_id)"
                 );
-                let res = sqlx::query(&sql)
+                let res = sqlx::query(&delete_sql)
                     .bind(&cutoff_sql)
                     .execute(ctx.pool)
                     .await?;
-                let rows = res.rows_affected();
-                total_deleted += rows;
+                let rows_deleted = res.rows_affected();
+                total_deleted += rows_deleted;
+
                 tracing::info!(
                     table = table,
-                    rows_deleted = rows,
+                    deleted = rows_deleted,
+                    skipped = skipped_count,
                     "pruned tombstones for sync table"
                 );
-                table_notes.push(format!("{}={}", table, rows));
+                table_notes.push(format!("{}={}", table, rows_deleted));
             } else {
                 tracing::debug!(
                     table = table,

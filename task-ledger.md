@@ -166,6 +166,10 @@
   - **Migration:** None.
   - **Delivered:** Step 0 report at `verification/sync-pruning-and-bot-settings-type/report.md`, `BotSettingSyncRow` DTO in `server/src/sync/query.rs` deriving `Deserialize` and re-exported in `server::sync`, `SyncResponse.bot_settings` typed array, corrected `read.sync` payload shape without `updated_at`, expanded `SyncPruningJob` in `server/src/cleanup/sync.rs` checking all 6 sync tables with defensive `user_seq <= max_seq` invariant, `server/tests/sync_contract.rs`, `verification.md`.
   - **Batch:** `sync`
+- **Task Sync Pruning Full Coverage**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** Step 0 report at `verification/sync-pruning-full-coverage/report.md`, expanded `SyncPruningJob` in `server/src/cleanup/sync.rs` iterating all 6 user-scoped sync tables (`read_state`, `user_preferences`, `user_room_order`, `device_names`, `starred_items`, `bot_settings`), runtime table and `deleted_at` column existence checking, candidate inspection enforcing defensive `user_seq <= (SELECT next_seq - 1 ...)` invariant with `warn` logging for anomalous rows, structured per-table `info` logging (`table`, `deleted`, `skipped`), unit and integration tests in `server/tests/cleanup.rs`, `verification.md`.
+  - **Batch:** `operations`
 
 ## Annotations for Future Tasks
 
@@ -173,8 +177,8 @@ None.
 
 ## Summary
 - **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 45
-- **Done:** 45
+- **Total Verifications/Tasks Tracked:** 46
+- **Done:** 46
 - **In-Progress:** 0
 - **Pending:** 0
 - **Mismatches:** 0

@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use common::setup_test_db;
 use server::cleanup::{
     audit::AuditJob, memory::MemoryStoresJob, rate_limits::RateLimitsJob, sessions::SessionsJob,
-    welcomes::WelcomesJob, CleanupContextOwned, CleanupError, CleanupJob, CleanupReport, Scheduler,
+    sync::SyncPruningJob, welcomes::WelcomesJob, CleanupContextOwned, CleanupError, CleanupJob,
+    CleanupReport, Scheduler,
 };
 use server::config::Config;
 use server::login::{LoginStore, PendingLogin};
@@ -425,4 +426,165 @@ async fn test_10_scheduler_respects_shutdown_signal() {
         res.is_ok(),
         "Scheduler task should exit promptly on shutdown signal"
     );
+}
+
+#[tokio::test]
+async fn test_11_sync_pruning_job_full_coverage_and_invariants() {
+    let pool = setup_test_db().await;
+    let ctx = build_ctx(pool.clone(), test_config(90));
+
+    // Setup user with next_seq = 11 (max_seq = 10)
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u_sync', ?, 'reg', 'pub')")
+        .bind(DUMMY_TOKEN)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO user_seq (user_id, next_seq) VALUES ('u_sync', 11)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r_sync', 'u_sync')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r_sync_active', 'u_sync')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query(
+        "INSERT INTO devices (id, user_id, client_id) VALUES ('d_sync', 'u_sync', 'c_sync')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO devices (id, user_id, client_id) VALUES ('d_sync_recent', 'u_sync', 'c_sync_recent')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 1. read_state tombstone > 90d, user_seq = 1 <= 10 -> PRUNED
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_sync', 'r_sync', NULL, 1, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 2. device_names tombstone > 90d, user_seq = 2 <= 10 -> PRUNED
+    sqlx::query("INSERT INTO device_names (user_id, device_id, encrypted_device_name, user_seq, updated_at, deleted_at) VALUES ('u_sync', 'd_sync', 'enc_dev', 2, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 3. starred_items tombstone > 90d, user_seq = 3 <= 10 -> PRUNED
+    sqlx::query("INSERT INTO starred_items (user_id, item_id, item_type, room_id, user_seq, starred_at, deleted_at) VALUES ('u_sync', 'item1', 'message', 'r_sync', 3, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 4. user_preferences active row > 90d, user_seq = 4 -> NOT PRUNED (no deleted_at column)
+    sqlx::query("INSERT INTO user_preferences (user_id, key, value_json, user_seq, updated_at) VALUES ('u_sync', 'pref1', 'enc_val', 4, datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 5. read_state active row > 90d (deleted_at IS NULL) -> NOT PRUNED
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at) VALUES ('u_sync', 'r_sync_active', NULL, 5, datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 6. device_names tombstone < 90d (deleted_at = 10d ago) -> NOT PRUNED
+    sqlx::query("INSERT INTO device_names (user_id, device_id, encrypted_device_name, user_seq, updated_at, deleted_at) VALUES ('u_sync', 'd_sync_recent', 'enc_dev2', 6, datetime('now', '-10 days'), datetime('now', '-10 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 7. starred_items tombstone > 90d, user_seq = 99 > 10 -> SKIPPED with warn (violates user_seq <= max_seq)
+    sqlx::query("INSERT INTO starred_items (user_id, item_id, item_type, room_id, user_seq, starred_at, deleted_at) VALUES ('u_sync', 'item_anomalous', 'message', 'r_sync', 99, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let job = SyncPruningJob;
+
+    // Run 1: exactly 3 tombstones pruned (read_state, device_names, starred_items item1)
+    let report1 = job.run(&ctx.as_ctx()).await.unwrap();
+    assert_eq!(report1.rows_deleted, 3);
+
+    // Verify pruned tombstones are gone
+    let rs1_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_sync' AND room_id = 'r_sync')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(!rs1_exists);
+
+    let dn1_exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM device_names WHERE user_id = 'u_sync' AND device_id = 'd_sync')")
+        .fetch_one(&pool).await.unwrap();
+    assert!(!dn1_exists);
+
+    let star1_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM starred_items WHERE item_id = 'item1')")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(!star1_exists);
+
+    // Verify active preference preserved
+    let pref_exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM user_preferences WHERE key = 'pref1')")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(pref_exists);
+
+    // Verify active read state preserved
+    let rs_active_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM read_state WHERE room_id = 'r_sync_active')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(rs_active_exists);
+
+    // Verify recent tombstone preserved
+    let dn_recent_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM device_names WHERE device_id = 'd_sync_recent')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(dn_recent_exists);
+
+    // Verify anomalous tombstone preserved (user_seq 99 > max_seq 10)
+    let star_anomalous_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM starred_items WHERE item_id = 'item_anomalous')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(star_anomalous_exists);
+
+    // Run 2: Idempotency check -> 0 rows deleted
+    let report2 = job.run(&ctx.as_ctx()).await.unwrap();
+    assert_eq!(report2.rows_deleted, 0);
+}
+
+#[tokio::test]
+async fn test_12_sync_pruning_handles_missing_tables_gracefully() {
+    let pool = setup_test_db().await;
+    let ctx = build_ctx(pool.clone(), test_config(90));
+
+    let job = SyncPruningJob;
+    let report = job.run(&ctx.as_ctx()).await;
+    assert!(report.is_ok());
+
+    let rep = report.unwrap();
+    assert_eq!(rep.rows_deleted, 0);
+    assert!(!rep.notes.is_empty());
 }

@@ -688,3 +688,16 @@
   - `read.sync` event published in `server/src/sync/read_state.rs` carries strictly `{ room_id, last_read_message_id, user_seq }` without `updated_at`.
   - `SyncPruningJob` in `server/src/cleanup/sync.rs` runs on the shared hourly scheduler, dynamically checking table and `deleted_at` column existence across all 6 sync tables (`read_state`, `user_preferences`, `user_room_order`, `device_names`, `starred_items`, `bot_settings`).
   - `SyncPruningJob` deletes tombstones older than `sync_event_retention_days` enforcing the defensive `user_seq <= (SELECT next_seq - 1 FROM user_seq WHERE user_id = ...)` invariant while preserving active rows (`deleted_at IS NULL`).
+
+## Sync Pruning Full Coverage Verification Fact
+- **ID:** Task Sync Pruning Full Coverage
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Foundation contract.
+- **Spec / Amendment references:** V3 Spec §4.5, §6.22
+- **Verified Facts:**
+  - `SyncPruningJob` in `server/src/cleanup/sync.rs` iterates all six user-scoped sync tables (`read_state`, `user_preferences`, `user_room_order`, `device_names`, `starred_items`, `bot_settings`).
+  - Runtime table existence check (`sqlite_master`) and column check (`pragma_table_info('deleted_at')`) ensure missing tables or tables without `deleted_at` columns are skipped gracefully without error or panic.
+  - Before deletion, candidate tombstones older than `sync_event_retention_days` are inspected to verify `user_seq <= (SELECT next_seq - 1 FROM user_seq WHERE user_id = {table}.user_id)`.
+  - Anomalous tombstones (`user_seq > max_seq` or missing `user_seq` row) are skipped and logged as `tracing::warn!(table = table, user_id = %user_id, "skipped tombstone violating user_seq invariant")` without exposing row contents or `user_seq` values.
+  - Per-table counts are logged at `info`: `tracing::info!(table = table, deleted = rows_deleted, skipped = skipped_count, "pruned tombstones for sync table")`.
+  - Job is idempotent across consecutive executions and advances the `full_resync_required` boundary properly.
