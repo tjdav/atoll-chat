@@ -10,6 +10,7 @@ pub struct Device {
     pub id: String,
     pub user_id: String,
     pub client_id: String,
+    pub platform: String,
     pub encrypted_device_name: Option<String>,
     pub last_seen: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -41,7 +42,7 @@ pub async fn find_by_client_id(
 ) -> Result<Option<Device>, DeviceError> {
     let row = sqlx::query(
         r#"
-        SELECT d.id, d.user_id, d.client_id, dn.encrypted_device_name, d.last_seen, d.created_at
+        SELECT d.id, d.user_id, d.client_id, d.platform, dn.encrypted_device_name, d.last_seen, d.created_at
         FROM devices d
         LEFT JOIN device_names dn
             ON d.id = dn.device_id AND d.user_id = dn.user_id AND dn.deleted_at IS NULL
@@ -62,6 +63,7 @@ pub async fn find_by_client_id(
         id: row.get("id"),
         user_id: row.get("user_id"),
         client_id: row.get("client_id"),
+        platform: row.get("platform"),
         encrypted_device_name: row.get("encrypted_device_name"),
         last_seen: row.get("last_seen"),
         created_at: row.get("created_at"),
@@ -72,6 +74,7 @@ pub async fn create_device(
     pool: &SqlitePool,
     user_id: &str,
     client_id: &str,
+    platform: &str,
 ) -> Result<Device, DeviceError> {
     let mut id_bytes = [0u8; 16];
     rand::thread_rng().fill_bytes(&mut id_bytes);
@@ -79,19 +82,20 @@ pub async fn create_device(
 
     sqlx::query(
         r#"
-        INSERT INTO devices (id, user_id, client_id)
-        VALUES (?, ?, ?)
+        INSERT INTO devices (id, user_id, client_id, platform)
+        VALUES (?, ?, ?, ?)
         "#,
     )
     .bind(&device_id)
     .bind(user_id)
     .bind(client_id)
+    .bind(platform)
     .execute(pool)
     .await?;
 
     let row = sqlx::query(
         r#"
-        SELECT d.id, d.user_id, d.client_id, dn.encrypted_device_name, d.last_seen, d.created_at
+        SELECT d.id, d.user_id, d.client_id, d.platform, dn.encrypted_device_name, d.last_seen, d.created_at
         FROM devices d
         LEFT JOIN device_names dn
             ON d.id = dn.device_id AND d.user_id = dn.user_id AND dn.deleted_at IS NULL
@@ -106,6 +110,7 @@ pub async fn create_device(
         id: row.get("id"),
         user_id: row.get("user_id"),
         client_id: row.get("client_id"),
+        platform: row.get("platform"),
         encrypted_device_name: row.get("encrypted_device_name"),
         last_seen: row.get("last_seen"),
         created_at: row.get("created_at"),
@@ -134,7 +139,7 @@ pub async fn touch_last_seen(pool: &SqlitePool, device_id: &str) -> Result<(), D
 pub async fn list_devices(pool: &SqlitePool, user_id: &str) -> Result<Vec<Device>, DeviceError> {
     let rows = sqlx::query(
         r#"
-        SELECT d.id, d.user_id, d.client_id, dn.encrypted_device_name, d.last_seen, d.created_at
+        SELECT d.id, d.user_id, d.client_id, d.platform, dn.encrypted_device_name, d.last_seen, d.created_at
         FROM devices d
         LEFT JOIN device_names dn
             ON d.id = dn.device_id AND d.user_id = dn.user_id AND dn.deleted_at IS NULL
@@ -152,6 +157,7 @@ pub async fn list_devices(pool: &SqlitePool, user_id: &str) -> Result<Vec<Device
             id: row.get("id"),
             user_id: row.get("user_id"),
             client_id: row.get("client_id"),
+            platform: row.get("platform"),
             encrypted_device_name: row.get("encrypted_device_name"),
             last_seen: row.get("last_seen"),
             created_at: row.get("created_at"),
@@ -172,6 +178,7 @@ pub async fn count_devices(pool: &SqlitePool, user_id: &str) -> Result<u32, Devi
 
 pub async fn revoke_device(
     pool: &SqlitePool,
+    publisher: &crate::sockudo::Publisher,
     user_id: &str,
     device_id: &str,
 ) -> Result<RevocationSummary, DeviceError> {
@@ -239,7 +246,12 @@ pub async fn revoke_device(
     // 4. Delete push subscriptions tied to this device
     crate::push::subscriptions::delete_for_device(&mut tx, device_id).await?;
 
-    // 5. Delete the device row (cascades to sessions and device_names)
+    // 5. Allocate user_seq for device.revoked event
+    let user_seq = crate::sync::allocate_user_seq(&mut tx, user_id)
+        .await
+        .map_err(|e| DeviceError::Database(sqlx::Error::Protocol(e.to_string())))?;
+
+    // 6. Delete the device row (cascades to sessions and device_names)
     sqlx::query("DELETE FROM devices WHERE id = ? AND user_id = ?")
         .bind(device_id)
         .bind(user_id)
@@ -247,6 +259,17 @@ pub async fn revoke_device(
         .await?;
 
     tx.commit().await?;
+
+    // 7. Post-commit: publish durable device.revoked event
+    let payload = serde_json::json!({
+        "device_id": device_id,
+        "reason": "revoked_by_user",
+        "user_seq": user_seq,
+    });
+    let envelope = crate::sync::UserEventEnvelope::new("device.revoked", user_seq, payload);
+    if let Err(e) = crate::sync::publish_user_event(publisher, user_id, &envelope).await {
+        tracing::warn!(error = %e, user_id = %user_id, "device.revoked publish failed");
+    }
 
     Ok(RevocationSummary {
         sessions_removed: sessions_removed_count as u64,

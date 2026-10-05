@@ -185,6 +185,10 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** Step 0 report at `verification/sync-pruning-assertion-precision/report.md`, strengthened all-anomalous assertions in `test_13`, extended double-run assertions in `test_13`, updated `test_14_sync_pruning_rowid_scoped_deletion` in `server/tests/cleanup.rs`, updated `verification.md`.
   - **Batch:** `operations`
+- **Device Model Implementation**: done
+  - **Migration:** Updated baseline migration `server/migrations/0001_v2_schema.sql` (`devices.platform` NOT NULL CHECK constraint, removing legacy `devices.name`).
+  - **Delivered:** Step 0 report at `verification/device-model-implementation/report.md`, updated `Device` struct and methods in `server/src/devices.rs`, updated `LoginFinishRequest` and `login_finish` in `server/src/routes/login.rs` accepting and validating `platform`, published durable `device.added` event post-commit, published durable `device.revoked` event on `revoke_device`, corrected `device.name_updated` event name and payload in `server/src/sync/device_names.rs`, updated test fixtures across `sync_contract.rs`, `identity_schema.rs`, `cleanup.rs`, `push_delivery.rs`, `common/mod.rs`, and added integration tests in `server/tests/devices.rs`.
+  - **Batch:** `auth`
 
 ## Annotations for Future Tasks
 
@@ -192,8 +196,8 @@ None.
 
 ## Summary
 - **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 46
-- **Done:** 46
+- **Total Verifications/Tasks Tracked:** 47
+- **Done:** 47
 - **In-Progress:** 0
 - **Pending:** 0
 - **Mismatches:** 0

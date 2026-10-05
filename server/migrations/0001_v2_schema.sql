@@ -51,12 +51,12 @@ CREATE TABLE IF NOT EXISTS user_roles (
 
 -- Devices & Sessions
 CREATE TABLE IF NOT EXISTS devices (
-    id        TEXT PRIMARY KEY,
-    user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    client_id TEXT NOT NULL UNIQUE,
-    name      TEXT,
-    last_seen DATETIME,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id          TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    client_id   TEXT NOT NULL UNIQUE,
+    platform    TEXT NOT NULL CHECK(platform IN ('web', 'ios', 'android', 'desktop')),
+    last_seen   DATETIME,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_devices_user ON devices(user_id);
 

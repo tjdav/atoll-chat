@@ -93,14 +93,15 @@ pub async fn write_device_name(
         deleted_at: None,
     };
 
-    // 5. Publish device.sync event post-commit
+    // 5. Publish device.name_updated event post-commit
     let payload = serde_json::json!({
         "device_id": row.device_id,
+        "encrypted_device_name": row.encrypted_device_name,
         "user_seq": row.user_seq,
     });
-    let envelope = UserEventEnvelope::new("device.sync", row.user_seq, payload);
+    let envelope = UserEventEnvelope::new("device.name_updated", row.user_seq, payload);
     if let Err(e) = publish_user_event(publisher, &req.user_id, &envelope).await {
-        tracing::warn!(error = %e, user_id = %req.user_id, "device.sync publish failed");
+        tracing::warn!(error = %e, user_id = %req.user_id, "device.name_updated publish failed");
     }
 
     Ok(row)

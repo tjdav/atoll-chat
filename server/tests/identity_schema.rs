@@ -44,7 +44,7 @@ async fn test_foreign_key_references() {
     .unwrap();
 
     sqlx::query(
-        "INSERT INTO devices (id, user_id, client_id) VALUES ('dev_1', 'user_1', 'client_1')",
+        "INSERT INTO devices (id, user_id, client_id, platform) VALUES ('dev_1', 'user_1', 'client_1', 'web')",
     )
     .execute(&pool)
     .await

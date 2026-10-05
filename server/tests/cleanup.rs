@@ -456,13 +456,13 @@ async fn test_11_sync_pruning_job_full_coverage_and_invariants() {
         .unwrap();
 
     sqlx::query(
-        "INSERT INTO devices (id, user_id, client_id) VALUES ('d_sync', 'u_sync', 'c_sync')",
+        "INSERT INTO devices (id, user_id, client_id, platform) VALUES ('d_sync', 'u_sync', 'c_sync', 'web')",
     )
     .execute(&pool)
     .await
     .unwrap();
 
-    sqlx::query("INSERT INTO devices (id, user_id, client_id) VALUES ('d_sync_recent', 'u_sync', 'c_sync_recent')")
+    sqlx::query("INSERT INTO devices (id, user_id, client_id, platform) VALUES ('d_sync_recent', 'u_sync', 'c_sync_recent', 'web')")
         .execute(&pool)
         .await
         .unwrap();
@@ -681,7 +681,7 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
         .unwrap();
 
     sqlx::query(
-        "INSERT INTO devices (id, user_id, client_id) VALUES ('d_noseq', 'u_no_seq', 'c_noseq')",
+        "INSERT INTO devices (id, user_id, client_id, platform) VALUES ('d_noseq', 'u_no_seq', 'c_noseq', 'web')",
     )
     .execute(&pool)
     .await
