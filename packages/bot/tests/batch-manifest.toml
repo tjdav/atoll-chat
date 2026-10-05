@@ -71,3 +71,9 @@ name = "signing"
 files = [
   "unit/signing.test.js",
 ]
+
+[[batch]]
+name = "publisher-cache"
+files = [
+  "unit/publisher-cache.test.js",
+]

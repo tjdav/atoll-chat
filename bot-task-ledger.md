@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 32
-- **Done:** 14
+- **Done:** 15
 - **In Progress:** 0
-- **Todo:** 18
+- **Todo:** 17
 
 ---
 
@@ -33,13 +33,13 @@ Track progress across Bot SDK implementation tasks.
 | B-011 | Idempotency | done | §10.3 | Idempotency store for trigger deduplication |
 | B-012 | Config | done | §14.2, §14.3 | Config loader with TOML parsing and env var precedence (Deliverable split from config.js to config/index.js plus config/toml.js) |
 | B-013 | Signing | done | §6.1, §10.1 | Ed25519 signing primitives and length-prefixed payload encoders |
-| B-014 | State | todo | §10.2 | Runtime state machine and lifecycle manager |
-| B-015 | REST Client | todo | §14.2 | Server REST API client wrapper |
-| B-016 | WebSocket | todo | §14.3 | WebSocket connection manager with backoff reconnect |
-| B-017 | Context | todo | §8 | Runtime `ctx` assembly and scoping |
-| B-018 | Settings | todo | §8.1 | Settings accessor with cache and server sync |
-| B-019 | Commands | todo | §8.2 | Command registration, argument parser, and handler routing |
-| B-020 | Messages | todo | §8.3 | Message listener subscription and event routing |
+| B-014 | Publisher Key Cache | done | §6.1, §14.10, §14.11 | Publisher key cache and signature verification |
+| B-015 | Command Result Encrypt | todo | §6.2 | Command result encryption using publisher key |
+| B-016 | Settings Decrypt | todo | §6.3 | Settings payload decryption using OPRF key |
+| B-017 | HTTP Client | todo | §14.2 | REST API client for bot SDK runtime |
+| B-018 | WebSocket | todo | §14.3 | WebSocket connection manager with backoff reconnect |
+| B-019 | Context | todo | §8 | Runtime `ctx` assembly and scoping |
+| B-020 | Post Helper | todo | §8.3 | `ctx.post` implementation with publisher key lookup and encryption |
 | B-021 | Storage Wrapper | todo | §8.4 | Author-facing `ctx.storage` with reserved prefix enforcement |
 | B-022 | Media | todo | §8.5 | Media upload/download helper |
 | B-023 | Rooms | todo | §8.6 | Room state query and management helpers |
