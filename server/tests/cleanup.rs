@@ -698,10 +698,51 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
     let report1 = job.run(&ctx.as_ctx()).await.unwrap();
     assert_eq!(report1.rows_deleted, 1); // Only r_mixed1 in read_state deleted
 
+    // Database assertions after First Run
+    // 1. All-anomalous table (starred_items for u_anom): N=2 tombstones remain in DB
+    let star_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM starred_items WHERE user_id = 'u_anom'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        star_count, 2,
+        "All-anomalous table must retain all N rows in DB"
+    );
+
+    // 2. Missing user_seq row (u_no_seq in device_names): retained in DB
+    let noseq_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM device_names WHERE user_id = 'u_no_seq' AND device_id = 'd_noseq')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(
+        noseq_exists,
+        "Missing user_seq tombstone must be retained in DB"
+    );
+
+    // 3. Mixed table (read_state for u_mixed): valid tombstone deleted, anomalous retained
+    let r1_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_mixed' AND room_id = 'r_mixed1')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(!r1_exists, "Valid tombstone must be deleted from DB");
+
+    let r2_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_mixed' AND room_id = 'r_mixed2')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(r2_exists, "Anomalous tombstone must be retained in DB");
+
     // Check captured logs
     let captured = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
 
-    // Verify info log format includes table, deleted, skipped
+    // Verify info log format includes table, deleted, skipped and no extraneous fields
     assert!(captured.contains("pruned tombstones for sync table"));
     assert!(captured.contains("table=\"read_state\""));
     assert!(captured.contains("deleted=1"));
@@ -736,8 +777,103 @@ async fn test_13_sync_pruning_anomalous_rows_and_logging_contract() {
     assert!(captured2.contains("deleted=0"));
     assert!(captured2.contains("skipped=1"));
 
+    // Database assertions after Second Run: table contains exactly the anomalous row
+    let read_state_rows: Vec<String> =
+        sqlx::query_scalar("SELECT room_id FROM read_state WHERE user_id = 'u_mixed'")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        read_state_rows,
+        vec!["r_mixed2".to_string()],
+        "Table must contain exactly the anomalous row after both runs"
+    );
+
     // Tables without deleted_at column log debug message
     assert!(captured2.contains("skipping sync table pruning (table absent or missing deleted_at column) table=\"user_preferences\""));
     assert!(captured2.contains("skipping sync table pruning (table absent or missing deleted_at column) table=\"user_room_order\""));
     assert!(captured2.contains("skipping sync table pruning (table absent or missing deleted_at column) table=\"bot_settings\""));
+}
+
+#[tokio::test]
+async fn test_14_sync_pruning_rowid_scoped_deletion() {
+    let pool = setup_test_db().await;
+    let ctx = build_ctx(pool.clone(), test_config(90));
+
+    // Setup user u_rowid with next_seq = 11 (max_seq = 10)
+    sqlx::query("INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES ('u_rowid', ?, 'reg', 'pub')")
+        .bind(DUMMY_TOKEN)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO user_seq (user_id, next_seq) VALUES ('u_rowid', 11)")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r_valid1', 'u_rowid')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r_valid2', 'u_rowid')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('r_anom', 'u_rowid')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 2 valid tombstones + 1 anomalous tombstone in read_state
+    // Valid 1: user_seq = 1 <= 10
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_rowid', 'r_valid1', NULL, 1, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Valid 2: user_seq = 2 <= 10
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_rowid', 'r_valid2', NULL, 2, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Anomalous: user_seq = 99 > 10
+    sqlx::query("INSERT INTO read_state (user_id, room_id, last_read_message_id, user_seq, updated_at, deleted_at) VALUES ('u_rowid', 'r_anom', NULL, 99, datetime('now', '-100 days'), datetime('now', '-100 days'))")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let job = SyncPruningJob;
+    let report = job.run(&ctx.as_ctx()).await.unwrap();
+
+    // Exactly 2 valid tombstones deleted
+    assert_eq!(report.rows_deleted, 2);
+
+    // Query DB to verify rowid-scoped deletion
+    let valid1_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_rowid' AND room_id = 'r_valid1')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(!valid1_exists, "First valid tombstone must be deleted");
+
+    let valid2_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_rowid' AND room_id = 'r_valid2')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(!valid2_exists, "Second valid tombstone must be deleted");
+
+    let anom_exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM read_state WHERE user_id = 'u_rowid' AND room_id = 'r_anom')",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(anom_exists, "Anomalous tombstone must remain in DB");
 }
