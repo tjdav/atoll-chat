@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 29 |
+| Done | 30 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-8 | Storage Plugin Skeleton & Migration Runner | done | C-INFRA-7 | unit-smoke |
 | C-V-B | Verify Client Testing Stack and Coralite Test Tooling | done | C-INFRA-2 | — |
 | C-V-C | Verify Client-Side OPRF Library Availability | done | C-AUTH-1 | — |
 | C-V-D | Verify Client OPAQUE Library Availability and Wire Compatibility | done | C-AUTH-2, C-V-C | — |
@@ -379,6 +380,18 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated `<rail-host>` component (`packages/app/src/components/shell/rail-host.html`) replacing first-letter placeholders with `<ui-icon>` elements.
   - Authored documentation at `packages/app/docs/plugins/icons.md` and updated `docs/plugins/README.md`.
   - Added unit test `tests/unit/icons.test.js` (registered in `unit-smoke`) and Playwright component test `tests/component/ui-icon.spec.js` (registered in `component-smoke`). Updated `tests/component/rail.spec.js` and `test-batches.js`.
+- **C-INFRA-8 Deliverables & Status:**
+  - Status: `done`.
+  - Created in-memory SQLite abstraction backend `packages/app/src/lib/db/backends/memory.js` supporting `CREATE TABLE IF NOT EXISTS`, `INSERT` / `INSERT OR REPLACE`, `SELECT`, `UPDATE`, `DELETE`, `begin`, `commit`, `rollback`.
+  - Created backend resolver `packages/app/src/lib/db/backends/index.js` exporting `resolveBackend` and `SUPPORTED_BACKENDS = ['memory']`.
+  - Created SQL statement splitter and migration runner `packages/app/src/lib/db/migrations.js` with string/comment-aware `splitStatements(sql)` and transactional `runMigrations({ backend, migrations })`.
+  - Created initial migration `packages/app/src/db/migrations/0001-meta.sql` declaring `_migrations` and `_meta` meta-domain tables.
+  - Created DB factory `packages/app/src/lib/db/index.js` exporting `createDb` with single-flight concurrent `open()` initialization, query, queryOne, execute, transaction, and meta helpers (`get`, `set`, `delete`).
+  - Implemented Coralite storage plugin `packages/app/src/plugins/storage-plugin.js` with `name: 'storage'`, returning keys directly (`open`, `close`, `query`, `queryOne`, `execute`, `transaction`, `meta`) without an inner wrapper key.
+  - Registered `storagePlugin({ dbName: 'messenger', migrations: loadMigrations() })` in `coralite.config.js` between icon plugin and router plugin.
+  - Updated `.gitignore` to unignore `!packages/app/src/db/` and `!packages/app/src/lib/db/`.
+  - Authored plugin documentation at `packages/app/docs/plugins/storage.md` and updated `packages/app/docs/plugins/README.md`.
+  - Added unit test suites `packages/app/tests/unit/db.test.js` (27 cases) and `packages/app/tests/unit/storage-plugin.test.js` (8 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
 
 ## Component Authoring Policy
 

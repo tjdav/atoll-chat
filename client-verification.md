@@ -441,3 +441,22 @@ build task runs.
 | Rail Host Integration (`rail-host.html`) | Instantiates `<ui-icon>` custom elements with `ext.rail.icon.name` for each item. Letter placeholders (`.rail__placeholder`) and unused `item*` attributes removed |
 | Plugin Documentation | Created at `packages/app/docs/plugins/icons.md` and registered in `packages/app/docs/plugins/README.md` |
 | Test Suites & Batches | Unit test `packages/app/tests/unit/icons.test.js` registered in `unit-smoke` (222 passing unit tests). Component test `packages/app/tests/component/ui-icon.spec.js` registered in `component-smoke` (33 passing Playwright tests) |
+
+### C-INFRA-8 — Storage Plugin, In-Memory Backend & Migration Runner Contracts
+
+**Verified:** 2026-10-05
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Storage Plugin (`storagePlugin`) | Defined in `packages/app/src/plugins/storage-plugin.js` with `name: 'storage'`. Registered in `coralite.config.js` between icon plugin and router plugin |
+| Direct-Key Context Surface | Plugin name `storage` **is** the namespace. Resolver returns keys directly on `ctx.storage` (`open`, `close`, `query`, `queryOne`, `execute`, `transaction`, `meta`). Zero inner wrapper keys (`ctx.storage.storage.open` prohibited) |
+| Client Context Singleton | `pluginContext.__storage_client__` caches `createDb({ dbName, migrations })` across component instances |
+| Server Context Behavior | `open`, `query`, `queryOne`, `execute`, `transaction` throw Error ("The database is client-only"); `close` and `meta` are safe no-ops |
+| Backend Abstraction (`backends/`) | `resolveBackend({ prefer } = {})` in `backends/index.js` returns backend instance. Today supported backends array is `['memory']` (`createMemoryBackend()`) |
+| Memory Backend Engine (`backends/memory.js`) | Supports `CREATE TABLE IF NOT EXISTS`, `INSERT` / `INSERT OR REPLACE`, `SELECT ... [WHERE ...] [ORDER BY ...]`, `UPDATE`, `DELETE`, `begin` (snapshot), `commit` (discard snapshot), `rollback` (restore snapshot) |
+| Migration Runner (`migrations.js`) | `runMigrations({ backend, migrations })` bootstraps `_migrations` idempotently, compares applied names, executes unapplied `.sql` statements inside transaction blocks, inserts name into `_migrations`, and returns `{ applied, skipped }` |
+| Statement Splitter (`splitStatements`) | Character-scanning scanner splitting on `;` while tracking single quotes `'...'`, double quotes `"..."`, and `--` line comments |
+| First Migration (`0001-meta.sql`) | Defines `_migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)` and `_meta (key TEXT PRIMARY KEY, value_json TEXT NOT NULL, updated_at INTEGER NOT NULL)` |
+| DB Factory (`lib/db/index.js`) | `createDb({ dbName = 'messenger', backend, migrations = [] })` returning `{ open, close, query, queryOne, execute, transaction, meta }`. Handles single-flight concurrent `open()` initialization |
+| Meta Subsystem | `meta.get(key)`, `meta.set(key, value)`, `meta.delete(key)` storing JSON-serialized string values in `_meta` table |
+| Documentation & Tests | Documentation at `packages/app/docs/plugins/storage.md` and `docs/plugins/README.md`; unit tests in `tests/unit/db.test.js` (27 cases) and `tests/unit/storage-plugin.test.js` (8 cases) registered in `unit-smoke` batch |

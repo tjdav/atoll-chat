@@ -48,6 +48,8 @@ export default [
       'tests/unit/extend-first-party.test.js',
       'tests/unit/router.test.js',
       'tests/unit/surface-reconcile.test.js',
+      'tests/unit/db.test.js',
+      'tests/unit/storage-plugin.test.js',
     ],
   },
   {
