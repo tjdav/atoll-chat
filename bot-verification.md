@@ -16,3 +16,13 @@
   - `pnpm --filter @atoll/bot typecheck` passed (status 0).
   - `pnpm --filter @atoll/bot lint` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-002 Verification Fact
+- **Public Type Surface (`src/types.js`)**:
+  - Authored JSDoc-only script file at `packages/bot/src/types.js` containing all 35 public typedef declarations from §3 of the spec verbatim.
+  - Script file contains zero imports, zero exports (`export {}`), and zero runtime code (`const`, `let`, `var`, `function`, `class`).
+  - Emitted `packages/bot/dist/types.d.ts` contains the typedefs as global declarations, allowing downstream JSDoc to reference them by bare name (e.g. `Capability`, `Mode`, `BotCtx`).
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
