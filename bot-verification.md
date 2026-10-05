@@ -49,3 +49,14 @@
 - Under `tsconfig.base.json` with `"module": "es2022"` and `"moduleResolution": "bundler"`, the JSDoc typedefs declared in `src/types.js` are visible by bare name in every other file of the package. A probe file referencing `SettingDecl` by bare name typechecks without an `import` statement.
 - ESLint's `jsdoc/no-undefined-types` does not use TypeScript's type resolution. It requires an explicit `definedTypes` list. The list is populated in the root ESLint config with the full set of typedef names from `src/types.js`.
 - All public JSDoc carries descriptions. Every `@param`, `@returns`, and `@property` tag has a description after its type, separated by ` - ` (space, hyphen, space). The description rules remain enabled at workspace scope. `jsdoc/require-hyphen-before-param-description` is set to `'always'`.
+
+## Task B-005 Verification Fact
+- **Top-Level Factory and Configuration Validation (`src/define-bot.js`)**:
+  - Authored `packages/bot/src/define-bot.js` exporting `defineBot` and runtime `HOST_API_VERSION` constant (`'1.0'`).
+  - `validateConfig` is internal (not exported) and collects all configuration failures per spec §4.6 before throwing a `ValidationError` (`code === 'validation_error'`).
+  - Validation failure message builds a newline-separated list with two-space indentation and `- ` prefixes.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+  - Node.js runtime smoke test passed (`all checks passed`).
