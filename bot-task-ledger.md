@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 47
-- **Done**: 3
-- **Pending**: 44
+- **Done**: 4
+- **Pending**: 43
 - **Blocked**: 0
 
 ## Critical Path
@@ -45,7 +45,7 @@ Two hard gates:
 - [x] **B-002**: Author the public type surface (`src/types.js`)
   - Depends on: B-001
   - Deliverable: `packages/bot/src/types.js`
-- [ ] **B-003**: Author the error hierarchy (`src/errors.js`)
+- [x] **B-003**: Author the error hierarchy (`src/errors.js`)
   - Depends on: B-001
   - Deliverable: `packages/bot/src/errors.js`
 

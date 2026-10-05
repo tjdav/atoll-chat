@@ -26,3 +26,13 @@
   - `pnpm --filter @atoll/bot typecheck` passed (status 0).
   - `pnpm --filter @atoll/bot lint` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-003 Verification Fact
+- **Bot Error Hierarchy (`src/errors.js`)**:
+  - Authored ES module at `packages/bot/src/errors.js` defining `BotError` base class extending `Error` and all 20 error subclasses matching spec §12.
+  - Class-field initialization order operates correctly: subclass `name` and `code` fields override base constructor values post-`super()`.
+  - Standard `ErrorOptions` (e.g., `{ cause }`) pass through `super(message, options)` preserving `err.cause` chain intact.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - Runtime verification script confirmed all 20 subclass codes, instanceof isolation, cause propagation, and zero duplicate error codes.
