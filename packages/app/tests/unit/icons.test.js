@@ -56,7 +56,7 @@ describe('Icon Registry & Map', () => {
 })
 
 describe('Icon Plugin', () => {
-  it('instantiates plugin with name icons and two-phase context factories', () => {
+  it('instantiates plugin with name icons and two-phase context factories', async () => {
     const plugin = iconPlugin()
     assert.strictEqual(plugin.name, 'icons')
     assert.strictEqual(typeof plugin.server.context, 'function')
@@ -64,18 +64,18 @@ describe('Icon Plugin', () => {
 
     const serverResolver = plugin.server.context({})
     const serverCtx = serverResolver({})
-    assert.strictEqual(typeof serverCtx.icons.get, 'function')
-    assert.strictEqual(typeof serverCtx.icons.list, 'function')
-    assert.strictEqual(typeof serverCtx.icons.has, 'function')
+    assert.strictEqual(typeof serverCtx.get, 'function')
+    assert.strictEqual(typeof serverCtx.list, 'function')
+    assert.strictEqual(typeof serverCtx.has, 'function')
 
-    assert.strictEqual(serverCtx.icons.has('chat-round-line'), true)
-    assert.strictEqual(serverCtx.icons.has('invalid'), false)
-    assert.strictEqual(serverCtx.icons.list().length, 6)
-    assert.strictEqual(typeof serverCtx.icons.get('chat-round-line'), 'string')
+    assert.strictEqual(serverCtx.has('chat-round-line'), true)
+    assert.strictEqual(serverCtx.has('invalid'), false)
+    assert.strictEqual(serverCtx.list().length, 6)
+    assert.strictEqual(typeof serverCtx.get('chat-round-line'), 'string')
 
-    const clientResolver = plugin.client.context({})
+    const clientResolver = await plugin.client.context({})
     const clientCtx = clientResolver({})
-    assert.strictEqual(typeof clientCtx.icons.get, 'function')
-    assert.strictEqual(clientCtx.icons.has('gallery'), true)
+    assert.strictEqual(typeof clientCtx.get, 'function')
+    assert.strictEqual(clientCtx.has('gallery'), true)
   })
 })
