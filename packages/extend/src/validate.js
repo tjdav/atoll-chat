@@ -16,10 +16,16 @@ import {
 const FIRST_PARTY_ALLOWLIST = new Set([
   'core.chat',
   'core.media',
+  'core.documents',
+  'core.links',
+  'core.calls',
+  'core.settings',
+  'core.hangouts',
+  'core.profile',
+  'core.join',
+  'core.admin',
   'core.calling',
   'core.whiteboard',
-  'core.settings',
-  'core.profile',
   'core.search',
   'core.files',
   'core.notifications'

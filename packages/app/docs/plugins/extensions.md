@@ -15,7 +15,28 @@ Atoll extensions enable modular feature development across the messenger client 
 
 ---
 
-## 2. Build-Time Validation
+## 2. First-Party Extensions
+
+The application ships with ten first-party core extensions defined under `packages/app/src/extensions/<name>/index.js` and aggregated in `packages/app/src/extensions/index.js`.
+
+| Extension ID | Rail | Routes | Session types | Status |
+|---|---|---|---|---|
+| `core.chat` | yes | `chats`, `chat` | — | definition + placeholder |
+| `core.media` | yes | `media`, `media-viewer` | — | definition + placeholder |
+| `core.documents` | yes | `documents`, `document` | — | definition + placeholder |
+| `core.links` | yes | `links`, `link` | — | definition + placeholder |
+| `core.calls` | yes | `calls`, `call` | — | definition + placeholder |
+| `core.settings` | yes | `settings`, `settings-section` | — | definition + placeholder |
+| `core.hangouts` | no | `sessions`, `session` | `voice` | definition + placeholder |
+| `core.profile` | no | `profile` | — | definition + placeholder |
+| `core.join` | no | `join` | — | definition + placeholder |
+| `core.admin` | no | `admin`, `admin-section` | — | definition + placeholder |
+
+*Note:* `room-settings` (overlay for `core.chat`) is deferred until its real-implementation task because the current SDK extension object shape supports a single `detail.route`. All components reference the shared `extension-placeholder` component until dedicated task implementations arrive.
+
+---
+
+## 3. Build-Time Validation
 
 Validation is mandatory and runs automatically when `coralite.config.js` is loaded during development or build. If any validation rule fails, the config load throws an explicit error and halts execution.
 
@@ -45,7 +66,7 @@ Validation is mandatory and runs automatically when `coralite.config.js` is load
 
 ---
 
-## 3. The Vocabulary Command
+## 4. The Vocabulary Command
 
 The offline vocabulary command aggregates and inspects the registered extensions, slots, events, routes, sessions, preferences, permissions, and available components.
 
@@ -86,7 +107,7 @@ pnpm extensions:vocab
 
 ---
 
-## 4. The Extension Object
+## 5. The Extension Object
 
 An extension is declared as a plain JavaScript object passed to `defineExtension(ext)`.
 
@@ -145,7 +166,7 @@ An extension is declared as a plain JavaScript object passed to `defineExtension
 
 ---
 
-## 5. `defineExtension(ext)`
+## 6. `defineExtension(ext)`
 
 `defineExtension(ext)` normalizes and validates the raw extension object, applying standard defaults and attaching internal SDK metadata (`_sdkApiVersion`).
 
@@ -166,7 +187,7 @@ export default defineExtension({
 
 ---
 
-## 6. The ExtensionRegistry API
+## 7. The ExtensionRegistry API
 
 `ExtensionRegistry` is the central store for registered extensions, managed by the Coralite extension plugin.
 
@@ -186,7 +207,7 @@ registry.size()                     // Returns total registration count
 
 ---
 
-## 7. `ctx` (Invocation Context)
+## 8. `ctx` (Invocation Context)
 
 `ctx` is constructed fresh per invocation point when an extension callback or view is executed.
 
@@ -220,10 +241,9 @@ registry.size()                     // Returns total registration count
 
 ---
 
-## 8. What Is Not Implemented Yet
+## 9. What Is Not Implemented Yet
 
 The following capabilities are provided by follow-on tasks:
 
 - **Shell UI Wiring:** `rail-host` and `surface-host` rendering extension lists and routing views.
-- **First-Party Extensions (C-CHAT-4):** First-party extension implementations (`core.chat`, `core.media`, etc.).
 - **Backing Service Plugins:** Router (`navigate`, `present`), Storage (`ctx.storage`), Preferences (`ctx.preferences`), Toast/Notifications (`ctx.toast`, `ctx.notify`), Network Proxy (`ctx.fetch`).

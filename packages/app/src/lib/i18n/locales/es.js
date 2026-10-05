@@ -45,5 +45,8 @@ export default {
   'app_shell_rail_label': 'Navegación principal',
   'app_shell_bottom_nav_label': 'Navegación principal',
   'app_shell_list_label': 'Conversaciones',
-  'app_shell_detail_label': 'Vista activa'
+  'app_shell_detail_label': 'Vista activa',
+
+  'ext_placeholder_heading': 'En construcción',
+  'ext_placeholder_body': 'Esta superficie aún no está implementada.'
 }

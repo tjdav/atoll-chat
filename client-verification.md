@@ -376,3 +376,20 @@ build task runs.
 | CLI Script & Package Script | `packages/app/scripts/extensions-vocab.js` exposing testable `main(argv, io)`; registered as `"extensions:vocab": "node scripts/extensions-vocab.js"` in `packages/app/package.json` |
 | Unit Tests | `extend-validate.test.js`, `extend-validate-link.test.js`, `extend-vocab.test.js`, `extend-vocab-cli.test.js` registered under `unit-smoke` in `packages/app/test-batches.js` |
 | Documentation | Updated `packages/app/docs/plugins/extensions.md` with Build-Time Validation and The Vocabulary Command sections |
+
+### C-CHAT-4 — First-Party Core Extension Definitions & Shared Placeholder Component
+
+**Verified:** 2026-10-05
+
+| Fact / Symbol | Value / Signature & Behavior |
+|---|---|
+| Shared Placeholder Component | `packages/app/src/components/containers/extension-placeholder.html` wrapped in `defineComponent` with template, styles, getters (`heading`, `body`), and four-part i18n translation pattern (`ext.placeholder.heading`, `ext.placeholder.body`) |
+| Ten Core Extensions | Defined under `packages/app/src/extensions/<name>/index.js`: `core.chat`, `core.media`, `core.documents`, `core.links`, `core.calls`, `core.settings`, `core.hangouts`, `core.profile`, `core.join`, `core.admin` |
+| Rail-bearing Extensions & Orders | `core.chat` (10), `core.media` (20), `core.documents` (30), `core.links` (40), `core.calls` (50), `core.settings` (90) |
+| Detail Routes (10) | `chat`, `media-viewer`, `document`, `link`, `call`, `settings-section`, `session`, `profile`, `join`, `admin-section` |
+| List Routes (8) | `chats`, `media`, `documents`, `links`, `calls`, `settings`, `sessions`, `admin` |
+| Voice Session Type | `core.hangouts` defines `sessions: [{ type: 'voice', maxParticipants: 12, maxPerRoom: 3, heartbeatInterval: 15, metadata: {...}, signaling: {...} }]` |
+| Single Detail Route Limitation | SDK `detail` object shape is singular; `room-settings` (overlay for `core.chat`) is deferred to `core.chat`'s real-implementation task |
+| Aggregator Export | `packages/app/src/extensions/index.js` exports `extensions = [chat, media, documents, links, calls, settings, hangouts, profile, join, admin]` |
+| Vocabulary Output | `pnpm extensions:vocab` lists 10 components, 18 routes (10 details, 8 lists), and 1 session type (`voice`) |
+| Unit Tests | `packages/app/tests/unit/extend-first-party.test.js` registered under `unit-smoke` batch in `packages/app/test-batches.js` (207/207 passing unit tests) |

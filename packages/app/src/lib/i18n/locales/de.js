@@ -45,5 +45,8 @@ export default {
   'app_shell_rail_label': 'Hauptnavigation',
   'app_shell_bottom_nav_label': 'Hauptnavigation',
   'app_shell_list_label': 'Unterhaltungen',
-  'app_shell_detail_label': 'Aktive Ansicht'
+  'app_shell_detail_label': 'Aktive Ansicht',
+
+  'ext_placeholder_heading': 'In Bearbeitung',
+  'ext_placeholder_body': 'Diese Oberfläche ist noch nicht implementiert.'
 }

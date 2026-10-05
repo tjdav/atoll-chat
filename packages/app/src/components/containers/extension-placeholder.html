@@ -1,0 +1,70 @@
+<template id="extension-placeholder">
+  <section class="placeholder" data-testid="extension-placeholder">
+    <h2 class="placeholder__heading">{{ ext_placeholder_heading }}</h2>
+    <p class="placeholder__body">{{ ext_placeholder_body }}</p>
+  </section>
+</template>
+
+<style>
+  :host {
+    display: block;
+    height: 100%;
+    padding: var(--space-8);
+    box-sizing: border-box;
+    color: var(--text-muted);
+  }
+
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--space-4);
+    height: 100%;
+  }
+
+  .placeholder__heading {
+    margin: 0;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .placeholder__body {
+    margin: 0;
+    font-size: var(--text-base);
+    max-width: 40ch;
+  }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'ext_placeholder_heading',
+        'ext_placeholder_body'
+      ])
+    }
+  },
+
+  client({ state, i18n, signal }) {
+    const syncLocale = (locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'ext_placeholder_heading',
+        'ext_placeholder_body'
+      ]))
+    }
+
+    i18n.subscribeLocale(syncLocale, { signal })
+    if (state.locale !== i18n.getLocale()) {
+      syncLocale(i18n.getLocale())
+    }
+  }
+})
+</script>
