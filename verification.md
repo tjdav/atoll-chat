@@ -745,3 +745,19 @@
   - `test_13` all-anomalous block verified with set equality and zero unexpected item IDs.
   - `test_13` double-run block verifies cross-table retention (`starred_items`, `device_names`, `read_state`) and unmutated `deleted_at` / `user_seq` for anomalous row `r_mixed2`.
   - `test_14_sync_pruning_rowid_scoped_deletion` verifies 2 valid + 1 anomalous tombstone pruning in `read_state` with exact `deleted=2, skipped=1` log assertion, rowid-scoped deletion, unmutated anomalous row attributes, and second-run idempotency (`deleted=0, skipped=1`).
+
+## Device Model Contract and Endpoint Surface Verification Fact
+- **ID:** Task Device Model Contract
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Foundation contract.
+- **Spec / Amendment references:** V3 Spec §6.21, §7.1, §7.2, §8.2, §8.9, §11
+- **Verified Facts:**
+  - `devices` table schema in `server/migrations/0001_v2_schema.sql` lacks `platform` column and retains legacy `name` column.
+  - `device_names` table schema in `server/migrations/0001_v2_schema.sql` matches §7.2 exactly, including `user_seq` and `deleted_at`.
+  - Endpoints under `/users/me/devices` are implemented: `GET /users/me/devices` (lists devices), `PATCH /users/me/devices/:id` (updates device encrypted name), and `DELETE /users/me/devices/:id` (revokes device).
+  - Write path for device names calls `sync::device_names::write_device_name` from `PATCH /users/me/devices/:id` and `POST /auth/login/finish`.
+  - Live user events currently publish non-spec `device.sync` instead of `device.name_updated`, and `device.added` / `device.revoked` are not yet emitted.
+  - Sync response `GET /users/me/sync` contains `device_state` array with `DeviceStateRow` items (`device_id`, `encrypted_device_name`, `user_seq`, `updated_at`, `deleted_at`).
+  - Device creation occurs during `POST /auth/login/finish` carrying `client_id` (currently missing `platform`).
+  - Spec gap resolved with concrete endpoint proposal `PATCH /users/me/devices/:id` sending `{ "encrypted_device_name": "<base64url>" }` returning `DeviceStateRow` and publishing `device.name_updated`.
+- **Link to report:** [verification/device-model-contract/report.md](verification/device-model-contract/report.md)
