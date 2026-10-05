@@ -127,3 +127,18 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-009 Verification Fact
+- **Encrypted Storage Backend (`packages/bot/src/runtime/storage/`)**:
+  - Storage key derivation (`deriveStorageKey` in `crypto.js`) uses HKDF-SHA256 (`info: 'bot-storage-v1'`, 32 bytes output, `salt: undefined`) over the keystore's 32-byte `storage_seed`. Spec §9's reference to "MLS identity private key" is amended to `storage_seed`.
+  - Storage file format is JSON `{ version: 1, bot_id, nonce, ct }` with `bot_id` serving as a plaintext pre-decryption cross-check.
+  - `open()` handles missing files (`ENOENT` -> empty map), corrupt JSON, unsupported outer version, `bot_id` mismatch, invalid base64url nonce/ct, decryption failure, and non-object plaintext with distinct error messages.
+  - Reads and writes operate on an in-memory flat object map. `set`, `delete`, and `clear` serialize whole-file atomic flushes through an internal promise queue (`_writeQueue`) using `.tmp` file writes with mode `0o600` and atomic `rename`. Non-serializable values (e.g., `BigInt`) throw and roll back state.
+  - Exports `RUNTIME_PREFIX = '_runtime:'`. `clear()` filters and deletes non-`_runtime:` author keys while preserving keys starting with `RUNTIME_PREFIX`. Prefix validation for individual author access operations is deferred to wrapper task B-026.
+  - Registered `storage` batch in `packages/bot/tests/batch-manifest.toml` and authored 18 test cases in `packages/bot/tests/unit/storage.test.js` verifying all 17 required cases in spec §9 plus schema/ct error coverage.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).

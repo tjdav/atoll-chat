@@ -35,3 +35,9 @@ name = "keychain-write"
 files = [
   "unit/keychain-write.test.js",
 ]
+
+[[batch]]
+name = "storage"
+files = [
+  "unit/storage.test.js",
+]

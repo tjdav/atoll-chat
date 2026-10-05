@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 50
-- **Done**: 12
-- **Pending**: 38
+- **Done**: 13
+- **Pending**: 37
 - **Blocked**: 0
 
 ## Critical Path
@@ -84,7 +84,7 @@ Two hard gates:
 - [x] **B-008b**: Implement the interactive prompt resolver (stdin with masking)
   - Depends on: B-008
   - Deliverable: `packages/bot/src/runtime/keystore/resolvers/prompt.js`, `packages/bot/src/runtime/keystore/resolvers/keychain-write.js`
-- [ ] **B-009**: Implement the encrypted storage backend (`_runtime:` namespace, `clear` semantics)
+- [x] **B-009**: Implement the encrypted storage backend (`_runtime:` namespace, `clear` semantics)
   - Depends on: B-008
   - Deliverable: `packages/bot/src/runtime/storage/`
 - [ ] **B-010**: Implement structured logging with redaction
