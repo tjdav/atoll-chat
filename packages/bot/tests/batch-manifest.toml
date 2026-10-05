@@ -41,3 +41,9 @@ name = "storage"
 files = [
   "unit/storage.test.js",
 ]
+
+[[batch]]
+name = "logger"
+files = [
+  "unit/logger.test.js",
+]

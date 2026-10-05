@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 50
-- **Done**: 13
-- **Pending**: 37
+- **Done**: 14
+- **Pending**: 36
 - **Blocked**: 0
 
 ## Critical Path
@@ -87,7 +87,7 @@ Two hard gates:
 - [x] **B-009**: Implement the encrypted storage backend (`_runtime:` namespace, `clear` semantics)
   - Depends on: B-008
   - Deliverable: `packages/bot/src/runtime/storage/`
-- [ ] **B-010**: Implement structured logging with redaction
+- [x] **B-010**: Implement structured logging with redaction
   - Depends on: B-003
   - Deliverable: `packages/bot/src/runtime/diagnostics/logger.js`
 - [ ] **B-011**: Implement the idempotency store (webhook, schedule, command, message keys)
