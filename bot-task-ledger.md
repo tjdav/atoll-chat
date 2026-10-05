@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 48
-- **Done**: 8
-- **Pending**: 40
+- **Done**: 9
+- **Pending**: 39
 - **Blocked**: 0
 
 ## Critical Path
@@ -43,6 +43,7 @@ Two hard gates:
   - Depends on: B-V-A
   - Deliverable: `pnpm-workspace.yaml`, `tsconfig.base.json`, `eslint.config.js`, `packages/bot/package.json`, `packages/bot/tsconfig.json`, `packages/bot/tsconfig.build.json`, `packages/bot/eslint.config.js`, `packages/bot/src/index.js`, `packages/bot/src/cli.js`
   - Deliverable amended by B-004a: `module` changed from `nodenext` to `es2022` and `moduleResolution` from `nodenext` to `bundler`. ESLint `definedTypes` populated; hyphen rule enabled.
+  - Deliverable amended by B-007: package.json scripts replaced `test:unit` and `test:integration` with `check-batches`, `test:batch`, and `test:all` to enforce the batch model.
 - [x] **B-002**: Author the public type surface (`src/types.js`)
   - Depends on: B-001
   - Deliverable: `packages/bot/src/types.js`
@@ -66,7 +67,7 @@ Two hard gates:
 - [x] **B-006**: Add type canaries (`tests/canary/settings.js`, `tests/canary/args.js`)
   - Depends on: B-005
   - Deliverable: `packages/bot/tests/canary/settings.js`, `packages/bot/tests/canary/args.js`
-- [ ] **B-007**: Add batch manifest and `check-batches` enforcement
+- [x] **B-007**: Add batch manifest and `check-batches` enforcement
   - Depends on: B-001
   - Deliverable: `packages/bot/tests/batch-manifest.toml`, `packages/bot/tests/manifest-check.js`, `package.json` script `check-batches`
 

@@ -1,0 +1,23 @@
+# Batch manifest for @atoll/bot tests.
+#
+# Every *.test.js file under tests/unit/ and tests/integration/ must
+# appear in exactly one batch. Files under tests/canary/ are excluded:
+# they are type-checked by test:canary (tsc --noEmit), not executed.
+#
+# Each batch must complete in under max_batch_seconds. Split a batch
+# before exceeding the budget.
+#
+# Paths in `files` are relative to tests/ and use forward slashes.
+
+[meta]
+max_batch_seconds = 60
+
+# Batches are declared below. The list starts empty and grows as test
+# files are added. Example entry (not active):
+#
+# [[batch]]
+# name = "logging"
+# files = [
+#   "unit/logger.test.js",
+#   "unit/redaction.test.js",
+# ]

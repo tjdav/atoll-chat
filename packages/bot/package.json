@@ -28,8 +28,13 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build:types": "tsc -p tsconfig.build.json",
-    "build": "pnpm build:types",
-    "lint": "eslint ."
+    "build": "tsc -p tsconfig.build.json",
+    "test:canary": "tsc --noEmit",
+    "check-batches": "node tests/manifest-check.js",
+    "test:batch": "node tests/manifest-check.js --batch",
+    "test:all": "node tests/run-all-batches.js",
+    "test": "pnpm test:canary && pnpm check-batches && pnpm test:all",
+    "lint": "eslint .",
+    "validate": "pnpm lint && pnpm test && pnpm build"
   }
 }

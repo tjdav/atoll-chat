@@ -70,3 +70,14 @@
 - **Verification Results**:
   - `pnpm --filter @atoll/bot typecheck` passed (status 0).
   - `pnpm --filter @atoll/bot lint` passed (status 0).
+
+## Task B-007 Verification Fact
+- **Batch Manifest and Enforcement Scripts**:
+  - Authored `packages/bot/tests/batch-manifest.toml` containing `[meta]` (`max_batch_seconds = 60`) and initial zero active batches.
+  - Authored zero-dependency inline TOML parser and enforcement script at `packages/bot/tests/manifest-check.js` validating four invariants: disk-in-batch, batch-in-disk, unique batch names (`^[a-z][a-z0-9-]*$`), and well-formed TOML.
+  - Authored runner `packages/bot/tests/run-all-batches.js` executing batches sequentially with budget overrun warnings and empty-batch skipping.
+  - The scripts `check-batches`, `test:batch`, and `test:all` are the supported entry points for tests. `test:unit` and `test:integration` no longer exist.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - Runtime self-test confirmed detection of unbatched files and duplicate batch entries.
+  - `pnpm --filter @atoll/bot typecheck`, `lint`, `test`, and `build` passed cleanly (status 0).
