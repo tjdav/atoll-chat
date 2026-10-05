@@ -248,3 +248,19 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-016 Verification Fact
+- **Settings Decryption & Crypto (`packages/bot/src/runtime/crypto/settings.js`)**:
+  - Authored `packages/bot/src/runtime/crypto/settings.js` exporting `decryptSettingsValue`, `parseSettingsWire`, and `SETTINGS_INFO = 'bot-settings-v1'`.
+  - Wire format is `base64url(ephemeral_pub(32) || nonce(12) || ciphertext || tag(16))`.
+  - Minimum decoded length is strictly 60 bytes (32-byte ephemeral public key, 12-byte nonce, 16-byte authentication tag). Any wire under 60 bytes throws an error naming the length constraint.
+  - Base64url parsing accepts both padded and unpadded input strings for robustness; invalid base64url characters are rejected.
+  - Reuses B-015's generic `decrypt` primitive imported from `./command-result.js` rather than duplicating X25519, HKDF-Expand, low-order point checks, or AES-256-GCM logic.
+  - Decrypts only `value_encrypted_bot`. The bot has no access to the operator's preferences key and does not inspect `value_encrypted_client`.
+  - Registered `settings-crypto` batch in `packages/bot/tests/batch-manifest.toml` and authored unit test suite in `packages/bot/tests/unit/settings-crypto.test.js` covering all 24 required scenarios.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).

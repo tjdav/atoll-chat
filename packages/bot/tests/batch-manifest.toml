@@ -83,3 +83,9 @@ name = "command-result"
 files = [
   "unit/command-result.test.js",
 ]
+
+[[batch]]
+name = "settings-crypto"
+files = [
+  "unit/settings-crypto.test.js",
+]

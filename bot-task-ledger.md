@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 32
-- **Done:** 16
+- **Done:** 17
 - **In Progress:** 0
-- **Todo:** 16
+- **Todo:** 15
 
 ---
 
@@ -35,7 +35,7 @@ Track progress across Bot SDK implementation tasks.
 | B-013 | Signing | done | §6.1, §10.1 | Ed25519 signing primitives and length-prefixed payload encoders |
 | B-014 | Publisher Key Cache | done | §6.1, §14.10, §14.11 | Publisher key cache and signature verification |
 | B-015 | Command Result Encrypt | done | §6.3, §6.4 | Command result encryption using ephemeral X25519 ECDH, HKDF-Expand, and AES-256-GCM |
-| B-016 | Settings Decrypt | todo | §6.3 | Settings payload decryption using OPRF key |
+| B-016 | Settings Decrypt | done | §6.3, §7.2 | Settings payload decryption using X25519, HKDF-Expand, and AES-256-GCM |
 | B-017 | HTTP Client | todo | §14.2 | REST API client for bot SDK runtime |
 | B-018 | WebSocket | todo | §14.3 | WebSocket connection manager with backoff reconnect |
 | B-019 | Context | todo | §8 | Runtime `ctx` assembly and scoping |
