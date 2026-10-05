@@ -21,7 +21,8 @@ use std::time::Instant;
 
 #[derive(Debug, Deserialize)]
 pub struct LoginStartRequest {
-    pub username_token: String,
+    pub lookup_token: Option<String>,
+    pub username_token: Option<String>,
     pub credential_request: String,
     pub client_id: String,
 }
@@ -60,11 +61,27 @@ fn decode_base64(s: &str) -> Result<Vec<u8>, ApiError> {
 
 pub async fn login_start(
     State(state): State<AppState>,
-    Json(body): Json<LoginStartRequest>,
+    body_val: Json<serde_json::Value>,
 ) -> Result<Json<LoginStartResponse>, ApiError> {
-    // 1. Validate username_token format
-    let username_token = body.username_token.trim().to_string();
-    if validate_token(&username_token).is_err() {
+    let obj = body_val
+        .as_object()
+        .ok_or_else(|| ApiError::BadRequest("invalid request body".to_string()))?;
+
+    // Token split: raw token field must not be sent to server
+    if obj.contains_key("token") {
+        return Err(ApiError::BadRequest("token_not_accepted".to_string()));
+    }
+
+    let body: LoginStartRequest = serde_json::from_value(body_val.0)
+        .map_err(|e| ApiError::BadRequest(format!("invalid json body: {e}")))?;
+
+    // 1. Validate lookup_token format
+    let lookup_token = match body.lookup_token.or(body.username_token) {
+        Some(ref tok) if !tok.trim().is_empty() => tok.trim().to_string(),
+        _ => return Err(ApiError::Unauthorized("invalid_credentials".to_string())),
+    };
+
+    if validate_token(&lookup_token).is_err() {
         return Err(ApiError::Unauthorized("invalid_credentials".to_string()));
     }
 
@@ -90,12 +107,12 @@ pub async fn login_start(
     }
 
     // 4. Extract credential_id
-    let credential_id = match token_bytes(&username_token) {
+    let credential_id = match token_bytes(&lookup_token) {
         Ok(bytes) => bytes,
         Err(_) => return Err(ApiError::Unauthorized("invalid_credentials".to_string())),
     };
 
-    // 5. Query user by username_token
+    // 5. Query user by username_token (lookup_token)
     #[derive(sqlx::FromRow)]
     struct LoginUserRow {
         id: String,
@@ -109,52 +126,59 @@ pub async fn login_start(
     let user_row: Option<LoginUserRow> = sqlx::query_as(
         "SELECT id, opaque_registration, disabled_at, deleted_at, requires_reregistration, encrypted_display FROM users WHERE username_token = ?",
     )
-    .bind(&username_token)
+    .bind(&lookup_token)
     .fetch_optional(&state.pool)
     .await?;
 
-    let user = match user_row {
-        Some(row) => row,
-        None => return Err(ApiError::Unauthorized("invalid_credentials".to_string())),
+    let (user_id, password_file, encrypted_display) = match user_row {
+        Some(user) => {
+            if user.disabled_at.is_some() {
+                return Err(ApiError::Unauthorized("account_disabled".to_string()));
+            }
+            if user.deleted_at.is_some() {
+                let mut rand_bytes = [0u8; 16];
+                rand::thread_rng().fill_bytes(&mut rand_bytes);
+                (
+                    format!("dummy_{}", URL_SAFE_NO_PAD.encode(rand_bytes)),
+                    None,
+                    None,
+                )
+            } else if user.requires_reregistration.unwrap_or(0) == 1 {
+                return Err(ApiError::InternalWithDetails(
+                    StatusCode::CONFLICT,
+                    "reregistration_required".to_string(),
+                    serde_json::json!({
+                        "message": "This account must re-register. The server's OPRF key was rotated."
+                    }),
+                ));
+            } else {
+                let pwd_file = ServerRegistration::<DefaultCipherSuite>::deserialize(
+                    &user.opaque_registration,
+                )
+                .map_err(|e| {
+                    tracing::error!(
+                        "Failed to deserialize opaque_registration for user {}: {}",
+                        user.id,
+                        e
+                    );
+                    ApiError::InternalCustom(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "registration_corrupted".to_string(),
+                    )
+                })?;
+                (user.id, Some(pwd_file), user.encrypted_display)
+            }
+        }
+        None => {
+            let mut rand_bytes = [0u8; 16];
+            rand::thread_rng().fill_bytes(&mut rand_bytes);
+            (
+                format!("dummy_{}", URL_SAFE_NO_PAD.encode(rand_bytes)),
+                None,
+                None,
+            )
+        }
     };
-
-    if user.disabled_at.is_some() {
-        return Err(ApiError::Unauthorized("account_disabled".to_string()));
-    }
-
-    if user.deleted_at.is_some() {
-        return Err(ApiError::Unauthorized("invalid_credentials".to_string()));
-    }
-
-    if user.requires_reregistration.unwrap_or(0) == 1 {
-        return Err(ApiError::InternalWithDetails(
-            StatusCode::CONFLICT,
-            "reregistration_required".to_string(),
-            serde_json::json!({
-                "message": "This account must re-register. The server's OPRF key was rotated."
-            }),
-        ));
-    }
-
-    let user_id = user.id;
-    let opaque_registration_bytes = user.opaque_registration;
-    let encrypted_display = user.encrypted_display;
-
-    // 6. Deserialize stored password file
-    let password_file = ServerRegistration::<DefaultCipherSuite>::deserialize(
-        &opaque_registration_bytes,
-    )
-    .map_err(|e| {
-        tracing::error!(
-            "Failed to deserialize opaque_registration for user {}: {}",
-            user_id,
-            e
-        );
-        ApiError::InternalCustom(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "registration_corrupted".to_string(),
-        )
-    })?;
 
     // 7. Deserialize credential_request and run ServerLogin::start using credential_id bytes
     let credential_request = CredentialRequest::<DefaultCipherSuite>::deserialize(&req_bytes)
@@ -164,7 +188,7 @@ pub async fn login_start(
     let start_result = ServerLogin::<DefaultCipherSuite>::start(
         &mut rng,
         &state.opaque_server.setup,
-        Some(password_file),
+        password_file,
         credential_request,
         &credential_id[..],
         ServerLoginParameters::default(),
@@ -181,7 +205,7 @@ pub async fn login_start(
 
     let pending = PendingLogin {
         user_id,
-        username_token,
+        username_token: lookup_token,
         encrypted_display,
         client_id: client_id.to_string(),
         server_login_state: start_result.state,
@@ -207,6 +231,11 @@ pub async fn login_finish(
     let obj = body_val
         .as_object()
         .ok_or_else(|| ApiError::BadRequest("invalid request body".to_string()))?;
+
+    // Token split: raw token field must not be sent to server
+    if obj.contains_key("token") {
+        return Err(ApiError::BadRequest("token_not_accepted".to_string()));
+    }
 
     // Check if legacy field device_name is present
     if obj.contains_key("device_name") {
@@ -242,6 +271,10 @@ pub async fn login_finish(
         .server_login_state
         .finish(finalization, ServerLoginParameters::default())
         .map_err(|_| ApiError::Unauthorized("invalid_credentials".to_string()))?;
+
+    if pending.user_id.starts_with("dummy_") {
+        return Err(ApiError::Unauthorized("invalid_credentials".to_string()));
+    }
 
     // 5. Query user info
     let stored_identity_pubkey: String =

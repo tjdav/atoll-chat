@@ -154,6 +154,10 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** `server/src/routes/capabilities.rs`, `server/tests/capabilities_audit.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `server/tests/push_subscriptions.rs`, `server/tests/sockudo.rs`, `server/tests/link_preview.rs`, `server/tests/extension_proxy.rs`.
   - **Batch:** `transport`
+- **Task OPRF Identity with Token Split (Phase 1 / §11)**: done
+  - **Migration:** None (Case A: schema documentation comments updated in `server/migrations/0001_v2_schema.sql`).
+  - **Delivered:** Step 0 report at `verification/oprf-identity-token-split/report.md`, `server/src/routes/oprf.rs`, `server/src/routes/register.rs`, `server/src/routes/login.rs`, `server/src/routes/users.rs`, `server/src/identity/token.rs`, `server/src/lib.rs`, `server/tests/common/mod.rs`, `server/tests/token_split.rs`, `server/tests/batch-manifest.toml`, `verification.md`.
+  - **Batch:** `identity`
 
 ## Annotations for Future Tasks
 

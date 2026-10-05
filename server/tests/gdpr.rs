@@ -282,7 +282,7 @@ async fn test_deletion_removes_unconsumed_key_packages() {
     // Insert 3 unconsumed KeyPackages
     for i in 1..=3 {
         sqlx::query(
-            "INSERT INTO key_packages (id, user_id, client_id, key_package_data, consumed) VALUES (?, ?, ?, X'1234', 0)"
+            "INSERT INTO key_packages (id, user_id, client_id, key_package, consumed) VALUES (?, ?, ?, X'1234', 0)"
         )
         .bind(format!("kp_{}", i))
         .bind(&alice_id)

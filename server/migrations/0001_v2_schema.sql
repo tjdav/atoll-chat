@@ -5,7 +5,10 @@
 -- Core Identity & Users
 CREATE TABLE IF NOT EXISTS users (
     id                      TEXT PRIMARY KEY,
+    -- username_token: stores lookup_token, not the raw OPRF finalization output.
+    -- 86-character unpadded base64url, decodes to 64 bytes. See §6.19.
     username_token          TEXT NOT NULL UNIQUE,
+    -- encrypted_display: nonce (12) || AES-256-GCM(display_name). 28–284 bytes decoded.
     encrypted_display       TEXT,
     opaque_registration     BLOB NOT NULL,
     identity_pubkey         TEXT NOT NULL,

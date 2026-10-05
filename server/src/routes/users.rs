@@ -18,7 +18,8 @@ use sqlx::Row;
 
 #[derive(Debug, Deserialize)]
 pub struct UserLookupRequest {
-    pub username_token: String,
+    pub lookup_token: Option<String>,
+    pub username_token: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -30,11 +31,27 @@ pub struct UserLookupResponse {
 pub async fn lookup_user(
     State(state): State<AppState>,
     auth: AuthUser,
-    Json(body): Json<UserLookupRequest>,
+    body_val: Json<serde_json::Value>,
 ) -> Result<Json<UserLookupResponse>, ApiError> {
-    // 1. Validate username_token format
-    let token = body.username_token.trim();
-    if validate_token(token).is_err() {
+    let obj = body_val
+        .as_object()
+        .ok_or_else(|| ApiError::BadRequest("invalid request body".to_string()))?;
+
+    // Token split: raw token field must not be sent to server
+    if obj.contains_key("token") {
+        return Err(ApiError::BadRequest("token_not_accepted".to_string()));
+    }
+
+    let body: UserLookupRequest = serde_json::from_value(body_val.0)
+        .map_err(|e| ApiError::BadRequest(format!("invalid json body: {e}")))?;
+
+    // 1. Validate lookup_token format
+    let lookup_token = match body.lookup_token.or(body.username_token) {
+        Some(ref tok) if !tok.trim().is_empty() => tok.trim().to_string(),
+        _ => return Err(ApiError::BadRequest("missing_field".to_string())),
+    };
+
+    if validate_token(&lookup_token).is_err() {
         return Err(ApiError::BadRequest("invalid_username_token".to_string()));
     }
 
@@ -53,11 +70,11 @@ pub async fn lookup_user(
         });
     }
 
-    // 3. Query user by username_token
+    // 3. Query user by username_token (lookup_token)
     let row_opt = sqlx::query(
         "SELECT id, encrypted_display FROM users WHERE username_token = ? AND deleted_at IS NULL",
     )
-    .bind(token)
+    .bind(&lookup_token)
     .fetch_optional(&state.pool)
     .await?;
 
