@@ -89,16 +89,6 @@ export default defineComponent({
       return byOrder.length > 0 ? byOrder[0].id : null
     }
 
-    function createIconElement(name, size = 'md') {
-      const icon = typeof window !== 'undefined' && typeof window.createCoraliteElement === 'function'
-        ? window.createCoraliteElement('ui-icon')
-        : document.createElement('ui-icon')
-      icon.setAttribute('name', name)
-      icon.setAttribute('size', size)
-      icon.setAttribute('label', '')
-      return icon
-    }
-
     function renderRail() {
       renderAbort.abort()
       renderAbort = new AbortController()
@@ -120,7 +110,10 @@ export default defineComponent({
         button.setAttribute('aria-label', ext.label)
         button.setAttribute('aria-current', ext.id === activeId ? 'page' : 'false')
 
-        const icon = createIconElement(ext.rail.icon.name, 'md')
+        const icon = document.createElement('ui-icon')
+        icon.setAttribute('name', ext.rail.icon.name)
+        icon.setAttribute('size', 'md')
+        icon.setAttribute('label', '')
 
         button.appendChild(icon)
         li.appendChild(button)

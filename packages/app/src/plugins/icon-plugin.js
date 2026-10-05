@@ -17,22 +17,21 @@ export default function iconPlugin(options = {}) {
 
     server: {
       context: (_pluginContext) => (_instanceContext) => ({
-        icons: {
-          get: (name) => getIconModule(name),
-          list: () => listIcons(),
-          has: (name) => isIconName(name)
-        }
+        get: (name) => getIconModule(name),
+        list: () => listIcons(),
+        has: (name) => isIconName(name)
       })
     },
 
     client: {
-      context: (_pluginContext) => (_instanceContext) => ({
-        icons: {
+      context: async (_pluginContext) => {
+        const { getIconModule, isIconName, listIcons } = await import('../lib/icons/index.js')
+        return (_instanceContext) => ({
           get: (name) => getIconModule(name),
           list: () => listIcons(),
           has: (name) => isIconName(name)
-        }
-      })
+        })
+      }
     }
   })
 }
