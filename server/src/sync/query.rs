@@ -16,7 +16,7 @@ use crate::sync::{
     device_names::{self, DeviceStateRow},
     preferences, read_state, starred, PreferenceRow, ReadStateRow, SyncError,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 pub struct SyncQuery {
@@ -25,7 +25,7 @@ pub struct SyncQuery {
     pub retention_days: u64,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BotSettingSyncRow {
     pub bot_id: String,
     pub key: String,
