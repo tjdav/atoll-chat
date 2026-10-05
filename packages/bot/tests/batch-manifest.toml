@@ -47,3 +47,9 @@ name = "logger"
 files = [
   "unit/logger.test.js",
 ]
+
+[[batch]]
+name = "idempotency"
+files = [
+  "unit/idempotency.test.js",
+]
