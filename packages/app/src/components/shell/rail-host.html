@@ -1,12 +1,24 @@
 <template id="rail-host">
-  <div class="rail" data-testid="rail"></div>
+  <nav class="rail" aria-label="{{ railLabel }}" data-testid="rail">
+    <ul class="rail__list" ref="railList">
+      <li class="rail__item" data-extension-id="{{ itemId }}">
+        <button
+          type="button"
+          class="rail__button"
+          data-rail-id="{{ itemId }}"
+          aria-label="{{ itemLabel }}"
+          aria-current="{{ itemCurrent }}"
+        >
+          <span class="rail__placeholder" aria-hidden="true">{{ itemInitial }}</span>
+        </button>
+      </li>
+    </ul>
+  </nav>
 </template>
 
 <style>
   :host {
-    display: block;
-    height: 100%;
-    width: 100%;
+    display: contents;
   }
 
   .rail {
@@ -14,13 +26,129 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
-    background: var(--surface-1);
-    border-right: 1px solid var(--border-subtle);
+    overflow-y: auto;
+  }
+
+  .rail__list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    list-style: none;
+    margin: 0;
+    padding: var(--space-3) 0;
+  }
+
+  .rail__button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .rail__button:hover {
+    background: var(--surface-2);
+  }
+
+  .rail__button[aria-current="page"] {
+    background: var(--accent-fill);
+    color: var(--text-inverse);
+  }
+
+  .rail__placeholder {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
   }
 </style>
 
 <script type="module">
 import { defineComponent } from 'coralite'
 
-export default defineComponent({})
+export default defineComponent({
+  attributes: {
+    itemId: { type: String, default: '' },
+    itemLabel: { type: String, default: '' },
+    itemInitial: { type: String, default: '' },
+    itemCurrent: { type: String, default: 'false' }
+  },
+
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'app_rail_aria_label'
+      ])
+    }
+  },
+
+  getters: {
+    railLabel: ({ state }) => state.app_rail_aria_label
+  },
+
+  client({ state, refs, i18n, extensions, router, signal }) {
+    i18n.subscribeLocale(
+      (locale) => {
+        state.locale = locale
+        Object.assign(state, i18n.strings([
+          'app_rail_aria_label'
+        ]))
+      },
+      { signal }
+    )
+
+    const list = refs('railList')
+    if (!list) return
+
+    let renderAbort = new AbortController()
+
+    function renderRail() {
+      renderAbort.abort()
+      renderAbort = new AbortController()
+
+      const railExtensions = extensions.byRailOrder()
+      const activeId = router.getActiveRail()
+
+      list.innerHTML = ''
+
+      for (const ext of railExtensions) {
+        const li = document.createElement('li')
+        li.className = 'rail__item'
+        li.dataset.extensionId = ext.id
+
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'rail__button'
+        button.dataset.railId = ext.id
+        button.setAttribute('aria-label', ext.label)
+        button.setAttribute('aria-current', ext.id === activeId ? 'page' : 'false')
+
+        const placeholder = document.createElement('span')
+        placeholder.className = 'rail__placeholder'
+        placeholder.setAttribute('aria-hidden', 'true')
+        placeholder.textContent = ext.label.slice(0, 1).toUpperCase()
+
+        button.appendChild(placeholder)
+        li.appendChild(button)
+        list.appendChild(li)
+
+        button.addEventListener('click', () => {
+          router.navigate({ rail: ext.id })
+        }, { signal: renderAbort.signal })
+      }
+    }
+
+    renderRail()
+
+    router.subscribe(() => {
+      renderRail()
+    })
+  }
+})
 </script>

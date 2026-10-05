@@ -42,6 +42,7 @@ export default {
   'boot_loading': '読み込み中…',
   'boot_error_failed': '起動に失敗しました。',
 
+  'app_rail_aria_label': '拡張機能',
   'app_shell_rail_label': 'メインナビゲーション',
   'app_shell_bottom_nav_label': 'メインナビゲーション',
   'app_shell_list_label': '会話一覧',

@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 2 |
-| Done | 26 |
+| Pending | 1 |
+| Done | 27 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -50,7 +50,7 @@ or modify the server's ledger.
 | C-CHAT-2 | Extension SDK (@atoll/extend) Core Implementation | done | C-INFRA-1 | unit-smoke |
 | C-CHAT-3 | Extension System Validation & Vocabulary Command | done | C-CHAT-2 | unit-smoke |
 | C-CHAT-4 | First-Party Core Extensions Skeleton | done | C-CHAT-2, C-CHAT-3 | unit-smoke |
-| C-CHAT-5 | Conversation List & Room Creation UI | pending | C-CHAT-1, C-CHAT-4, C-INFRA-3 | — |
+| C-CHAT-5 | Router Plugin & Rail Item Rendering | done | C-CHAT-1, C-CHAT-4, C-INFRA-4 | unit-smoke, component-smoke |
 
 ## Blockers
 

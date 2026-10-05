@@ -393,3 +393,19 @@ build task runs.
 | Aggregator Export | `packages/app/src/extensions/index.js` exports `extensions = [chat, media, documents, links, calls, settings, hangouts, profile, join, admin]` |
 | Vocabulary Output | `pnpm extensions:vocab` lists 10 components, 18 routes (10 details, 8 lists), and 1 session type (`voice`) |
 | Unit Tests | `packages/app/tests/unit/extend-first-party.test.js` registered under `unit-smoke` batch in `packages/app/test-batches.js` (207/207 passing unit tests) |
+
+### C-CHAT-5 — Router Plugin & Rail Rendering
+
+**Verified:** 2026-10-05
+
+| Fact / Symbol | Value / Signature & Behavior |
+|---|---|
+| Router Factory (`packages/app/src/lib/router/index.js`) | Exports pure `createRouter({ win, initialUrl })` factory. Methods: `getActiveRail()`, `getActiveDetail()`, `getSelection()`, `getParams()`, `navigate(params)`, `back()`, `subscribe(cb)`, `dispose()` |
+| URL Query Format | Manages in-page URL state via query parameters: `rail` (active extension rail ID), `detail` (active detail route), `id` (active selection ID), and secondary parameters (e.g. `messageId`) |
+| Router Plugin (`packages/app/src/plugins/router-plugin.js`) | Coralite plugin delivering `ctx.router` context surface. Server context provides safe no-ops. Client context creates singleton `createRouter({ win: window })` in Phase 1 and returns pure accessors in Phase 2 |
+| Plugin Order (`coralite.config.js`) | Registered in order: `extensionPlugin({ extensions })`, `routerPlugin()`, `i18nPlugin({ defaultLocale: 'en' })` |
+| Rail Component (`rail-host.html`) | Wrapped in `defineComponent`. Four-part i18n component pattern (`app_rail_aria_label`). Client block populates items dynamically from `extensions.byRailOrder()`. Applies `aria-current="page"` to active rail matching `router.getActiveRail()`. Navigation click handlers call `router.navigate({ rail: ext.id })`. Subscribes to `router.subscribe` with per-render `AbortController` cleanup |
+| Rail Mobile/Tablet Visibility | Hidden on mobile (<768px) and tablet (768-1023px) viewports; visible only on desktop (>=1024px) |
+| Locale Parity | Translation key `app_rail_aria_label` added across all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 100% key parity across 45 keys |
+| Test Suites & Batches | Unit test `packages/app/tests/unit/router.test.js` registered in `unit-smoke` (219 passing unit tests). Component test `packages/app/tests/component/rail.spec.js` registered in `component-smoke` (24 passing Playwright tests) |
+| Documentation | Plugin guide created at `packages/app/docs/plugins/router.md` and registered in `packages/app/docs/plugins/README.md` |
