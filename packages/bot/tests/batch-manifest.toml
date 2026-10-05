@@ -77,3 +77,9 @@ name = "publisher-cache"
 files = [
   "unit/publisher-cache.test.js",
 ]
+
+[[batch]]
+name = "command-result"
+files = [
+  "unit/command-result.test.js",
+]

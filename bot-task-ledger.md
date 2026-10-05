@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 32
-- **Done:** 15
+- **Done:** 16
 - **In Progress:** 0
-- **Todo:** 17
+- **Todo:** 16
 
 ---
 
@@ -34,7 +34,7 @@ Track progress across Bot SDK implementation tasks.
 | B-012 | Config | done | §14.2, §14.3 | Config loader with TOML parsing and env var precedence (Deliverable split from config.js to config/index.js plus config/toml.js) |
 | B-013 | Signing | done | §6.1, §10.1 | Ed25519 signing primitives and length-prefixed payload encoders |
 | B-014 | Publisher Key Cache | done | §6.1, §14.10, §14.11 | Publisher key cache and signature verification |
-| B-015 | Command Result Encrypt | todo | §6.2 | Command result encryption using publisher key |
+| B-015 | Command Result Encrypt | done | §6.3, §6.4 | Command result encryption using ephemeral X25519 ECDH, HKDF-Expand, and AES-256-GCM |
 | B-016 | Settings Decrypt | todo | §6.3 | Settings payload decryption using OPRF key |
 | B-017 | HTTP Client | todo | §14.2 | REST API client for bot SDK runtime |
 | B-018 | WebSocket | todo | §14.3 | WebSocket connection manager with backoff reconnect |

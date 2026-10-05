@@ -230,3 +230,21 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-015 Verification Fact
+- **Command Result Encryption (`packages/bot/src/runtime/crypto/command-result.js`)**:
+  - Implemented command result encryption primitives and wrappers exported as `generateEphemeralKeypair`, `deriveSharedSecret`, `encrypt`, `decrypt`, `encryptCommandResult`, `decryptCommandResult`, `keyObjectFromX25519Private`, and `keyObjectFromX25519Public`.
+  - X25519 keys use DER prefixes PKCS#8 `30 2e 02 01 00 30 05 06 03 2b 65 6e 04 22 04 20` and SPKI `30 2a 30 05 06 03 2b 65 6e 03 21 00` (OID `1.3.101.110` / `2b 65 6e`).
+  - HKDF-Expand is implemented directly (`hkdfExpand32`) using `crypto.createHmac('sha256', prk)` to derive a 32-byte key without `hkdfSync`.
+  - Wire format is strictly `nonce(12) || ciphertext || tag(16)` with AES-256-GCM without AAD.
+  - Low-order peer public keys producing all-zero shared secrets are detected and thrown as explicit errors.
+  - `encryptCommandResult` uses fixed info string `"bot-command-result-v1"` and generates a fresh ephemeral keypair per call.
+  - All returned `Uint8Array`s are fresh independent copies, preventing memory view corruption.
+  - **Server Spec Gap Recorded**: Spec §6.31 describes command-invocation encryption (client -> bot) without naming an info string. By analogy with §7.2 (`"bot-settings-v1"`), the value is likely `"bot-command-v1"`, but needs confirmation. The generic `encrypt`/`decrypt` primitives are exported so follow-on tasks can supply any info string.
+  - Registered `command-result` batch in `packages/bot/tests/batch-manifest.toml` and authored unit test suite in `packages/bot/tests/unit/command-result.test.js` covering all 26 required scenarios.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
