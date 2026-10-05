@@ -25,13 +25,22 @@ pub struct SyncQuery {
     pub retention_days: u64,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct BotSettingSyncRow {
+    pub bot_id: String,
+    pub key: String,
+    pub is_secret: bool,
+    pub value_encrypted_client: Option<String>,
+    pub user_seq: i64,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct SyncResponse {
     pub read_state: Vec<ReadStateRow>,
     pub user_preferences: Vec<PreferenceRow>,
     pub device_state: Vec<DeviceStateRow>,
     pub starred_items: Vec<StarredItemRow>,
-    pub bot_settings: Vec<serde_json::Value>,
+    pub bot_settings: Vec<BotSettingSyncRow>,
     pub max_seq: i64,
     pub full_resync_required: bool,
 }
@@ -112,7 +121,15 @@ async fn is_full_resync_required(
         return Ok(false);
     }
 
+    let highest_allocated: Option<i64> =
+        sqlx::query_scalar("SELECT next_seq - 1 FROM user_seq WHERE user_id = ?")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await?;
+    let highest_seq = highest_allocated.unwrap_or(0);
+
     // 1. Check if since_seq is below the minimum retained user_seq
+    // Outer WHERE min_s IS NOT NULL ensures that NULLs from empty tables are filtered out
     let min_seq: Option<i64> = sqlx::query_scalar(
         r#"
         SELECT MIN(min_s) FROM (
@@ -123,20 +140,24 @@ async fn is_full_resync_required(
             SELECT MIN(user_seq) AS min_s FROM device_names WHERE user_id = ?
             UNION ALL
             SELECT MIN(user_seq) AS min_s FROM starred_items WHERE user_id = ?
-        )
+        ) WHERE min_s IS NOT NULL
         "#,
     )
     .bind(user_id)
     .bind(user_id)
     .bind(user_id)
     .bind(user_id)
-    .fetch_optional(pool)
+    .fetch_one(pool)
     .await?;
 
-    if let Some(min_s) = min_seq {
-        if since_seq < min_s {
-            return Ok(true);
-        }
+    let min_retained_seq = match min_seq {
+        Some(s) => s,
+        None if highest_seq > 0 => highest_seq + 1,
+        None => i64::MAX,
+    };
+
+    if since_seq < min_retained_seq {
+        return Ok(true);
     }
 
     // 2. Check if state corresponding to user_seq <= since_seq is older than retention window

@@ -158,6 +158,10 @@
   - **Migration:** None (Case A: schema documentation comments updated in `server/migrations/0001_v2_schema.sql`).
   - **Delivered:** Step 0 report at `verification/oprf-identity-token-split/report.md`, `server/src/routes/oprf.rs`, `server/src/routes/register.rs`, `server/src/routes/login.rs`, `server/src/routes/users.rs`, `server/src/identity/token.rs`, `server/src/lib.rs`, `server/tests/common/mod.rs`, `server/tests/token_split.rs`, `server/tests/batch-manifest.toml`, `verification.md`.
   - **Batch:** `identity`
+- **Task User-Scoped Sync Response Contract**: done
+  - **Migration:** None.
+  - **Delivered:** Step 0 report at `verification/sync-response-contract/report.md`, `BotSettingSyncRow` DTO in `server/src/sync/query.rs`, `SyncResponse.bot_settings` typed array, defensive `max_seq` allocator read, retention boundary logic, `SyncPruningJob` in `server/src/cleanup/sync.rs`, corrected `read.sync` payload in `server/src/sync/read_state.rs`, `server/tests/sync_contract.rs`, `server/tests/batch-manifest.toml`, `verification.md`.
+  - **Batch:** `sync`
 
 ## Annotations for Future Tasks
 
@@ -165,7 +169,8 @@ None.
 
 ## Summary
 - **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 44
-- **Done:** 44
+- **Total Verifications/Tasks Tracked:** 45
+- **Done:** 45
+- **In-Progress:** 0
 - **Pending:** 0
 - **Mismatches:** 0

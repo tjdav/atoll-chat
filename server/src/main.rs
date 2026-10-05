@@ -376,6 +376,7 @@ async fn main() -> anyhow::Result<()> {
         scheduler.register(Box::new(server::cleanup::welcomes::WelcomesJob));
         scheduler.register(Box::new(server::cleanup::attachments::AttachmentsJob));
         scheduler.register(Box::new(server::cleanup::memory::MemoryStoresJob));
+        scheduler.register(Box::new(server::cleanup::sync::SyncPruningJob));
         scheduler.register(Box::new(server::cleanup::oprf_audit::OprfAuditFlushJob {
             oprf_audit: oprf_audit.clone(),
         }));
