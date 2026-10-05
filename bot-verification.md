@@ -158,3 +158,22 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-011 Verification Fact
+- **Idempotency Store (`packages/bot/src/runtime/idempotency/index.js`)**:
+  - Trigger keys are hashed with SHA-256; storage key is `_runtime:idempotency:<sha256-base64url>` (43 characters). Spec §10.3 amended.
+  - Storage key constant `STORAGE_PREFIX = '_runtime:idempotency:'` is exported. Raw trigger keys are never stored or logged.
+  - Values stored are millisecond timestamps (`Date.now()` or injectable clock).
+  - Operations (`check`, `record`, `checkAndRecord`, `remove`, `prune`, `clear`) are serialized through a single promise queue (`_enqueue`).
+  - `checkAndRecord` is atomic within the queue.
+  - Expiration boundary is inclusive (`now - value >= ttlMs`).
+  - Opportunistic pruning runs in background after `pruneThreshold` (default 100) record operations; `pruneThreshold: 0` disables opportunistic pruning.
+  - Implements remove-on-failure via `remove(key)` method.
+  - Corrupt entries (non-number values) log a warning and are cleaned during pruning. Prune passes log `{ msg: 'idempotency prune', meta: { removed: count } }` when `removed > 0`.
+  - Registered `idempotency` batch in `packages/bot/tests/batch-manifest.toml` and authored 25 unit test cases in `packages/bot/tests/unit/idempotency.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
