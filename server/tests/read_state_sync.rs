@@ -298,14 +298,21 @@ async fn test_read_state_sync_integration() {
 
     // Delta sync with since_seq=1 includes the deleted tombstone for room_1 if user_seq > 1
     // Let's write read_state for room_1 to allocate user_seq=4 and set deleted_at
+    let mut tx = pool.begin().await.unwrap();
+    let seq_4 = server::sync::allocate_user_seq(&mut tx, &user_a_id)
+        .await
+        .unwrap();
+    assert_eq!(seq_4, 4);
     sqlx::query(
-        "UPDATE read_state SET user_seq = 4, deleted_at = CURRENT_TIMESTAMP WHERE user_id = ? AND room_id = ?",
+        "UPDATE read_state SET user_seq = ?, deleted_at = CURRENT_TIMESTAMP WHERE user_id = ? AND room_id = ?",
     )
+    .bind(seq_4)
     .bind(&user_a_id)
     .bind(&room_1)
-    .execute(&pool)
+    .execute(&mut *tx)
     .await
     .unwrap();
+    tx.commit().await.unwrap();
 
     let req = Request::builder()
         .method("GET")

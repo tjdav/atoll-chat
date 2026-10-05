@@ -178,6 +178,7 @@ files = [
     "starred_items",
     "sync_channel_auth",
     "sync_endpoint",
+    "sync_foundation",
     "sync_seq",
 ]
 timeout_seconds = 60

@@ -129,6 +129,7 @@ pub struct Config {
     pub cleanup_startup_delay_secs: u64,
     pub audit_retention_days: u64,
     pub data_retention_days: u64,
+    pub sync_event_retention_days: u64,
     pub export_rate_limit_hours: u64,
     pub trust_proxy: bool,
     pub hsts_max_age: u64,
@@ -273,6 +274,18 @@ impl Config {
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
+
+        let sync_event_retention_days = match env::var("SYNC_EVENT_RETENTION_DAYS") {
+            Ok(v) => match v.trim().parse() {
+                Ok(val) if (30..=365).contains(&val) => val,
+                Ok(val) => anyhow::bail!(
+                    "SYNC_EVENT_RETENTION_DAYS must be between 30 and 365 (got {})",
+                    val
+                ),
+                Err(_) => anyhow::bail!("Invalid SYNC_EVENT_RETENTION_DAYS value: {}", v),
+            },
+            Err(_) => 90,
+        };
 
         let invite_code_length = env::var("INVITE_CODE_LENGTH")
             .ok()
@@ -1248,6 +1261,7 @@ impl Config {
             cleanup_startup_delay_secs,
             audit_retention_days,
             data_retention_days,
+            sync_event_retention_days,
             export_rate_limit_hours,
             trust_proxy,
             hsts_max_age,
@@ -1403,6 +1417,7 @@ impl Config {
             cleanup_startup_delay_secs: 0,
             audit_retention_days: 90,
             data_retention_days: 0,
+            sync_event_retention_days: 90,
             export_rate_limit_hours: 24,
             trust_proxy: false,
             hsts_max_age: 0,

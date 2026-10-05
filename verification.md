@@ -657,3 +657,21 @@
   - `link_preview_proxy_key` (superseded by `extension_proxy_key`).
 - **Proposed Spec Amendment:**
   - Add `extension_proxy_key` to §8.1's `GET /capabilities` response example as a string (Base64 X25519 public key) or `null`.
+
+## User-Scoped Sync Foundation Verification Fact
+- **ID:** User-Scoped Sync Foundation
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Foundation contract.
+- **Spec / Amendment references:** V3 Spec §6.22, §7.2, §8.2.4, §8.9, §11, §14.5
+- **`user_seq` Allocator Contract:**
+  - `allocate_user_seq(&mut tx, user_id)` executes an atomic SQL upsert inside the row write transaction (`INSERT INTO user_seq ... ON CONFLICT DO UPDATE ... RETURNING next_seq - 1`).
+  - Transactional: if the transaction rolls back, `next_seq` is not updated and no sequence number is consumed.
+- **`GET /users/me/sync` Response Envelope (§8.2.4):**
+  - Requires Bearer auth.
+  - Query parameter `since_seq` (integer >= 0 required; missing, negative, or malformed returns HTTP 400 `invalid_since_seq`).
+  - Response carries 5 state array fields (`read_state`, `user_preferences`, `device_state`, `starred_items`, `bot_settings`), `max_seq` (integer), and `full_resync_required` (boolean).
+  - `max_seq` equals the highest allocated `user_seq` for the user (`next_seq - 1` from `user_seq` table, or 0 if no rows exist) or `since_seq` if `since_seq` is higher.
+  - `full_resync_required` evaluates to `true` when `since_seq > 0` and `since_seq` is older than the retention window (`sync_event_retention_days`, default 90) or less than the minimum retained `user_seq` for the user; `false` otherwise.
+- **Tombstone Semantics:**
+  - Deleted rows are marked with `deleted_at = CURRENT_TIMESTAMP` and assigned a new `user_seq`.
+  - Full sync (`since_seq = 0`) excludes tombstones. Delta sync (`since_seq > 0`) returns tombstones (`deleted_at IS NOT NULL`) with their `user_seq` so clients can remove them locally.
