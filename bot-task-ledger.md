@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 47
-- **Done**: 2
-- **Pending**: 45
+- **Done**: 3
+- **Pending**: 44
 - **Blocked**: 0
 
 ## Critical Path
@@ -42,7 +42,7 @@ Two hard gates:
 - [x] **B-001**: Create pnpm workspace and `@atoll/bot` package skeleton
   - Depends on: B-V-A
   - Deliverable: `pnpm-workspace.yaml`, `tsconfig.base.json`, `eslint.config.js`, `packages/bot/package.json`, `packages/bot/tsconfig.json`, `packages/bot/tsconfig.build.json`, `packages/bot/eslint.config.js`, `packages/bot/src/index.js`, `packages/bot/src/cli.js`
-- [ ] **B-002**: Author the public type surface (`src/types.js`)
+- [x] **B-002**: Author the public type surface (`src/types.js`)
   - Depends on: B-001
   - Deliverable: `packages/bot/src/types.js`
 - [ ] **B-003**: Author the error hierarchy (`src/errors.js`)
