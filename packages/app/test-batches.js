@@ -36,6 +36,10 @@ export default [
       'tests/unit/auth-recover-flow.test.js',
       'tests/unit/auth-revocation.test.js',
       'tests/unit/shell.test.js',
+      'tests/unit/extend-define-extension.test.js',
+      'tests/unit/extend-registry.test.js',
+      'tests/unit/extend-ctx.test.js',
+      'tests/unit/extend-plugin.test.js',
     ],
   },
   {

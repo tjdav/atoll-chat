@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 2 |
-| Done | 23 |
+| Pending | 1 |
+| Done | 24 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -47,7 +47,7 @@ or modify the server's ledger.
 | C-AUTH-4 | Session Persistence & Boot Sequence | done | C-AUTH-3a, C-INFRA-3 | unit-smoke, component-auth |
 | C-AUTH-5 | Account Recovery Flow and Session Revocation | done | C-AUTH-3a | — |
 | C-CHAT-1 | Messenger Shell & Three-Panel Layout | done | C-INFRA-2, C-INFRA-5 | unit-smoke, component-smoke |
-| C-CHAT-2 | Extension SDK (@atoll/extend) Core Implementation | pending | C-INFRA-1 | — |
+| C-CHAT-2 | Extension SDK (@atoll/extend) Core Implementation | done | C-INFRA-1 | unit-smoke |
 | C-CHAT-3 | Extension System Validation & Vocabulary Command | pending | C-CHAT-2 | — |
 | C-CHAT-4 | First-Party Core Extensions Skeleton | pending | C-CHAT-2, C-CHAT-3 | — |
 | C-CHAT-5 | Conversation List & Room Creation UI | pending | C-CHAT-1, C-CHAT-4, C-INFRA-3 | — |
@@ -309,6 +309,23 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Extended all seven locale files with 4 accessibility label keys (`app.shell.rail_label`, `app.shell.bottom_nav_label`, `app.shell.list_label`, `app.shell.detail_label`) with 100% key parity.
   - Created documentation at `packages/app/docs/shell.md`.
   - Added unit test `tests/unit/shell.test.js` and component test `tests/component/shell.spec.js` registered in `unit-smoke` and `component-smoke`.
+- **C-CHAT-2 Deliverables & Status:**
+  - Status: `done`.
+  - Updated `packages/extend/package.json` with `exports` map (`.` and `./plugin`) and `coralite` peer dependency.
+  - Added `"@atoll/extend": "workspace:*"` to `packages/app/package.json` dependencies and linked workspace package.
+  - Implemented `@atoll/extend` SDK core modules in `packages/extend/src/`:
+    - `constants.js`: `EXTENSION_API_VERSION = '1.0.0'`.
+    - `normalize.js`: `normalizeExtension(ext)` applying spec defaults to extension objects, `detail`, `list`, and `rail` without input mutation.
+    - `validate.js`: `validateExtensionShape(ext)` verifying required fields (`id`, `apiVersion`, `hostApi`, `detail`, `detail.route`, `detail.component`, `detail.title`), `rail.label` requirement, `core.` reserved prefix guard, array fields, and lifecycle hook types.
+    - `define-extension.js`: `defineExtension(ext)` validating, normalizing, and attaching `_sdkApiVersion`.
+    - `registry.js`: `ExtensionRegistry` class (`add`, `get`, `has`, `list`, `byRailOrder`, `ownerOfRoute`, `size`).
+    - `ctx.js`: `createCtx({ extension, services, invocation })` producing fresh `ctx` objects with wrapped service accessors throwing descriptive missing-plugin errors when unsupplied.
+    - `plugin.js`: Default export Coralite plugin factory `extensionPlugin({ extensions, services })` returning plugin named `'extensions'` with two-phase `server.context` and `client.context` and `pluginContext` singleton registry caching.
+    - `index.js`: Re-exporting public SDK surface.
+  - Registered `extensionPlugin({ extensions: [] })` as first item in `packages/app/coralite.config.js` `plugins` array.
+  - Created unit test suites (`extend-define-extension.test.js`, `extend-registry.test.js`, `extend-ctx.test.js`, `extend-plugin.test.js`), registered under `unit-smoke` batch in `packages/app/test-batches.js`.
+  - Created documentation at `packages/app/docs/plugins/extensions.md` with 11 normative sections and updated `packages/app/docs/plugins/README.md`.
+  - Resolved ambiguity between spec §26.2 and §4.4 in favor of config: `defineExtension` returns a normalized extension object; `extensionPlugin` is the Coralite plugin exported from `@atoll/extend/plugin`.
 
 ## Component Authoring Policy
 

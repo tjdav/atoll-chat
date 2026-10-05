@@ -1,5 +1,6 @@
 import { defineConfig } from 'coralite-scripts'
 import postcssImport from 'postcss-import'
+import extensionPlugin from '@atoll/extend/plugin'
 import i18nPlugin from './src/plugins/i18n-plugin.js'
 
 export default defineConfig({
@@ -26,6 +27,7 @@ export default defineConfig({
     externalStyles: false
   },
   plugins: [
+    extensionPlugin({ extensions: [] }),
     i18nPlugin({ defaultLocale: 'en' })
   ]
 })
