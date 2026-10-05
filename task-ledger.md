@@ -170,6 +170,10 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** Step 0 report at `verification/sync-pruning-full-coverage/report.md`, expanded `SyncPruningJob` in `server/src/cleanup/sync.rs` iterating all 6 user-scoped sync tables (`read_state`, `user_preferences`, `user_room_order`, `device_names`, `starred_items`, `bot_settings`), runtime table and `deleted_at` column existence checking, candidate inspection enforcing defensive `user_seq <= (SELECT next_seq - 1 ...)` invariant with `warn` logging for anomalous rows, structured per-table `info` logging (`table`, `deleted`, `skipped`), unit and integration tests in `server/tests/cleanup.rs`, `verification.md`.
   - **Batch:** `operations`
+- **Task Sync Pruning Candidate Inspection and Skipped Logging**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** Step 0 report at `verification/sync-pruning-inspection/report.md`, refactored `SyncPruningJob` in `server/src/cleanup/sync.rs`, added test `test_13_sync_pruning_anomalous_rows_and_logging_contract` in `server/tests/cleanup.rs`, updated `verification.md`.
+  - **Batch:** `operations`
 
 ## Annotations for Future Tasks
 
