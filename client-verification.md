@@ -340,3 +340,22 @@ build task runs.
 | Extended Locales | `app.shell.rail_label`, `app.shell.bottom_nav_label`, `app.shell.list_label`, `app.shell.detail_label` extended across all 7 locale files with 100% key parity |
 | Documentation Path | `packages/app/docs/shell.md` covering layout breakpoints, component structure, extension integration points, gating, safe areas, and landmarks |
 | Tests & Screenshots | Unit test `tests/unit/shell.test.js` (unit-smoke) and Playwright component test `tests/component/shell.spec.js` (component-smoke); screenshots captured at `packages/app/test-results/shell-desktop.png`, `shell-tablet.png`, and `shell-mobile.png` |
+
+### C-CHAT-2 — Extension SDK Package (`@atoll/extend`), Registry & Plugin Core
+
+**Verified:** 2026-10-05
+
+| Fact / Symbol | Value / Signature & Behavior |
+|---|---|
+| Workspace Package | `@atoll/extend` (`packages/extend/package.json`) |
+| `exports` Map | `"." -> "./src/index.js"`, `"./plugin" -> "./src/plugin.js"` |
+| `defineExtension(ext)` Return Shape | Returns normalized extension object with defaults applied and `_sdkApiVersion: '1.0.0'` attached |
+| Extension Defaults | `permissions: []`, `rail: null`, `list: null`, `slots: []`, `emits: []`, `publicEvents: []`, `listens: []`, `sessions: []`, `preferences: []`, `locales: null`, `assets: []`, `onRegister: null`, `onActivate: null`, `onDeactivate: null`, `detail.surfaces: ['panel']`, `detail.defaultSurface: 'panel'`, `detail.back: 'auto'`, `detail.actions: []`, `detail.slots: {}`, `detail.scope: {}`, `detail.settings: null` |
+| Validation Rule (`validateExtensionShape`) | Enforces required fields (`id`, `apiVersion`, `hostApi`, `detail`, `detail.route`, `detail.component`, `detail.title`), `rail.label` requirement, `core.` reserved prefix guard, array types, and lifecycle function types |
+| `ExtensionRegistry` API | `add(ext)`, `get(id)`, `has(id)`, `list()` (frozen array), `byRailOrder()` (frozen array sorted by `rail.order` ASC), `ownerOfRoute(route)`, `size()` |
+| `createCtx({ extension, services, invocation })` | Returns fresh `ctx` object with `id`, `surface`, `scope`, `selection`, `position`, `platform`, `capabilities`, `state`, wrapped `storage`/`preferences` objects, and function accessors (`navigate`, `back`, `present`, `dismiss`, `toast`, `notify`, `openExternal`, `asset`, `hasPermission`, `fetch`, `fetchUserUrl`, `t`) that throw descriptive missing-plugin errors when unsupplied |
+| Coralite Plugin Factory | Default export from `@atoll/extend/plugin` returning plugin named `'extensions'` with two-phase `server.context` and `client.context` exposing `{ registry, get, list, byRailOrder, ownerOfRoute, size }` namespaced under `ctx.extensions` |
+| Config Ordering | `extensionPlugin({ extensions: [] })` registered FIRST in `packages/app/coralite.config.js` `plugins` array before `i18nPlugin` |
+| Component Location Convention | Extension components live under `src/components/` (e.g. `src/components/extensions/<slug>/`) discovered via Coralite's `components` glob |
+| Spec Ambiguity Resolution (§26.2 vs §4.4) | `defineExtension(ext)` returns a normalized extension object (not a Coralite plugin); `extensionPlugin` is the Coralite plugin exported from `@atoll/extend/plugin` |
+| Unit Tests & Documentation | Unit tests in `extend-define-extension.test.js`, `extend-registry.test.js`, `extend-ctx.test.js`, `extend-plugin.test.js` (registered in `unit-smoke`); documentation in `packages/app/docs/plugins/extensions.md` and `README.md` |

@@ -1,0 +1,6 @@
+export { defineExtension } from './define-extension.js'
+export { ExtensionRegistry } from './registry.js'
+export { createCtx } from './ctx.js'
+export { normalizeExtension } from './normalize.js'
+export { validateExtensionShape } from './validate.js'
+export { EXTENSION_API_VERSION } from './constants.js'
