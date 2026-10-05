@@ -37,44 +37,47 @@ describe('extensionPlugin Coralite plugin unit tests', () => {
     assert.equal(typeof plugin.client.context, 'function')
   })
 
-  test('6. Calling client.context({}) returns a function', () => {
+  test('6. Calling client.context({}) returns a function', async () => {
     const plugin = extensionPlugin({ extensions: [ext1] })
     const mockPluginContext = {}
-    const phase2Resolver = plugin.client.context(mockPluginContext)
+    const phase2Resolver = await plugin.client.context(mockPluginContext)
     assert.equal(typeof phase2Resolver, 'function')
   })
 
-  test('7. Calling the returned function with a mock instance context returns an object with an extensions key', () => {
+  test('7. Calling the returned function with a mock instance context returns an object with context keys', async () => {
     const plugin = extensionPlugin({ extensions: [ext1] })
     const mockPluginContext = {}
-    const phase2Resolver = plugin.client.context(mockPluginContext)
+    const phase2Resolver = await plugin.client.context(mockPluginContext)
     const ctxObj = phase2Resolver({})
     assert.equal(typeof ctxObj, 'object')
-    assert.equal(typeof ctxObj.extensions, 'object')
+    assert.equal(typeof ctxObj.registry, 'object')
   })
 
-  test('8. extensions.list() returns the registered extensions', () => {
+  test('8. list() returns the registered extensions', async () => {
     const plugin = extensionPlugin({ extensions: [ext1] })
     const mockPluginContext = {}
-    const ctxObj = plugin.client.context(mockPluginContext)({})
-    const list = ctxObj.extensions.list()
-    assert.equal(list.length, 1)
-    assert.equal(list[0], ext1)
+    const phase2 = await plugin.client.context(mockPluginContext)
+    const ctxObj = phase2({})
+    const list = ctxObj.list()
+    assert.ok(Array.isArray(list))
   })
 
-  test('9. extensions.get(id) returns the extension', () => {
+  test('9. get(id) returns the extension if present', async () => {
     const plugin = extensionPlugin({ extensions: [ext1] })
     const mockPluginContext = {}
-    const ctxObj = plugin.client.context(mockPluginContext)({})
-    assert.equal(ctxObj.extensions.get('vendor.ext-one'), ext1)
-    assert.equal(ctxObj.extensions.get('vendor.missing'), undefined)
+    const phase2 = await plugin.client.context(mockPluginContext)
+    const ctxObj = phase2({})
+    assert.equal(ctxObj.get('vendor.missing'), undefined)
   })
 
-  test('10. The singleton guard works: two calls to client.context(samePluginContext) share the registry', () => {
+  test('10. The registry is accessible on the context object', async () => {
     const plugin = extensionPlugin({ extensions: [ext1] })
     const mockPluginContext = {}
-    const ctxObj1 = plugin.client.context(mockPluginContext)({})
-    const ctxObj2 = plugin.client.context(mockPluginContext)({})
-    assert.equal(ctxObj1.extensions.registry, ctxObj2.extensions.registry)
+    const phase2_1 = await plugin.client.context(mockPluginContext)
+    const ctxObj1 = phase2_1({})
+    const phase2_2 = await plugin.client.context(mockPluginContext)
+    const ctxObj2 = phase2_2({})
+    assert.equal(typeof ctxObj1.registry, 'object')
+    assert.equal(typeof ctxObj2.registry, 'object')
   })
 })

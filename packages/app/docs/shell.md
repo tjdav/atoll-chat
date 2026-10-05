@@ -39,10 +39,12 @@ The shell provides four empty containers designed for insertion by the extension
    - **Population:** Extension tasks query or listen for active registered extensions and mount icon items into `.rail` sorted by `rail.order`.
 2. **`surface-host`'s `.surface__list` (`[data-testid="list-panel"]`)**
    - **Target:** Conversation list, search results, or feature navigation views.
-   - **Population:** Extension tasks mount list views into `<section class="surface__list">` when the active feature matches the rail selection.
+   - **Population:** `surface-host` reads `ctx.extensions` and `ctx.router`. On mount and on `router.subscribe`, it resolves the active rail's extension and mounts its `list.component` into `<section class="surface__list">`.
 3. **`surface-host`'s `.surface__detail` (`[data-testid="detail-panel"]`)**
    - **Target:** Active conversation timeline, thread detail, call window, or settings view.
-   - **Population:** Extension tasks mount detail views into `<main class="surface__detail">` corresponding to active selections.
+   - **Population:** `surface-host` resolves the extension owning the active detail route via `extensions.ownerOfRoute(detailRoute)` and mounts its `detail.component` into `<main class="surface__detail">`.
+   - **Reconciliation:** The mounted element in list or detail panel is replaced only when the resolved component tag changes. Navigating between routes that share the same component tag (such as `extension-placeholder`) does not unmount or recreate the DOM node.
+   - **Canonicalization:** On initial render, if no `rail` query parameter is set in the URL, `surface-host` calls `router.navigate({ rail: fallback.id }, { replace: true })` to rewrite the URL to the first rail-bearing extension without polluting browser back history.
 4. **`messenger-shell`'s `.shell__bottom-nav` (`[data-testid="bottom-nav"]`)**
    - **Target:** Mobile and tablet quick-access slots (capped at 5 primary slots).
    - **Population:** Extension tasks mount bottom navigation buttons into `<nav class="shell__bottom-nav">` on mobile/tablet screens.

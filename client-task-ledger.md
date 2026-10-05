@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 1 |
-| Done | 27 |
+| Pending | 0 |
+| Done | 28 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -51,6 +51,7 @@ or modify the server's ledger.
 | C-CHAT-3 | Extension System Validation & Vocabulary Command | done | C-CHAT-2 | unit-smoke |
 | C-CHAT-4 | First-Party Core Extensions Skeleton | done | C-CHAT-2, C-CHAT-3 | unit-smoke |
 | C-CHAT-5 | Router Plugin & Rail Item Rendering | done | C-CHAT-1, C-CHAT-4, C-INFRA-4 | unit-smoke, component-smoke |
+| C-CHAT-6 | Surface Rendering & Pass-Through Getter Cleanup | done | C-CHAT-5, C-CHAT-4, C-CHAT-1, C-INFRA-6c | unit-smoke, component-smoke |
 
 ## Blockers
 
@@ -359,6 +360,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Extended all 7 locale files (`en.js`, `fr.js`, `de.js`, `ja.js`, `pt.js`, `it.js`, `es.js`) with `ext.placeholder.heading` and `ext.placeholder.body` (44 keys total across all locales with 100% key parity).
   - Updated `packages/app/docs/plugins/extensions.md` with "First-party extensions" section and table detailing status and deferred `room-settings` overlay.
   - Added unit test suite `packages/app/tests/unit/extend-first-party.test.js` registered under `unit-smoke` in `packages/app/test-batches.js` (207/207 unit tests passing).
+- **C-CHAT-6 Deliverables & Status:**
+  - Status: `done`.
+  - Rewrote `packages/app/src/components/shell/surface-host.html` using `defineComponent` with router and extension driven list/detail panel resolution, DOM element tag reconciliation algorithm (`reconcile`), initial URL canonicalization (`router.navigate({ rail: fallback.id }, { replace: true })`), and i18n locale subscription.
+  - Extended router's `navigate(params, options)` method in `packages/app/src/lib/router/index.js` and `packages/app/src/plugins/router-plugin.js` to support `options.replace` using `history.replaceState`.
+  - Audited all existing component files and removed pass-through getters (`railLabel` in `rail-host.html`), updating templates to bind state keys directly. Verified all remaining getters compute derived values.
+  - Updated `rail-host.html` with `getEffectiveRailId()` fallback synchronizing the highlighted rail item with fallback surface rendering.
+  - Updated documentation at `packages/app/docs/plugins/i18n.md` ("When to use a getter" section) and `packages/app/docs/shell.md` (surface-host resolution, reconciliation, and canonicalization).
+  - Added unit test `tests/unit/surface-reconcile.test.js` (registered in `unit-smoke`) and Playwright component test `tests/component/surface.spec.js` (registered in `component-smoke`).
+  - Verified test suite (`pnpm check-batches`, `pnpm test:batch unit-smoke`, `pnpm test:batch component-smoke`, `pnpm --filter @atoll/app build`, `pnpm extensions:vocab`). Generated visual verification screenshots `test-results/surface-chat.png` and `test-results/surface-detail.png`.
 
 ## Component Authoring Policy
 

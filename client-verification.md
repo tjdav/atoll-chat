@@ -409,3 +409,20 @@ build task runs.
 | Locale Parity | Translation key `app_rail_aria_label` added across all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 100% key parity across 45 keys |
 | Test Suites & Batches | Unit test `packages/app/tests/unit/router.test.js` registered in `unit-smoke` (219 passing unit tests). Component test `packages/app/tests/component/rail.spec.js` registered in `component-smoke` (24 passing Playwright tests) |
 | Documentation | Plugin guide created at `packages/app/docs/plugins/router.md` and registered in `packages/app/docs/plugins/README.md` |
+
+### C-CHAT-6 — Surface Host Rendering Contract & Pass-Through Getter Rule
+
+**Verified:** 2026-10-05
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Surface Component (`surface-host.html`) | Wrapped in `defineComponent`. Four-part i18n pattern (`app_shell_list_label`, `app_shell_detail_label`). Reads `ctx.extensions` and `ctx.router`. Reconciles list panel (`.surface__list`) and detail panel (`.surface__detail`) on mount and route changes |
+| Extension Resolution | List component resolved from active rail extension (`extensions.get(railId)` or fallback `extensions.byRailOrder()[0]`); detail component resolved from route owner (`extensions.ownerOfRoute(detailRoute)`) |
+| DOM Tag Reconciliation (`reconcile`) | Replaces mounted DOM child element only when component tag changes. Navigating between routes sharing the same tag (e.g. `extension-placeholder`) retains existing child DOM node without remounting |
+| Initial Canonicalization | On initial render without `rail` query parameter, executes `router.navigate({ rail: fallback.id }, { replace: true })` using `replaceState` to align URL with active surface without polluting back history |
+| Router Extension | `createRouter` `navigate(params, options)` extended to support `options.replace` (bool) calling `history.replaceState` |
+| Rail Fallback Alignment | `rail-host.html` updated with `getEffectiveRailId()` matching `surface-host` fallback to highlight first rail item when URL lacks `rail` parameter |
+| Pass-Through Getter Rule | Getters must derive/compute state (conditionals, comparisons, coercions, composition, or `root`/`refs`/`slots` access). Bare alias getters `({ state }) => state.x` are prohibited; templates bind state keys `{{ x }}` directly |
+| Component Audit | All components audited. `railLabel` removed from `rail-host.html`. Remaining getters across all components confirmed to compute derived values |
+| Documentation Updates | `packages/app/docs/plugins/i18n.md` ("When to use a getter" section) and `packages/app/docs/shell.md` updated |
+| Test Suites & Screenshots | Unit test `tests/unit/surface-reconcile.test.js` (unit-smoke) and Playwright component test `tests/component/surface.spec.js` (component-smoke). Visual verification screenshots generated at `test-results/surface-chat.png` and `test-results/surface-detail.png` |

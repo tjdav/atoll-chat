@@ -1,23 +1,29 @@
 <template id="surface-host">
   <div class="surface" data-testid="surface">
-    <section class="surface__list" aria-label="{{ app_shell_list_label }}" data-testid="list-panel"></section>
-    <main class="surface__detail" aria-label="{{ app_shell_detail_label }}" data-testid="detail-panel"></main>
+    <section
+      class="surface__list"
+      ref="listPanel"
+      aria-label="{{ app_shell_list_label }}"
+      data-testid="list-panel"
+    ></section>
+    <main
+      class="surface__detail"
+      ref="detailPanel"
+      aria-label="{{ app_shell_detail_label }}"
+      data-testid="detail-panel"
+    ></main>
   </div>
 </template>
 
 <style>
   :host {
-    display: block;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
+    display: contents;
   }
 
   .surface {
     display: grid;
     grid-template-columns: 1fr;
     height: 100%;
-    width: 100%;
     overflow: hidden;
   }
 
@@ -33,11 +39,12 @@
     overflow-y: auto;
   }
 
-  /* Tablet and desktop: list + detail side by side. */
   @media (min-width: 768px) {
     .surface {
-      grid-template-columns: minmax(var(--list-panel-min), var(--list-panel-max)) 1fr;
+      grid-template-columns:
+        minmax(var(--list-panel-min), var(--list-panel-max)) 1fr;
     }
+
     .surface__list {
       display: block;
     }
@@ -58,7 +65,7 @@ export default defineComponent({
     }
   },
 
-  client({ state, i18n, signal }) {
+  client({ state, refs, i18n, extensions, router, signal }) {
     const syncLocale = (locale) => {
       state.locale = locale
       Object.assign(state, i18n.strings([
@@ -71,6 +78,65 @@ export default defineComponent({
     if (state.locale !== i18n.getLocale()) {
       syncLocale(i18n.getLocale())
     }
+
+    const listPanel = refs('listPanel')
+    const detailPanel = refs('detailPanel')
+    if (!listPanel || !detailPanel) return
+
+    let mountedListTag = null
+    let mountedDetailTag = null
+
+    function reconcile(panel, currentTag, nextTag) {
+      if (currentTag === nextTag) return currentTag
+      if (currentTag) {
+        const old = panel.querySelector(currentTag)
+        if (old) old.remove()
+      }
+      if (nextTag) {
+        const el = document.createElement(nextTag)
+        panel.appendChild(el)
+      }
+      return nextTag
+    }
+
+    function resolveActiveExtension() {
+      const railId = router.getActiveRail()
+      if (railId) {
+        const found = extensions.get(railId)
+        if (found) return found
+      }
+      const byOrder = extensions.byRailOrder()
+      return byOrder.length > 0 ? byOrder[0] : null
+    }
+
+    function resolveDetailExtension() {
+      const detailRoute = router.getActiveDetail()
+      if (!detailRoute) return null
+      return extensions.ownerOfRoute(detailRoute) ?? null
+    }
+
+    function render() {
+      const listExt = resolveActiveExtension()
+      const nextListTag = listExt?.list?.component ?? null
+
+      const detailExt = resolveDetailExtension()
+      const nextDetailTag = detailExt?.detail?.component ?? null
+
+      mountedListTag = reconcile(listPanel, mountedListTag, nextListTag)
+      mountedDetailTag = reconcile(detailPanel, mountedDetailTag, nextDetailTag)
+    }
+
+    if (!router.getActiveRail()) {
+      const fallback = extensions.byRailOrder()[0]
+      if (fallback) {
+        router.navigate({ rail: fallback.id }, { replace: true })
+      }
+    }
+
+    render()
+    router.subscribe(() => {
+      render()
+    })
   }
 })
 </script>

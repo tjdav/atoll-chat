@@ -66,7 +66,8 @@ test.describe('Rail Host Component Tests', () => {
       const btn = buttons.nth(i)
       await expect(btn).toHaveAttribute('data-rail-id', ext.id)
       await expect(btn).toHaveAttribute('aria-label', ext.label)
-      await expect(btn).toHaveAttribute('aria-current', 'false')
+      const expectedCurrent = ext.id === 'core.chat' ? 'page' : 'false'
+      await expect(btn).toHaveAttribute('aria-current', expectedCurrent)
     }
 
     await page.screenshot({ path: 'test-results/rail-desktop.png', fullPage: true })
@@ -114,7 +115,10 @@ test.describe('Rail Host Component Tests', () => {
     const buttons = page.locator('button[data-rail-id]')
     const count = await buttons.count()
     for (let i = 0; i < count; i++) {
-      await expect(buttons.nth(i)).toHaveAttribute('aria-current', 'false')
+      const btn = buttons.nth(i)
+      const id = await btn.getAttribute('data-rail-id')
+      const expectedCurrent = id === 'core.chat' ? 'page' : 'false'
+      await expect(btn).toHaveAttribute('aria-current', expectedCurrent)
     }
   })
 

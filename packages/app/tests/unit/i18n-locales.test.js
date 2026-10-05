@@ -12,7 +12,7 @@ import es from '../../src/lib/i18n/locales/es.js'
 describe('production i18n locales', () => {
   const allLocales = { en, fr, de, ja, pt, it: itLocale, es }
   const enKeys = Object.keys(en).sort()
-  const ALLOWLIST = ['Face ID', 'ALTCHA', 'OPAQUE', 'Atoll']
+  const ALLOWLIST = ['Face ID', 'ALTCHA', 'OPAQUE', 'Atoll', 'Extensions']
 
   it('1. Every locale exports the same key set as en', () => {
     assert.ok(enKeys.length > 0, 'en.js should have keys')

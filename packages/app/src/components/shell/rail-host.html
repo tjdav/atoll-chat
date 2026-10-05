@@ -1,5 +1,5 @@
 <template id="rail-host">
-  <nav class="rail" aria-label="{{ railLabel }}" data-testid="rail">
+  <nav class="rail" aria-label="{{ app_rail_aria_label }}" data-testid="rail">
     <ul class="rail__list" ref="railList">
       <li class="rail__item" data-extension-id="{{ itemId }}">
         <button
@@ -88,10 +88,6 @@ export default defineComponent({
     }
   },
 
-  getters: {
-    railLabel: ({ state }) => state.app_rail_aria_label
-  },
-
   client({ state, refs, i18n, extensions, router, signal }) {
     i18n.subscribeLocale(
       (locale) => {
@@ -108,12 +104,19 @@ export default defineComponent({
 
     let renderAbort = new AbortController()
 
+    function getEffectiveRailId() {
+      const active = router.getActiveRail()
+      if (active) return active
+      const byOrder = extensions.byRailOrder()
+      return byOrder.length > 0 ? byOrder[0].id : null
+    }
+
     function renderRail() {
       renderAbort.abort()
       renderAbort = new AbortController()
 
       const railExtensions = extensions.byRailOrder()
-      const activeId = router.getActiveRail()
+      const activeId = getEffectiveRailId()
 
       list.innerHTML = ''
 
