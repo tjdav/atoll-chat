@@ -1,3 +1,16 @@
+//! User-scoped state sync query engine and cursor management.
+//!
+//! # Client Cursor Flow (§6.22)
+//!
+//! On boot, after local SQLite hydration and before subscribing to WebSocket channels:
+//! 1. Request `GET /users/me/sync?since_seq=<cursor>` (use 0 for initial full sync).
+//! 2. Apply returned state rows in `user_seq` order.
+//! 3. Store `max_seq` from the response as the new cursor.
+//! 4. Subscribe to `private-user-{user_id}` on Sockudo.
+//! 5. Apply live events as they arrive; ignore any event with `user_seq <= cursor`.
+//! 6. Update the cursor on every applied row.
+//! 7. If `{ "full_resync_required": true }` is received, discard local cursor and refetch all current state (`since_seq = 0`).
+
 use crate::starred::StarredItemRow;
 use crate::sync::{
     device_names::{self, DeviceStateRow},
@@ -9,6 +22,7 @@ use sqlx::SqlitePool;
 pub struct SyncQuery {
     pub user_id: String,
     pub since_seq: i64,
+    pub retention_days: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -17,6 +31,7 @@ pub struct SyncResponse {
     pub user_preferences: Vec<PreferenceRow>,
     pub device_state: Vec<DeviceStateRow>,
     pub starred_items: Vec<StarredItemRow>,
+    pub bot_settings: Vec<serde_json::Value>,
     pub max_seq: i64,
     pub full_resync_required: bool,
 }
@@ -50,50 +65,112 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
             })?
     };
 
-    let max_read_state_seq = read_state
-        .iter()
-        .map(|r| r.user_seq)
-        .max()
-        .unwrap_or(query.since_seq);
-
-    let max_pref_seq = user_preferences
-        .iter()
-        .map(|r| r.user_seq)
-        .max()
-        .unwrap_or(query.since_seq);
-
     let starred_items = if query.since_seq == 0 {
         starred::list_starred_items_all(pool, &query.user_id).await?
     } else {
         starred::list_starred_items_since(pool, &query.user_id, query.since_seq).await?
     };
 
-    let max_device_seq = device_state
-        .iter()
-        .map(|r| r.user_seq)
-        .max()
-        .unwrap_or(query.since_seq);
+    // bot_settings is populated by Phase 30; empty array in foundation phase.
+    let bot_settings = Vec::new();
 
-    let max_starred_seq = starred_items
-        .iter()
-        .map(|r| r.user_seq)
-        .max()
-        .unwrap_or(query.since_seq);
+    let highest_allocated: Option<i64> =
+        sqlx::query_scalar("SELECT next_seq - 1 FROM user_seq WHERE user_id = ?")
+            .bind(&query.user_id)
+            .fetch_optional(pool)
+            .await?;
 
-    let max_seq = std::cmp::max(
-        query.since_seq,
-        std::cmp::max(
-            max_read_state_seq,
-            std::cmp::max(max_pref_seq, std::cmp::max(max_device_seq, max_starred_seq)),
-        ),
-    );
+    let max_seq = std::cmp::max(query.since_seq, highest_allocated.unwrap_or(0));
+
+    let retention_days = if query.retention_days == 0 {
+        90
+    } else {
+        query.retention_days
+    };
+
+    let full_resync_required =
+        is_full_resync_required(pool, &query.user_id, query.since_seq, retention_days).await?;
 
     Ok(SyncResponse {
         read_state,
         user_preferences,
         device_state,
         starred_items,
+        bot_settings,
         max_seq,
-        full_resync_required: false,
+        full_resync_required,
     })
+}
+
+async fn is_full_resync_required(
+    pool: &SqlitePool,
+    user_id: &str,
+    since_seq: i64,
+    retention_days: u64,
+) -> Result<bool, SyncError> {
+    if since_seq == 0 {
+        return Ok(false);
+    }
+
+    // 1. Check if since_seq is below the minimum retained user_seq
+    let min_seq: Option<i64> = sqlx::query_scalar(
+        r#"
+        SELECT MIN(min_s) FROM (
+            SELECT MIN(user_seq) AS min_s FROM read_state WHERE user_id = ?
+            UNION ALL
+            SELECT MIN(user_seq) AS min_s FROM user_preferences WHERE user_id = ?
+            UNION ALL
+            SELECT MIN(user_seq) AS min_s FROM device_names WHERE user_id = ?
+            UNION ALL
+            SELECT MIN(user_seq) AS min_s FROM starred_items WHERE user_id = ?
+        )
+        "#,
+    )
+    .bind(user_id)
+    .bind(user_id)
+    .bind(user_id)
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(min_s) = min_seq {
+        if since_seq < min_s {
+            return Ok(true);
+        }
+    }
+
+    // 2. Check if state corresponding to user_seq <= since_seq is older than retention window
+    let cutoff_sql = format!("-{} days", retention_days);
+    let is_expired: Option<i32> = sqlx::query_scalar(
+        r#"
+        SELECT 1 FROM (
+            SELECT updated_at AS ts FROM read_state WHERE user_id = ? AND user_seq <= ?
+            UNION ALL
+            SELECT updated_at AS ts FROM user_preferences WHERE user_id = ? AND user_seq <= ?
+            UNION ALL
+            SELECT updated_at AS ts FROM device_names WHERE user_id = ? AND user_seq <= ?
+            UNION ALL
+            SELECT starred_at AS ts FROM starred_items WHERE user_id = ? AND user_seq <= ?
+        )
+        WHERE ts < datetime('now', ?)
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id)
+    .bind(since_seq)
+    .bind(user_id)
+    .bind(since_seq)
+    .bind(user_id)
+    .bind(since_seq)
+    .bind(user_id)
+    .bind(since_seq)
+    .bind(cutoff_sql)
+    .fetch_optional(pool)
+    .await?;
+
+    if is_expired.is_some() {
+        return Ok(true);
+    }
+
+    Ok(false)
 }

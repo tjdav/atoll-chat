@@ -214,7 +214,7 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         moderation_mode,
         edit_window_seconds: state.config.edit_window_seconds,
         reactions_per_message,
-        sync_event_retention_days: state.config.data_retention_days,
+        sync_event_retention_days: state.config.sync_event_retention_days,
         threading_enabled: true,
         starred_items_per_user: state.config.max_starred_items_per_user,
         extension_proxy_enabled: state.config.extension_proxy_enabled,

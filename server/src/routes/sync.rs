@@ -30,6 +30,7 @@ pub async fn get_sync(
     let sync_query = SyncQuery {
         user_id: auth.user_id,
         since_seq,
+        retention_days: state.config.sync_event_retention_days,
     };
 
     let response = sync::execute_sync(&state.pool, sync_query)
