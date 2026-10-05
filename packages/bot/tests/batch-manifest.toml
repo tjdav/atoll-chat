@@ -53,3 +53,15 @@ name = "idempotency"
 files = [
   "unit/idempotency.test.js",
 ]
+
+[[batch]]
+name = "config-toml"
+files = [
+  "unit/config-toml.test.js",
+]
+
+[[batch]]
+name = "config"
+files = [
+  "unit/config.test.js",
+]

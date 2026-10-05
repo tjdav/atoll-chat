@@ -119,7 +119,7 @@
   - Default terminal reader (`defaultReader`) writes the prompt to `stderr` and uses `process.stdin` in raw mode with UTF-8 `StringDecoder` and per-character `*` masking. Rejects when `!process.stdin.isTTY` or on abort signals (Ctrl+C / Ctrl+D). Restores raw mode state and pauses stdin in `finally`.
   - macOS write path passes password on stdin to `/usr/bin/security add-generic-password -s atoll-bot -a <bot_id> -U -w`.
   - Linux write path passes password on stdin to `secret-tool store --label "Atoll bot <bot_id>" service atoll-bot account <bot_id>`.
-  - Windows write path passes password on stdin to `powershell.exe -NoProfile -NonInteractive -EncodedCommand <base64-utf16le>` with P/Invoke to `CredWrite` (`CRED_TYPE_GENERIC`, `CRED_PERSIST_LOCAL_MACHINE`). Password is never passed in command args.
+  - Windows write path passes password on stdin to `powershell.exe -NoProfile -NonInteractive -EncodedCommand <base64-utf16le>` with P/Invoke to `CredRead` (`CRED_TYPE_GENERIC`, `CRED_PERSIST_LOCAL_MACHINE`). Password is never passed in command args.
   - Registered `prompt-resolver` (9 unit tests) and `keychain-write` (11 unit tests) batches in `packages/bot/tests/batch-manifest.toml`.
 - **Verification Results**:
   - `pnpm --filter @atoll/bot typecheck` passed (status 0).
@@ -171,6 +171,24 @@
   - Implements remove-on-failure via `remove(key)` method.
   - Corrupt entries (non-number values) log a warning and are cleaned during pruning. Prune passes log `{ msg: 'idempotency prune', meta: { removed: count } }` when `removed > 0`.
   - Registered `idempotency` batch in `packages/bot/tests/batch-manifest.toml` and authored 25 unit test cases in `packages/bot/tests/unit/idempotency.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-012 Verification Fact
+- **bot.toml Reader & Config Loader (`packages/bot/src/runtime/config/`)**:
+  - The config loader lives at `src/runtime/config/index.js` exporting async `loadConfig({ env, cwd } = {})`. The TOML parser lives at `src/runtime/config/toml.js` exporting `parseToml(source)`.
+  - Precedence is strictly environment variable > TOML > built-in default. Empty environment variables (`""`) are treated as unset.
+  - The TOML grammar is the strict subset documented in spec §14.3: line-based, no arrays, no inline tables, no datetimes, no dotted section names, no single-quoted or multi-line strings.
+  - Unknown section headers or unknown key names in `bot.toml` throw explicit errors naming the offending line or key.
+  - An explicitly set `ATOL_BOT_CONFIG` path that names a missing file throws an error; when `ATOL_BOT_CONFIG` is unset or empty, a missing `bot.toml` at default path is optional and defaults are used.
+  - Path fields (`botConfigPath`, `keystorePath`) are resolved against `cwd` to absolute paths.
+  - Field type, range, and enum validations are enforced post-merge.
+  - The returned `Config` object and all nested section objects are recursively frozen using `Object.freeze`.
+  - Registered `config-toml` (21 unit tests) and `config` (20 unit tests) batches in `packages/bot/tests/batch-manifest.toml`.
 - **Verification Results**:
   - `pnpm --filter @atoll/bot typecheck` passed (status 0).
   - `pnpm --filter @atoll/bot lint` passed (status 0).
