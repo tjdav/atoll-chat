@@ -1,10 +1,24 @@
 import { defineConfig } from 'coralite-scripts'
 import postcssImport from 'postcss-import'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import extensionPlugin from '@atoll/extend/plugin'
 import iconPlugin from './src/plugins/icon-plugin.js'
+import storagePlugin from './src/plugins/storage-plugin.js'
 import routerPlugin from './src/plugins/router-plugin.js'
 import i18nPlugin from './src/plugins/i18n-plugin.js'
 import { extensions } from './src/extensions/index.js'
+
+function loadMigrations() {
+  const dir = new URL('./src/db/migrations/', import.meta.url).pathname
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+  return files.map((name) => ({
+    name,
+    sql: readFileSync(join(dir, name), 'utf8')
+  }))
+}
 
 export default defineConfig({
   output: 'dist',
@@ -32,6 +46,7 @@ export default defineConfig({
   plugins: [
     extensionPlugin({ extensions }),
     iconPlugin(),
+    storagePlugin({ dbName: 'messenger', migrations: loadMigrations() }),
     routerPlugin(),
     i18nPlugin({ defaultLocale: 'en' })
   ]

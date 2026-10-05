@@ -51,7 +51,9 @@ tests/e2e/fixtures/test-video.y4m
 *.db-shm
 *.db-wal
 data/
-db/
+/db/
+!packages/app/src/db/
+!packages/app/src/lib/db/
 
 # Rust
 target/
