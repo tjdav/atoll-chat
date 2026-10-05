@@ -11,25 +11,93 @@
 
 Atoll extensions enable modular feature development across the messenger client interface. The extension system allows first-party and third-party modules to extend shell views (rail, list, detail), contribute custom slots, publish/subscribe to public events, manage isolated persistent state, and define custom preferences and session types.
 
-`@atoll/extend` is the SDK package that provides extension normalization, shape validation, the central `ExtensionRegistry`, and the invocation context (`ctx`) factory.
+`@atoll/extend` is the SDK package that provides extension normalization, shape validation, Phase 2 cross-extension link validation, the central `ExtensionRegistry`, vocabulary introspection, and the invocation context (`ctx`) factory.
 
 ---
 
-## 2. The Extension Object
+## 2. Build-Time Validation
+
+Validation is mandatory and runs automatically when `coralite.config.js` is loaded during development or build. If any validation rule fails, the config load throws an explicit error and halts execution.
+
+### Phase 1: Per-Extension Shape Validation (`validate.js`)
+- **Required fields:** Validates `id`, `apiVersion`, `hostApi`, `detail`, `detail.route`, `detail.component`, `detail.title`.
+- **Prefix Guard:** The `core.` ID prefix is reserved for first-party Atoll extensions. Third-party extensions starting with `core.` are rejected.
+- **Permissions:** Every permission must be present in the allowed list (`network`, `storage`).
+- **Slots:** Validates target slot string format (`<shortId>.<slotName>`), non-reserved slots, component tag names, numeric ordering, and visibility predicate types.
+- **Emits / Public Events:** Validates `<namespace>:<event-name>` naming and non-nested schema type definitions (`string`, `number?`, union types).
+- **Listens:** Validates event name format and function handler presence.
+- **Sessions:** Validates type string format, positive integer participant and room caps, heartbeat intervals, string metadata values, and nested signaling dictionaries.
+- **Preferences:** Validates preference keys (`^[a-z][a-zA-Z0-9]*$`), non-reserved keys (`room_order`), non-reserved prefixes (`_system:`), allowed types (`string`, `number`, `boolean`, `object`, `array`), and optional labels.
+- **Assets:** Validates non-empty `src` and `dest` string paths.
+- **Component Tag Naming:** Non-`core.*` extensions must prefix custom element tag names with `x-<slug>-` where `<slug>` is the last segment of the extension ID (e.g. `x-calendar-view`).
+
+### Phase 2: Cross-Extension Link Validation (`validate-link.js`)
+- **Route Uniqueness:** Rejects duplicate `detail.route` or `list.route` declarations across extensions.
+- **Route Collisions:** Rejects route collisions between detail and list surfaces.
+- **Slot Resolution:** Every mounted slot target must resolve to a declared slot on a registered host extension.
+- **Slot Fills:** Enforces single-extension fill restrictions when a slot declares `multiple: false`.
+- **Unmatched Listeners:** Every listened event must be published by at least one extension's `emits` or `publicEvents`.
+- **Event Schema Matching:** All emitters and listeners of an event must agree on its schema definition.
+- **Duplicate Session Types:** Session types must be unique within an extension.
+- **Reserved Preference Keys:** Prevents extensions from declaring reserved preference keys or prefixes.
+- **Circular Slot Mounts:** Rejects circular slot mounting dependencies between extensions.
+- **Warnings:** Emits warnings for rail order collisions, duplicate action icons in the same surface, and scope key type inconsistencies.
+
+---
+
+## 3. The Vocabulary Command
+
+The offline vocabulary command aggregates and inspects the registered extensions, slots, events, routes, sessions, preferences, permissions, and available components.
+
+### Execution
+
+```bash
+pnpm extensions:vocab
+```
+
+### Options & Flags
+
+- **Human-Readable Output (Default):**
+  ```bash
+  pnpm extensions:vocab
+  ```
+- **Machine-Readable JSON Output:**
+  ```bash
+  pnpm extensions:vocab --json
+  ```
+- **Section Filtering:**
+  ```bash
+  pnpm extensions:vocab --section=routes
+  pnpm extensions:vocab --json --section=events
+  ```
+
+### Output Sections
+
+- **components:** Template IDs found under `src/components/`.
+- **slots:** Declared slots and their mounted fillers sorted by order.
+- **events:** Aggregate event schemas, emitters, receivers, and listeners.
+- **routes:** Detail and list route mappings to owning extension IDs.
+- **sessions:** Contributed room calling and session descriptors.
+- **preferences:** Settings schema declarations.
+- **permissions:** Aggregated active permissions.
+- **icons:** Available Solar icons (populated when icon plugin lands).
+- **platforms / surfaces:** Platform categories (`desktop`, `tablet`, `mobile`) and view surface modes (`panel`, `overlay`).
+- **reserved:** System-reserved routes, preference keys, preference prefixes, and slots.
+
+---
+
+## 4. The Extension Object
 
 An extension is declared as a plain JavaScript object passed to `defineExtension(ext)`.
 
-### Full Extension Shape
-
 ```javascript
 {
-  // Required fields
   id: 'vendor.my-extension',          // String: ^[a-z0-9]+(\.[a-z0-9-]+)+$ ('core.' reserved)
   apiVersion: '1.0.0',                 // String: Semver version of extension spec
   hostApi: '2.0.0',                    // String: Min host API version required
   detail: {                            // Object: Primary detail surface
     route: 'my-feature',               // String: ^[a-z][a-z0-9-]*$
-    component: 'my-feature-detail',    // String: Custom element tag name
+    component: 'x-my-extension-detail',// String: Custom element tag name with x-<slug>- prefix
     title: 'My Feature',               // String | Function: Surface title
     surfaces: ['panel'],               // Optional Array<String>: ['panel', 'full']
     defaultSurface: 'panel',           // Optional String: Default surface presentation
@@ -42,10 +110,8 @@ An extension is declared as a plain JavaScript object passed to `defineExtension
     loading: null,                     // Optional Component: Loading state fill
     error: null                        // Optional Component: Error state fill
   },
-
-  // Optional fields
   label: 'My Feature',                 // String | Function: Required when rail is declared
-  permissions: [],                     // Array<String>: Required capabilities
+  permissions: ['storage'],            // Array<String>: Required capabilities
   rail: {                              // Object: Rail navigation button
     icon: { name: 'sparkles' },        // Object: Icon descriptor ({ name: string })
     order: 100,                        // Number: Numeric sort key ascending
@@ -55,7 +121,7 @@ An extension is declared as a plain JavaScript object passed to `defineExtension
   },
   list: {                              // Object: Secondary list panel surface
     route: 'my-feature-list',          // String: ^[a-z][a-z0-9-]*$
-    component: 'my-feature-list-panel',// String: Custom element tag name
+    component: 'x-my-extension-list',  // String: Custom element tag name
     title: 'My Feature List',          // String | Function: Surface title
     actions: [],                       // Optional Array<Object>
     slots: {},                         // Optional Object
@@ -70,7 +136,7 @@ An extension is declared as a plain JavaScript object passed to `defineExtension
   sessions: [],                        // Array<Object>: Session type definitions
   preferences: [],                     // Array<Object>: Preference schema definitions
   locales: null,                       // Object: Extension locale dictionary overrides
-  assets: [],                          // Array<String>: Static asset URLs
+  assets: [],                          // Array<Object>: Static asset descriptors
   onRegister: null,                    // Function: Lifecycle hook on registration
   onActivate: null,                    // Function: Lifecycle hook on activation
   onDeactivate: null                   // Function: Lifecycle hook on deactivation
@@ -79,9 +145,9 @@ An extension is declared as a plain JavaScript object passed to `defineExtension
 
 ---
 
-## 3. `defineExtension(ext)`
+## 5. `defineExtension(ext)`
 
-`defineExtension(ext)` is the entry point for extension authors. It validates the raw extension shape, applies standard defaults to optional fields, attaches internal SDK metadata (`_sdkApiVersion`), and returns the normalized extension object.
+`defineExtension(ext)` normalizes and validates the raw extension object, applying standard defaults and attaching internal SDK metadata (`_sdkApiVersion`).
 
 ```javascript
 import { defineExtension } from '@atoll/extend'
@@ -92,20 +158,17 @@ export default defineExtension({
   hostApi: '2.0.0',
   detail: {
     route: 'calendar',
-    component: 'calendar-view',
+    component: 'x-calendar-view',
     title: 'Calendar'
   }
 })
 ```
 
-- **Validation:** Throws an `Error` if required fields are missing or malformed (`id`, `apiVersion`, `hostApi`, `detail`, `detail.route`, `detail.component`, `detail.title`), or if `rail` is declared without `label`.
-- **Prefix Guard:** The `core.` prefix is reserved for first-party Atoll extensions. Third-party extensions starting with `core.` are rejected.
-
 ---
 
-## 4. The ExtensionRegistry API
+## 6. The ExtensionRegistry API
 
-`ExtensionRegistry` is the central store for registered extensions. It is managed by the Coralite extension plugin.
+`ExtensionRegistry` is the central store for registered extensions, managed by the Coralite extension plugin.
 
 ```javascript
 import { ExtensionRegistry } from '@atoll/extend'
@@ -123,9 +186,9 @@ registry.size()                     // Returns total registration count
 
 ---
 
-## 5. `ctx` (Invocation Context)
+## 7. `ctx` (Invocation Context)
 
-`ctx` is constructed fresh per invocation point when an extension callback or view is executed. It provides access to the extension's context, parameters, and host services.
+`ctx` is constructed fresh per invocation point when an extension callback or view is executed.
 
 ### `ctx` Surface API
 
@@ -155,116 +218,12 @@ registry.size()                     // Returns total registration count
 | `fetchUserUrl` | `(url: string, init?: object) => Promise<Response>` | Pending | Network Plugin |
 | `t` | `(key: string, vars?: object) => string` | Pending | i18n Plugin Integration |
 
-### Missing Service Guard
-
-Calling an accessor for an unsupplied service throws an explicit error detailing the missing plugin:
-
-```javascript
-// Example when router plugin is not registered:
-ctx.navigate('/calendar')
-// Throws: Error("ctx.navigate is not available. The router plugin is not registered.")
-```
-
 ---
 
-## 6. Component Location & Tag Naming
-
-Extension components live under `src/components/` in subdirectories organized by convention:
-
-```
-packages/app/src/components/
-├── extensions/
-│   └── calendar/
-│       ├── calendar-view.html
-│       └── calendar-panel.html
-```
-
-- **Discovery:** Coralite's `components: 'src/components'` configuration recursively discovers and registers all `.html` component files under `src/components/`.
-- **Tag Naming:** Custom element tag names must be hyphenated valid custom element names (e.g. `calendar-view`, `calendar-panel`).
-
----
-
-## 7. The Four Surfaces
-
-Extensions contribute views to four primary shell surfaces:
-
-1. **Rail:** Declared via `rail: { icon, order, ... }`. Places an icon button on the left navigation rail.
-2. **List Panel:** Declared via `list: { route, component, title, ... }`. Renders in the middle panel list container (`320–400px`).
-3. **Detail Panel:** Declared via `detail: { route, component, title, ... }`. Renders in the main right panel detail container.
-4. **Full Surface:** Presentation mode specified in `detail.surfaces = ['full']`.
-
-*Note: Shell container wiring (`rail-host` and `surface-host` consuming `ExtensionRegistry`) arrives in follow-on tasks.*
-
----
-
-## 8. Slots, Events, Sessions, Preferences
-
-- **Slots:** Extensions register slot fills in `slots[]` to inject content into host extension points.
-- **Events:** Custom events are published via `emits[]` and listened to via `listens[]`. Cross-extension public events are declared in `publicEvents[]`.
-- **Sessions:** Session types contributed to room calling/whiteboard sessions are declared in `sessions[]`.
-- **Preferences:** Extension settings and schema are declared in `preferences[]`.
-
----
-
-## 9. The `defineComponent` Prerequisite
-
-Every extension component must export its definition wrapped with `defineComponent`:
-
-```html
-<template id="calendar-view">
-  <section class="calendar">
-    <h1>Calendar Extension</h1>
-  </section>
-</template>
-
-<script type="module">
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    server({ state }) {
-      return { ready: true }
-    }
-  })
-</script>
-```
-
----
-
-## 10. The i18n Prerequisite
-
-Extension components containing translatable text must follow the i18n component pattern:
-
-```html
-<script type="module">
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    server({ i18n }) {
-      return {
-        ...i18n.strings(['calendar_title_label']),
-        locale: i18n.getLocale()
-      }
-    },
-    getters: {
-      titleLabel: ({ state }) => state.calendar_title_label
-    },
-    client({ state, i18n, signal }) {
-      i18n.subscribeLocale((locale) => {
-        state.locale = locale
-        Object.assign(state, i18n.strings(['calendar_title_label']))
-      }, { signal })
-    }
-  })
-</script>
-```
-
----
-
-## 11. What Is Not Implemented Yet
+## 8. What Is Not Implemented Yet
 
 The following capabilities are provided by follow-on tasks:
 
-- **Deep Build-Time Validation (C-CHAT-3):** Route uniqueness checks, slot resolution, event schema matching, circular mount detection, and the vocabulary command.
 - **Shell UI Wiring:** `rail-host` and `surface-host` rendering extension lists and routing views.
 - **First-Party Extensions (C-CHAT-4):** First-party extension implementations (`core.chat`, `core.media`, etc.).
 - **Backing Service Plugins:** Router (`navigate`, `present`), Storage (`ctx.storage`), Preferences (`ctx.preferences`), Toast/Notifications (`ctx.toast`, `ctx.notify`), Network Proxy (`ctx.fetch`).
