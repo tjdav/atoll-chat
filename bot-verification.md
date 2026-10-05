@@ -142,3 +142,19 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-010 Verification Fact
+- **Structured Redacting Logger (`packages/bot/src/runtime/diagnostics/logger.js`)**:
+  - The dev-mode signal is `process.env.NODE_ENV !== 'production'`.
+  - The sink is injectable; production uses `process.stdout.write`.
+  - The sensitive-key list is exported as `SENSITIVE_KEYS`. The key normalization lowercases and strips `-` and `_`.
+  - The `_secret:` prefix check is literal and case-insensitive on the prefix; it does not strip separators. In dev mode (`dev === true`), encountering a `_secret:` key throws an Error naming the key. In production mode (`dev === false`), it replaces the value with `'[REDACTED]'`.
+  - URL values under `url` keys parse with `URL` and strip query string (`url.search = ''`). Malformed URLs remain unchanged.
+  - Serialization failures write a fallback log line (`msg: 'log serialization failed'`). Sink write failures are caught and swallowed. The logger never throws in production mode.
+  - Registered `logger` batch in `packages/bot/tests/batch-manifest.toml` and authored 20 test cases in `packages/bot/tests/unit/logger.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
