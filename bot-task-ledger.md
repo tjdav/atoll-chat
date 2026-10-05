@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 48
-- **Done**: 6
-- **Pending**: 42
+- **Done**: 7
+- **Pending**: 41
 - **Blocked**: 0
 
 ## Critical Path
@@ -60,7 +60,7 @@ Two hard gates:
 - [x] **B-004a**: Adopt the JSDoc description standard and fix module resolution
   - Depends on: B-001, B-002, B-003, B-004
   - Deliverable: `tsconfig.base.json`, `eslint.config.js`, `packages/bot/src/types.js`, `packages/bot/src/define-settings.js`, `packages/bot/src/define-command.js`, `packages/bot/src/define-commands.js`, `packages/bot/src/define-trigger.js`
-- [ ] **B-005**: Implement `defineBot` and `validateConfig`
+- [x] **B-005**: Implement `defineBot` and `validateConfig`
   - Depends on: B-004
   - Deliverable: `packages/bot/src/define-bot.js`
 - [ ] **B-006**: Add type canaries (`tests/canary/settings.js`, `tests/canary/args.js`)
