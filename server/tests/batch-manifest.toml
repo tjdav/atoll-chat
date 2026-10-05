@@ -119,6 +119,7 @@ files = [
     "cli_migrate",
     "cli_models",
     "cli_rotate",
+    "migration_schema",
 ]
 timeout_seconds = 60
 
