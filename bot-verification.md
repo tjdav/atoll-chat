@@ -212,3 +212,21 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-014 Verification Fact
+- **Publisher Key Cache & Verification (`packages/bot/src/runtime/crypto/publisher.js`)**:
+  - Implemented `PublisherKeyCache` class and helper `verifyPublication` exporting from `packages/bot/src/runtime/crypto/publisher.js`.
+  - The cache stores publisher key publications received per room and epoch. Per-room eviction retains the current epoch and the two most recent prior epochs. LRU eviction across rooms caps cached rooms at `maxRooms` (default 100).
+  - Signature verification (`verifyPublication`) verifies publications against signer identity public keys using `verify` and `encodePublisherKeyPayload` from `./signing.js`.
+  - `recordPublication` stores publications even when verification fails (e.g. signer key unknown), returning `{ verified: false, reason }` and leaving `verifiedAt: null`. This allows later `reverifyAll` calls to re-verify entries when signer identity keys become available.
+  - `getPublisherKey` returns defensive copies (`new Uint8Array(publisherPublicKey)`). Throws `PublisherKeyUnavailableError` when room or epoch entry is missing, and `PublisherKeyVerificationFailedError` when entry exists but signature is unverified (`verifiedAt: null`).
+  - `recordEpoch` advances current epoch monotonically and ignores epoch regressions.
+  - `markAllStale` sets `verifiedAt = null` across all cached entries. `reverifyAll` re-runs verification against each entry's stored signer user ID.
+  - **Server Spec Gap Recorded**: Server §8.11 lists only bot Key Transparency (KT) endpoints (`GET /kt/bot/:id`, `GET /kt/bot/:id/history`, `GET /kt/snapshot`). The user KT endpoint needed for independent publisher key verification against user identity keys is absent from the server spec. The SDK dependency injection interface `lookupSignerPubkey(userId)` decouples the cache from user KT endpoint wiring (to be implemented in B-017).
+  - Registered `publisher-cache` batch in `packages/bot/tests/batch-manifest.toml` and authored 24 test cases in `packages/bot/tests/unit/publisher-cache.test.js` covering all required cases in §10.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
