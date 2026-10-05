@@ -463,7 +463,13 @@ pub async fn obtain_username_token(app: &Router, username: &str) -> String {
         .finalize(username.as_bytes(), &eval_element)
         .expect("OprfClient::finalize failed");
 
-    URL_SAFE_NO_PAD.encode(finalize_res)
+    let hk =
+        hkdf::Hkdf::<sha2::Sha256>::from_prk(&finalize_res).expect("valid PRK length for HKDF");
+    let mut lookup_token_bytes = [0u8; 64];
+    hk.expand(b"username-lookup-v1", &mut lookup_token_bytes)
+        .expect("expand length ok");
+
+    URL_SAFE_NO_PAD.encode(lookup_token_bytes)
 }
 
 #[allow(dead_code)]

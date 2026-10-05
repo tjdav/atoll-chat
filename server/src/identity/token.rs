@@ -1,10 +1,11 @@
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 
-/// Validates that a string is a well-formed username token.
+/// Validates that a string is a well-formed username token (holding lookup_token).
 ///
-/// A token is the 86-character unpadded base64url encoding of the
-/// 64-byte SHA-512 output of the client's OprfClient::finalize().
+/// Under V3 token split (§6.19), the server stores `lookup_token`, which is the
+/// 86-character unpadded base64url encoding of the 64-byte HKDF-Expand output
+/// of the raw OPRF finalization token with info "username-lookup-v1".
 pub fn validate_token(token: &str) -> Result<(), TokenError> {
     if token.len() != 86 {
         tracing::debug!("Token validation failed: invalid length {}", token.len());

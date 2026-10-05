@@ -16,7 +16,8 @@ use tracing::info;
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterStartRequest {
-    pub username_token: String,
+    pub lookup_token: Option<String>,
+    pub username_token: Option<String>,
     pub registration_request: String,
     pub altcha: Option<String>,
 }
@@ -92,19 +93,35 @@ fn decode_base64(s: &str) -> Result<Vec<u8>, ApiError> {
 
 pub async fn register_start(
     State(state): State<AppState>,
-    Json(body): Json<RegisterStartRequest>,
+    body_val: Json<serde_json::Value>,
 ) -> Result<Json<RegisterStartResponse>, ApiError> {
-    // 1. Validate username_token format
-    let username_token = body.username_token.trim().to_string();
-    if validate_token(&username_token).is_err() {
+    let obj = body_val
+        .as_object()
+        .ok_or_else(|| ApiError::BadRequest("invalid request body".to_string()))?;
+
+    // Token split: raw token field must not be sent to server
+    if obj.contains_key("token") {
+        return Err(ApiError::BadRequest("token_not_accepted".to_string()));
+    }
+
+    let body: RegisterStartRequest = serde_json::from_value(body_val.0)
+        .map_err(|e| ApiError::BadRequest(format!("invalid json body: {e}")))?;
+
+    // 1. Validate lookup_token format
+    let lookup_token = match body.lookup_token.or(body.username_token) {
+        Some(ref tok) if !tok.trim().is_empty() => tok.trim().to_string(),
+        _ => return Err(ApiError::BadRequest("missing_field".to_string())),
+    };
+
+    if validate_token(&lookup_token).is_err() {
         return Err(ApiError::BadRequest("invalid_username_token".to_string()));
     }
 
     // 2. Validate ALTCHA
     validate_altcha(&state.altcha_config, body.altcha.as_deref())?;
 
-    // 3. Extract credential_id bytes from token
-    let credential_id = token_bytes(&username_token)
+    // 3. Extract credential_id bytes from lookup_token
+    let credential_id = token_bytes(&lookup_token)
         .map_err(|_| ApiError::BadRequest("invalid_username_token".to_string()))?;
 
     // 4. Validate registration_request
@@ -115,10 +132,10 @@ pub async fn register_start(
         ));
     }
 
-    // 5. Check if user with username_token already exists and deleted_at IS NULL
+    // 5. Check if user with username_token (lookup_token) already exists and deleted_at IS NULL
     let existing_user: Option<(String,)> =
         sqlx::query_as("SELECT id FROM users WHERE username_token = ? AND deleted_at IS NULL")
-            .bind(&username_token)
+            .bind(&lookup_token)
             .fetch_optional(&state.pool)
             .await?;
 
@@ -143,7 +160,7 @@ pub async fn register_start(
     let registration_id = URL_SAFE_NO_PAD.encode(rand_bytes);
 
     let pending = PendingRegistration {
-        username_token: username_token.clone(),
+        username_token: lookup_token.clone(),
         credential_id,
         created_at: Instant::now(),
     };
@@ -164,8 +181,19 @@ pub async fn register_start(
 
 pub async fn register_finish(
     State(state): State<AppState>,
-    Json(body): Json<RegisterFinishRequest>,
+    body_val: Json<serde_json::Value>,
 ) -> Result<Json<RegisterFinishResponse>, ApiError> {
+    let obj = body_val
+        .as_object()
+        .ok_or_else(|| ApiError::BadRequest("invalid request body".to_string()))?;
+
+    // Token split: raw token field must not be sent to server
+    if obj.contains_key("token") {
+        return Err(ApiError::BadRequest("token_not_accepted".to_string()));
+    }
+
+    let body: RegisterFinishRequest = serde_json::from_value(body_val.0)
+        .map_err(|e| ApiError::BadRequest(format!("invalid json body: {e}")))?;
     // 1. Take pending registration from store
     let pending = state
         .registration_store

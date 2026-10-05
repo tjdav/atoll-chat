@@ -623,6 +623,19 @@
   - Size mismatch or hash mismatch deletes temporary files without touching target file path.
   - Partial failures in `fetch` are non-atomic (successful file downloads persist and are skipped on subsequent runs).
 
+## OPRF Identity with Token Split Verification Fact
+- **ID:** Task OPRF Identity Token Split
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Client-facing contract.
+- **Spec / Amendment references:** V3 Spec §6.19, §6.20, §6.21, §7.1, §8.1.1, §8.2.1, §8.2.2, §8.2.3, §11, §12
+- **Wire Contract & Token Split Invariants:**
+  - The client derives `token` (64-byte SHA-512 from `OprfClient::finalize()`) and `lookup_token` (`HKDF-Expand(token, "username-lookup-v1", 64)`).
+  - The client sends `lookup_token` in the `lookup_token` JSON request field to the server. `token` is never sent to the server. Requests containing a `token` field are rejected with 400 Bad Request or ignored.
+  - The server stores `lookup_token` in `users.username_token` (`TEXT NOT NULL UNIQUE`, 86-char base64url).
+  - Display name (`encrypted_display`) and device name encryption keys are derived on the client from `token` (not `lookup_token` and not anything the server stores). The server stores `encrypted_display` as opaque ciphertext and never decrypts it.
+  - `POST /auth/login/start` returns 200 `{ login_id, credential_response }` for both known and unknown `lookup_token`s using a dummy OPAQUE registration record (`password_file = None`) to prevent enumeration.
+  - `POST /users/lookup` rate limiting (`RATE_LOOKUP_PER_MIN`) is the enumeration defense per §12. Timing padding is not applied.
+
 ## Task 39a — Capabilities Audit, Consolidated Response Shape, and Disabled-State Invariants
 - **ID:** Task 39a
 - **Date:** 2026-10-04

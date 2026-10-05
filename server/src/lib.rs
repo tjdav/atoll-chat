@@ -508,7 +508,8 @@ pub fn build_app(state: AppState) -> Router {
 
     let mut app = Router::new()
         .route("/health", get(routes::health::handler))
-        .route("/ready", get(routes::ready::handler));
+        .route("/ready", get(routes::ready::handler))
+        .route("/oprf/blind", post(routes::oprf::blind));
 
     let hosting_mode = state
         .config

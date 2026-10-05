@@ -26,6 +26,7 @@ files = [
     "recovery_endpoints",
     "register_oprf",
     "registration",
+    "token_split",
 ]
 timeout_seconds = 60
 

@@ -26,11 +26,17 @@ async fn setup_test_app() -> TestEnv {
     let db_path = dir.path().join("test.db");
     let oprf_key_path = dir.path().join("oprf.key");
     let storage_dir = dir.path().join("storage");
+    let stt_dir = dir.path().join("models/stt");
+    let tts_dir = dir.path().join("models/tts");
+    std::fs::create_dir_all(&stt_dir).unwrap();
+    std::fs::create_dir_all(&tts_dir).unwrap();
 
     std::env::set_var("APP_ENV", "development");
     std::env::set_var("DATABASE_URL", format!("sqlite:{}", db_path.display()));
     std::env::set_var("DB_PATH", db_path.to_str().unwrap());
     std::env::set_var("STORAGE_FS_PATH", storage_dir.to_str().unwrap());
+    std::env::set_var("STT_MODELS_PATH", stt_dir.to_str().unwrap());
+    std::env::set_var("TTS_MODELS_PATH", tts_dir.to_str().unwrap());
     std::env::set_var("KEY_TRANSPARENCY_ENABLED", "true");
     std::env::set_var("OPAQUE_OPRF_KEY_PATH", oprf_key_path.to_str().unwrap());
 
