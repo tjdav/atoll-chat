@@ -65,3 +65,9 @@ name = "config"
 files = [
   "unit/config.test.js",
 ]
+
+[[batch]]
+name = "signing"
+files = [
+  "unit/signing.test.js",
+]

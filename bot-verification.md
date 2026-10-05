@@ -195,3 +195,20 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-013 Verification Fact
+- **Signing Primitives & Payload Encoders (`packages/bot/src/runtime/crypto/signing.js`)**:
+  - Implemented Ed25519 signing primitives and payload encoders exported as `sign`, `verify`, `keyObjectFromSeed`, `keyObjectFromPublicKey`, `lengthPrefixed`, `u64BE`, `encodeBotMessagePayload`, and `encodePublisherKeyPayload`.
+  - Ed25519 32-byte seeds are wrapped into Node.js `KeyObject` instances using PKCS#8 DER prefix `30 2e 02 01 00 30 05 06 03 2b 65 70 04 22 04 20` for private keys and SPKI DER prefix `30 2a 30 05 06 03 2b 65 70 03 21 00` for public keys.
+  - Length-prefixed encoding (`lengthPrefixed`) encodes 4-byte big-endian unsigned integer length prefixes followed by raw bytes.
+  - 64-bit integer encoding (`u64BE`) accepts `number` (validated non-negative integer <= `Number.MAX_SAFE_INTEGER`) and `bigint` (validated non-negative <= 2^64-1), writing 8-byte big-endian output.
+  - `encodeBotMessagePayload` implements Server §8.10 bot message context encoding order: `lengthPrefixed(roomId) || u64BE(epoch) || lengthPrefixed(contentType) || lengthPrefixed(ciphertext)`.
+  - `encodePublisherKeyPayload` implements Server §8.10 publisher key publication context encoding order: `lengthPrefixed(roomId) || u64BE(epoch) || publisherPublicKey` (raw 32 bytes, enforcing length 32).
+  - Ed25519 signatures are deterministic (RFC 8032). Signature of the all-zeros seed over `'test'` produces the pinned RFC test vector output.
+  - Registered `signing` batch in `packages/bot/tests/batch-manifest.toml` and authored 26 test cases in `packages/bot/tests/unit/signing.test.js` covering all required cases.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).

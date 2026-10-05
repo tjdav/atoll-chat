@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 32
-- **Done:** 13
+- **Done:** 14
 - **In Progress:** 0
-- **Todo:** 19
+- **Todo:** 18
 
 ---
 
@@ -32,7 +32,7 @@ Track progress across Bot SDK implementation tasks.
 | B-010 | Logging | done | §14.11 | Structured redacting logger for runtime and author output |
 | B-011 | Idempotency | done | §10.3 | Idempotency store for trigger deduplication |
 | B-012 | Config | done | §14.2, §14.3 | Config loader with TOML parsing and env var precedence (Deliverable split from config.js to config/index.js plus config/toml.js) |
-| B-013 | Rate Limits | todo | §10.4 | Client-side rate limiter and bucket manager |
+| B-013 | Signing | done | §6.1, §10.1 | Ed25519 signing primitives and length-prefixed payload encoders |
 | B-014 | State | todo | §10.2 | Runtime state machine and lifecycle manager |
 | B-015 | REST Client | todo | §14.2 | Server REST API client wrapper |
 | B-016 | WebSocket | todo | §14.3 | WebSocket connection manager with backoff reconnect |
