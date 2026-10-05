@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 50
-- **Done**: 10
-- **Pending**: 40
+- **Done**: 11
+- **Pending**: 39
 - **Blocked**: 0
 
 ## Critical Path
@@ -77,9 +77,10 @@ Two hard gates:
   - Depends on: B-003
   - Deliverable: `packages/bot/src/runtime/keystore/`
   - Note: Split from the original B-008 scope. Keychain and prompt resolvers are B-008a and B-008b.
-- [ ] **B-008a**: Implement the OS keychain resolvers (macOS `security`, Linux `secret-tool`, Windows `cmdkey`)
+- [x] **B-008a**: Implement the OS keychain resolvers (macOS `security`, Linux `secret-tool`, Windows `cmdkey`)
   - Depends on: B-008
   - Deliverable: `packages/bot/src/runtime/keystore/resolvers/keychain.js`
+  - Note: Windows mechanism deviates from spec §14.9. Uses PowerShell + P/Invoke to `CredRead`, not `cmdkey`. See `bot-verification.md`.
 - [ ] **B-008b**: Implement the interactive prompt resolver (stdin with masking)
   - Depends on: B-008
   - Deliverable: `packages/bot/src/runtime/keystore/resolvers/prompt.js`

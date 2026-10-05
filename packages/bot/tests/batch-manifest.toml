@@ -17,3 +17,9 @@ name = "keystore"
 files = [
   "unit/keystore.test.js",
 ]
+
+[[batch]]
+name = "keychain-resolver"
+files = [
+  "unit/keychain-resolver.test.js",
+]

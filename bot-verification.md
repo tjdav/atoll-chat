@@ -97,3 +97,17 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-008a Verification Fact
+- **OS Keychain Resolvers (`packages/bot/src/runtime/keystore/resolvers/keychain.js`)**:
+  - The keychain entry identification convention uses service `atoll-bot` and account `<bot_id>`. The Windows target name is `atoll-bot:<bot_id>`.
+  - Windows retrieval uses PowerShell with an inline P/Invoke to `CredRead` from `advapi32.dll`. The spec's reference to `cmdkey` is amended because `cmdkey` cannot retrieve passwords.
+  - The runner defaults to a 10-second timeout (`timeoutMs: 10_000`).
+  - Every runner failure or error defers silently by returning `null`. The resolver never throws.
+  - Registered `keychain-resolver` batch in `packages/bot/tests/batch-manifest.toml` and implemented unit tests in `packages/bot/tests/unit/keychain-resolver.test.js` covering all 13 required cases using synthetic runner injection without invoking real OS binaries.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
