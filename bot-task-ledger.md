@@ -9,9 +9,9 @@ This ledger tracks task completion for `@atoll/bot`.
 
 ## Summary
 
-- **Total Tasks**: 48
-- **Done**: 9
-- **Pending**: 39
+- **Total Tasks**: 50
+- **Done**: 10
+- **Pending**: 40
 - **Blocked**: 0
 
 ## Critical Path
@@ -73,9 +73,16 @@ Two hard gates:
 
 ## Runtime Primitives
 
-- [ ] **B-008**: Implement the keystore (scrypt + AES-256-GCM, keychain fallback, export/import)
+- [x] **B-008**: Implement the keystore core (scrypt + AES-256-GCM, outer schema, env resolver, Keystore class)
   - Depends on: B-003
   - Deliverable: `packages/bot/src/runtime/keystore/`
+  - Note: Split from the original B-008 scope. Keychain and prompt resolvers are B-008a and B-008b.
+- [ ] **B-008a**: Implement the OS keychain resolvers (macOS `security`, Linux `secret-tool`, Windows `cmdkey`)
+  - Depends on: B-008
+  - Deliverable: `packages/bot/src/runtime/keystore/resolvers/keychain.js`
+- [ ] **B-008b**: Implement the interactive prompt resolver (stdin with masking)
+  - Depends on: B-008
+  - Deliverable: `packages/bot/src/runtime/keystore/resolvers/prompt.js`
 - [ ] **B-009**: Implement the encrypted storage backend (`_runtime:` namespace, `clear` semantics)
   - Depends on: B-008
   - Deliverable: `packages/bot/src/runtime/storage/`

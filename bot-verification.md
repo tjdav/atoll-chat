@@ -81,3 +81,19 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - Runtime self-test confirmed detection of unbatched files and duplicate batch entries.
   - `pnpm --filter @atoll/bot typecheck`, `lint`, `test`, and `build` passed cleanly (status 0).
+
+## Task B-008 Verification Fact
+- **Keystore Core Architecture**:
+  - Authored `packages/bot/src/runtime/keystore/crypto.js`: scrypt key derivation (N=2^17, r=8, p=1, maxmem=256 MiB) and AES-256-GCM encryption/decryption with 12-byte nonces.
+  - Authored `packages/bot/src/runtime/keystore/schema.js`: `validateOuter` and `validatePlaintext` for outer and inner JSON schema validation with descriptive error reasons.
+  - Authored `packages/bot/src/runtime/keystore/resolvers/index.js` and `env.js`: resolver chain execution runner and `envResolver`.
+  - Authored `packages/bot/src/runtime/keystore/index.js`: `Keystore` class and `createKeystore` free function. Outer file structure includes plaintext `bot_id` per spec amendment §14.9. File mode is strictly `0o600` on write.
+  - `Keystore.load` distinguishes `KeystoreLockedError` (missing secret/file or invalid secret/tag) from `KeystoreCorruptError` (invalid JSON, outer/inner schema validation failures, bot_id mismatch).
+  - `Keystore.save` regenerates fresh salt and nonce on every save.
+  - Registered `keystore` batch in `packages/bot/tests/batch-manifest.toml` and implemented unit tests in `packages/bot/tests/unit/keystore.test.js` covering all 14 required cases.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
