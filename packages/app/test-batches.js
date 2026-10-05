@@ -45,6 +45,7 @@ export default [
       'tests/unit/extend-vocab.test.js',
       'tests/unit/extend-vocab-cli.test.js',
       'tests/unit/extend-first-party.test.js',
+      'tests/unit/router.test.js',
     ],
   },
   {
@@ -58,6 +59,7 @@ export default [
       'tests/component/css-applied.spec.js',
       'tests/component/hydration.spec.js',
       'tests/component/shell.spec.js',
+      'tests/component/rail.spec.js',
     ],
   },
   {

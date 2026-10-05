@@ -1,6 +1,7 @@
 import { defineConfig } from 'coralite-scripts'
 import postcssImport from 'postcss-import'
 import extensionPlugin from '@atoll/extend/plugin'
+import routerPlugin from './src/plugins/router-plugin.js'
 import i18nPlugin from './src/plugins/i18n-plugin.js'
 import { extensions } from './src/extensions/index.js'
 
@@ -29,6 +30,7 @@ export default defineConfig({
   },
   plugins: [
     extensionPlugin({ extensions }),
+    routerPlugin(),
     i18nPlugin({ defaultLocale: 'en' })
   ]
 })

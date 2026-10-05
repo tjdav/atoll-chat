@@ -42,6 +42,7 @@ export default {
   'boot_loading': 'Caricamento…',
   'boot_error_failed': 'Avvio non riuscito.',
 
+  'app_rail_aria_label': 'Estensioni',
   'app_shell_rail_label': 'Navigazione principale',
   'app_shell_bottom_nav_label': 'Navigazione principale',
   'app_shell_list_label': 'Conversazioni',
