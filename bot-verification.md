@@ -36,3 +36,11 @@
   - `pnpm --filter @atoll/bot typecheck` passed (status 0).
   - `pnpm --filter @atoll/bot lint` passed (status 0).
   - Runtime verification script confirmed all 20 subclass codes, instanceof isolation, cause propagation, and zero duplicate error codes.
+
+## Task B-004 Verification Fact
+- **Identity Factories (`defineSettings`, `defineCommand`, `defineCommands`, `defineTrigger`)**:
+  - Authored identity factory ES modules at `packages/bot/src/define-settings.js`, `packages/bot/src/define-command.js`, `packages/bot/src/define-commands.js`, and `packages/bot/src/define-trigger.js` containing JSDoc signatures and single named exports verbatim per spec §4.1–§4.4.
+  - Confirmed the four factories are callable as identity functions from an ES module context and return their arguments unchanged (`===` identity equality).
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - Runtime verification script confirmed ES module exports and identity behavior (`all checks passed`).

@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 47
-- **Done**: 4
-- **Pending**: 43
+- **Done**: 5
+- **Pending**: 42
 - **Blocked**: 0
 
 ## Critical Path
@@ -51,7 +51,7 @@ Two hard gates:
 
 ## Authoring Surface
 
-- [ ] **B-004**: Implement identity factories (`defineSettings`, `defineCommand`, `defineCommands`, `defineTrigger`)
+- [x] **B-004**: Implement identity factories (`defineSettings`, `defineCommand`, `defineCommands`, `defineTrigger`)
   - Depends on: B-002, B-003
   - Deliverable: `packages/bot/src/define-settings.js`, `packages/bot/src/define-command.js`, `packages/bot/src/define-commands.js`, `packages/bot/src/define-trigger.js`
 - [ ] **B-005**: Implement `defineBot` and `validateConfig`
