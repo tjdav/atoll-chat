@@ -177,6 +177,7 @@ files = [
     "read_state_write",
     "starred_items",
     "sync_channel_auth",
+    "sync_contract",
     "sync_endpoint",
     "sync_foundation",
     "sync_seq",

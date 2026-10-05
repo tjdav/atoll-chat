@@ -147,4 +147,5 @@ pub mod memory;
 pub mod oprf_audit;
 pub mod rate_limits;
 pub mod sessions;
+pub mod sync;
 pub mod welcomes;

@@ -108,7 +108,6 @@ pub async fn write_read_state(
         "room_id": req.room_id,
         "last_read_message_id": result_row.last_read_message_id,
         "user_seq": result_row.user_seq,
-        "updated_at": result_row.updated_at,
     });
     let envelope = UserEventEnvelope::new("read.sync", result_row.user_seq, payload);
     if let Err(e) = publish_user_event(publisher, &req.user_id, &envelope).await {
