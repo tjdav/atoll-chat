@@ -11,7 +11,8 @@
     "build": "coralite-scripts build",
     "test": "coralite-scripts test",
     "test:batch": "node scripts/run-batch.js",
-    "check-batches": "node scripts/check-batches.js"
+    "check-batches": "node scripts/check-batches.js",
+    "extensions:vocab": "node scripts/extensions-vocab.js"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.0",

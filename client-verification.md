@@ -225,7 +225,7 @@ build task runs.
 | Config location | `styles.processors.postcss.plugins: [postcssImport()]` in `packages/app/coralite.config.js` |
 | Default build behavior | `coralite-scripts build` preserves native `@import` statements verbatim unless `postcss-import` is explicitly configured |
 | Output bundle verification | `packages/app/tests/unit/css-bundle.test.js` runs production build and asserts file size >500B, absence of `@import` statements, and presence of design tokens and layers |
-| Visual verification pattern | `packages/app/tests/component/css-applied.spec.js` asserts computed tokens, served CSS content, and captures `test-results/css-applied.png` screenshot and video |
+| Visual verification pattern | `packages/app/tests/component/css-applied.spec.js` asserts computed tokens, served CSS content, and capturing `test-results/css-applied.png` screenshot and video |
 | Recorded Coralite feedback | CF-004 (Tier 4 enhancement for dev/prod CSS `@import` resolution divergence) |
 
 ### C-AUTH-4 — Session Boot Sequence & Gate Contract on `app.html`
@@ -359,3 +359,20 @@ build task runs.
 | Component Location Convention | Extension components live under `src/components/` (e.g. `src/components/extensions/<slug>/`) discovered via Coralite's `components` glob |
 | Spec Ambiguity Resolution (§26.2 vs §4.4) | `defineExtension(ext)` returns a normalized extension object (not a Coralite plugin); `extensionPlugin` is the Coralite plugin exported from `@atoll/extend/plugin` |
 | Unit Tests & Documentation | Unit tests in `extend-define-extension.test.js`, `extend-registry.test.js`, `extend-ctx.test.js`, `extend-plugin.test.js` (registered in `unit-smoke`); documentation in `packages/app/docs/plugins/extensions.md` and `README.md` |
+
+### C-CHAT-3 — Deep Extension Validation, Phase 2 Link Validation & Vocabulary CLI
+
+**Verified:** 2026-10-05
+
+| Fact / Symbol | Value / Signature & Behavior |
+|---|---|
+| SDK Constants Export (`constants.js`) | Exports `EXTENSION_API_VERSION`, `RESERVED_ROUTES` (`['index', '404']`), `RESERVED_PREFERENCE_KEYS` (`['room_order']`), `RESERVED_PREFERENCE_PREFIXES` (`['_system:']`), `RESERVED_SLOTS` (`[]`), `PERMISSIONS` (`['network', 'storage']`), `PLATFORMS` (`['mobile', 'tablet', 'desktop']`), `SURFACES` (`['panel', 'overlay']`), and regex patterns (`PREFERENCE_KEY_PATTERN`, `EVENT_NAME_PATTERN`, `ROUTE_PATTERN`, `ID_PATTERN`, `API_VERSION_PATTERN`, `COMPONENT_TAG_PATTERN`, `SCHEMA_TYPE_PATTERN`) |
+| Phase 1 Deep Shape Validation (`validate.js`) | Checks detailed shapes for `permissions`, `slots`, `emits`, `publicEvents`, `listens`, `sessions`, `preferences`, `assets`, `locales`, component tag naming (`x-<slug>-` prefix for third-party extensions), reserved routes, and reserved slots. Error messages formatted as `<context>: <reason>. <suggestion>` |
+| Phase 2 Cross-Extension Link Validation (`validate-link.js`) | `validateLink(registry)` verifies cross-extension constraints: duplicate detail/list routes, route collisions, unresolved slot mounts, non-multiple slot overfill (`multiple: false`), unmatched event listeners, event schema agreement, duplicate session types, reserved preference key declarations, circular slot mounts, and warnings for rail order collisions, duplicate action icons, and scope key type inconsistencies |
+| Vocabulary Aggregation (`vocab.js`) | `buildVocabulary(registry, options)` aggregates `components` (scanned recursively from `options.componentsDir` for `<template id="...">`), `slots`, `events`, `routes`, `sessions`, `preferences`, `permissions`, `icons`, `platforms`, `surfaces`, and `reserved` names |
+| Plugin Eager Validation (`plugin.js`) | `extensionPlugin({ extensions })` runs Phase 1 and Phase 2 validation eagerly during factory call and shares single registry instance across server and client context resolvers |
+| Aggregator Location | `packages/app/src/extensions/index.js` exporting `extensions = []` |
+| Config Integration | `packages/app/coralite.config.js` imports `extensions` from `./src/extensions/index.js` |
+| CLI Script & Package Script | `packages/app/scripts/extensions-vocab.js` exposing testable `main(argv, io)`; registered as `"extensions:vocab": "node scripts/extensions-vocab.js"` in `packages/app/package.json` |
+| Unit Tests | `extend-validate.test.js`, `extend-validate-link.test.js`, `extend-vocab.test.js`, `extend-vocab-cli.test.js` registered under `unit-smoke` in `packages/app/test-batches.js` |
+| Documentation | Updated `packages/app/docs/plugins/extensions.md` with Build-Time Validation and The Vocabulary Command sections |

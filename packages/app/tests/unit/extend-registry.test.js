@@ -4,13 +4,14 @@ import { ExtensionRegistry, defineExtension } from '@atoll/extend'
 
 describe('ExtensionRegistry unit tests', () => {
   function makeExt(id, route, railOrder = null) {
+    const slug = id.split('.').pop()
     const ext = {
       id,
       apiVersion: '1.0.0',
       hostApi: '2.0.0',
       detail: {
         route,
-        component: `${route}-view`,
+        component: `x-${slug}-${route}-view`,
         title: route
       }
     }

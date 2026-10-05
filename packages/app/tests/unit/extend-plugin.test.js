@@ -8,7 +8,7 @@ describe('extensionPlugin Coralite plugin unit tests', () => {
     id: 'vendor.ext-one',
     apiVersion: '1.0.0',
     hostApi: '2.0.0',
-    detail: { route: 'ext-one', component: 'ext-one-view', title: 'Ext One' }
+    detail: { route: 'ext-one', component: 'x-ext-one-view', title: 'Ext One' }
   })
 
   test('1. The default export is a function', () => {

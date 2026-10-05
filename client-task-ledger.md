@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 1 |
-| Done | 24 |
+| Pending | 3 |
+| Done | 25 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -29,7 +29,7 @@ or modify the server's ledger.
 | C-INFRA-0 | Establish client tracking files | done | C-INFRA-0 | — |
 | C-CORALITE-FEEDBACK | Establish Coralite Upstream Feedback Policy | done | C-INFRA-0 | — |
 | C-INFRA-1 | Monorepo setup | done | C-INFRA-0 | — |
-| C-INFRA-2 | Coralite & Plugin Configuration | done | C-INFRA-1 | — |
+| C-INFRA-2 | Coralite & Plugin Configuration | done | C-INFRA-2 | — |
 | C-INFRA-2b | Unblock Coralite Build Pipeline | done | C-INFRA-2 | — |
 | C-INFRA-3 | Establish Client Test Infrastructure and Batch Model | done | C-INFRA-1 | unit-smoke |
 | C-INFRA-4 | Playwright Browser Testing Setup | done | C-INFRA-2, C-INFRA-3 | component-smoke |
@@ -48,7 +48,7 @@ or modify the server's ledger.
 | C-AUTH-5 | Account Recovery Flow and Session Revocation | done | C-AUTH-3a | — |
 | C-CHAT-1 | Messenger Shell & Three-Panel Layout | done | C-INFRA-2, C-INFRA-5 | unit-smoke, component-smoke |
 | C-CHAT-2 | Extension SDK (@atoll/extend) Core Implementation | done | C-INFRA-1 | unit-smoke |
-| C-CHAT-3 | Extension System Validation & Vocabulary Command | pending | C-CHAT-2 | — |
+| C-CHAT-3 | Extension System Validation & Vocabulary Command | done | C-CHAT-2 | unit-smoke |
 | C-CHAT-4 | First-Party Core Extensions Skeleton | pending | C-CHAT-2, C-CHAT-3 | — |
 | C-CHAT-5 | Conversation List & Room Creation UI | pending | C-CHAT-1, C-CHAT-4, C-INFRA-3 | — |
 
@@ -270,7 +270,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
 - **C-V-E Deliverables & Status:**
   - Status: `done`.
   - Produced verification report at `client-verification/cv-e/report.md`.
-  - Determined ground truth for Coralite rc.5 plugin context delivery: `client.context` uses two-phase curried resolver `(pluginContext) => (instanceContext) => contextObject`; delivers plugin context strictly to `client()` under `ctx.<pluginName>` (e.g. `ctx.i18n.t(...)`).
+  - Determined ground truth for Coralite rc.5 plugin context delivery: `client.context` uses two-phase curried resolver `(pluginContext) => (instanceContext) => contextObject`; delivers plugin context strictly to `client()` under `ctx.<pluginName>` (e.g., `ctx.i18n.t(...)`).
   - Proved `getters` receive strictly `{ state, root, refs, slots, signal }` without plugin context.
   - Proved `server()` returns merge into server state and populate `<c-token>` placeholders without `attributes` declarations.
   - Proved `state.x = val` in `client()` triggers reactive updates without `attributes` declarations.
@@ -302,7 +302,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Registered `tests/unit/components-defineComponent.test.js` in `unit-smoke` batch and `tests/component/hydration.spec.js` in `component-smoke` batch in `packages/app/test-batches.js`.
 - **C-CHAT-1 Deliverables & Status:**
   - Status: `done`.
-  - Created `packages/app/src/components/shell/messenger-shell.html`, `rail-host.html`, and `surface-host.html` wrapped in `defineComponent`.
+  - Created `packages/app/src/components/shell/messenger-shell.html`, `rail-host.html`, `surface-host.html` wrapped in `defineComponent`.
   - Implemented responsive layout frame: Desktop (≥1024px: 64px rail, list 320–400px, detail 1fr), Tablet (768–1023px: list + detail side-by-side, bottom nav), Mobile (<768px: detail + bottom nav).
   - Updated `packages/app/src/pages/app.html` rendering `messenger-boot` and `messenger-shell` as siblings.
   - Updated `messenger-boot.html` removing `<slot name="shell">` and adding `:host([ready]) { display: none !important; }` override.
@@ -316,16 +316,29 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Implemented `@atoll/extend` SDK core modules in `packages/extend/src/`:
     - `constants.js`: `EXTENSION_API_VERSION = '1.0.0'`.
     - `normalize.js`: `normalizeExtension(ext)` applying spec defaults to extension objects, `detail`, `list`, and `rail` without input mutation.
-    - `validate.js`: `validateExtensionShape(ext)` verifying required fields (`id`, `apiVersion`, `hostApi`, `detail`, `detail.route`, `detail.component`, `detail.title`), `rail.label` requirement, `core.` reserved prefix guard, array fields, and lifecycle hook types.
+    - `validate.js`: `validateExtensionShape(ext)` verifying required fields (`id`, `apiVersion`, `hostApi`, `detail`, `detail.route`, `detail.component`, `detail.title`), `rail.label` requirement, `core.` reserved prefix guard, array types, and lifecycle function types.
     - `define-extension.js`: `defineExtension(ext)` validating, normalizing, and attaching `_sdkApiVersion`.
     - `registry.js`: `ExtensionRegistry` class (`add`, `get`, `has`, `list`, `byRailOrder`, `ownerOfRoute`, `size`).
-    - `ctx.js`: `createCtx({ extension, services, invocation })` producing fresh `ctx` objects with wrapped service accessors throwing descriptive missing-plugin errors when unsupplied.
+    - `ctx.js`: `createCtx({ extension, services, invocation })` producing fresh `ctx` object with `id`, `surface`, `scope`, `selection`, `position`, `platform`, `capabilities`, `state`, wrapped `storage`/`preferences` objects, and function accessors (`navigate`, `back`, `present`, `dismiss`, `toast`, `notify`, `openExternal`, `asset`, `hasPermission`, `fetch`, `fetchUserUrl`, `t`) that throw descriptive missing-plugin errors when unsupplied.
     - `plugin.js`: Default export Coralite plugin factory `extensionPlugin({ extensions, services })` returning plugin named `'extensions'` with two-phase `server.context` and `client.context` and `pluginContext` singleton registry caching.
     - `index.js`: Re-exporting public SDK surface.
   - Registered `extensionPlugin({ extensions: [] })` as first item in `packages/app/coralite.config.js` `plugins` array.
   - Created unit test suites (`extend-define-extension.test.js`, `extend-registry.test.js`, `extend-ctx.test.js`, `extend-plugin.test.js`), registered under `unit-smoke` batch in `packages/app/test-batches.js`.
-  - Created documentation at `packages/app/docs/plugins/extensions.md` with 11 normative sections and updated `packages/app/docs/plugins/README.md`.
-  - Resolved ambiguity between spec §26.2 and §4.4 in favor of config: `defineExtension` returns a normalized extension object; `extensionPlugin` is the Coralite plugin exported from `@atoll/extend/plugin`.
+  - Created documentation at `packages/app/docs/plugins/extensions.md` and `README.md`.
+  - Resolved ambiguity between spec §26.2 and §4.4 in favor of config: `defineExtension(ext)` returns a normalized extension object; `extensionPlugin` is the Coralite plugin exported from `@atoll/extend/plugin`.
+- **C-CHAT-3 Deliverables & Status:**
+  - Status: `done`.
+  - Created `packages/extend/src/constants.js` exporting `EXTENSION_API_VERSION`, reserved lists (`RESERVED_ROUTES`, `RESERVED_PREFERENCE_KEYS`, `RESERVED_PREFERENCE_PREFIXES`, `RESERVED_SLOTS`), allowlists (`PERMISSIONS`, `PLATFORMS`, `SURFACES`), and validation regex patterns.
+  - Deepened Phase 1 shape validation in `packages/extend/src/validate.js` checking shape, permissions allowlist, slot target strings, component tag naming conventions (`x-<slug>-` prefix for third-party extensions), event names and non-nested schemas, listener handlers, session properties, preference keys/prefixes, and error message formatting (`<context>: <reason>. <suggestion>`).
+  - Created `packages/extend/src/validate-link.js` performing Phase 2 cross-extension link validation (duplicate detail/list routes, route collisions, unresolved slot mounts, non-multiple slot overfill, unmatched listeners, event schema agreement, duplicate session types, reserved preference keys, circular slot mounts, and warnings for rail order collisions, duplicate action icons, and scope key type inconsistencies).
+  - Created `packages/extend/src/vocab.js` implementing `buildVocabulary(registry, options)` to aggregate components (scanning `src/components/` recursively for template IDs), slots, events, routes, sessions, preferences, permissions, icons, platforms, surfaces, and reserved names.
+  - Extended `packages/extend/src/plugin.js` running Phase 1 and Phase 2 validation eagerly on factory creation and shared registry across contexts.
+  - Extended `packages/extend/src/index.js` re-exporting `validateLink`, `buildVocabulary`, and all constants.
+  - Created `packages/app/src/extensions/index.js` aggregator exporting `extensions = []`.
+  - Updated `packages/app/coralite.config.js` importing `extensions` from `./src/extensions/index.js`.
+  - Created `packages/app/scripts/extensions-vocab.js` testable CLI script and added `"extensions:vocab": "node scripts/extensions-vocab.js"` to `packages/app/package.json`.
+  - Updated `packages/app/docs/plugins/extensions.md` with Build-Time Validation and The Vocabulary Command sections.
+  - Added unit test suites (`extend-validate.test.js`, `extend-validate-link.test.js`, `extend-vocab.test.js`, `extend-vocab-cli.test.js`), registered in `unit-smoke` in `test-batches.js`.
 
 ## Component Authoring Policy
 

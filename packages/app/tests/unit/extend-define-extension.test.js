@@ -9,7 +9,7 @@ describe('defineExtension unit tests', () => {
     hostApi: '2.0.0',
     detail: {
       route: 'test-plugin',
-      component: 'test-plugin-view',
+      component: 'x-test-plugin-view',
       title: 'Test Plugin'
     }
   }
@@ -55,7 +55,7 @@ describe('defineExtension unit tests', () => {
       hostApi: '2.0.0',
       detail: {
         route: 'immutable-test',
-        component: 'immutable-view',
+        component: 'x-immutable-test-view',
         title: 'Immutable Test'
       }
     }
@@ -74,7 +74,7 @@ describe('defineExtension unit tests', () => {
       defineExtension({
         apiVersion: '1.0.0',
         hostApi: '2.0.0',
-        detail: { route: 'a', component: 'b', title: 'c' }
+        detail: { route: 'a', component: 'x-test-view', title: 'c' }
       })
     }, /Extension id must be a non-empty string/)
   })
@@ -95,7 +95,7 @@ describe('defineExtension unit tests', () => {
         id: 'INVALID_ID!',
         apiVersion: '1.0.0',
         hostApi: '2.0.0',
-        detail: { route: 'a', component: 'b', title: 'c' }
+        detail: { route: 'a', component: 'x-test-view', title: 'c' }
       })
     }, /id must match/)
   })
@@ -106,7 +106,7 @@ describe('defineExtension unit tests', () => {
         id: 'vendor.test',
         apiVersion: '1.0.0',
         hostApi: '2.0.0',
-        detail: { route: 'InvalidRoute!', component: 'b', title: 'c' }
+        detail: { route: 'InvalidRoute!', component: 'x-test-view', title: 'c' }
       })
     }, /detail.route must match/)
   })
@@ -118,7 +118,7 @@ describe('defineExtension unit tests', () => {
         apiVersion: '1.0.0',
         hostApi: '2.0.0',
         rail: { icon: { name: 'test' }, order: 1 },
-        detail: { route: 'test', component: 'test-view', title: 'Test' }
+        detail: { route: 'test', component: 'x-test-view', title: 'Test' }
       })
     }, /label is required when rail is declared/)
 
@@ -129,7 +129,7 @@ describe('defineExtension unit tests', () => {
       hostApi: '2.0.0',
       label: 'Test Extension',
       rail: { icon: { name: 'test' }, order: 1 },
-      detail: { route: 'test', component: 'test-view', title: 'Test' }
+      detail: { route: 'test', component: 'x-test-view', title: 'Test' }
     })
     assert.equal(validWithRail.label, 'Test Extension')
   })

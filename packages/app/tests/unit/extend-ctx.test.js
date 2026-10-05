@@ -9,7 +9,7 @@ describe('createCtx unit tests', () => {
     hostApi: '2.0.0',
     detail: {
       route: 'ctx-test',
-      component: 'ctx-test-view',
+      component: 'x-ctx-test-view',
       title: 'Ctx Test'
     }
   })

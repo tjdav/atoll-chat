@@ -40,6 +40,10 @@ export default [
       'tests/unit/extend-registry.test.js',
       'tests/unit/extend-ctx.test.js',
       'tests/unit/extend-plugin.test.js',
+      'tests/unit/extend-validate.test.js',
+      'tests/unit/extend-validate-link.test.js',
+      'tests/unit/extend-vocab.test.js',
+      'tests/unit/extend-vocab-cli.test.js',
     ],
   },
   {
