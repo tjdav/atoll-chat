@@ -60,3 +60,13 @@
   - `pnpm --filter @atoll/bot lint` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
   - Node.js runtime smoke test passed (`all checks passed`).
+
+## Task B-006 Verification Fact
+- **Type Canaries (`tests/canary/settings.js`, `tests/canary/args.js`)**:
+  - Authored canary files at `packages/bot/tests/canary/settings.js` and `packages/bot/tests/canary/args.js` verifying indexed-access extraction and sibling-contextual substitution.
+  - The two canaries pass cleanly under `pnpm --filter @atoll/bot typecheck` (`tsc --noEmit`).
+  - Performed mutation check: widening `ArgKind` to `string` in `packages/bot/src/types.js` caused `tests/canary/args.js` to fail with `Unused '@ts-expect-error' directive` on the `'banana'` annotation, confirming canary sensitivity. Reverted mutation.
+  - The canary files are type-checked by `pnpm --filter @atoll/bot typecheck` and `pnpm --filter @atoll/bot lint`, and are not executed as runtime unit tests.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).

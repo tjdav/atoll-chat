@@ -10,8 +10,8 @@ This ledger tracks task completion for `@atoll/bot`.
 ## Summary
 
 - **Total Tasks**: 48
-- **Done**: 7
-- **Pending**: 41
+- **Done**: 8
+- **Pending**: 40
 - **Blocked**: 0
 
 ## Critical Path
@@ -63,7 +63,7 @@ Two hard gates:
 - [x] **B-005**: Implement `defineBot` and `validateConfig`
   - Depends on: B-004
   - Deliverable: `packages/bot/src/define-bot.js`
-- [ ] **B-006**: Add type canaries (`tests/canary/settings.js`, `tests/canary/args.js`)
+- [x] **B-006**: Add type canaries (`tests/canary/settings.js`, `tests/canary/args.js`)
   - Depends on: B-005
   - Deliverable: `packages/bot/tests/canary/settings.js`, `packages/bot/tests/canary/args.js`
 - [ ] **B-007**: Add batch manifest and `check-batches` enforcement
