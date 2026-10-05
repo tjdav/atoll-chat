@@ -9,8 +9,8 @@ This ledger tracks task completion for `@atoll/bot`.
 
 ## Summary
 
-- **Total Tasks**: 47
-- **Done**: 5
+- **Total Tasks**: 48
+- **Done**: 6
 - **Pending**: 42
 - **Blocked**: 0
 
@@ -42,9 +42,11 @@ Two hard gates:
 - [x] **B-001**: Create pnpm workspace and `@atoll/bot` package skeleton
   - Depends on: B-V-A
   - Deliverable: `pnpm-workspace.yaml`, `tsconfig.base.json`, `eslint.config.js`, `packages/bot/package.json`, `packages/bot/tsconfig.json`, `packages/bot/tsconfig.build.json`, `packages/bot/eslint.config.js`, `packages/bot/src/index.js`, `packages/bot/src/cli.js`
+  - Deliverable amended by B-004a: `module` changed from `nodenext` to `es2022` and `moduleResolution` from `nodenext` to `bundler`. ESLint `definedTypes` populated; hyphen rule enabled.
 - [x] **B-002**: Author the public type surface (`src/types.js`)
   - Depends on: B-001
   - Deliverable: `packages/bot/src/types.js`
+  - Deliverable amended by B-004a: every `@property` and `@template` in `src/types.js` now carries a description.
 - [x] **B-003**: Author the error hierarchy (`src/errors.js`)
   - Depends on: B-001
   - Deliverable: `packages/bot/src/errors.js`
@@ -54,6 +56,10 @@ Two hard gates:
 - [x] **B-004**: Implement identity factories (`defineSettings`, `defineCommand`, `defineCommands`, `defineTrigger`)
   - Depends on: B-002, B-003
   - Deliverable: `packages/bot/src/define-settings.js`, `packages/bot/src/define-command.js`, `packages/bot/src/define-commands.js`, `packages/bot/src/define-trigger.js`
+  - Deliverable amended by B-004a: every `@param` and `@returns` in the four factory files now carries a description. The `eslint-disable` comments were removed; the rules they suppressed remain enabled.
+- [x] **B-004a**: Adopt the JSDoc description standard and fix module resolution
+  - Depends on: B-001, B-002, B-003, B-004
+  - Deliverable: `tsconfig.base.json`, `eslint.config.js`, `packages/bot/src/types.js`, `packages/bot/src/define-settings.js`, `packages/bot/src/define-command.js`, `packages/bot/src/define-commands.js`, `packages/bot/src/define-trigger.js`
 - [ ] **B-005**: Implement `defineBot` and `validateConfig`
   - Depends on: B-004
   - Deliverable: `packages/bot/src/define-bot.js`
