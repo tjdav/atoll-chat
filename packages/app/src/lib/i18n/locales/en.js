@@ -45,5 +45,8 @@ export default {
   'app_shell_rail_label': 'Primary navigation',
   'app_shell_bottom_nav_label': 'Primary navigation',
   'app_shell_list_label': 'Conversations',
-  'app_shell_detail_label': 'Active view'
+  'app_shell_detail_label': 'Active view',
+
+  'ext_placeholder_heading': 'Under construction',
+  'ext_placeholder_body': 'This surface is not yet implemented.'
 }

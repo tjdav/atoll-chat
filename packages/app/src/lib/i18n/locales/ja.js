@@ -45,5 +45,8 @@ export default {
   'app_shell_rail_label': 'メインナビゲーション',
   'app_shell_bottom_nav_label': 'メインナビゲーション',
   'app_shell_list_label': '会話一覧',
-  'app_shell_detail_label': 'アクティブビュー'
+  'app_shell_detail_label': 'アクティブビュー',
+
+  'ext_placeholder_heading': '工事中',
+  'ext_placeholder_body': 'このサーフェスはまだ実装されていません。'
 }

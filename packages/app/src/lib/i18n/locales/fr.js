@@ -45,5 +45,8 @@ export default {
   'app_shell_rail_label': 'Navigation principale',
   'app_shell_bottom_nav_label': 'Navigation principale',
   'app_shell_list_label': 'Discussions',
-  'app_shell_detail_label': 'Vue active'
+  'app_shell_detail_label': 'Vue active',
+
+  'ext_placeholder_heading': 'En construction',
+  'ext_placeholder_body': 'Cette surface n’est pas encore implémentée.'
 }
