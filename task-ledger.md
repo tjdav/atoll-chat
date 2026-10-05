@@ -174,6 +174,10 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** Step 0 report at `verification/sync-pruning-inspection/report.md`, refactored `SyncPruningJob` in `server/src/cleanup/sync.rs`, added test `test_13_sync_pruning_anomalous_rows_and_logging_contract` in `server/tests/cleanup.rs`, updated `verification.md`.
   - **Batch:** `operations`
+- **Task Rowid-Scoped Deletion and Sync Pruning Test Coverage**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** Step 0 report at `verification/sync-pruning-rowid-delete/report.md`, rowid selection and candidate classification loop in `server/src/cleanup/sync.rs`, `rowid IN (...)` parameter-bound explicit deletion, comprehensive test cases in `server/tests/cleanup.rs` (`test_13` extended, `test_14` added), updated `verification.md`.
+  - **Batch:** `operations`
 
 ## Annotations for Future Tasks
 

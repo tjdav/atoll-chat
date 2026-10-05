@@ -712,3 +712,15 @@
   - Candidates violating `user_seq <= max_user_seq` or missing `user_seq` row are treated as anomalous, incrementing `skipped` count and emitting `tracing::warn!(table = table, user_id = %user_id, "skipped tombstone violating user_seq invariant")`. The `warn` log includes `table` and `user_id`, and omits `user_seq` or other values.
   - Deletion executes strictly on valid candidate `rowid`s via chunked `DELETE FROM {table} WHERE rowid IN (...)` queries, incrementing `deleted` count.
   - Per-table `info` log `tracing::info!(table = table, deleted = rows_deleted, skipped = skipped_count, "pruned tombstones for sync table")` is emitted after processing each table, even when both counts are 0.
+
+## Sync Pruning Rowid-Scoped Deletion and Missing `user_seq` Row Contract
+- **ID:** Task Rowid-Scoped Deletion and Sync Pruning Test Coverage
+- **Date:** 2026-10-05
+- **Status:** Complete. Canonical. Foundation contract.
+- **Spec / Amendment references:** V3 Spec §4.5, §5.1
+- **Verified Facts:**
+  - Candidate query selects `rowid` along with `user_id`, `user_seq`, and `max_user_seq`.
+  - Candidates missing a row in `user_seq` map `max_user_seq` to `None`, resulting in `is_valid = false`; they are treated as anomalous (incrementing `skipped`, emitting `warn` log, excluded from delete).
+  - Valid candidates accumulate into `Vec<i64>` during the classification loop; deletion executes strictly via parameterized `DELETE FROM {table} WHERE rowid IN (...)` queries.
+  - If no candidates pass validation, deletion is skipped entirely and `deleted = 0`.
+  - Comprehensive test suite in `server/tests/cleanup.rs` asserts database retention across single-run, double-run, all-anomalous, missing `user_seq`, and mixed rowid-scoped scenarios.
