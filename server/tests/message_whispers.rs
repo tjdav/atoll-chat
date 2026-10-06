@@ -849,3 +849,170 @@ async fn test_whisper_to_self_single_delivery() {
     assert_eq!(event_data["id"], body["message_id"]);
     assert_eq!(event_data["target_user_ids"], json!([u1]));
 }
+
+#[tokio::test]
+async fn test_target_user_ids_deduplication_on_storage() {
+    let (app, pool, _) = setup_test_app_with_sockudo_mock().await;
+    let (_u1, t1, c1) = create_test_user_with_device(&app, &pool, "wh_dedup1").await;
+    let (u2, _, _) = create_test_user_with_device(&app, &pool, "wh_dedup2").await;
+
+    let room_id = create_room(&app, &t1).await;
+    add_member_to_room(&app, &room_id, &t1, &u2).await;
+
+    let ct = BASE64.encode(b"whisper with dup targets");
+
+    // Send target_user_ids with duplicates: [u2, u2]
+    let (status, body) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct,
+            "target_user_ids": [u2, u2]
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let msg_id = body["message_id"].as_str().unwrap();
+
+    // Query DB raw target_user_ids column
+    let raw_db_targets: String =
+        sqlx::query_scalar("SELECT target_user_ids FROM room_messages WHERE id = ?")
+            .bind(msg_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+    assert_eq!(raw_db_targets, json!([u2]).to_string());
+}
+
+#[tokio::test]
+async fn test_whisper_reply_propagation() {
+    let (app, pool, _) = setup_test_app_with_sockudo_mock().await;
+    let (_u1, t1, c1) = create_test_user_with_device(&app, &pool, "wh_rep1").await;
+    let (u2, t2, c2) = create_test_user_with_device(&app, &pool, "wh_rep2").await;
+
+    let room_id = create_room(&app, &t1).await;
+    add_member_to_room(&app, &room_id, &t1, &u2).await;
+
+    let ct1 = BASE64.encode(b"parent whisper");
+    let ct2 = BASE64.encode(b"reply whisper");
+
+    // u1 sends parent whisper to u2
+    let (_, p_body) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct1,
+            "target_user_ids": [u2]
+        }),
+    )
+    .await;
+    let parent_id = p_body["message_id"].as_str().unwrap();
+
+    // u2 sends reply whisper targeting u1
+    let (status, r_body) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t2,
+        &json!({
+            "sender_client_id": c2,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct2,
+            "reply_to": parent_id,
+            "target_user_ids": [_u1]
+        }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    assert_eq!(r_body["reply_to"], parent_id);
+
+    let reply_id = r_body["message_id"].as_str().unwrap();
+
+    // Fetch messages as u1 and assert reply_to propagates
+    let (_, list1) = do_get(&app, &format!("/api/v1/rooms/{room_id}/messages"), &t1).await;
+    let msgs = list1["messages"].as_array().unwrap();
+    let reply_msg = msgs.iter().find(|m| m["id"] == reply_id).unwrap();
+    assert_eq!(reply_msg["reply_to"], parent_id);
+    assert_eq!(reply_msg["target_user_ids"], json!([_u1]));
+}
+
+#[tokio::test]
+async fn test_public_reaction_events_publish_on_room_channel() {
+    let (app, pool, mock_server) = setup_test_app_with_sockudo_mock().await;
+    let (_u1, t1, c1) = create_test_user_with_device(&app, &pool, "pub_rx1").await;
+
+    let room_id = create_room(&app, &t1).await;
+
+    let ct = BASE64.encode(b"public for reaction");
+
+    // Create public message
+    let (_, msg_body) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct
+        }),
+    )
+    .await;
+    let msg_id = msg_body["message_id"].as_str().unwrap();
+
+    // Add reaction to public message
+    let (s_react, react_resp) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{msg_id}/reactions"),
+        &t1,
+        &json!({
+            "reaction": "❤️",
+            "sender_client_id": c1
+        }),
+    )
+    .await;
+    assert_eq!(s_react, StatusCode::CREATED);
+    let rx_id = react_resp["id"].as_str().unwrap();
+
+    let requests = mock_server.received_requests().await.unwrap();
+
+    // Assert reaction.added WAS sent on room channel
+    let room_rx_adds: Vec<Value> = requests
+        .iter()
+        .map(|r| serde_json::from_slice::<Value>(&r.body).unwrap())
+        .filter(|b| {
+            b["channels"][0] == format!("private-room-{room_id}") && b["name"] == "reaction.added"
+        })
+        .collect();
+    assert_eq!(room_rx_adds.len(), 1);
+
+    // Remove reaction
+    let (s_unreact, _) = do_delete(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{msg_id}/reactions/{rx_id}"),
+        &t1,
+    )
+    .await;
+    assert_eq!(s_unreact, StatusCode::NO_CONTENT);
+
+    let requests2 = mock_server.received_requests().await.unwrap();
+
+    // Assert reaction.removed WAS sent on room channel
+    let room_rx_rems: Vec<Value> = requests2
+        .iter()
+        .map(|r| serde_json::from_slice::<Value>(&r.body).unwrap())
+        .filter(|b| {
+            b["channels"][0] == format!("private-room-{room_id}") && b["name"] == "reaction.removed"
+        })
+        .collect();
+    assert_eq!(room_rx_rems.len(), 1);
+}
