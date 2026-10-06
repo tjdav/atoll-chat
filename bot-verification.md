@@ -98,6 +98,27 @@
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
 
+## Task B-024 Verification Fact
+- **Outbound Fetch Methods (`packages/bot/src/runtime/context/fetch.js`)**:
+  - The fetch methods live at `packages/bot/src/runtime/context/fetch.js` exporting `createFetchMethods` and `stripQuery`.
+  - `ctx.fetch` and `ctx.fetchUserUrl` are returned as separate functions. `fetchUserUrl` log lines include `on_behalf_of: 'user'` in `meta` for diagnostic tracking.
+  - `stripQuery` strips query strings and fragments via `URL` parsing, falling back to textual stripping after `?` or `#` for malformed URLs.
+  - Scheme validation rejects non-`http(s)` schemes with `TypeError` (e.g., `file:`, `data:`, `ws:`). Malformed URLs or non-string URLs throw `TypeError`.
+  - Non-2xx HTTP responses do not throw. Network/connection errors propagate unchanged.
+  - Log lines never include headers, request bodies, or response bodies. `has_body`, `duration_ms`, and stripped `url` are logged in `meta`.
+  - Callers pass `opts.signal` for cancellation; no default timeout or `ctx.signal` chaining is applied.
+  - No SSRF guards, response-size caps, or redirect validations are applied.
+  - **Spec Gap 1 Recorded**: `fetchUserUrl`'s distinct semantics are not specified. This task treats it as an alias of `fetch` with a diagnostic tag `on_behalf_of: 'user'`.
+  - **Spec Gap 2 Recorded**: No SSRF guarding is specified or implemented for bot outbound fetch. Server extension proxy (§5.31) is client-side extension egress only, not wired for bots.
+  - **Spec Gap 3 Recorded**: No default timeout is specified for outbound fetch. Callers supply their own signal.
+  - Registered `ctx-fetch` batch in `packages/bot/tests/batch-manifest.toml` and authored 34 unit tests in `packages/bot/tests/unit/ctx-fetch.test.js` using real `node:http` servers.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
 ## Task B-022 Verification Fact
 - **Send Local Handler (`packages/bot/src/runtime/context/send-local.js`)**:
   - The `ctx.sendLocal` handler lives at `packages/bot/src/runtime/context/send-local.js` exporting `createSendLocalHandler`.
