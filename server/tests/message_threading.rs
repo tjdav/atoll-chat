@@ -354,7 +354,7 @@ async fn test_invalid_reply_targets() {
     assert_eq!(s2, StatusCode::CREATED);
     let r2_m1_id = body2["message_id"].as_str().unwrap().to_string();
 
-    // A. Cross-room reply reference -> 400 reply_to_not_in_room
+    // A. Cross-room reply reference -> 400 reply_to_not_in_room (no details.reason)
     let (sx_room, err_x_room) = do_post(
         &app,
         &format!("/api/v1/rooms/{room1_id}/messages"),
@@ -370,8 +370,9 @@ async fn test_invalid_reply_targets() {
     .await;
     assert_eq!(sx_room, StatusCode::BAD_REQUEST);
     assert_eq!(err_x_room["error"], "reply_to_not_in_room");
+    assert!(err_x_room.get("details").is_none());
 
-    // B. Nonexistent target -> 400 reply_to_not_found
+    // B. Nonexistent target -> 400 reply_to_not_found (no details.reason)
     let (sx_nonexist, err_x_nonexist) = do_post(
         &app,
         &format!("/api/v1/rooms/{room1_id}/messages"),
@@ -387,6 +388,7 @@ async fn test_invalid_reply_targets() {
     .await;
     assert_eq!(sx_nonexist, StatusCode::BAD_REQUEST);
     assert_eq!(err_x_nonexist["error"], "reply_to_not_found");
+    assert!(err_x_nonexist.get("details").is_none());
 
     // C. Soft-deleted target -> Succeeds (201 Created) per §7.6
     let (s_del, _) = do_delete(
@@ -442,6 +444,37 @@ async fn test_invalid_reply_targets() {
     .await;
     assert_eq!(sx_prop, StatusCode::CREATED);
     assert_eq!(body_prop["reply_to"], proposal_id);
+
+    // E. Cross-room proposal target -> 400 reply_to_not_in_room
+    let proposal_r2_id = "01HXXXXXXXPROPOSAL000001";
+    sqlx::query(
+        "INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext) VALUES (?, ?, ?, ?, 0, 99, 'proposal', ?)",
+    )
+    .bind(proposal_r2_id)
+    .bind(&room2_id)
+    .bind(&_u2)
+    .bind(&c2)
+    .bind(b"proposal ct r2".as_slice())
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let (sx_prop_x, err_prop_x) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room1_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ciphertext,
+            "reply_to": proposal_r2_id
+        }),
+    )
+    .await;
+    assert_eq!(sx_prop_x, StatusCode::BAD_REQUEST);
+    assert_eq!(err_prop_x["error"], "reply_to_not_in_room");
+    assert!(err_prop_x.get("details").is_none());
 }
 
 #[tokio::test]
@@ -523,10 +556,19 @@ async fn test_event_payload_and_publish_failure_handling() {
             let data_val: Value = serde_json::from_str(data_str).unwrap();
             // Verify ciphertext is NEVER present in event payloads
             assert!(data_val.get("ciphertext").is_none());
-            // Verify reply_to is present
+            // Verify event payload fields per §8.9
             if body_json["name"] == "message.new" {
                 assert!(data_val.get("reply_to").is_some());
                 assert_eq!(data_val["sender_type"], "user");
+                assert_eq!(data_val["sender_id"], _u1);
+                assert!(
+                    data_val.get("sender_user_id").is_none(),
+                    "sender_user_id must be removed"
+                );
+                assert!(
+                    data_val.get("bot_key_leaf_index").is_none(),
+                    "bot_key_leaf_index must be omitted"
+                );
             }
         }
     }
@@ -586,6 +628,39 @@ async fn test_edit_reply_inherits_reply_to() {
     .await;
     assert_eq!(s_edit, StatusCode::CREATED);
     assert_eq!(edit_body["reply_to"], m1_id);
+    let edit_id = edit_body["id"].as_str().unwrap();
+
+    // Assert DB row for reply edit row inherits reply_to
+    let db_reply_to: Option<String> =
+        sqlx::query_scalar("SELECT reply_to FROM room_messages WHERE id = ?")
+            .bind(edit_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(db_reply_to, Some(m1_id.clone()));
+
+    // Edit root message
+    let (s_edit_root, edit_root_body) = do_patch(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{m1_id}"),
+        &t1,
+        &json!({
+            "ciphertext": ct3
+        }),
+    )
+    .await;
+    assert_eq!(s_edit_root, StatusCode::CREATED);
+    assert_eq!(edit_root_body["reply_to"], Value::Null);
+    let edit_root_id = edit_root_body["id"].as_str().unwrap();
+
+    // Assert DB row for root edit row has reply_to = NULL
+    let db_root_reply_to: Option<String> =
+        sqlx::query_scalar("SELECT reply_to FROM room_messages WHERE id = ?")
+            .bind(edit_root_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(db_root_reply_to, None);
 
     // Verify event payload for message.edited does NOT carry reply_to
     let requests = mock_server.received_requests().await.unwrap();
