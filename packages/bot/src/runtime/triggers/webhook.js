@@ -38,7 +38,10 @@ export function verifySignature ({ secretName, secretValue, rawBody, headers }) 
   if (secretName.endsWith('_SECRET')) {
     const sigHeader = extractHeader(headers, 'x-hub-signature-256') ?? extractHeader(headers, 'x-signature-256')
     if (!sigHeader) {
-      return { ok: false, message: 'Missing signature header' }
+      return {
+        ok: false,
+        message: 'Missing signature header'
+      }
     }
 
     let hexStr = sigHeader.trim()
@@ -47,7 +50,10 @@ export function verifySignature ({ secretName, secretValue, rawBody, headers }) 
     }
 
     if (hexStr.length !== 64 || !/^[0-9a-fA-F]{64}$/.test(hexStr)) {
-      return { ok: false, message: 'Malformed signature' }
+      return {
+        ok: false,
+        message: 'Malformed signature'
+      }
     }
 
     const received = Buffer.from(hexStr, 'hex')
@@ -57,7 +63,10 @@ export function verifySignature ({ secretName, secretValue, rawBody, headers }) 
     const receivedHash = crypto.createHash('sha256').update(received).digest()
 
     if (!crypto.timingSafeEqual(expectedHash, receivedHash)) {
-      return { ok: false, message: 'Invalid signature' }
+      return {
+        ok: false,
+        message: 'Invalid signature'
+      }
     }
 
     return { ok: true }
@@ -66,12 +75,18 @@ export function verifySignature ({ secretName, secretValue, rawBody, headers }) 
   if (secretName.endsWith('_TOKEN')) {
     const authHeader = extractHeader(headers, 'authorization')
     if (!authHeader) {
-      return { ok: false, message: 'Missing authorization header' }
+      return {
+        ok: false,
+        message: 'Missing authorization header'
+      }
     }
 
     const match = /^bearer\s+(.+)$/i.exec(authHeader.trim())
     if (!match || !match[1]) {
-      return { ok: false, message: 'Invalid authorization scheme' }
+      return {
+        ok: false,
+        message: 'Invalid authorization scheme'
+      }
     }
 
     const extractedToken = match[1].trim()
@@ -79,13 +94,19 @@ export function verifySignature ({ secretName, secretValue, rawBody, headers }) 
     const receivedHash = crypto.createHash('sha256').update(extractedToken, 'utf8').digest()
 
     if (!crypto.timingSafeEqual(expectedHash, receivedHash)) {
-      return { ok: false, message: 'Invalid token' }
+      return {
+        ok: false,
+        message: 'Invalid token'
+      }
     }
 
     return { ok: true }
   }
 
-  return { ok: false, message: `Unsupported secret variable suffix '${secretName}'` }
+  return {
+    ok: false,
+    message: `Unsupported secret variable suffix '${secretName}'`
+  }
 }
 
 /**
@@ -112,6 +133,7 @@ export function verifySignature ({ secretName, secretValue, rawBody, headers }) 
  * @param {import('../idempotency/index.js').IdempotencyStore} deps.idempotency - Idempotency store.
  * @param {NodeJS.ProcessEnv} [deps.env=process.env] - Environment.
  * @param {import('../diagnostics/logger.js').Logger} [deps.logger] - Optional logger.
+ * @param {(ctx: BotCtx, invocation: WebhookInvocation) => Promise<void> | void} [deps.onWebhook] - Optional direct webhook handler.
  * @returns {WebhookServer} - The server instance.
  */
 export function createWebhookServer ({
@@ -120,7 +142,8 @@ export function createWebhookServer ({
   makeBotCtx,
   idempotency,
   env = process.env,
-  logger
+  logger,
+  onWebhook
 }) {
   if (!config || typeof config !== 'object') {
     throw new Error('config must be an object')
@@ -329,7 +352,7 @@ export function createWebhookServer ({
     // Handler dispatch
     /** @type {any} */
     const ctxUntyped = ctx
-    const handlerFn = ctxUntyped.webhook ?? ctxUntyped.handlers?.webhook ?? ctxUntyped.config?.handlers?.webhook
+    const handlerFn = onWebhook ?? ctxUntyped.webhook ?? ctxUntyped.handlers?.webhook ?? ctxUntyped.config?.handlers?.webhook
 
     const startTime = Date.now()
     try {

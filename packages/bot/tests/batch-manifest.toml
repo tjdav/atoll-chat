@@ -173,3 +173,9 @@ name = "runtime"
 files = [
   "unit/runtime.test.js",
 ]
+
+[[batch]]
+name = "runtime-triggers"
+files = [
+  "unit/runtime-triggers.test.js",
+]

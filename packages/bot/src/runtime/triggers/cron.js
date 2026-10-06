@@ -354,13 +354,13 @@ export function nextFireTime (cron, afterDate, timeZone) {
 }
 
 /**
- * Default sleep implementation using setTimeout.
+ * Default sleep implementation using setTimeout with ref: false.
  *
  * @param {number} ms - Milliseconds to sleep.
  * @returns {Promise<void>}
  */
 function defaultSleep (ms) {
-  return setTimeoutPromise(ms)
+  return setTimeoutPromise(ms, undefined, { ref: false })
 }
 
 /**
@@ -376,6 +376,7 @@ function defaultSleep (ms) {
  * @param {() => number} [deps.now=Date.now] - Clock function.
  * @param {import('../diagnostics/logger.js').Logger} [deps.logger] - Optional logger.
  * @param {number} [deps.handlerTimeoutMs] - Handler execution timeout in milliseconds.
+ * @param {(ctx: BotCtx, payload: { name: string }) => Promise<void> | void} [deps.onSchedule] - Optional direct schedule handler.
  * @returns {CronEngine} - Engine instance.
  */
 export function createCronEngine ({
@@ -387,7 +388,8 @@ export function createCronEngine ({
   sleep = defaultSleep,
   now = Date.now,
   logger,
-  handlerTimeoutMs = HANDLER_TIMEOUT_MS
+  handlerTimeoutMs = HANDLER_TIMEOUT_MS,
+  onSchedule
 }) {
   if (!config || typeof config !== 'object') {
     throw new Error('cron: config must be an object')
@@ -486,7 +488,7 @@ export function createCronEngine ({
 
     /** @type {any} */
     const ctxUntyped = ctx
-    const handlerFn = ctxUntyped.schedule ?? ctxUntyped.handlers?.schedule ?? ctxUntyped.config?.handlers?.schedule
+    const handlerFn = onSchedule ?? ctxUntyped.schedule ?? ctxUntyped.handlers?.schedule ?? ctxUntyped.config?.handlers?.schedule
 
     const startTime = now()
     const dispatchPromise = (async () => {
@@ -733,7 +735,7 @@ export function createCronEngine ({
       const ctx = await makeBotCtx(invocation)
       /** @type {any} */
       const ctxUntyped = ctx
-      const handlerFn = ctxUntyped.schedule ?? ctxUntyped.handlers?.schedule ?? ctxUntyped.config?.handlers?.schedule
+      const handlerFn = onSchedule ?? ctxUntyped.schedule ?? ctxUntyped.handlers?.schedule ?? ctxUntyped.config?.handlers?.schedule
 
       if (typeof handlerFn === 'function') {
         await withTimeout(

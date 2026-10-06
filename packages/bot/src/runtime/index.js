@@ -11,6 +11,8 @@ import { createFetchMethods } from './context/fetch.js'
 import { createCommandInvocationHandler } from './context/command-invoked.js'
 import { createHttpClient } from './transport/http.js'
 import { createWebSocketClient } from './transport/websocket.js'
+import { createWebhookServer } from './triggers/webhook.js'
+import { createCronEngine } from './triggers/cron.js'
 
 /**
  * Decodes a base64url string to Uint8Array.
@@ -133,6 +135,10 @@ export function createRuntime ({
   let roomsStore = null
   /** @type {ReturnType<import('./transport/websocket.js').createWebSocketClient> | null} */
   let ws = null
+  /** @type {ReturnType<import('./triggers/webhook.js').createWebhookServer> | null} */
+  let webhookServer = null
+  /** @type {ReturnType<import('./triggers/cron.js').createCronEngine> | null} */
+  let cronEngine = null
 
   /** @type {ReturnType<import('./context/post.js').createPostHandler> | null} */
   let postHandler = null
@@ -280,7 +286,10 @@ export function createRuntime ({
           if (data && typeof data === 'object' && typeof data.room_id === 'string') {
             const mode = typeof data.mode === 'string' ? data.mode : ''
             const scopes = Array.isArray(data.scopes) ? data.scopes : []
-            grants.set(data.room_id, { mode, scopes })
+            grants.set(data.room_id, {
+              mode,
+              scopes
+            })
 
             const ctx = await makeBotCtx({ roomId: data.room_id })
             if (typeof bot.config.handlers?.grantUpdated === 'function') {
@@ -392,7 +401,10 @@ export function createRuntime ({
     })
     await storage.open()
 
-    idempotency = new IdempotencyStore({ storage, logger })
+    idempotency = new IdempotencyStore({
+      storage,
+      logger
+    })
 
     // Publisher key cache
     publisherKeys = new PublisherKeyCache({
@@ -414,7 +426,10 @@ export function createRuntime ({
     })
 
     storageStore = createStorageStore({ storage })
-    roomsStore = createRoomsStore({ fetchRoomList: fetchRoomListImpl, logger })
+    roomsStore = createRoomsStore({
+      fetchRoomList: fetchRoomListImpl,
+      logger
+    })
 
     // Response methods
     postHandler = createPostHandler({
@@ -423,14 +438,20 @@ export function createRuntime ({
       botIdentityPrivateKey: decodeBase64url(keystoreData.bot_identity_private),
       logger
     })
-    replyHandler = createReplyHandler({ post: postHandler, logger })
+    replyHandler = createReplyHandler({
+      post: postHandler,
+      logger
+    })
     sendLocalHandler = createSendLocalHandler({
       http: apiHttp,
       getOwnerPubkey: getOwnerPubkeyImpl,
       logger
     })
 
-    const fetchMethods = createFetchMethods({ logger, fetchImpl })
+    const fetchMethods = createFetchMethods({
+      logger,
+      fetchImpl
+    })
     fetchMethod = fetchMethods.fetch
     fetchUserUrlMethod = fetchMethods.fetchUserUrl
 
@@ -471,16 +492,76 @@ export function createRuntime ({
 
     ws.subscribe(`private-bot-${botId}`, handleBotChannelEvent)
 
-    await ws.connect()
+    try {
+      await ws.connect()
 
-    isStarted = true
+      const webhookTriggers = (bot.config.triggers ?? []).filter((t) => t.type === 'webhook')
+      const scheduleTriggers = (bot.config.triggers ?? []).filter((t) => t.type === 'schedule')
 
-    const baseCtx = await makeBotCtx({})
-    if (typeof bot.config.handlers?.install === 'function') {
-      await bot.config.handlers.install(baseCtx)
+      if (webhookTriggers.length > 0) {
+        webhookServer = createWebhookServer({
+          config: config.webhook,
+          triggers: webhookTriggers,
+          makeBotCtx,
+          idempotency,
+          env: process.env,
+          logger,
+          onWebhook: (ctx, payload) => bot.config.handlers?.webhook?.(ctx, payload)
+        })
+        await webhookServer.start()
+        logger.info('webhook server started', {
+          meta: {
+            trigger_count: webhookTriggers.length,
+            host: config.webhook.host,
+            port: webhookServer.getBoundPort() ?? config.webhook.port
+          }
+        })
+      }
+
+      if (scheduleTriggers.length > 0) {
+        cronEngine = createCronEngine({
+          config: config.cron,
+          triggers: scheduleTriggers,
+          makeBotCtx,
+          idempotency,
+          stateStore: storage,
+          logger,
+          handlerTimeoutMs: config.handlerTimeoutMs,
+          onSchedule: (ctx, payload) => bot.config.handlers?.schedule?.(ctx, payload)
+        })
+        await cronEngine.start()
+        logger.info('cron engine started', {
+          meta: {
+            trigger_count: scheduleTriggers.length
+          }
+        })
+      }
+
+      isStarted = true
+
+      const baseCtx = await makeBotCtx({})
+      if (typeof bot.config.handlers?.install === 'function') {
+        await bot.config.handlers.install(baseCtx)
+      }
+
+      logger.info('runtime ready')
+    } catch (bootErr) {
+      if (cronEngine) {
+        await cronEngine.stop().catch((e) => logger.error('error stopping cron engine during rollback', { meta: { error: e?.message ?? String(e) } }))
+        cronEngine = null
+      }
+      if (webhookServer) {
+        await webhookServer.stop().catch((e) => logger.error('error stopping webhook server during rollback', { meta: { error: e?.message ?? String(e) } }))
+        webhookServer = null
+      }
+      if (ws) {
+        await ws.close().catch((e) => logger.error('error closing websocket during rollback', { meta: { error: e?.message ?? String(e) } }))
+      }
+      if (storage) {
+        await storage.close().catch((e) => logger.error('error closing storage during rollback', { meta: { error: e?.message ?? String(e) } }))
+      }
+      throw bootErr
     }
-
-    logger.info('runtime ready')
   }
 
   /**
@@ -499,13 +580,32 @@ export function createRuntime ({
       await bot.config.handlers.uninstall(baseCtx)
     }
 
+    if (cronEngine) {
+      await cronEngine.stop()
+      logger.info('cron engine stopped')
+      cronEngine = null
+    }
+
+    if (webhookServer) {
+      await webhookServer.stop()
+      logger.info('webhook server stopped')
+      webhookServer = null
+    }
+
     if (ws) {
       await ws.close()
+    }
+
+    if (settingsStore) {
+      settingsStore.stop()
+      settingsStore = null
     }
 
     if (storage) {
       await storage.close()
     }
+
+    isStarted = false
 
     logger.info('runtime stopped')
   }
