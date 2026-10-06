@@ -53,6 +53,9 @@ export default [
       'tests/unit/storage-plugin.test.js',
       'tests/unit/state.test.js',
       'tests/unit/repositories-users.test.js',
+      'tests/unit/repositories-rooms.test.js',
+      'tests/unit/repositories-room-members.test.js',
+      'tests/unit/repositories-room-order.test.js',
     ],
   },
   {

@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 34 |
+| Done | 35 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-13 | Rooms, Room Members, and Room Order Tables with Repositories | done | C-INFRA-12 | unit-smoke |
 | C-INFRA-12 | Users Table and Display Name Repository | done | C-INFRA-8, C-INFRA-9, C-INFRA-10 | unit-smoke |
 | C-INFRA-11 | Plugin Context Async Import Audit and Policy Update | done | C-INFRA-10 | unit-smoke, component-smoke |
 | C-INFRA-10 | Storage Boot Integration | done | C-INFRA-8, C-INFRA-9, C-AUTH-4 | unit-smoke, component-auth |
@@ -479,6 +480,18 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created unit test suite `packages/app/tests/unit/repositories-users.test.js` registered under `unit-smoke` in `packages/app/test-batches.js`.
   - Authored documentation under `packages/app/docs/storage/`: `README.md`, `repositories.md`, and `users.md`.
   - Verified zero string interpolation in repository SQL queries, 100% key parity across all 7 locale files (45 keys), and clean `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and vocabulary runs.
+
+- **C-INFRA-13 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0003-rooms.sql` defining `rooms` (`room_id`, `name`, `avatar_file_id`, `description`, `disappearing_timer`, `metadata_version`, `updated_at`), `room_members` (`room_id`, `user_id`, `role`, `joined_at`), and `room_order` (`room_id`, `position`, `updated_at`) tables and their indexes.
+  - Created repositories under `packages/app/src/lib/db/repositories/`:
+    - `rooms.js` (`get`, `upsert` with COALESCE, transactional `remove`, `list`, `count`, transactional `clearAll`)
+    - `room-members.js` (`listInRoom`, `get`, `addMember`, `removeMember`, `removeAllInRoom`, `listRoomsForUser`, `countInRoom`, `clearAll`)
+    - `room-order.js` (`list`, transactional dense `setOrder`, `moveBefore`, `getPosition`, `clearAll`)
+  - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `rooms`, `roomMembers`, `roomOrder` and re-exporting factory functions.
+  - Created unit test suites `tests/unit/repositories-rooms.test.js`, `repositories-room-members.test.js`, and `repositories-room-order.test.js` registered under `unit-smoke` in `test-batches.js`.
+  - Authored `packages/app/docs/storage/rooms.md` and updated `packages/app/docs/storage/README.md`.
+  - Verified zero SQL string interpolation, zero modifications to untouched directories/plugins, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
 
 ## Component Authoring Policy
 
