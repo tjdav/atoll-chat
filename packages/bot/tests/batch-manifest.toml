@@ -113,3 +113,9 @@ name = "ctx-post"
 files = [
   "unit/ctx-post.test.js",
 ]
+
+[[batch]]
+name = "ctx-reply"
+files = [
+  "unit/ctx-reply.test.js",
+]
