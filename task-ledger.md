@@ -205,6 +205,10 @@
   - **Migration:** `0001_v2_schema.sql` (`room_messages.target_user_ids` TEXT column added).
   - **Delivered:** Step 0 report at `verification/whisper-messages/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/reactions/write.rs`, `server/src/routes/reactions.rs`, `server/src/sockudo/publisher.rs`, `server/tests/message_whispers.rs`, `server/tests/batch-manifest.toml`. Implemented whisper validation, user-channel event delivery for message creation, edits, deletions, and reactions, room channel defensive stripping in `Publisher`, whisper row filtering in message listing, and 9 integration tests.
   - **Batch:** `messaging`
+- **Member Pagination and Bot Merge (Phase 11)**: done
+  - **Migration:** `0001_v2_schema.sql` (Minimal `bot_accounts` and `room_bots` tables).
+  - **Delivered:** Step 0 report at `verification/member-pagination-bot-merge/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/tests/room_members_pagination.rs`, `server/tests/rooms.rs`.
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 

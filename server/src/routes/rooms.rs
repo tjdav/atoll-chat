@@ -17,7 +17,7 @@ use crate::{
     rate_limit::{self, RateLimitKey},
     rooms::{
         self, CreateRoomOptions, LeaveOutcome, ListMembersQuery, MemberCursor, RoomError,
-        RoomMember, RoomWithRole,
+        RoomMember, RoomMemberItem, RoomWithRole,
     },
     AppState,
 };
@@ -46,9 +46,8 @@ pub struct ListMembersQueryParams {
 
 #[derive(Debug, Serialize)]
 pub struct MemberListResponse {
-    pub members: Vec<RoomMember>,
+    pub members: Vec<RoomMemberItem>,
     pub next_cursor: Option<String>,
-    pub has_more: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -302,7 +301,6 @@ pub async fn list_members(
         Json(MemberListResponse {
             members: result.members,
             next_cursor: result.next_cursor,
-            has_more: result.has_more,
         }),
     ))
 }

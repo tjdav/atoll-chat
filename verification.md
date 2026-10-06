@@ -879,6 +879,20 @@
   - **`message.new` Payload:** `message.new` event payload carries `sender_type: "user"`, `sender_id: "u_..."`, `reply_to` (string or `null`), omits `sender_user_id`, and omits `bot_key_leaf_index` per §8.9.
 - **Link to report:** [verification/threading-v3/report.md](verification/threading-v3/report.md)
 
+## Task — Member Pagination and Bot Merge (Phase 11)
+- **ID:** Member Pagination Bot Merge
+- **Date:** 2026-10-06
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §3.2, §3.3, §7.4, §7.10, §8.4, §8.9
+- **Question asked:** What is the canonical behavior for merged member list pagination (users and bots) under V3 §8.4?
+- **Answer found:**
+  - **Empirical Baseline:** Step 0 report generated at `verification/member-pagination-bot-merge/report.md`.
+  - **Schema:** Minimal `bot_accounts` and `room_bots` tables added to `server/migrations/0001_v2_schema.sql`.
+  - **Ordering & Cursor:** Stable ordering and cursor across user and bot entries. All users sort by `user_id ASC`, followed by all active/non-revoked bots sorted by `bot_id ASC`. `MemberCursor` encoded as unpadded base64url JSON carries `last_user_id` or `last_bot_id`.
+  - **Response Shape:** Matches V3 §8.4 with `type: "user"` (`user_id`, `role`, `joined_at`) or `type: "bot"` (`bot_id`, `mode`, `display_name`, `avatar_file_id`, `joined_at`). V2 remnants (`username_token`, `encrypted_display`, `has_more`) removed.
+  - **Exclusions:** Revoked bots (`room_bots.revoked_at IS NOT NULL`) and deleted bots (`bot_accounts.deleted_at IS NOT NULL`) are excluded from member lists.
+- **Link to report:** [verification/member-pagination-bot-merge/report.md](verification/member-pagination-bot-merge/report.md)
+
 ## Whisper Messages Contract & Implementation Verification
 - **ID:** Whisper Messages Contract
 - **Date:** 2026-10-06
