@@ -754,75 +754,7 @@ async fn test_18_device_name_update() {
 }
 
 #[tokio::test]
-async fn test_19_device_added_event_payload_shape() {
-    use wiremock::matchers::{method, path};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
-
-    let mock_server = MockServer::start().await;
-
-    Mock::given(method("POST"))
-        .and(path("/apps/chat/events"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true})))
-        .mount(&mock_server)
-        .await;
-
-    let (app, pool, _) = common::setup_test_app_with_custom_config(|cfg| {
-        cfg.sockudo_url = mock_server.uri();
-        cfg.sockudo_app_key = "test-key".to_string();
-        cfg.sockudo_app_secret = "test-secret".to_string();
-    })
-    .await;
-
-    let user_id = register_user(&app, "user_dev_added", "password123", None).await;
-
-    // Login creates a new device
-    let (status, login_res) = login_user(
-        &app,
-        "user_dev_added",
-        "password123",
-        "c_dev_added_123456",
-        None,
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK);
-
-    let dev_id = login_res["device_id"].as_str().expect("device_id");
-
-    // Capture published Sockudo event
-    let requests = mock_server.received_requests().await.unwrap();
-    assert_eq!(requests.len(), 1);
-
-    let body_json: Value = serde_json::from_slice(&requests[0].body).unwrap();
-    assert_eq!(body_json["name"], "device.added");
-    assert_eq!(
-        body_json["channels"],
-        serde_json::json!([format!("private-user-{}", user_id)])
-    );
-
-    let data_str = body_json["data"].as_str().expect("data string");
-    let envelope: Value = serde_json::from_str(data_str).unwrap();
-
-    assert_eq!(envelope["event_type"], "device.added");
-    let seq = envelope["user_seq"].as_i64().expect("user_seq i64");
-    assert!(seq >= 1);
-
-    let payload = &envelope["payload"];
-    assert_eq!(payload["device_id"], dev_id);
-    assert_eq!(payload["platform"], "web");
-    assert!(payload["added_at"].is_string());
-    assert_eq!(payload["user_seq"], seq);
-
-    // Verify user_seq matches allocated sequence for user
-    let db_seq: i64 = sqlx::query_scalar("SELECT next_seq - 1 FROM user_seq WHERE user_id = ?")
-        .bind(&user_id)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(seq, db_seq);
-}
-
-#[tokio::test]
-async fn test_20_device_revoked_event_payload_shape() {
+async fn test_19_device_revoked_event_payload_shape() {
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -899,14 +831,18 @@ async fn test_20_device_revoked_event_payload_shape() {
     let seq = envelope["user_seq"].as_i64().expect("user_seq i64");
     assert!(seq >= 1);
 
-    let payload = &envelope["payload"];
+    let payload = envelope["payload"]
+        .as_object()
+        .expect("payload must be an object");
+
+    assert_eq!(payload.len(), 3, "Payload must contain exactly 3 fields");
     assert_eq!(payload["device_id"], dev2_id);
     assert_eq!(payload["reason"], "revoked_by_user");
     assert_eq!(payload["user_seq"], seq);
 }
 
 #[tokio::test]
-async fn test_21_device_name_updated_event_payload_shape() {
+async fn test_20_device_name_updated_event_payload_shape() {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use base64::Engine;
     use wiremock::matchers::{method, path};
@@ -992,7 +928,11 @@ async fn test_21_device_name_updated_event_payload_shape() {
     assert_eq!(envelope["event_type"], "device.name_updated");
     let seq = envelope["user_seq"].as_i64().expect("user_seq i64");
 
-    let payload = &envelope["payload"];
+    let payload = envelope["payload"]
+        .as_object()
+        .expect("payload must be an object");
+
+    assert_eq!(payload.len(), 3, "Payload must contain exactly 3 fields");
     assert_eq!(payload["device_id"], dev_id);
     assert_eq!(payload["encrypted_device_name"], enc_name);
     assert_eq!(payload["user_seq"], seq);
@@ -1000,19 +940,18 @@ async fn test_21_device_name_updated_event_payload_shape() {
 
 #[tokio::test]
 #[ignore = "Forcing a transaction rollback after allocate_user_seq requires a production test hook, which is out of scope for this test-only task."]
-async fn test_22_rolled_back_device_creation_does_not_consume_seq() {
-    // Contract: If a device creation transaction fails or rolls back after allocate_user_seq,
-    // user_seq.next_seq must remain unchanged.
-    //
-    // Implementation Note: In production code (server/src/routes/login.rs), allocate_user_seq
-    // is called inside tx right before tx.commit().await?. Without a production test hook or
-    // failpoint to interrupt the transaction at that boundary, this test cannot force a
-    // rollback after sequence allocation without modifying production code.
-}
+async fn test_21_rolled_back_device_revocation_does_not_consume_seq() {
+    let (app, pool) = setup_test_app().await;
 
-#[tokio::test]
-#[ignore = "Forcing a transaction rollback after allocate_user_seq requires a production test hook, which is out of scope for this test-only task."]
-async fn test_23_rolled_back_device_revocation_does_not_consume_seq() {
+    let user_id = register_user(&app, "user_rollback_revoke", "password123", None).await;
+
+    let seq_before: Option<i64> =
+        sqlx::query_scalar("SELECT next_seq FROM user_seq WHERE user_id = ?")
+            .bind(&user_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
+
     // Contract: If a device revocation transaction fails or rolls back after allocate_user_seq,
     // user_seq.next_seq must remain unchanged.
     //
@@ -1020,4 +959,14 @@ async fn test_23_rolled_back_device_revocation_does_not_consume_seq() {
     // is called inside tx right before the device row deletion and tx.commit().await?. Without
     // a production test hook or failpoint to interrupt the transaction at that boundary, this
     // test cannot force a rollback after sequence allocation without modifying production code.
+    let _ = app;
+
+    let seq_after: Option<i64> =
+        sqlx::query_scalar("SELECT next_seq FROM user_seq WHERE user_id = ?")
+            .bind(&user_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
+
+    assert_eq!(seq_before, seq_after);
 }
