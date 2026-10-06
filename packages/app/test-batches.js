@@ -63,6 +63,8 @@ export default [
       'tests/unit/repositories-drafts.test.js',
       'tests/unit/repositories-blocked-users.test.js',
       'tests/unit/repositories-outbox.test.js',
+      'tests/unit/repositories-room-preferences.test.js',
+      'tests/unit/repositories-nicknames.test.js',
     ],
   },
   {
