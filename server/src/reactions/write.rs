@@ -20,13 +20,19 @@ pub struct AddResult {
     pub client_id: String,
     pub created_at: DateTime<Utc>,
     pub reactions_per_message_effective: i64,
+    pub is_new: bool,
 }
 
 pub struct RemoveRequest {
     pub room_id: String,
     pub message_id: String,
-    pub user_id: String,
-    pub client_id: String,
+    pub reaction_id: String,
+    pub requester_user_id: String,
+}
+
+pub struct RemoveResult {
+    pub reaction_id: String,
+    pub sender_user_id: String,
     pub reaction: String,
 }
 
@@ -83,9 +89,9 @@ pub async fn add_reaction(
             return Err(ReactionError::NotAMember);
         }
 
-        // 2. Verify non-deleted message existence in room
+        // 2. Verify message existence in room (including tombstoned messages per §7.6)
         let msg_exists: Option<(String,)> = sqlx::query_as(
-            "SELECT id FROM room_messages WHERE id = ? AND room_id = ? AND deleted_at IS NULL",
+            "SELECT id FROM room_messages WHERE id = ? AND room_id = ?",
         )
         .bind(&req.message_id)
         .bind(&req.room_id)
@@ -119,13 +125,19 @@ pub async fn add_reaction(
         .fetch_optional(&mut *conn)
         .await?;
 
-        let (reaction_id, created_at) = match existing_row {
-            Some((_id, None)) => {
-                // Active reaction already exists
-                return Err(ReactionError::AlreadyExists);
+        let (reaction_id, created_at, is_new) = match existing_row {
+            Some((id, None)) => {
+                // Active reaction already exists -> return existing row (idempotent repeat)
+                let (created_at,): (DateTime<Utc>,) =
+                    sqlx::query_as("SELECT created_at FROM reactions WHERE id = ?")
+                        .bind(&id)
+                        .fetch_one(&mut *conn)
+                        .await?;
+
+                (id, created_at, false)
             }
             Some((id, Some(_))) => {
-                // Reactivate soft-deleted reaction
+                // Reactivate soft-deleted reaction -> clear deleted_at, keep stable id
                 sqlx::query(
                     "UPDATE reactions SET deleted_at = NULL, created_at = CURRENT_TIMESTAMP WHERE id = ?"
                 )
@@ -139,7 +151,7 @@ pub async fn add_reaction(
                         .fetch_one(&mut *conn)
                         .await?;
 
-                (id, now)
+                (id, now, true)
             }
             None => {
                 // Insert new row
@@ -165,7 +177,7 @@ pub async fn add_reaction(
                         .fetch_one(&mut *conn)
                         .await?;
 
-                (id, created_at)
+                (id, created_at, true)
             }
         };
 
@@ -177,6 +189,7 @@ pub async fn add_reaction(
             client_id: req.client_id,
             created_at,
             reactions_per_message_effective: per_message_limit,
+            is_new,
         })
     }
     .await;
@@ -196,9 +209,7 @@ pub async fn add_reaction(
 pub async fn remove_reaction(
     pool: &SqlitePool,
     req: RemoveRequest,
-) -> Result<String, ReactionError> {
-    validate_reaction_string(&req.reaction)?;
-
+) -> Result<RemoveResult, ReactionError> {
     let mut conn = pool.acquire().await?;
     sqlx::query("BEGIN IMMEDIATE").execute(&mut *conn).await?;
 
@@ -207,47 +218,59 @@ pub async fn remove_reaction(
         let member_role: Option<(String,)> =
             sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
                 .bind(&req.room_id)
-                .bind(&req.user_id)
+                .bind(&req.requester_user_id)
                 .fetch_optional(&mut *conn)
                 .await?;
 
-        if member_role.is_none() {
-            return Err(ReactionError::NotAMember);
-        }
+        let requester_role = match member_role {
+            Some((role,)) => role,
+            None => return Err(ReactionError::NotAMember),
+        };
 
-        // 2. Find active reaction row for requester
-        let active_row: Option<(String,)> = sqlx::query_as(
+        // 2. Find active reaction row by reaction_id, room_id, message_id
+        let active_row: Option<(String, String, String)> = sqlx::query_as(
             r#"
-            SELECT id FROM reactions
-            WHERE message_id = ? AND sender_user_id = ? AND sender_client_id = ? AND reaction = ? AND deleted_at IS NULL
+            SELECT id, sender_user_id, reaction
+            FROM reactions
+            WHERE id = ? AND room_id = ? AND message_id = ? AND deleted_at IS NULL
             "#,
         )
+        .bind(&req.reaction_id)
+        .bind(&req.room_id)
         .bind(&req.message_id)
-        .bind(&req.user_id)
-        .bind(&req.client_id)
-        .bind(&req.reaction)
         .fetch_optional(&mut *conn)
         .await?;
 
-        let id = match active_row {
-            Some((id,)) => id,
+        let (id, sender_user_id, reaction) = match active_row {
+            Some(row) => row,
             None => return Err(ReactionError::NotFound),
         };
 
-        // 3. Soft delete
+        // 3. Authorization check: sender or room owner/moderator
+        let is_sender = sender_user_id == req.requester_user_id;
+        let is_owner_or_mod = requester_role == "owner" || requester_role == "moderator";
+        if !is_sender && !is_owner_or_mod {
+            return Err(ReactionError::Forbidden);
+        }
+
+        // 4. Soft delete
         sqlx::query("UPDATE reactions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
             .bind(&id)
             .execute(&mut *conn)
             .await?;
 
-        Ok(id)
+        Ok(RemoveResult {
+            reaction_id: id,
+            sender_user_id,
+            reaction,
+        })
     }
     .await;
 
     match result {
-        Ok(reaction_id) => {
+        Ok(res) => {
             sqlx::query("COMMIT").execute(&mut *conn).await?;
-            Ok(reaction_id)
+            Ok(res)
         }
         Err(err) => {
             let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;

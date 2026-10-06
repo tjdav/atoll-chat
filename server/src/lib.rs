@@ -411,7 +411,7 @@ pub fn build_app(state: AppState) -> Router {
             get(routes::reactions::list).post(routes::reactions::add),
         )
         .route(
-            "/rooms/{id}/messages/{message_id}/reactions/{reaction}",
+            "/rooms/{id}/messages/{message_id}/reactions/{reaction_id}",
             delete(routes::reactions::remove),
         )
         .route(

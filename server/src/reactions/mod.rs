@@ -16,6 +16,8 @@ pub enum ReactionError {
     AlreadyExists,
     #[error("reaction not found")]
     NotFound,
+    #[error("forbidden")]
+    Forbidden,
     #[error("invalid reaction: {0}")]
     InvalidReaction(String),
     #[error("reaction limit reached for this message")]

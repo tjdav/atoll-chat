@@ -119,7 +119,7 @@ async fn test_reaction_validation_and_limits() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::BAD_REQUEST);
 
-    // 4. Unicode emoji with skin tone modifier & ZWJ sequence are accepted
+    // 4. Unicode emoji with skin tone modifier & ZWJ sequence are accepted -> 201 Created
     let req = axum::http::Request::builder()
         .method("POST")
         .uri(format!(
@@ -131,13 +131,13 @@ async fn test_reaction_validation_and_limits() {
         .body(axum::body::Body::from(
             json!({
                 "reaction": "👍🏽",
-                "client_id": client_id
+                "sender_client_id": client_id
             })
             .to_string(),
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
 
     let req = axum::http::Request::builder()
         .method("POST")
@@ -150,13 +150,13 @@ async fn test_reaction_validation_and_limits() {
         .body(axum::body::Body::from(
             json!({
                 "reaction": "👨‍👩‍👧‍👦",
-                "client_id": client_id
+                "sender_client_id": client_id
             })
             .to_string(),
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
 
     // 5. Instance limit per message enforced
     // Set reactions_per_message limit = 2
