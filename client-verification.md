@@ -660,3 +660,18 @@ build task runs.
 | Complete Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` exports `createRepositories({ db })` returning all 18 domain repositories (`users`, `rooms`, `roomMembers`, `roomOrder`, `messages`, `attachments`, `reactions`, `readState`, `drafts`, `blockedUsers`, `outbox`, `roomPreferences`, `nicknames`, `deviceNames`, `starredItems`, `syncState`, `processedEvents`, `mlsRooms`) and re-exports all 18 factories and `makeKey` |
 | Unit Test Suites | `tests/unit/repositories-sync-state.test.js` (16 cases), `tests/unit/repositories-processed-events.test.js` (13 cases), and `tests/unit/repositories-mls-rooms.test.js` (16 cases) registered under `unit-smoke` batch in `test-batches.js` |
 | Contract Documentation | `packages/app/docs/storage/sync-state.md`, `packages/app/docs/storage/processed-events.md`, and `packages/app/docs/storage/mls-rooms.md` authored; index updated in `packages/app/docs/storage/README.md` |
+
+### C-INFRA-21 — Storage Plugin Repository Accessor Contract
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Repository Accessor Signature | `ctx.storage.repos()` returning `RepositoryAggregator` |
+| Direct Context Surface | Exposed directly on `ctx.storage` without redundant wrapper (`ctx.storage.repos()`, NOT `ctx.storage.storage.repos()`) |
+| Phase 1 Dynamic Import | `client.context` dynamically imports `../lib/db/index.js` and `../lib/db/repositories/index.js` via `Promise.all` in Phase 1 |
+| Singleton Memoization Guards | DB instance guarded by `pluginContext.__storage_client__`; repository aggregator guarded by `pluginContext.__storage_repos_client__` |
+| Exposed Repositories (18) | `users`, `rooms`, `roomMembers`, `roomOrder`, `messages`, `attachments`, `reactions`, `readState`, `drafts`, `blockedUsers`, `outbox`, `roomPreferences`, `nicknames`, `deviceNames`, `starredItems`, `syncState`, `processedEvents`, `mlsRooms` |
+| Server Context Behavior | `repos()` throws `Error` ('storage.repos is not available during SSR. The database is client-only.') |
+| Test Coverage & Batches | `packages/app/tests/unit/storage-plugin.test.js` extended with 6 test cases (14 total passing in `unit-smoke` batch) |
+| Plugin Documentation | `packages/app/docs/plugins/storage.md` updated with "Repository accessor — repos()" section |

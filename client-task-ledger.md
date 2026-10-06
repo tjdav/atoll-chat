@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 42 |
+| Done | 43 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-21 | Repository Accessor in the Storage Plugin Context | done | C-INFRA-20, C-INFRA-11, C-INFRA-9, C-INFRA-10 | unit-smoke |
 | C-INFRA-20 | Sync State, Processed Events, and MLS Rooms Tables with Repositories | done | C-INFRA-19, C-INFRA-14, C-INFRA-9 | unit-smoke |
 | C-INFRA-19 | Device Names and Starred Items Tables with Repositories | done | C-INFRA-18, C-INFRA-9, C-AUTH-3a, C-V-D | unit-smoke |
 | C-INFRA-18 | Room Preferences and Nicknames Tables with Repositories | done | C-INFRA-17, C-INFRA-16, C-INFRA-9 | unit-smoke |
@@ -514,7 +515,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created migration `packages/app/src/db/migrations/0005-attachments-reactions.sql` defining `attachments` (`file_id`, `room_id`, `purpose`, `content_type`, `plaintext_size`, `encrypted_size`, `thumbnail_file_id`, `duration_ms`, `uploaded_at`, `downloaded_at`, `cached_at`) and `reactions` (`message_id`, `sender_user_id`, `sender_client_id`, `reaction`, `created_at`, `deleted_at`, `PRIMARY KEY (message_id, sender_user_id, sender_client_id, reaction)`) tables and their indexes (`idx_attachments_room`, `idx_attachments_purpose`, `idx_reactions_message` WHERE `deleted_at IS NULL`, `idx_reactions_user`).
   - Created repositories under `packages/app/src/lib/db/repositories/`:
     - `attachments.js` exporting `createAttachmentsRepository` (`get`, `upsert` with `COALESCE`, `markUploaded`, `markDownloaded`, `getMany` parameterizing `IN` placeholders from array length, `listByRoom`, `listByPurpose`, `remove`, `countByRoom`, `clearAll`).
-    - `reactions.js` exporting `createReactionsRepository` (`listForMessage`, `listForRoom`, `get`, `add` reactivating soft-deleted rows, `remove` soft deleting via `deleted_at`, `removeByMessage`, `countForMessage`, `aggregateForMessage` deduplicating via `COUNT(DISTINCT sender_user_id)`, `hasReacted`, `clearAll`).
+    - `reactions.js` exporting `createReactionsRepository` (`listForMessage`, `listForRoom`, `get`, `add`, `remove`, `removeByMessage`, `countForMessage`, `aggregateForMessage`, `hasReacted`, `clearAll`).
   - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `attachments` and `reactions` and re-exporting factory functions.
   - Created unit test suites `packages/app/tests/unit/repositories-attachments.test.js` (19 cases) and `packages/app/tests/unit/repositories-reactions.test.js` (19 cases) registered under `unit-smoke` in `test-batches.js`.
   - Authored `packages/app/docs/storage/attachments.md` and `packages/app/docs/storage/reactions.md`, and updated `packages/app/docs/storage/README.md`.
@@ -549,7 +550,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
     - `room-preferences.js` exporting `createRoomPreferencesRepository` (`get`, `getAll`, `set`, `setMany`, `remove`, `removeAllInRoom`, `listKeys`, `count`, `clearAll`); malformed JSON returns `undefined` in `get` and skipped in `getAll`; `setMany` writes entries transactionally with a single timestamp.
     - `nicknames.js` exporting `createNicknamesRepository` (`get`, `getMany`, `set`, `remove`, `listInRoom`, `listRoomsForUser`, `removeAllInRoom`, `countInRoom`, `clearAll`); `set` with empty/whitespace string deletes the nickname; `getMany` parameterizes `IN` placeholders by array length.
   - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `roomPreferences` and `nicknames` (13 repositories total) and re-exporting factory functions.
-  - Created unit test suites `packages/app/tests/unit/repositories-room-preferences.test.js` (23 cases) and `packages/app/tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Created unit test suites `tests/unit/repositories-room-preferences.test.js` (23 cases) and `tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
   - Authored contract documentation at `packages/app/docs/storage/room-preferences.md` and `packages/app/docs/storage/nicknames.md`, and updated `packages/app/docs/storage/README.md`.
 
 - **C-INFRA-19 Deliverables & Status:**
@@ -567,12 +568,20 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created migration `packages/app/src/db/migrations/0010-sync-state.sql` defining `sync_state` (`room_id PRIMARY KEY`, `epoch`, `seq`, `updated_at`), `processed_events` (`event_key PRIMARY KEY`, `processed_at`), and `mls_rooms` (`room_id PRIMARY KEY`, `local_client_id`, `current_epoch`, `membership_status`, `confirmed_transcript_hash BLOB`, `last_error`, `joined_at`, `updated_at`), with indexes `idx_processed_events_at` and `idx_mls_rooms_status`.
   - Created repositories under `packages/app/src/lib/db/repositories/`:
     - `sync-state.js` exporting `createSyncStateRepository` (`get`, `getCursor`, `set`, `advance` enforcing monotonic `(epoch, seq)` ordering in JS, `list`, `remove`, `clearAll`).
-    - `processed-events.js` exporting `createProcessedEventsRepository` (`has`, `hasKey`, `mark` using `INSERT OR IGNORE`, `markKey`, `markBatch`, `prune`, `count`, `clearAll`) and module-level helper `makeKey(source, eventName, sequence)`.
+    - `processed-events.js` exporting `createProcessedEventsRepository` (`has`, `hasKey`, `mark`, `markKey`, `markBatch`, `prune`, `count`, `clearAll`) and module-level helper `makeKey(source, eventName, sequence)`.
     - `mls-rooms.js` exporting `createMlsRoomsRepository` (`get`, `upsert` preserving existing values with `COALESCE`/`CASE WHEN`, `markJoined`, `markLeft`, `markError`, `advanceEpoch`, `listByStatus`, `listJoined`, `remove`, `clearAll`).
   - Extended repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `syncState`, `processedEvents`, `mlsRooms` (18 total repositories) and re-exporting all factories and `makeKey`.
   - Created unit test suites `packages/app/tests/unit/repositories-sync-state.test.js` (16 cases), `packages/app/tests/unit/repositories-processed-events.test.js` (13 cases), and `packages/app/tests/unit/repositories-mls-rooms.test.js` (16 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
   - Authored contract documentation at `packages/app/docs/storage/sync-state.md`, `packages/app/docs/storage/processed-events.md`, and `packages/app/docs/storage/mls-rooms.md`, and updated `packages/app/docs/storage/README.md`.
   - Reached storage layer completion checkpoint: all 18 repositories across 10 migrations are implemented and documented.
+
+- **C-INFRA-21 Deliverables & Status:**
+  - Status: `done`.
+  - Extended `@atoll/app` storage plugin (`packages/app/src/plugins/storage-plugin.js`) with `repos: () => repos` on client context surface and SSR throw handler.
+  - Dynamically imported `createRepositories` via Phase 1 `Promise.all` in `client.context`.
+  - Memoized DB under `pluginContext.__storage_client__` and aggregator under `pluginContext.__storage_repos_client__`.
+  - Extended `packages/app/tests/unit/storage-plugin.test.js` with 6 new test cases (14 total passing in `unit-smoke` batch).
+  - Authored "Repository accessor — repos()" contract documentation in `packages/app/docs/plugins/storage.md`.
 
 ## Component Authoring Policy
 

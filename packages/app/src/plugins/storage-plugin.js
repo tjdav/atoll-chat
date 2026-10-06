@@ -41,13 +41,19 @@ export default (options = {}) => {
           get: () => undefined,
           set: () => {},
           delete: () => ({ changes: 0 })
+        },
+        repos: () => {
+          throw new Error('storage.repos is not available during SSR. The database is client-only.')
         }
       })
     },
 
     client: {
       context: async (pluginContext) => {
-        const { createDb } = await import('../lib/db/index.js')
+        const [{ createDb }, { createRepositories }] = await Promise.all([
+          import('../lib/db/index.js'),
+          import('../lib/db/repositories/index.js')
+        ])
         const activeDbName = (typeof options !== 'undefined' && options?.dbName) ? options.dbName : 'messenger'
         const activeMigrations = (typeof options !== 'undefined' && options?.migrations && options.migrations.length > 0)
           ? options.migrations
@@ -59,6 +65,9 @@ export default (options = {}) => {
             ]
         const db = pluginContext.__storage_client__ ??
           (pluginContext.__storage_client__ = createDb({ dbName: activeDbName, migrations: activeMigrations }))
+        const repos = pluginContext.__storage_repos_client__ ??
+          (pluginContext.__storage_repos_client__ = createRepositories({ db }))
+
         return (_instanceContext) => ({
           open: () => db.open(),
           close: () => db.close(),
@@ -70,7 +79,8 @@ export default (options = {}) => {
             get: (key) => db.meta.get(key),
             set: (key, value) => db.meta.set(key, value),
             delete: (key) => db.meta.delete(key)
-          }
+          },
+          repos: () => repos
         })
       }
     }
