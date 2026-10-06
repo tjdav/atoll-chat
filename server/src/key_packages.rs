@@ -125,7 +125,7 @@ pub async fn upload_key_packages(
             sqlx::query(
                 r#"
                 INSERT INTO key_packages (
-                    id, user_id, client_id, cipher_suite, key_package_data,
+                    id, user_id, client_id, cipher_suite, key_package,
                     is_last_resort, consumed, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, 0, ?)
                 "#,
@@ -219,7 +219,7 @@ pub async fn claim_key_package(
         // 2. Select oldest unconsumed non-last-resort package
         let normal_pkg = sqlx::query(
             r#"
-            SELECT id, user_id, client_id, cipher_suite, key_package_data, is_last_resort
+            SELECT id, user_id, client_id, cipher_suite, key_package AS key_package_data, is_last_resort
             FROM key_packages
             WHERE user_id = ? AND consumed = 0 AND is_last_resort = 0
             ORDER BY created_at ASC, id ASC
@@ -236,7 +236,7 @@ pub async fn claim_key_package(
                 // 3. Fall back to oldest unconsumed last-resort package
                 sqlx::query(
                     r#"
-                    SELECT id, user_id, client_id, cipher_suite, key_package_data, is_last_resort
+                    SELECT id, user_id, client_id, cipher_suite, key_package AS key_package_data, is_last_resort
                     FROM key_packages
                     WHERE user_id = ? AND consumed = 0 AND is_last_resort = 1
                     ORDER BY created_at ASC, id ASC

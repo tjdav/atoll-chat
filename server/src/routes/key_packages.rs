@@ -98,8 +98,8 @@ pub async fn upload(
 
     // Verify each client_id is owned by the authenticated user
     for cid in &client_ids {
-        let device_exists: Option<(i32,)> =
-            sqlx::query_as("SELECT 1 FROM devices WHERE user_id = ? AND client_id = ?")
+        let device_exists: Option<i64> =
+            sqlx::query_scalar("SELECT 1 FROM devices WHERE user_id = ? AND client_id = ?")
                 .bind(&auth.user_id)
                 .bind(cid)
                 .fetch_optional(&state.pool)

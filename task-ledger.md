@@ -14,6 +14,9 @@
 - **Device Model Contract Verification**: done
   - **Delivered:** `verification/device-model-contract/report.md`
   - **Outcome:** Verified `devices` and `device_names` schemas, endpoint implementations, `device_state` sync array, write paths, and event publishers. Resolved spec gap with concrete proposal for `PATCH /users/me/devices/:id`.
+- **Device Platform and Events Empirical Baseline Verification**: done
+  - **Delivered:** `verification/device-platform-and-events/report.md`
+  - **Outcome:** Audited ground truth baseline for `devices.platform`, `create_device` signature, event publishers, test fixtures, and threaded `platform` through `LoginStartRequest` and `PendingLogin`.
 
 ## Completed Tasks
 

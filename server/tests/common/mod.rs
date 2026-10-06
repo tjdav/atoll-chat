@@ -596,6 +596,7 @@ pub async fn login_user_with_device_name(
                 "username_token": username_token,
                 "credential_request": cred_req_b64,
                 "client_id": client_id,
+                "platform": "web",
             })
             .to_string(),
         ))
@@ -645,7 +646,6 @@ pub async fn login_user_with_device_name(
                         "credential_finalization": dummy_finalization,
                         "identity_pubkey": identity_pubkey,
                         "encrypted_device_name": encrypted_device_name,
-                        "platform": "web",
                     })
                     .to_string(),
                 ))
@@ -673,7 +673,6 @@ pub async fn login_user_with_device_name(
                 "credential_finalization": cred_fin_b64,
                 "identity_pubkey": identity_pubkey,
                 "encrypted_device_name": encrypted_device_name,
-                "platform": "web",
             })
             .to_string(),
         ))

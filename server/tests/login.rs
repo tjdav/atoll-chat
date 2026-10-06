@@ -108,6 +108,7 @@ async fn test_5_login_state_expires_after_ttl() {
                 "username_token": username_token,
                 "credential_request": cred_req_b64,
                 "client_id": TEST_CLIENT_ID,
+                "platform": "web",
             })
             .to_string(),
         ))

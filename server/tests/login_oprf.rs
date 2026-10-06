@@ -101,6 +101,7 @@ async fn test_requires_reregistration_login() {
                 "username_token": token,
                 "credential_request": STANDARD.encode([0u8; 32]),
                 "client_id": TEST_CLIENT_ID,
+                "platform": "web",
             })
             .to_string(),
         ))

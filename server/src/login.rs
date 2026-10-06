@@ -11,6 +11,7 @@ pub struct PendingLogin {
     pub username_token: String,
     pub encrypted_display: Option<String>,
     pub client_id: String,
+    pub platform: String,
     pub server_login_state: ServerLogin<DefaultCipherSuite>,
     pub created_at: Instant,
 }
