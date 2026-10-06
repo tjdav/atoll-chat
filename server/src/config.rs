@@ -398,11 +398,25 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(65_536);
 
+        if !(1024..=65536).contains(&server_max_room_metadata_bytes) {
+            anyhow::bail!(
+                "SERVER_MAX_ROOM_METADATA_BYTES must be between 1024 and 65536 (got {})",
+                server_max_room_metadata_bytes
+            );
+        }
+
         let max_room_metadata_bytes = env::var("ROOM_METADATA_MAX_BYTES")
             .or_else(|_| env::var("MAX_ROOM_METADATA_BYTES"))
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(16_384);
+
+        if !(1024..=65536).contains(&max_room_metadata_bytes) {
+            anyhow::bail!(
+                "ROOM_METADATA_MAX_BYTES must be between 1024 and 65536 (got {})",
+                max_room_metadata_bytes
+            );
+        }
 
         let edit_window_seconds = env::var("EDIT_WINDOW_SECONDS")
             .ok()

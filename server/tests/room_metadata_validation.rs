@@ -232,3 +232,32 @@ async fn test_padded_and_unpadded_base64url_accepted() {
     // Returns unpadded string ("aGVsbG8")
     assert_eq!(json_p["metadata"], "aGVsbG8");
 }
+
+#[test]
+fn test_startup_metadata_config_out_of_range() {
+    std::env::set_var("APP_ENV", "development");
+
+    // SERVER_MAX_ROOM_METADATA_BYTES below 1024 fails startup
+    std::env::set_var("SERVER_MAX_ROOM_METADATA_BYTES", "512");
+    let res = server::Config::from_env();
+    std::env::remove_var("SERVER_MAX_ROOM_METADATA_BYTES");
+    assert!(res.is_err());
+    let err_msg = res.err().unwrap().to_string();
+    assert!(
+        err_msg.contains("SERVER_MAX_ROOM_METADATA_BYTES must be between 1024 and 65536"),
+        "expected error message containing SERVER_MAX_ROOM_METADATA_BYTES, got: {}",
+        err_msg
+    );
+
+    // ROOM_METADATA_MAX_BYTES above 65536 fails startup
+    std::env::set_var("ROOM_METADATA_MAX_BYTES", "70000");
+    let res2 = server::Config::from_env();
+    std::env::remove_var("ROOM_METADATA_MAX_BYTES");
+    assert!(res2.is_err());
+    let err_msg2 = res2.err().unwrap().to_string();
+    assert!(
+        err_msg2.contains("ROOM_METADATA_MAX_BYTES must be between 1024 and 65536"),
+        "expected error message containing ROOM_METADATA_MAX_BYTES, got: {}",
+        err_msg2
+    );
+}

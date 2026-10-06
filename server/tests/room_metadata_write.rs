@@ -96,7 +96,10 @@ async fn test_owner_can_update_metadata_and_version_increments() {
     assert_eq!(json_p1["room_id"], room_id);
     assert_eq!(json_p1["metadata"], blob);
     assert_eq!(json_p1["metadata_version"], 2);
-    assert!(json_p1["updated_at"].is_string());
+    assert!(
+        json_p1.get("updated_at").is_none(),
+        "updated_at must be absent per §8.4"
+    );
 
     // 3. GET room metadata verbatim
     let req_get1 = Request::builder()

@@ -49,9 +49,9 @@
 - **MIG-RESET — Consolidate Layered Migrations into a Single V2 Schema**: done
   - **Delivered:** `server/migrations/0001_v2_schema.sql` (single baseline migration replacing all 35 legacy files), `server/tests/migration_schema.rs`, `server/tests/fixtures/pre_consolidation_schema.txt`, `server/README.md`.
   - **Batch:** `operations`
-- **Task 26 — Room Metadata with Encrypted Blob (Phase 6)**: done
+- **Task 26 — Room Metadata Encrypted Blob (Phase 6)**: done
   - **Migration:** None (Case A: reuses `rooms.metadata` and `rooms.metadata_version` in `0001_v2_schema.sql`).
-  - **Delivered:** Step 0 Empirical Report at `verification/room-metadata-encrypted/report.md`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/config.rs`, `server/src/limits.rs`, `server/src/main.rs`, `room_metadata_write.rs`, `room_metadata_validation.rs`, `room_metadata_events.rs`.
+  - **Delivered:** Step 0 Empirical Report at `verification/room-metadata-encrypted/report.md`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/config.rs`, `server/src/limits.rs`, `server/src/main.rs`, `server/tests/room_metadata_write.rs`, `server/tests/room_metadata_validation.rs`, `server/tests/room_metadata_events.rs`. Closed 5 gaps: metadata size limits config (`SERVER_MAX_ROOM_METADATA_BYTES` 64 KB hard max, `ROOM_METADATA_MAX_BYTES` 16 KB default), Discord-mode moderator authorization with `moderation_override` fallback, no-op `PATCH` version & event suppression, `room.updated` payload shape `{ room_id, metadata }`, and `updated_at` removal from `PATCH` response.
   - **Batch:** `messaging`
 - **Task 27 — Message Editing**: done
   - **Migration:** `0027_message_edit_columns.sql` (Case A: added `edit_of`, `edit_sequence`, `edited_at` columns and `idx_room_messages_edit_of` partial index).
@@ -208,7 +208,7 @@ None.
 ## Summary
 - **Project Status:** In Progress
 - **Total Verifications/Tasks Tracked:** 48
-- **Done:** 47
-- **Pending:** 1
+- **Done:** 48
+- **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

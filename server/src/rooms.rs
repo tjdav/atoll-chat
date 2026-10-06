@@ -237,7 +237,6 @@ pub struct RoomMetadataResult {
     pub room_id: String,
     pub metadata: Option<String>,
     pub metadata_version: i64,
-    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -345,14 +344,14 @@ pub async fn update_room_metadata(
     requester_id: &str,
     metadata: Option<&str>,
     max_metadata_bytes: usize,
-    moderation_mode: &str,
+    instance_moderation_mode: &str,
 ) -> Result<RoomMetadataResult, RoomMetadataError> {
     let mut tx = pool.begin().await?;
 
-    // 1. Verify requester membership and fetch current metadata
-    let member_row: Option<(String, Option<String>, i64)> = sqlx::query_as(
+    // 1. Verify requester membership and fetch current metadata & moderation_override
+    let member_row: Option<(String, Option<String>, i64, Option<String>)> = sqlx::query_as(
         r#"
-        SELECT rm.role, r.metadata, r.metadata_version
+        SELECT rm.role, r.metadata, r.metadata_version, r.moderation_override
         FROM room_members rm
         JOIN rooms r ON r.id = rm.room_id
         WHERE rm.room_id = ? AND rm.user_id = ?
@@ -363,13 +362,19 @@ pub async fn update_room_metadata(
     .fetch_optional(&mut *tx)
     .await?;
 
-    let (role, current_metadata, current_version) = match member_row {
+    let (role, current_metadata, current_version, moderation_override) = match member_row {
         Some(row) => row,
         None => return Err(RoomMetadataError::RoomNotFound),
     };
 
+    // Effective moderation mode resolves per-room override, falling back to instance setting.
+    let effective_moderation_mode = moderation_override
+        .as_deref()
+        .unwrap_or(instance_moderation_mode);
+
     // 2. Authorization check per §3.2 (owner, or moderator in Discord mode)
-    let is_authorized = role == "owner" || (role == "moderator" && moderation_mode == "discord");
+    let is_authorized =
+        role == "owner" || (role == "moderator" && effective_moderation_mode == "discord");
     if !is_authorized {
         return Err(RoomMetadataError::Forbidden);
     }
@@ -394,7 +399,6 @@ pub async fn update_room_metadata(
             room_id: room_id.to_string(),
             metadata: current_metadata,
             metadata_version: current_version,
-            updated_at: Utc::now(),
         });
     }
 
@@ -420,7 +424,6 @@ pub async fn update_room_metadata(
         room_id: room_id.to_string(),
         metadata: clean_metadata,
         metadata_version: new_version,
-        updated_at: Utc::now(),
     };
 
     // 6. Post-commit: publish room.updated on private-room-{room_id} per §8.9

@@ -39,13 +39,21 @@
   - **Role Seed Source:** Roles seed `INSERT OR IGNORE INTO roles ...` is included directly in `0001_v2_schema.sql` so that clean migrations populate standard RBAC roles (`owner`, `admin`, `inviter`, `member`).
   - **Verification:** Test `server/tests/migration_schema.rs` asserts single migration file presence, clean migration run, idempotency, foreign key enforcement, role seed integrity, and structural schema equivalence against pre-consolidation canonical snapshot.
 
-## Task 26 — Room Metadata Schema Migration
-- **ID:** Task 26
-- **Date:** 2026-10-02
-- **Status:** Complete.
-- **Spec sections affected:** §2.4, §7.4
-- **Question asked:** What was the initial schema state of the `rooms` table prior to migration 0026?
-- **Answer found:** Case A — `rooms` contained `name_encrypted` (TEXT) and lacked `metadata` or `metadata_version`. Migration `0026_rooms_metadata.sql` added `metadata` (TEXT), added `metadata_version` (INTEGER NOT NULL DEFAULT 1), and dropped `name_encrypted`.
+## Task 26 — Room Metadata Encrypted Blob
+- **ID:** Task 26 Room Metadata Encrypted
+- **Date:** 2026-10-06
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §1.2, §3.2, §4.1, §4.4, §7.4, §8.4, §8.9, §10, §12
+- **Question asked:** What is the canonical implementation for room metadata schema, limits, authorization, `metadata_version` increment rules, and `room.updated` event payload?
+- **Answer found:**
+  - **Schema:** `rooms` table in `server/migrations/0001_v2_schema.sql` contains `metadata` (TEXT) and `metadata_version` (INTEGER NOT NULL DEFAULT 1), matching §7.4.
+  - **Limits:** Configured via `SERVER_MAX_ROOM_METADATA_BYTES` (64 KB hard max) and `ROOM_METADATA_MAX_BYTES` (16 KB instance default, range 1 KB – 64 KB).
+  - **`metadata_version` Rule:** Increments by 1 on metadata modification only. No-op PATCH with unchanged metadata preserves `metadata_version` without incrementing and skips event emission.
+  - **`room.updated` Event Payload:** Carries `{ room_id, metadata }` on `private-room-{room_id}` per §8.9. Best-effort delivery.
+  - **Authorization:** `owner` or `moderator` (Discord mode) / `owner` (Messenger mode) per §3.2. Effective mode resolves per-room `moderation_override` falling back to instance `moderation_mode`.
+  - **Response Shape:** `PATCH /rooms/:id` returns `{ room_id, metadata, metadata_version }` per §8.4 (without `updated_at`).
+  - **Opacity Invariant:** The server never decrypts or inspects `metadata`. Verbatim ciphertext string roundtrip verified byte-for-byte.
+- **Link to report:** [verification/room-metadata-encrypted/report.md](verification/room-metadata-encrypted/report.md)
 
 ## Task 28 — Message Reactions Schema & Unique Constraint
 - **ID:** Task 28
