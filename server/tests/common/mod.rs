@@ -110,10 +110,22 @@ where
     });
 
     let sockudo_config = server::SockudoConfig {
-        http_base: "http://localhost:6001".to_string(),
+        http_base: if config_arc.sockudo_url.is_empty() {
+            "http://localhost:6001".to_string()
+        } else {
+            config_arc.sockudo_url.clone()
+        },
         app_id: "chat".to_string(),
-        app_key: "test-key".to_string(),
-        app_secret: "test-secret".to_string(),
+        app_key: if config_arc.sockudo_app_key.is_empty() {
+            "test-key".to_string()
+        } else {
+            config_arc.sockudo_app_key.clone()
+        },
+        app_secret: if config_arc.sockudo_app_secret.is_empty() {
+            "test-secret".to_string()
+        } else {
+            config_arc.sockudo_app_secret.clone()
+        },
         enable_client_events: true,
     };
     let publisher = Arc::new(server::Publisher::new(sockudo_config));
@@ -285,10 +297,22 @@ pub async fn setup_test_app_with_config(
     });
 
     let sockudo_config = server::SockudoConfig {
-        http_base: "http://localhost:6001".to_string(),
+        http_base: if config_arc.sockudo_url.is_empty() {
+            "http://localhost:6001".to_string()
+        } else {
+            config_arc.sockudo_url.clone()
+        },
         app_id: "chat".to_string(),
-        app_key: "test-key".to_string(),
-        app_secret: "test-secret".to_string(),
+        app_key: if config_arc.sockudo_app_key.is_empty() {
+            "test-key".to_string()
+        } else {
+            config_arc.sockudo_app_key.clone()
+        },
+        app_secret: if config_arc.sockudo_app_secret.is_empty() {
+            "test-secret".to_string()
+        } else {
+            config_arc.sockudo_app_secret.clone()
+        },
         enable_client_events: true,
     };
     let publisher = Arc::new(server::Publisher::new(sockudo_config));

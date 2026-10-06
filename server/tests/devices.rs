@@ -752,3 +752,272 @@ async fn test_18_device_name_update() {
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 }
+
+#[tokio::test]
+async fn test_19_device_added_event_payload_shape() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/apps/chat/events"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true})))
+        .mount(&mock_server)
+        .await;
+
+    let (app, pool, _) = common::setup_test_app_with_custom_config(|cfg| {
+        cfg.sockudo_url = mock_server.uri();
+        cfg.sockudo_app_key = "test-key".to_string();
+        cfg.sockudo_app_secret = "test-secret".to_string();
+    })
+    .await;
+
+    let user_id = register_user(&app, "user_dev_added", "password123", None).await;
+
+    // Login creates a new device
+    let (status, login_res) = login_user(
+        &app,
+        "user_dev_added",
+        "password123",
+        "c_dev_added_123456",
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let dev_id = login_res["device_id"].as_str().expect("device_id");
+
+    // Capture published Sockudo event
+    let requests = mock_server.received_requests().await.unwrap();
+    assert_eq!(requests.len(), 1);
+
+    let body_json: Value = serde_json::from_slice(&requests[0].body).unwrap();
+    assert_eq!(body_json["name"], "device.added");
+    assert_eq!(
+        body_json["channels"],
+        serde_json::json!([format!("private-user-{}", user_id)])
+    );
+
+    let data_str = body_json["data"].as_str().expect("data string");
+    let envelope: Value = serde_json::from_str(data_str).unwrap();
+
+    assert_eq!(envelope["event_type"], "device.added");
+    let seq = envelope["user_seq"].as_i64().expect("user_seq i64");
+    assert!(seq >= 1);
+
+    let payload = &envelope["payload"];
+    assert_eq!(payload["device_id"], dev_id);
+    assert_eq!(payload["platform"], "web");
+    assert!(payload["added_at"].is_string());
+    assert_eq!(payload["user_seq"], seq);
+
+    // Verify user_seq matches allocated sequence for user
+    let db_seq: i64 = sqlx::query_scalar("SELECT next_seq - 1 FROM user_seq WHERE user_id = ?")
+        .bind(&user_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(seq, db_seq);
+}
+
+#[tokio::test]
+async fn test_20_device_revoked_event_payload_shape() {
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/apps/chat/events"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true})))
+        .mount(&mock_server)
+        .await;
+
+    let (app, _pool, _) = common::setup_test_app_with_custom_config(|cfg| {
+        cfg.sockudo_url = mock_server.uri();
+        cfg.sockudo_app_key = "test-key".to_string();
+        cfg.sockudo_app_secret = "test-secret".to_string();
+    })
+    .await;
+
+    let user_id = register_user(&app, "user_dev_rev", "password123", None).await;
+
+    // Login on device 1 (publishes device.added)
+    let (_, login1) = login_user(
+        &app,
+        "user_dev_rev",
+        "password123",
+        "c_dev_rev1_123456",
+        None,
+    )
+    .await;
+    let token1 = login1["session_token"].as_str().unwrap();
+
+    // Login on device 2 (publishes device.added)
+    let (_, login2) = login_user(
+        &app,
+        "user_dev_rev",
+        "password123",
+        "c_dev_rev2_123456",
+        None,
+    )
+    .await;
+    let dev2_id = login2["device_id"].as_str().unwrap();
+
+    // Delete device 2 using device 1 token
+    let req = Request::builder()
+        .method("DELETE")
+        .uri(format!("/api/v1/users/me/devices/{}", dev2_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token1))
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    // Filter requests for device.revoked
+    let requests = mock_server.received_requests().await.unwrap();
+    let rev_req = requests
+        .iter()
+        .find(|r| {
+            let body: Value = serde_json::from_slice(&r.body).unwrap();
+            body["name"] == "device.revoked"
+        })
+        .expect("device.revoked request");
+
+    let body_json: Value = serde_json::from_slice(&rev_req.body).unwrap();
+    assert_eq!(
+        body_json["channels"],
+        serde_json::json!([format!("private-user-{}", user_id)])
+    );
+
+    let data_str = body_json["data"].as_str().expect("data string");
+    let envelope: Value = serde_json::from_str(data_str).unwrap();
+
+    assert_eq!(envelope["event_type"], "device.revoked");
+    let seq = envelope["user_seq"].as_i64().expect("user_seq i64");
+    assert!(seq >= 1);
+
+    let payload = &envelope["payload"];
+    assert_eq!(payload["device_id"], dev2_id);
+    assert_eq!(payload["reason"], "revoked_by_user");
+    assert_eq!(payload["user_seq"], seq);
+}
+
+#[tokio::test]
+async fn test_21_device_name_updated_event_payload_shape() {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method("POST"))
+        .and(path("/apps/chat/events"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true})))
+        .mount(&mock_server)
+        .await;
+
+    let (app, _pool, _) = common::setup_test_app_with_custom_config(|cfg| {
+        cfg.sockudo_url = mock_server.uri();
+        cfg.sockudo_app_key = "test-key".to_string();
+        cfg.sockudo_app_secret = "test-secret".to_string();
+    })
+    .await;
+
+    let user_id = register_user(&app, "user_dev_name", "password123", None).await;
+
+    let (_, login) = login_user(
+        &app,
+        "user_dev_name",
+        "password123",
+        "c_dev_name_123456",
+        None,
+    )
+    .await;
+    let dev_id = login["device_id"].as_str().unwrap();
+    let token = login["session_token"].as_str().unwrap();
+
+    let enc_name = URL_SAFE_NO_PAD.encode(vec![99u8; 32]);
+
+    let req = Request::builder()
+        .method("PATCH")
+        .uri(format!("/api/v1/users/me/devices/{}", dev_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            serde_json::json!({ "encrypted_device_name": enc_name }).to_string(),
+        ))
+        .unwrap();
+
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let requests = mock_server.received_requests().await.unwrap();
+
+    // Verify no device.sync event is published
+    let sync_reqs: Vec<&wiremock::Request> = requests
+        .iter()
+        .filter(|r| {
+            let body: Value = serde_json::from_slice(&r.body).unwrap();
+            body["name"] == "device.sync"
+        })
+        .collect();
+    assert_eq!(
+        sync_reqs.len(),
+        0,
+        "device.sync event must NOT be published"
+    );
+
+    // Verify device.name_updated event shape
+    let name_req = requests
+        .iter()
+        .find(|r| {
+            let body: Value = serde_json::from_slice(&r.body).unwrap();
+            body["name"] == "device.name_updated"
+        })
+        .expect("device.name_updated request");
+
+    let body_json: Value = serde_json::from_slice(&name_req.body).unwrap();
+    assert_eq!(
+        body_json["channels"],
+        serde_json::json!([format!("private-user-{}", user_id)])
+    );
+
+    let data_str = body_json["data"].as_str().expect("data string");
+    let envelope: Value = serde_json::from_str(data_str).unwrap();
+
+    assert_eq!(envelope["event_type"], "device.name_updated");
+    let seq = envelope["user_seq"].as_i64().expect("user_seq i64");
+
+    let payload = &envelope["payload"];
+    assert_eq!(payload["device_id"], dev_id);
+    assert_eq!(payload["encrypted_device_name"], enc_name);
+    assert_eq!(payload["user_seq"], seq);
+}
+
+#[tokio::test]
+#[ignore = "Forcing a transaction rollback after allocate_user_seq requires a production test hook, which is out of scope for this test-only task."]
+async fn test_22_rolled_back_device_creation_does_not_consume_seq() {
+    // Contract: If a device creation transaction fails or rolls back after allocate_user_seq,
+    // user_seq.next_seq must remain unchanged.
+    //
+    // Implementation Note: In production code (server/src/routes/login.rs), allocate_user_seq
+    // is called inside tx right before tx.commit().await?. Without a production test hook or
+    // failpoint to interrupt the transaction at that boundary, this test cannot force a
+    // rollback after sequence allocation without modifying production code.
+}
+
+#[tokio::test]
+#[ignore = "Forcing a transaction rollback after allocate_user_seq requires a production test hook, which is out of scope for this test-only task."]
+async fn test_23_rolled_back_device_revocation_does_not_consume_seq() {
+    // Contract: If a device revocation transaction fails or rolls back after allocate_user_seq,
+    // user_seq.next_seq must remain unchanged.
+    //
+    // Implementation Note: In production code (server/src/devices.rs), allocate_user_seq
+    // is called inside tx right before the device row deletion and tx.commit().await?. Without
+    // a production test hook or failpoint to interrupt the transaction at that boundary, this
+    // test cannot force a rollback after sequence allocation without modifying production code.
+}
