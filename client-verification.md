@@ -473,7 +473,7 @@ build task runs.
 | Async Storage Contract | Every method on `backends/memory.js`, `backends/wasm.js`, `lib/db/migrations.js`, `lib/db/index.js` (`createDb`), and `plugins/storage-plugin.js` returns a `Promise`. Callers must `await` all storage methods |
 | Environment Backend Selection | `resolveBackend({ prefer })` exports `SUPPORTED_BACKENDS = ['wasm', 'memory']`. Selects WASM backend automatically when `window` or `importScripts` is defined, falling back to memory backend in Node |
 | Test Coverage & Batches | Unit test `packages/app/tests/unit/wasm-backend.test.js` (7 test cases covering WASM initialization, in-memory fallback, `exec`/`all`/`one`, transactions, migrations, and meta helpers) registered under `unit-smoke` batch in `test-batches.js`. Updated `db.test.js` (27 cases) and `storage-plugin.test.js` (8 cases) |
-| Playwright Real-Browser Probe | Verified WASM backend opening, migration execution, read/write SQL, and reload persistence in Playwright Chromium browser via temporary `cv-wasm-probe` component. Screenshot captured at `test-results/wasm-probe.png`. Temporary fixture cleanly reverted |
+| Playwright Real-Browser Probe | Verified WASM backend opening, migration execution, read/write SQL, and reload persistence in Playwright Chromium browser via temporary probe fixture and captured `test-results/wasm-probe.png`. Temporary fixture cleanly reverted |
 | Documentation Path | Updated `packages/app/docs/plugins/storage.md` detailing WASM backend, OPFS fallback, and async storage contract |
 
 ### C-INFRA-10 — Storage Boot Integration
@@ -657,7 +657,7 @@ build task runs.
 | MLS Rooms Repository | `createMlsRoomsRepository({ db })` in `packages/app/src/lib/db/repositories/mls-rooms.js` exposing 10 async methods (`get`, `upsert`, `markJoined`, `markLeft`, `markError`, `advanceEpoch`, `listByStatus`, `listJoined`, `remove`, `clearAll`) |
 | Strict Non-Cryptographic Invariant | `mls_rooms` contains zero keys, group secrets, or cryptographic material (all remain isolated in WASM CoreCrypto keystore); stores only client-visible metadata (`local_client_id`, `current_epoch`, `membership_status`, `confirmed_transcript_hash BLOB`, `last_error`, `joined_at`, `updated_at`) |
 | Membership Status Value Set | `'pending'` (welcome received, uninitialized), `'joined'` (active), `'left'` (removed/left), `'error'` (keystore or epoch failure with `last_error` diagnostic string) |
-| Complete Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` exports `createRepositories({ db })` returning all 18 domain repositories (`users`, `rooms`, `roomMembers`, `roomOrder`, `messages`, `attachments`, `reactions`, `readState`, `drafts`, `blockedUsers`, `outbox`, `roomPreferences`, `nicknames`, `deviceNames`, `starredItems`, `syncState`, `processedEvents`, `mlsRooms`) and re-exports all 18 factories and `makeKey` |
+| Complete Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` exports `createRepositories({ db })` returning all 18 domain repositories (`users`, `rooms`, `roomMembers`, `roomOrder`, `messages`, `attachments`, `reactions`, `readState`, `drafts`, `blockedUsers`, `outbox`, `roomPreferences`, `nicknames`, `deviceNames`, `starredItems`, `syncState`, `processedEvents`, `mlsRooms`) and re-exporting all 18 factories and `makeKey` |
 | Unit Test Suites | `tests/unit/repositories-sync-state.test.js` (16 cases), `tests/unit/repositories-processed-events.test.js` (13 cases), and `tests/unit/repositories-mls-rooms.test.js` (16 cases) registered under `unit-smoke` batch in `test-batches.js` |
 | Contract Documentation | `packages/app/docs/storage/sync-state.md`, `packages/app/docs/storage/processed-events.md`, and `packages/app/docs/storage/mls-rooms.md` authored; index updated in `packages/app/docs/storage/README.md` |
 
@@ -675,3 +675,22 @@ build task runs.
 | Server Context Behavior | `repos()` throws `Error` ('storage.repos is not available during SSR. The database is client-only.') |
 | Test Coverage & Batches | `packages/app/tests/unit/storage-plugin.test.js` extended with 6 test cases (14 total passing in `unit-smoke` batch) |
 | Plugin Documentation | `packages/app/docs/plugins/storage.md` updated with "Repository accessor — repos()" section |
+
+### C-INFRA-22 — User-Scoped Sync Plugin and Boot Integration Contract
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Plugin Name & Direct Surface | `name: 'sync'`, exposing `ctx.sync.runUserScopedSync({ userId, api, storage, onProgress })` directly on client plugin context |
+| Pure Sync Library | `packages/app/src/lib/sync/index.js` (`runUserScopedSync`) and `packages/app/src/lib/sync/apply.js` (`applyReadState`, `applyDeviceState`, `applyStarredItems`) |
+| User Sequence Cursor | Sequence cursor stored in `_meta` table under key `last_user_seq` |
+| Section Mappings | `read_state` → `repos.readState.upsert` (skipping tombstoned rows); `device_state` → `repos.deviceNames.applyBatch`; `starred_items` → `repos.starredItems.applyBatch` |
+| Deferral Decision | `user_preferences` response section application is deferred to a follow-on task |
+| Full Resync Path | `"full_resync_required": true` resets `last_user_seq` to `0` and returns `{ fullResync: true, cursor: 0 }` |
+| Concurrency Guard | Phase 1 captured `inFlight` promise deduplicates concurrent trigger calls during the same tick |
+| Fail-Closed Cursor Invariant | Cursor is written to `_meta` strictly AFTER all section applications succeed; network or repository errors propagate without updating cursor |
+| Boot Sequence Integration | Boot triggers `sync.runUserScopedSync` post-`storage.open()` when `result.user?.id` exists. Failures are non-fatal (boot completes and reveals shell) |
+| Diagnostic Marker | Sets `data-sync-ready="true"` on boot's root element (`refs('root')`) when sync completes successfully |
+| Documentation Path | `packages/app/docs/plugins/sync.md` authored covering all 10 contract sections; index updated in `packages/app/docs/plugins/README.md` |
+| Visual Artifact | Screenshot captured at `packages/app/test-results/sync-boot.png` |

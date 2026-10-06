@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import extensionPlugin from '@atoll/extend/plugin'
 import iconPlugin from './src/plugins/icon-plugin.js'
 import storagePlugin from './src/plugins/storage-plugin.js'
+import syncPlugin from './src/plugins/sync-plugin.js'
 import routerPlugin from './src/plugins/router-plugin.js'
 import i18nPlugin from './src/plugins/i18n-plugin.js'
 import { extensions } from './src/extensions/index.js'
@@ -59,6 +60,7 @@ export default defineConfig({
     extensionPlugin({ extensions }),
     iconPlugin(),
     storagePlugin({ dbName: 'messenger', migrations: loadMigrations() }),
+    syncPlugin(),
     routerPlugin(),
     i18nPlugin({ defaultLocale: 'en' })
   ]

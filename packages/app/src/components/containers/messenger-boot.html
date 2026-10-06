@@ -93,7 +93,7 @@ export default defineComponent({
     errorHidden: ({ state }) => state.error === ''
   },
 
-  client: async ({ refs, emit, state, signal, i18n, storage, globalStore }) => {
+  client: async ({ refs, emit, state, signal, i18n, storage, sync, globalStore }) => {
     const syncLocale = (locale) => {
       state.locale = locale
       Object.assign(state, i18n.strings([
@@ -139,8 +139,24 @@ export default defineComponent({
           }
           const root = refs('root')
           if (root) {
-            root.setAttribute('data-storage-ready', 'true')
-            root.setAttribute('data-storage-persistent', String(persistent))
+            root.dataset.storageReady = 'true'
+            root.dataset.storagePersistent = String(persistent)
+          }
+
+          if (result.user?.id && sync?.runUserScopedSync) {
+            try {
+              const { api } = await import('../../lib/api/client.js')
+              await sync.runUserScopedSync({
+                userId: result.user.id,
+                api,
+                storage
+              })
+              if (root) {
+                root.dataset.syncReady = 'true'
+              }
+            } catch (_syncErr) {
+              // Sync failed. The local database is unchanged. A future task retries on reconnect.
+            }
           }
         } catch (_err) {
           // Storage unavailable. storageReady remains false.

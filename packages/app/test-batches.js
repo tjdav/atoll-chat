@@ -57,7 +57,9 @@ export default [
       'tests/unit/repositories-starred-items.test.js',
       'tests/unit/repositories-sync-state.test.js',
       'tests/unit/repositories-processed-events.test.js',
-      'tests/unit/repositories-mls-rooms.test.js'
+      'tests/unit/repositories-mls-rooms.test.js',
+      'tests/unit/sync.test.js',
+      'tests/unit/sync-plugin.test.js'
     ]
   },
   {
@@ -86,7 +88,8 @@ export default [
       'tests/component/auth-login-flow.spec.js',
       'tests/component/register-form.spec.js',
       'tests/component/messenger-boot.spec.js',
-      'tests/component/auth-recovery.spec.js'
+      'tests/component/auth-recovery.spec.js',
+      'tests/component/sync.spec.js'
     ]
   },
   {

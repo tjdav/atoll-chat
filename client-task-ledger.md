@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 43 |
+| Done | 44 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-22 | User-Scoped Sync Plugin | done | C-INFRA-21, C-INFRA-20, C-INFRA-19, C-INFRA-16, C-INFRA-10, C-INFRA-11 | unit-smoke, component-auth |
 | C-INFRA-21 | Repository Accessor in the Storage Plugin Context | done | C-INFRA-20, C-INFRA-11, C-INFRA-9, C-INFRA-10 | unit-smoke |
 | C-INFRA-20 | Sync State, Processed Events, and MLS Rooms Tables with Repositories | done | C-INFRA-19, C-INFRA-14, C-INFRA-9 | unit-smoke |
 | C-INFRA-19 | Device Names and Starred Items Tables with Repositories | done | C-INFRA-18, C-INFRA-9, C-AUTH-3a, C-V-D | unit-smoke |
@@ -582,6 +583,17 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Memoized DB under `pluginContext.__storage_client__` and aggregator under `pluginContext.__storage_repos_client__`.
   - Extended `packages/app/tests/unit/storage-plugin.test.js` with 6 new test cases (14 total passing in `unit-smoke` batch).
   - Authored "Repository accessor — repos()" contract documentation in `packages/app/docs/plugins/storage.md`.
+
+- **C-INFRA-22 Deliverables & Status:**
+  - Status: `done`.
+  - Created pure sync library modules `packages/app/src/lib/sync/apply.js` (exporting `applyReadState`, `applyDeviceState`, `applyStarredItems`) and `packages/app/src/lib/sync/index.js` (exporting `runUserScopedSync(deps)`).
+  - Implemented Coralite plugin `packages/app/src/plugins/sync-plugin.js` with `name: 'sync'`, exposing `ctx.sync.runUserScopedSync({ userId, api, storage, onProgress })` directly via Phase 1 async dynamic import, with in-flight concurrency guard and SSR throw handler.
+  - Registered `syncPlugin()` in `packages/app/coralite.config.js` after `storagePlugin()`.
+  - Updated `packages/app/src/components/containers/messenger-boot.html` destructuring `sync` in `client()`, triggering `sync.runUserScopedSync` post-`storage.open()` when `result.user?.id` is present, and setting `data-sync-ready="true"`.
+  - Created unit test suites `packages/app/tests/unit/sync.test.js` (14 cases) and `packages/app/tests/unit/sync-plugin.test.js` (8 cases) registered under `unit-smoke`.
+  - Created Playwright component test `packages/app/tests/component/sync.spec.js` (3 cases) registered under `component-auth`, and generated screenshot `packages/app/test-results/sync-boot.png`.
+  - Authored plugin contract documentation at `packages/app/docs/plugins/sync.md` and updated `packages/app/docs/plugins/README.md`.
+  - Scope decision: deferred `user_preferences` section application to a follow-on task to avoid inventing storage mappings before spec settlement.
 
 ## Component Authoring Policy
 
