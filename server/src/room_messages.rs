@@ -131,8 +131,10 @@ pub enum RoomMessageError {
     MissingTranscriptHash,
     #[error("application message requires an existing epoch")]
     NoEpochEstablished,
-    #[error("invalid reply target")]
-    InvalidReplyTarget { reason: Option<String> },
+    #[error("reply target not found")]
+    ReplyToNotFound,
+    #[error("reply target not in room")]
+    ReplyToNotInRoom,
     #[error("message not found")]
     MessageNotFound,
     #[error("message already deleted")]
@@ -257,31 +259,19 @@ pub async fn submit_message(
 
                 // Validate reply_to if present
                 if let Some(ref target_id) = req.reply_to {
-                    let target_row: Option<(String, String, Option<DateTime<Utc>>)> =
-                        sqlx::query_as("SELECT room_id, content_type, deleted_at FROM room_messages WHERE id = ?")
+                    let target_room_id: Option<(String,)> =
+                        sqlx::query_as("SELECT room_id FROM room_messages WHERE id = ?")
                             .bind(target_id)
                             .fetch_optional(&mut *conn)
                             .await?;
 
-                    match target_row {
+                    match target_room_id {
                         None => {
-                            return Err(RoomMessageError::InvalidReplyTarget { reason: None });
+                            return Err(RoomMessageError::ReplyToNotFound);
                         }
-                        Some((target_room_id, target_content_type, target_deleted_at)) => {
+                        Some((target_room_id,)) => {
                             if target_room_id != req.room_id {
-                                return Err(RoomMessageError::InvalidReplyTarget {
-                                    reason: Some("not_in_room".to_string()),
-                                });
-                            }
-                            if target_deleted_at.is_some() {
-                                return Err(RoomMessageError::InvalidReplyTarget {
-                                    reason: Some("deleted".to_string()),
-                                });
-                            }
-                            if target_content_type != "application" {
-                                return Err(RoomMessageError::InvalidReplyTarget {
-                                    reason: Some("not_application".to_string()),
-                                });
+                                return Err(RoomMessageError::ReplyToNotInRoom);
                             }
                         }
                     }
@@ -656,18 +646,19 @@ pub async fn edit_message(
             deleted_at: Option<DateTime<Utc>>,
             epoch: i64,
             edit_of: Option<String>,
+            reply_to: Option<String>,
         }
 
         let orig_row: Option<OrigMsgRow> =
             sqlx::query_as(
-                "SELECT sender_user_id, content_type, created_at, deleted_at, epoch, edit_of FROM room_messages WHERE id = ? AND room_id = ?"
+                "SELECT sender_user_id, content_type, created_at, deleted_at, epoch, edit_of, reply_to FROM room_messages WHERE id = ? AND room_id = ?"
             )
             .bind(&req.message_id)
             .bind(&req.room_id)
             .fetch_optional(&mut *conn)
             .await?;
 
-        let OrigMsgRow { sender_user_id, content_type: orig_content_type, created_at, deleted_at, epoch: original_epoch, edit_of } = match orig_row {
+        let OrigMsgRow { sender_user_id, content_type: orig_content_type, created_at, deleted_at, epoch: original_epoch, edit_of, reply_to: orig_reply_to } = match orig_row {
             Some(row) => row,
             None => return Err(RoomMessageError::MessageNotFound),
         };
@@ -726,9 +717,9 @@ pub async fn edit_message(
             r#"
             INSERT INTO room_messages (
                 id, room_id, sender_user_id, sender_client_id,
-                epoch, seq, content_type, ciphertext,
+                epoch, seq, content_type, ciphertext, reply_to,
                 edit_of, edit_sequence, edited_at, created_at
-            ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             "#,
         )
         .bind(&edit_id)
@@ -738,6 +729,7 @@ pub async fn edit_message(
         .bind(original_epoch)
         .bind(final_content_type)
         .bind(&req.new_ciphertext)
+        .bind(&orig_reply_to)
         .bind(&req.message_id)
         .bind(next_edit_sequence)
         .execute(&mut *conn)
@@ -757,7 +749,7 @@ pub async fn edit_message(
             epoch: original_epoch,
             seq: 0,
             content_type: final_content_type.to_string(),
-            reply_to: None,
+            reply_to: orig_reply_to,
             edit_of: Some(req.message_id),
             edit_sequence: next_edit_sequence,
             edited_at: Some(edit_created_at),

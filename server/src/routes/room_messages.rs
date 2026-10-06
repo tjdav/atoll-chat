@@ -144,9 +144,15 @@ pub async fn submit(
             reply_to,
             created_at,
         } => {
+            // Phase 10: For whisper replies (target_user_ids non-null), the message.new event
+            // is routed to each recipient's private-user-{user_id} channel and the sender's own
+            // channel. The room channel must receive nothing. reply_to carries the same value
+            // as for a public reply. See §8.9 notes.
             let msg_payload = json!({
                 "id": message_id,
                 "room_id": id,
+                "sender_type": "user",
+                "sender_id": auth.user_id,
                 "sender_user_id": auth.user_id,
                 "sender_client_id": payload.sender_client_id,
                 "epoch": epoch,
@@ -185,6 +191,8 @@ pub async fn submit(
             let msg_payload = json!({
                 "id": message_id,
                 "room_id": id,
+                "sender_type": "user",
+                "sender_id": auth.user_id,
                 "sender_user_id": auth.user_id,
                 "sender_client_id": payload.sender_client_id,
                 "epoch": new_epoch,
