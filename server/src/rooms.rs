@@ -323,21 +323,12 @@ pub async fn preview_retention_change(
     .fetch_one(pool)
     .await?;
 
-    let messages_affected = msg_stats.0;
-    let oldest_affected_at = if messages_affected > 0 {
-        msg_stats.1
-    } else {
-        None
-    };
-    let newest_affected_at = if messages_affected > 0 {
-        msg_stats.2
-    } else {
-        None
-    };
-
-    let att_count: (i64,) = sqlx::query_as(
+    let att_stats: (i64, Option<DateTime<Utc>>, Option<DateTime<Utc>>) = sqlx::query_as(
         r#"
-        SELECT COUNT(*)
+        SELECT
+            COUNT(*),
+            MIN(created_at),
+            MAX(created_at)
         FROM attachments
         WHERE room_id = ?
           AND created_at < datetime('now', '-' || ? || ' days')
@@ -348,11 +339,28 @@ pub async fn preview_retention_change(
     .fetch_one(pool)
     .await?;
 
+    let messages_affected = msg_stats.0;
+    let attachments_affected = att_stats.0;
+
+    let oldest_affected_at = match (msg_stats.1, att_stats.1) {
+        (Some(m), Some(a)) => Some(m.min(a)),
+        (Some(m), None) => Some(m),
+        (None, Some(a)) => Some(a),
+        (None, None) => None,
+    };
+
+    let newest_affected_at = match (msg_stats.2, att_stats.2) {
+        (Some(m), Some(a)) => Some(m.max(a)),
+        (Some(m), None) => Some(m),
+        (None, Some(a)) => Some(a),
+        (None, None) => None,
+    };
+
     Ok(RetentionPreviewResult {
         current_retention_days,
         proposed_retention_days,
         messages_affected,
-        attachments_affected: att_count.0,
+        attachments_affected,
         oldest_affected_at,
         newest_affected_at,
     })
