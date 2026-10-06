@@ -773,3 +773,11 @@
   - `device.name_updated`: Published on durable user channel `private-user-{user_id}` when a device name is updated via `write_device_name`. Payload: `{ "device_id": String, "encrypted_device_name": String, "user_seq": i64 }`.
   - `device.sync` is no longer published.
   - `user_seq` for each event is allocated inside the same SQL transaction that inserts or mutates state.
+
+## Device Platform and Event Baseline Empirical Verification
+- **ID:** Empirical Baseline Device Platform and Events
+- **Date:** 2026-10-05
+- **Status:** Complete.
+- **Spec / Amendment references:** V3 Spec §7.1, §8.2, §8.9
+- **Answer found:** Ground truth empirical audit completed. Confirmed `0001_v2_schema.sql` `devices` table schema (`platform` NOT NULL CHECK constraint, `name` absent), `create_device` signature and query, existing `device.added`/`device.revoked`/`device.name_updated` event sites, absence of `device.sync`, test fixture column lists, and absence of V2 remnants. Threaded `platform` through `LoginStartRequest` and `PendingLogin`.
+- **Link to report:** [verification/device-platform-and-events/report.md](verification/device-platform-and-events/report.md)

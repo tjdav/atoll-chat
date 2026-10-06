@@ -25,6 +25,7 @@ pub struct LoginStartRequest {
     pub username_token: Option<String>,
     pub credential_request: String,
     pub client_id: String,
+    pub platform: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -39,7 +40,6 @@ pub struct LoginFinishRequest {
     pub credential_finalization: String,
     pub identity_pubkey: Option<String>,
     pub encrypted_device_name: Option<String>,
-    pub platform: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -86,7 +86,7 @@ pub async fn login_start(
         return Err(ApiError::Unauthorized("invalid_credentials".to_string()));
     }
 
-    // 2. Validate client_id
+    // 2. Validate client_id and platform
     let client_id = body.client_id.trim();
     if client_id.len() < 16
         || client_id.len() > 64
@@ -98,6 +98,19 @@ pub async fn login_start(
             "client_id must be 16-64 characters (alphanumeric, underscore, dash)".to_string(),
         ));
     }
+
+    let platform_input = body
+        .platform
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty());
+
+    let platform = match platform_input {
+        Some("web") | Some("ios") | Some("android") | Some("desktop") => {
+            platform_input.unwrap().to_string()
+        }
+        _ => return Err(ApiError::BadRequest("invalid_platform".to_string())),
+    };
 
     // 3. Decode credential_request
     let req_bytes = decode_base64(&body.credential_request)?;
@@ -209,6 +222,7 @@ pub async fn login_start(
         username_token: lookup_token,
         encrypted_display,
         client_id: client_id.to_string(),
+        platform,
         server_login_state: start_result.state,
         created_at: Instant::now(),
     };
@@ -340,19 +354,6 @@ pub async fn login_finish(
             dev.id
         }
         None => {
-            let platform_input = body
-                .platform
-                .as_deref()
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty());
-
-            let platform = match platform_input {
-                Some("web") | Some("ios") | Some("android") | Some("desktop") => {
-                    platform_input.unwrap()
-                }
-                _ => return Err(ApiError::BadRequest("invalid_platform".to_string())),
-            };
-
             let count = crate::devices::count_devices(&state.pool, &pending.user_id).await?;
             if count >= state.config.server_max_devices_per_user {
                 return Err(ApiError::BadRequest("device_limit_exceeded".to_string()));
@@ -373,7 +374,7 @@ pub async fn login_finish(
             .bind(&dev_id)
             .bind(&pending.user_id)
             .bind(&pending.client_id)
-            .bind(platform)
+            .bind(&pending.platform)
             .execute(&mut *tx)
             .await?;
 
@@ -393,7 +394,7 @@ pub async fn login_finish(
 
             let payload = serde_json::json!({
                 "device_id": dev_id,
-                "platform": platform,
+                "platform": pending.platform,
                 "added_at": added_at,
                 "user_seq": user_seq,
             });
