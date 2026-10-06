@@ -523,7 +523,7 @@ build task runs.
 
 | Fact / Mechanism | Signature & Contract / Behavior |
 |---|---|
-| Migration `0003-rooms.sql` | Defines `rooms` (`room_id TEXT PRIMARY KEY`, `name`, `avatar_file_id`, `description`, `disappearing_timer`, `metadata_version INTEGER DEFAULT 1`, `updated_at INTEGER`), `room_members` (`room_id`, `user_id`, `role`, `joined_at`, `PRIMARY KEY (room_id, user_id)`), and `room_order` (`room_id TEXT PRIMARY KEY`, `position INTEGER`, `updated_at INTEGER`) with indexes |
+| Migration `0003-rooms.sql` | Defines `rooms` (`room_id TEXT PRIMARY KEY`, `name`, `avatar_file_id`, `description`, `disappearing_timer`, `metadata_version INTEGER DEFAULT 1`, `updated_at INTEGER`), `room_members` (`room_id`, `user_id`, `role`, `joined_at`), and `room_order` (`room_id TEXT PRIMARY KEY`, `position INTEGER`, `updated_at INTEGER`) with indexes |
 | Rooms Repository | `createRoomsRepository({ db })` in `packages/app/src/lib/db/repositories/rooms.js` (`get`, `upsert` with partial `COALESCE` updates, transactional `remove`, `list` ordered by `updated_at DESC`, `count`, transactional `clearAll`) |
 | Room Members Repository | `createRoomMembersRepository({ db })` in `packages/app/src/lib/db/repositories/room-members.js` (`listInRoom` ordered by `joined_at ASC`, `get`, `addMember`, `removeMember`, `removeAllInRoom`, `listRoomsForUser` ordered by `joined_at DESC`, `countInRoom`, `clearAll`) |
 | Room Order Repository | `createRoomOrderRepository({ db })` in `packages/app/src/lib/db/repositories/room-order.js` (`list` ordered by `position ASC`, transactional dense `setOrder`, `moveBefore`, `getPosition`, `clearAll`) |
@@ -603,3 +603,22 @@ build task runs.
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `outbox` (11 repositories total) and re-export `createOutboxRepository` |
 | Unit Test Suite | `packages/app/tests/unit/repositories-outbox.test.js` (23 test cases) registered under `unit-smoke` batch in `packages/app/test-batches.js` |
 | Domain Documentation | `packages/app/docs/storage/outbox.md` authored covering all 10 contract sections; index updated in `packages/app/docs/storage/README.md` |
+
+### C-INFRA-18 — Room Preferences and Nicknames Domains Architecture
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Migration `0008-room-preferences-nicknames.sql` | Defines `room_preferences` (`user_id`, `room_id`, `key`, `value_json`, `updated_at`, `PRIMARY KEY (user_id, room_id, key)`) and `nicknames` (`room_id`, `user_id`, `nickname`, `updated_at`, `PRIMARY KEY (room_id, user_id)`), with indexes `idx_room_preferences_room` and `idx_nicknames_user` |
+| Room Preferences Repository Factory | `createRoomPreferencesRepository({ db })` in `packages/app/src/lib/db/repositories/room-preferences.js` exposing 9 async methods (`get`, `getAll`, `set`, `setMany`, `remove`, `removeAllInRoom`, `listKeys`, `count`, `clearAll`) |
+| Nicknames Repository Factory | `createNicknamesRepository({ db })` in `packages/app/src/lib/db/repositories/nicknames.js` exposing 9 async methods (`get`, `getMany`, `set`, `remove`, `listInRoom`, `listRoomsForUser`, `removeAllInRoom`, `countInRoom`, `clearAll`) |
+| Generic Key-Value Shape | `room_preferences` key set is open (`theme`, `wallpaper`, `bubble_style`, `collapse:<section>`). Values are JSON-serialized strings |
+| Serialization & Malformed JSON Handling | `set` throws plain `Error` if `JSON.stringify(value)` returns `undefined`. `get` returns `undefined` for malformed JSON without throwing; `getAll` skips malformed JSON rows |
+| Transactional Batch Writes | `setMany(userId, roomId, entries)` executes all entries inside a single `db.transaction` block sharing one timestamp |
+| Single-Account Nicknames Assumption | `nicknames` primary key is `(room_id, user_id)` scoped locally; fallback when un-set is member's display name |
+| Nickname Auto-Delete on Empty Text | `nicknames.set(roomId, userId, nickname)` deletes the row when given an empty string or whitespace-only string |
+| Dynamic Placeholders | `nicknames.getMany` builds dynamic `?` placeholders derived strictly from array length |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `roomPreferences` and `nicknames` (13 repositories total) and re-export factory functions |
+| Unit Test Suites | `tests/unit/repositories-room-preferences.test.js` (23 cases) and `tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` batch in `test-batches.js` |
+| Storage Contracts Documentation | `packages/app/docs/storage/room-preferences.md` and `packages/app/docs/storage/nicknames.md` authored covering all 10 contract sections; index updated in `packages/app/docs/storage/README.md` |

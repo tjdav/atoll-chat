@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 39 |
+| Done | 40 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-18 | Room Preferences and Nicknames Tables with Repositories | done | C-INFRA-17, C-INFRA-16, C-INFRA-9 | unit-smoke |
 | C-INFRA-17 | Outbox Table and Repository | done | C-INFRA-16, C-INFRA-14, C-INFRA-9 | unit-smoke |
 | C-INFRA-16 | User State Tables: Read State, Drafts, Blocked Users | done | C-INFRA-15 | unit-smoke |
 | C-INFRA-15 | Attachments and Reactions Tables with Repositories | done | C-INFRA-14 | unit-smoke |
@@ -538,6 +539,16 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created unit test suite `packages/app/tests/unit/repositories-outbox.test.js` (23 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
   - Authored `packages/app/docs/storage/outbox.md` and updated `packages/app/docs/storage/README.md`.
   - Recorded architectural decision: row deleted on terminal failure (`terminal: true`), delegating failed state representation to `messages.local_status = 'failed'` and `messages.local_error`.
+
+- **C-INFRA-18 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0008-room-preferences-nicknames.sql` defining `room_preferences` (`user_id`, `room_id`, `key`, `value_json`, `updated_at`, `PRIMARY KEY (user_id, room_id, key)`) and `nicknames` (`room_id`, `user_id`, `nickname`, `updated_at`, `PRIMARY KEY (room_id, user_id)`), with indexes `idx_room_preferences_room` and `idx_nicknames_user`.
+  - Created repositories under `packages/app/src/lib/db/repositories/`:
+    - `room-preferences.js` exporting `createRoomPreferencesRepository` (`get`, `getAll`, `set`, `setMany`, `remove`, `removeAllInRoom`, `listKeys`, `count`, `clearAll`); malformed JSON returns `undefined` in `get` and skipped in `getAll`; `setMany` writes entries transactionally with a single timestamp.
+    - `nicknames.js` exporting `createNicknamesRepository` (`get`, `getMany`, `set`, `remove`, `listInRoom`, `listRoomsForUser`, `removeAllInRoom`, `countInRoom`, `clearAll`); `set` with empty/whitespace string deletes the nickname; `getMany` parameterizes `IN` placeholders by array length.
+  - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `roomPreferences` and `nicknames` (13 repositories total) and re-exporting factory functions.
+  - Created unit test suites `packages/app/tests/unit/repositories-room-preferences.test.js` (23 cases) and `packages/app/tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Authored contract documentation at `packages/app/docs/storage/room-preferences.md` and `packages/app/docs/storage/nicknames.md`, and updated `packages/app/docs/storage/README.md`.
 
 ## Component Authoring Policy
 
