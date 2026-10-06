@@ -98,6 +98,24 @@
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
 
+## Task B-022 Verification Fact
+- **Send Local Handler (`packages/bot/src/runtime/context/send-local.js`)**:
+  - The `ctx.sendLocal` handler lives at `packages/bot/src/runtime/context/send-local.js` exporting `createSendLocalHandler`.
+  - Uses info string `"bot-command-result-v1"` and wire format `nonce(12) || ct || tag(16)` from B-015 (`command-result.js`), as owner-targeted local messages travel the same channel as command results.
+  - Posts request body `{ target: 'owner', result_type: 'local_message', ciphertext, bot_result_pubkey, request_id }` to `POST /bots/me/messages` with `retry: false`.
+  - Added `SendLocalFailedError` (code `send_local_failed`) to `src/errors.js`, amending Spec §12.
+  - Retry policy enforces `retry: false`. 429 status retries via HTTP client (B-017); 5xx and network failures surface immediately wrapped in `SendLocalFailedError`.
+  - **Spec Gap 1 Recorded**: Owner pubkey transport via synthetic `__owner_local__` command (Spec §6.3) is interim and marked for removal. `createSendLocalHandler` takes injected dependency `getOwnerPubkey`; B-029 handles runtime wiring.
+  - **Spec Gap 2 Recorded**: Spec §12 omitted an error class for `ctx.sendLocal` failures. Added `SendLocalFailedError` with code `send_local_failed`.
+  - **Spec Gap 3 Recorded**: Spec §6.3 omits the response body shape of `POST /bots/me/messages`. The body is ignored and the handler resolves `Promise<void>`.
+  - Registered `ctx-send-local` batch in `packages/bot/tests/batch-manifest.toml` and authored 25 unit tests in `packages/bot/tests/unit/ctx-send-local.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
 ## Task B-018 Verification Fact
 - **WebSocket Transport (`packages/bot/src/runtime/transport/websocket.js`)**:
   - The WebSocket transport lives at `packages/bot/src/runtime/transport/websocket.js` exporting `createWebSocketClient`.
