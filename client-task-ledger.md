@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 33 |
+| Done | 34 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-12 | Users Table and Display Name Repository | done | C-INFRA-8, C-INFRA-9, C-INFRA-10 | unit-smoke |
 | C-INFRA-11 | Plugin Context Async Import Audit and Policy Update | done | C-INFRA-10 | unit-smoke, component-smoke |
 | C-INFRA-10 | Storage Boot Integration | done | C-INFRA-8, C-INFRA-9, C-AUTH-4 | unit-smoke, component-auth |
 | C-INFRA-8 | Storage Plugin Skeleton & Migration Runner | done | C-INFRA-7 | unit-smoke |
@@ -469,6 +470,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Recorded two new standing policies in `client-task-ledger.md` ("Plugin `client.context` async imports" and "Playwright test cache and seeding") and extended the client task template standard checklist items.
   - Extended `packages/app/TESTING.md` with "Cache discipline" and "Seeding state in Playwright tests" sections.
   - Added comprehensive `C-INFRA-11` entry to `client-verification.md`.
+
+- **C-INFRA-12 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0002-users.sql` defining `users` table (`user_id`, `display_name`, `identity_pubkey`, `profile_version`, `cached_at`) and `idx_users_cached_at` index.
+  - Created users repository `packages/app/src/lib/db/repositories/users.js` exporting `createUsersRepository` with async methods `get`, `upsert` (with partial `COALESCE` update semantics), `remove`, `list` (with `cached_at` cursor pagination), `count`, and `clearAll`.
+  - Created repository aggregator `packages/app/src/lib/db/repositories/index.js` exporting `createRepositories({ db })` and re-exporting `createUsersRepository`.
+  - Created unit test suite `packages/app/tests/unit/repositories-users.test.js` registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Authored documentation under `packages/app/docs/storage/`: `README.md`, `repositories.md`, and `users.md`.
+  - Verified zero string interpolation in repository SQL queries, 100% key parity across all 7 locale files (45 keys), and clean `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and vocabulary runs.
 
 ## Component Authoring Policy
 

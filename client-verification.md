@@ -502,3 +502,17 @@ build task runs.
 | Standing Policy 1 | Plugin `client.context` async imports policy recorded in `client-task-ledger.md` and `packages/app/docs/plugins/README.md` |
 | Standing Policy 2 | Playwright test cache discipline (`rm -rf packages/app/.coralite packages/app/dist` and `lsof -t -i :3000 | xargs -r kill`) and seeding pattern (`page.evaluate()` on initial route) recorded in `client-task-ledger.md` and `packages/app/TESTING.md` |
 | Task Template Checklist Items | Client task template extended with checklist items for plugin `client.context` async imports and Playwright cache discipline |
+
+### C-INFRA-12 — Users Table and Display Name Repository
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Migration `0002-users.sql` | Defines canonical `users` table (`user_id TEXT PRIMARY KEY`, `display_name TEXT`, `identity_pubkey TEXT`, `profile_version INTEGER NOT NULL DEFAULT 1`, `cached_at INTEGER NOT NULL`) and `idx_users_cached_at` index |
+| Users Repository Factory | `createUsersRepository({ db })` in `packages/app/src/lib/db/repositories/users.js` exposing async methods: `get`, `upsert`, `remove`, `list`, `count`, `clearAll` |
+| Partial Upsert Semantics | `upsert` uses `INSERT ... ON CONFLICT(user_id) DO UPDATE SET display_name = COALESCE(excluded.display_name, users.display_name), identity_pubkey = COALESCE(excluded.identity_pubkey, users.identity_pubkey), profile_version = excluded.profile_version, cached_at = excluded.cached_at`. Non-provided or explicit `null` fields retain existing values |
+| Cursor Pagination | `list({ limit = 100, cursor } = {})` orders by `cached_at DESC` using cursor condition `cached_at < ?` |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` exports `createRepositories({ db })` returning `{ users }` and re-exports `createUsersRepository` |
+| Unit Test Suite | `packages/app/tests/unit/repositories-users.test.js` exercising all 15 specified cases across backends, registered under `unit-smoke` batch in `test-batches.js` |
+| Storage Documentation | Documentation authored under `packages/app/docs/storage/`: `README.md` (index), `repositories.md` (conventions), and `users.md` (users contract) |
