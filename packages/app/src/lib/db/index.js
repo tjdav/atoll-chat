@@ -17,11 +17,23 @@ import { runMigrations } from './migrations.js'
  * @returns {object} DB handle.
  */
 export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}) {
-  const activeBackend = backend ?? resolveBackend()
+  let activeBackend = backend ?? null
   const dbState = {
     opened: false,
     backend: activeBackend,
     openPromise: /** @type {Promise<{ applied: string[], skipped: string[] }> | null} */ (null)
+  }
+
+  /**
+   * Helper to resolve backend lazily if not provided.
+   *
+   * @returns {Promise<object>} Resolved backend instance.
+   */
+  async function getBackend() {
+    if (!dbState.backend) {
+      dbState.backend = await resolveBackend()
+    }
+    return dbState.backend
   }
 
   /**
@@ -31,8 +43,10 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
    * @returns {Promise<{ applied: string[], skipped: string[] }>} Applied and skipped migrations.
    */
   async function open() {
+    const b = await getBackend()
+
     if (dbState.opened) {
-      const rows = dbState.backend.all('SELECT name FROM _migrations ORDER BY name ASC', [])
+      const rows = await b.all('SELECT name FROM _migrations ORDER BY name ASC', [])
       const allNames = rows.map((r) => r.name)
       return { applied: [], skipped: allNames }
     }
@@ -43,8 +57,8 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
 
     dbState.openPromise = (async () => {
       try {
-        await dbState.backend.open()
-        const result = await runMigrations({ backend: dbState.backend, migrations })
+        await b.open()
+        const result = await runMigrations({ backend: b, migrations })
         dbState.opened = true
         return result
       } finally {
@@ -61,7 +75,8 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
    * @returns {Promise<void>} Resolves when closed.
    */
   async function close() {
-    await dbState.backend.close()
+    const b = await getBackend()
+    await b.close()
     dbState.opened = false
   }
 
@@ -70,10 +85,11 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
    *
    * @param {string} sql - SQL query.
    * @param {any[]} [params=[]] - Query parameters.
-   * @returns {Array<Record<string, any>>} Array of matching rows.
+   * @returns {Promise<Array<Record<string, any>>>} Array of matching rows.
    */
-  function query(sql, params = []) {
-    return dbState.backend.all(sql, params)
+  async function query(sql, params = []) {
+    const b = await getBackend()
+    return b.all(sql, params)
   }
 
   /**
@@ -81,10 +97,11 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
    *
    * @param {string} sql - SQL query.
    * @param {any[]} [params=[]] - Query parameters.
-   * @returns {Record<string, any> | undefined} First matching row or undefined.
+   * @returns {Promise<Record<string, any> | undefined>} First matching row or undefined.
    */
-  function queryOne(sql, params = []) {
-    return dbState.backend.one(sql, params)
+  async function queryOne(sql, params = []) {
+    const b = await getBackend()
+    return b.one(sql, params)
   }
 
   /**
@@ -92,10 +109,11 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
    *
    * @param {string} sql - SQL statement.
    * @param {any[]} [params=[]] - Statement parameters.
-   * @returns {{ changes: number, lastInsertId: number | null }} Result summary.
+   * @returns {Promise<{ changes: number, lastInsertId: number | null }>} Result summary.
    */
-  function execute(sql, params = []) {
-    return dbState.backend.exec(sql, params)
+  async function execute(sql, params = []) {
+    const b = await getBackend()
+    return b.exec(sql, params)
   }
 
   /**
@@ -107,13 +125,14 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
    * @returns {Promise<T>} Result of fn.
    */
   async function transaction(fn) {
-    dbState.backend.begin()
+    const b = await getBackend()
+    await b.begin()
     try {
       const result = await fn()
-      dbState.backend.commit()
+      await b.commit()
       return result
     } catch (err) {
-      dbState.backend.rollback()
+      await b.rollback()
       throw err
     }
   }
@@ -126,10 +145,11 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
      * Retrieves and parses a JSON metadata value by key.
      *
      * @param {string} key - Metadata key.
-     * @returns {any} Parsed value or undefined if not found.
+     * @returns {Promise<any>} Parsed value or undefined if not found.
      */
-    get(key) {
-      const row = dbState.backend.one('SELECT value_json FROM _meta WHERE key = ?', [key])
+    async get(key) {
+      const b = await getBackend()
+      const row = await b.one('SELECT value_json FROM _meta WHERE key = ?', [key])
       if (!row || !row.value_json) {
         return undefined
       }
@@ -141,12 +161,13 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
      *
      * @param {string} key - Metadata key.
      * @param {any} value - Value to serialize to JSON.
-     * @returns {{ changes: number, lastInsertId: number | null }} Result summary.
+     * @returns {Promise<{ changes: number, lastInsertId: number | null }>} Result summary.
      */
-    set(key, value) {
+    async set(key, value) {
+      const b = await getBackend()
       const json = JSON.stringify(value)
       const now = Date.now()
-      return dbState.backend.exec(
+      return b.exec(
         'INSERT OR REPLACE INTO _meta (key, value_json, updated_at) VALUES (?, ?, ?)',
         [key, json, now]
       )
@@ -156,10 +177,11 @@ export function createDb({ dbName = 'messenger', backend, migrations = [] } = {}
      * Deletes a metadata key.
      *
      * @param {string} key - Metadata key.
-     * @returns {{ changes: number, lastInsertId: number | null }} Result summary.
+     * @returns {Promise<{ changes: number, lastInsertId: number | null }>} Result summary.
      */
-    delete(key) {
-      return dbState.backend.exec('DELETE FROM _meta WHERE key = ?', [key])
+    async delete(key) {
+      const b = await getBackend()
+      return b.exec('DELETE FROM _meta WHERE key = ?', [key])
     }
   }
 

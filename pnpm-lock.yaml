@@ -47,6 +47,9 @@ importers:
       '@solar-icons/static':
         specifier: 2.3.2
         version: 2.3.2
+      '@sqlite.org/sqlite-wasm':
+        specifier: 3.53.4-build2
+        version: 3.53.4-build2
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.10.0
@@ -482,6 +485,10 @@ packages:
   '@solar-icons/static@2.3.2':
     resolution: {integrity: sha512-y1a4xVjrbjyxRO3912CHHtee7p51OGdDizJ8fo4bsGn8IH9+dRZbXOXUlQchWcdHyEqRMJp3Ai/tccJGChHHlg==}
     engines: {node: '>=16'}
+
+  '@sqlite.org/sqlite-wasm@3.53.4-build2':
+    resolution: {integrity: sha512-kQVArGJA4z7s56Dm8t+eTBXad4LiohuVj9pfgDNOcxa+Ic5xMrWlLPTq6cT0hw5S4MIvtpsraW+B0wD+IPvC7A==}
+    engines: {node: '>=22'}
 
   '@stylistic/eslint-plugin@4.4.1':
     resolution: {integrity: sha512-CEigAk7eOLyHvdgmpZsKFwtiqS2wFwI1fn4j09IU9GmD4euFM4jEBAViWeCqaNLlbX2k2+A/Fq9cje4HQBXuJQ==}
@@ -2247,6 +2254,8 @@ snapshots:
   '@serenity-kit/opaque@1.1.0': {}
 
   '@solar-icons/static@2.3.2': {}
+
+  '@sqlite.org/sqlite-wasm@3.53.4-build2': {}
 
   '@stylistic/eslint-plugin@4.4.1(eslint@9.39.5)(typescript@5.9.3)':
     dependencies:

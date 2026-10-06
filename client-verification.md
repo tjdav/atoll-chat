@@ -460,3 +460,18 @@ build task runs.
 | DB Factory (`lib/db/index.js`) | `createDb({ dbName = 'messenger', backend, migrations = [] })` returning `{ open, close, query, queryOne, execute, transaction, meta }`. Handles single-flight concurrent `open()` initialization |
 | Meta Subsystem | `meta.get(key)`, `meta.set(key, value)`, `meta.delete(key)` storing JSON-serialized string values in `_meta` table |
 | Documentation & Tests | Documentation at `packages/app/docs/plugins/storage.md` and `docs/plugins/README.md`; unit tests in `tests/unit/db.test.js` (27 cases) and `tests/unit/storage-plugin.test.js` (8 cases) registered in `unit-smoke` batch |
+
+### C-INFRA-9 — WASM SQLite Backend Implementation and Async DB Factory
+
+**Verified:** 2026-10-05
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Installed Library | `@sqlite.org/sqlite-wasm@3.53.4-build2` pinned under `dependencies` in `packages/app/package.json` |
+| Registered Assets | `coralite.config.js` copies `dist/sqlite3.wasm` -> `assets/sqlite/sqlite3.wasm` (~848 KiB) and `dist/sqlite3-opfs-async-proxy.js` -> `assets/sqlite/sqlite3-opfs-async-proxy.js` (~32 KiB) |
+| WASM Backend (`backends/wasm.js`) | Implements `createWasmBackend({ dbName = 'messenger' })`. Attempts OPFS persistence (`new sqlite3.oo1.OpfsDb('/' + dbName + '.sqlite3')`); falls back gracefully to in-memory SQLite (`new sqlite3.oo1.DB(':memory:', 'c')`) with `isPersistent() === false` when OPFS is unsupported or unavailable |
+| Async Storage Contract | Every method on `backends/memory.js`, `backends/wasm.js`, `lib/db/migrations.js`, `lib/db/index.js` (`createDb`), and `plugins/storage-plugin.js` returns a `Promise`. Callers must `await` all storage methods |
+| Environment Backend Selection | `resolveBackend({ prefer })` exports `SUPPORTED_BACKENDS = ['wasm', 'memory']`. Selects WASM backend automatically when `window` or `importScripts` is defined, falling back to memory backend in Node |
+| Test Coverage & Batches | Unit test `packages/app/tests/unit/wasm-backend.test.js` (7 test cases covering WASM initialization, in-memory fallback, `exec`/`all`/`one`, transactions, migrations, and meta helpers) registered under `unit-smoke` batch in `test-batches.js`. Updated `db.test.js` (27 cases) and `storage-plugin.test.js` (8 cases) |
+| Playwright Real-Browser Probe | Verified WASM backend opening, migration execution, read/write SQL, and reload persistence in Playwright Chromium browser via temporary `cv-wasm-probe` component. Screenshot captured at `test-results/wasm-probe.png`. Temporary fixture cleanly reverted |
+| Documentation Path | Updated `packages/app/docs/plugins/storage.md` detailing WASM backend, OPFS fallback, and async storage contract |

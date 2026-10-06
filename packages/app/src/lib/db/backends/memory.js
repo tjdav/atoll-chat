@@ -92,18 +92,18 @@ export function createMemoryBackend() {
   /**
    * Begins a new transaction by snapshotting the current tables state.
    *
-   * @returns {void}
+   * @returns {Promise<void>} Resolves when transaction begins.
    */
-  function begin() {
+  async function begin() {
     txStack.push(cloneTables(tables))
   }
 
   /**
    * Commits the current transaction by discarding the latest snapshot.
    *
-   * @returns {void}
+   * @returns {Promise<void>} Resolves when committed.
    */
-  function commit() {
+  async function commit() {
     if (txStack.length === 0) {
       throw new Error('No transaction active to commit')
     }
@@ -113,9 +113,9 @@ export function createMemoryBackend() {
   /**
    * Rolls back the current transaction by restoring the latest snapshot.
    *
-   * @returns {void}
+   * @returns {Promise<void>} Resolves when rolled back.
    */
-  function rollback() {
+  async function rollback() {
     if (txStack.length === 0) {
       throw new Error('No transaction active to rollback')
     }
@@ -127,9 +127,9 @@ export function createMemoryBackend() {
    *
    * @param {string} sql - SQL statement.
    * @param {any[]} [params=[]] - Bound parameters.
-   * @returns {{ changes: number, lastInsertId: number | null }} Statement execution summary.
+   * @returns {Promise<{ changes: number, lastInsertId: number | null }>} Statement execution summary.
    */
-  function exec(sql, params = []) {
+  async function exec(sql, params = []) {
     const trimmedSql = sql.trim().replace(/;$/, '')
 
     // 1. CREATE TABLE IF NOT EXISTS <tableName> (...)
@@ -279,9 +279,9 @@ export function createMemoryBackend() {
    *
    * @param {string} sql - SQL statement.
    * @param {any[]} [params=[]] - Bound parameters.
-   * @returns {Array<Record<string, any>>} Array of matching row objects.
+   * @returns {Promise<Array<Record<string, any>>>} Array of matching row objects.
    */
-  function all(sql, params = []) {
+  async function all(sql, params = []) {
     const trimmedSql = sql.trim().replace(/;$/, '')
 
     // SELECT <cols> FROM <tableName> [WHERE ...] [ORDER BY col ASC|DESC]
@@ -333,10 +333,10 @@ export function createMemoryBackend() {
    *
    * @param {string} sql - SQL query.
    * @param {any[]} [params=[]] - Bound parameters.
-   * @returns {Record<string, any> | undefined} First matching row or undefined.
+   * @returns {Promise<Record<string, any> | undefined>} First matching row or undefined.
    */
-  function one(sql, params = []) {
-    const rows = all(sql, params)
+  async function one(sql, params = []) {
+    const rows = await all(sql, params)
     return rows[0]
   }
 

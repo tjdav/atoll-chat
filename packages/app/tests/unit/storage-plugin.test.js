@@ -63,11 +63,12 @@ test('5. client.context uses singleton guard across calls', async () => {
   await ctx1.open()
 
   // Perform a write via ctx1 meta and read via ctx2 meta to verify shared instance
-  ctx1.meta.set('foo', 'bar')
-  assert.equal(ctx2.meta.get('foo'), 'bar')
+  await ctx1.meta.set('foo', 'bar')
+  const val = await ctx2.meta.get('foo')
+  assert.equal(val, 'bar')
 })
 
-test('6. server context open throws error', () => {
+test('6. server context open throws error', async () => {
   const plugin = storagePlugin()
   const ctx = plugin.server.context({})({})
   assert.throws(() => {
@@ -83,8 +84,9 @@ test('7. server context close is a no-op', () => {
   })
 })
 
-test('8. server context meta.get returns undefined', () => {
+test('8. server context meta.get returns undefined', async () => {
   const plugin = storagePlugin()
   const ctx = plugin.server.context({})({})
-  assert.equal(ctx.meta.get('anything'), undefined)
+  const val = await ctx.meta.get('anything')
+  assert.equal(val, undefined)
 })
