@@ -289,6 +289,24 @@
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
 
+## Task B-019 Verification Fact
+- **SSE Client Transport (`packages/bot/src/runtime/transport/sse.js`)**:
+  - The SSE client transport lives at `packages/bot/src/runtime/transport/sse.js` exporting `createSseClient`.
+  - The client uses `fetch` and a WHATWG-conformant line parser. Node 22's experimental `EventSource` global is not used.
+  - The parser handles `\n`, `\r\n`, and `\r` line endings, multiple `data:` lines joined with `\n`, and `id:` persistence across events.
+  - The client does not reconnect automatically. B-031 owns the reconnect loop.
+  - `Last-Event-ID` is sent automatically from the client's tracked last ID. `initialLastEventId` seeds it for cross-process resume.
+  - `retry:` values are stored and exposed via `getRetryMs()` for the reconnect loop's base delay.
+  - Connect failures reject `connect()` with `HttpRequestError` (B-017). Mid-stream failures emit `onError` and `onClose`.
+  - Logger integration emits `debug` lines for lifecycle and events without logging event `data` payloads.
+  - Registered `sse` batch in `packages/bot/tests/batch-manifest.toml` and authored 34 unit tests in `packages/bot/tests/unit/sse.test.js` using real `node:http` servers.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
 ## Task B-016 Verification Fact
 - **Settings Decryption & Crypto (`packages/bot/src/runtime/crypto/settings.js`)**:
   - Authored `packages/bot/src/runtime/crypto/settings.js` exporting `decryptSettingsValue`, `parseSettingsWire`, and `SETTINGS_INFO = 'bot-settings-v1'`.

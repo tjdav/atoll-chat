@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 32
-- **Done:** 19
+- **Done:** 20
 - **In Progress:** 0
-- **Todo:** 13
+- **Todo:** 12
 
 ---
 
@@ -38,14 +38,15 @@ Track progress across Bot SDK implementation tasks.
 | B-016 | Settings Decrypt | done | §6.3, §7.2 | Settings payload decryption using X25519, HKDF-Expand, and AES-256-GCM |
 | B-017 | HTTP Client | done | §14.2 | REST API client for bot SDK runtime (Amends §12 with HttpRequestError) |
 | B-018 | WebSocket | done | §14.3 | WebSocket connection manager with backoff reconnect |
-| B-019 | Context | todo | §8 | Runtime `ctx` assembly and scoping |
-| B-020 | Post Helper | todo | §8.3 | `ctx.post` implementation with publisher key lookup and encryption |
-| B-021 | Storage Wrapper | todo | §8.4 | Author-facing `ctx.storage` with reserved prefix enforcement |
-| B-022 | Media | todo | §8.5 | Media upload/download helper |
-| B-023 | Rooms | todo | §8.6 | Room state query and management helpers |
-| B-024 | Users | todo | §8.7 | User lookup and key transparency query helper |
-| B-025 | Audit | todo | §8.8 | Bot audit log submission helper |
-| B-026 | CLI Core | todo | §15 | CLI entrypoint, argument parser, and subcommands |
-| B-027 | Webhooks | todo | §10.3 | HTTP webhook server and payload validator |
-| B-028 | Cron | todo | §10.3 | Cron schedule parser and timer engine |
-| B-029 | Integration | todo | §10.1 | Full runtime wiring and entrypoint export |
+| B-019 | SSE Client | done | §6.1, §8.8.9 | SSE transport for observer stream |
+| B-020 | Context | todo | §8 | Runtime `ctx` assembly and scoping |
+| B-021 | Post Helper | todo | §8.3 | `ctx.post` implementation with publisher key lookup and encryption |
+| B-022 | Storage Wrapper | todo | §8.4 | Author-facing `ctx.storage` with reserved prefix enforcement |
+| B-023 | Media | todo | §8.5 | Media upload/download helper |
+| B-024 | Rooms | todo | §8.6 | Room state query and management helpers |
+| B-025 | Users | todo | §8.7 | User lookup and key transparency query helper |
+| B-026 | Audit | todo | §8.8 | Bot audit log submission helper |
+| B-027 | CLI Core | todo | §15 | CLI entrypoint, argument parser, and subcommands |
+| B-028 | Webhooks | todo | §10.3 | HTTP webhook server and payload validator |
+| B-029 | Cron | todo | §10.3 | Cron schedule parser and timer engine |
+| B-030 | Integration | todo | §10.1 | Full runtime wiring and entrypoint export |
