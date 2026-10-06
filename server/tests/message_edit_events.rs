@@ -202,4 +202,19 @@ async fn test_message_edit_events_and_audit() {
     assert_eq!(data["sender_type"], "user");
     assert_eq!(data["sender_id"], user_id);
     assert!(data["created_at"].is_string());
+
+    // Assert absence of edit_id and original_id
+    assert!(data["edit_id"].is_null());
+    assert!(data["original_id"].is_null());
+
+    // Assert event is not published on private-user-{user_id} channel
+    let user_channel = format!("private-user-{user_id}");
+    assert!(
+        !event_env["channels"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c == &user_channel),
+        "message.edited must not be published on user channel"
+    );
 }

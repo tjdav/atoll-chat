@@ -145,6 +145,8 @@ pub enum RoomMessageError {
     EditDeleted,
     #[error("cannot edit an edit")]
     CannotEditEdit,
+    #[error("content type mismatch")]
+    ContentTypeMismatch,
     #[error("not sender")]
     NotSender,
     #[error("edit window expired")]
@@ -665,7 +667,7 @@ pub async fn edit_message(
             .fetch_optional(&mut *conn)
             .await?;
 
-        let OrigMsgRow { sender_user_id, content_type, created_at, deleted_at, epoch: original_epoch, edit_of } = match orig_row {
+        let OrigMsgRow { sender_user_id, content_type: orig_content_type, created_at, deleted_at, epoch: original_epoch, edit_of } = match orig_row {
             Some(row) => row,
             None => return Err(RoomMessageError::MessageNotFound),
         };
@@ -681,8 +683,15 @@ pub async fn edit_message(
         }
 
         // Reject if content_type != "application" and != "bot"
-        if content_type != "application" && content_type != "bot" {
+        if orig_content_type != "application" && orig_content_type != "bot" {
             return Err(RoomMessageError::NotEditable);
+        }
+
+        // Validate request content_type if provided
+        if let Some(ref req_ct) = req.content_type {
+            if req_ct != &orig_content_type {
+                return Err(RoomMessageError::ContentTypeMismatch);
+            }
         }
 
         // Verify requester is sender
@@ -709,17 +718,17 @@ pub async fn edit_message(
             _ => 1,
         };
 
-        let new_content_type = req.content_type.as_deref().unwrap_or(&content_type);
+        let final_content_type = req.content_type.as_deref().unwrap_or(&orig_content_type);
 
-        // Insert edit row
+        // Insert edit row (edited_at is set on the edit row itself per §7.6)
         let edit_id = Ulid::new().to_string();
         sqlx::query(
             r#"
             INSERT INTO room_messages (
                 id, room_id, sender_user_id, sender_client_id,
                 epoch, seq, content_type, ciphertext,
-                edit_of, edit_sequence, created_at
-            ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                edit_of, edit_sequence, edited_at, created_at
+            ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             "#,
         )
         .bind(&edit_id)
@@ -727,18 +736,10 @@ pub async fn edit_message(
         .bind(&req.requester_user_id)
         .bind(&req.requester_client_id)
         .bind(original_epoch)
-        .bind(new_content_type)
+        .bind(final_content_type)
         .bind(&req.new_ciphertext)
         .bind(&req.message_id)
         .bind(next_edit_sequence)
-        .execute(&mut *conn)
-        .await?;
-
-        // Set edited_at on original if first edit
-        sqlx::query(
-            "UPDATE room_messages SET edited_at = CURRENT_TIMESTAMP WHERE id = ? AND edited_at IS NULL",
-        )
-        .bind(&req.message_id)
         .execute(&mut *conn)
         .await?;
 
@@ -755,11 +756,11 @@ pub async fn edit_message(
             sender_client_id: req.requester_client_id,
             epoch: original_epoch,
             seq: 0,
-            content_type: new_content_type.to_string(),
+            content_type: final_content_type.to_string(),
             reply_to: None,
             edit_of: Some(req.message_id),
             edit_sequence: next_edit_sequence,
-            edited_at: None,
+            edited_at: Some(edit_created_at),
             deleted_at: None,
             created_at: edit_created_at,
             reactions: vec![],

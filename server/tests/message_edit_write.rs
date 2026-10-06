@@ -192,12 +192,26 @@ async fn test_message_edit_write_flow() {
 
     assert_eq!(status_e1, StatusCode::CREATED);
     assert_eq!(headers_e1.get("cache-control").unwrap(), "no-store");
+    assert_eq!(edit1_body["room_id"], room_id);
+    assert_eq!(edit1_body["sender_type"], "user");
+    assert_eq!(edit1_body["sender_id"], _user_id);
+    assert_eq!(edit1_body["sender_client_id"], client_id);
+    assert_eq!(edit1_body["epoch"], 0);
+    assert_eq!(edit1_body["seq"], 0);
+    assert_eq!(edit1_body["content_type"], "application");
+    assert_eq!(edit1_body["ciphertext"], edit1_ct);
+    assert!(edit1_body["reply_to"].is_null());
+    assert!(edit1_body["target_user_ids"].is_null());
     assert_eq!(edit1_body["edit_of"], orig_msg_id);
     assert_eq!(edit1_body["edit_sequence"], 1);
-    assert_eq!(edit1_body["epoch"], 0);
+    assert!(edit1_body["bot_key_leaf_index"].is_null());
+    assert_eq!(edit1_body["read_by_count"], 0);
+    assert!(edit1_body["created_at"].is_string());
+    assert!(edit1_body["deleted_at"].is_null());
+
     let edit1_id = edit1_body["id"].as_str().unwrap().to_string();
 
-    // Verify original message retains original ciphertext, created_at, edit_sequence=0
+    // Verify original message retains original ciphertext, created_at, edit_sequence=0, edited_at IS NULL
     let (orig_ct_db, orig_seq, orig_edited_at): (Vec<u8>, i64, Option<String>) = sqlx::query_as(
         "SELECT ciphertext, edit_sequence, edited_at FROM room_messages WHERE id = ?",
     )
@@ -207,7 +221,7 @@ async fn test_message_edit_write_flow() {
     .unwrap();
     assert_eq!(orig_ct_db, BASE64.decode(&orig_ct).unwrap());
     assert_eq!(orig_seq, 0);
-    assert!(orig_edited_at.is_some());
+    assert!(orig_edited_at.is_none());
 
     // 4. Second edit
     let edit2_ct = BASE64.encode(b"edited message content 2");
@@ -245,11 +259,12 @@ async fn test_message_edit_write_flow() {
     let orig_view = msgs.iter().find(|m| m["id"] == orig_msg_id).unwrap();
     assert!(orig_view["edit_of"].is_null());
     assert_eq!(orig_view["edit_sequence"], 0);
-    assert!(orig_view["edited_at"].is_string());
+    assert!(orig_view["edited_at"].is_null());
 
     let edit1_view = msgs.iter().find(|m| m["id"] == edit1_id).unwrap();
     assert_eq!(edit1_view["edit_of"], orig_msg_id);
     assert_eq!(edit1_view["edit_sequence"], 1);
+    assert!(edit1_view["edited_at"].is_string());
 }
 
 #[tokio::test]
@@ -360,7 +375,7 @@ async fn test_message_edit_authorization_and_states() {
     assert_eq!(status_commit, StatusCode::BAD_REQUEST);
     assert_eq!(edit_commit_body["error"], "not_editable");
 
-    // 6. Editing an edit row (flat-chain rule) -> 400 cannot_edit_edit
+    // 6. Editing an edit row (flat-chain rule) -> 409 cannot_edit_edit
     let fresh_msg_ct = BASE64.encode(b"fresh message");
     let (status_fresh, submit_fresh) = do_post(
         &app,
@@ -397,6 +412,31 @@ async fn test_message_edit_authorization_and_states() {
         &json!({ "ciphertext": edit_ct }),
     )
     .await;
-    assert_eq!(status_edit_of_edit, StatusCode::BAD_REQUEST);
+    assert_eq!(status_edit_of_edit, StatusCode::CONFLICT);
     assert_eq!(edit_of_edit_body["error"], "cannot_edit_edit");
+
+    // 7. Content type mismatch validation
+    // Request with content_type="bot" on user-authored message -> 400 content_type_mismatch
+    let (status_ct_bot, body_ct_bot, _) = do_patch(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{fresh_msg_id}"),
+        &token1,
+        Some(&client1_id),
+        &json!({ "ciphertext": edit_ct, "content_type": "bot" }),
+    )
+    .await;
+    assert_eq!(status_ct_bot, StatusCode::BAD_REQUEST);
+    assert_eq!(body_ct_bot["error"], "content_type_mismatch");
+
+    // Request with content_type omitted -> succeeds
+    let (status_ct_omit, body_ct_omit, _) = do_patch(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{fresh_msg_id}"),
+        &token1,
+        Some(&client1_id),
+        &json!({ "ciphertext": edit_ct }),
+    )
+    .await;
+    assert_eq!(status_ct_omit, StatusCode::CREATED);
+    assert_eq!(body_ct_omit["content_type"], "application");
 }

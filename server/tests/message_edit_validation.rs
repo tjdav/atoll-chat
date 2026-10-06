@@ -214,3 +214,39 @@ async fn test_message_edit_payload_and_rate_limit_validation() {
     assert_eq!(status_inv, StatusCode::BAD_REQUEST);
     assert_eq!(body_inv["error"], "invalid_ciphertext");
 }
+
+#[test]
+fn test_edit_window_config_startup_range_validation() {
+    use server::config::Config;
+
+    std::env::set_var("APP_ENV", "development");
+
+    // 1. EDIT_WINDOW_SECONDS above SERVER_MAX_EDIT_WINDOW_SECONDS fails
+    std::env::set_var("SERVER_MAX_EDIT_WINDOW_SECONDS", "3600");
+    std::env::set_var("EDIT_WINDOW_SECONDS", "7200");
+    let cfg_err = Config::from_env();
+    assert!(cfg_err.is_err(), "expected Config::from_env() to fail");
+    let err_msg = cfg_err.unwrap_err().to_string();
+    assert!(
+        err_msg.contains("EDIT_WINDOW_SECONDS"),
+        "error message should contain EDIT_WINDOW_SECONDS, got: {}",
+        err_msg
+    );
+
+    // 2. EDIT_WINDOW_SECONDS below 60 fails
+    std::env::set_var("SERVER_MAX_EDIT_WINDOW_SECONDS", "86400");
+    std::env::set_var("EDIT_WINDOW_SECONDS", "30");
+    let cfg_err2 = Config::from_env();
+    assert!(cfg_err2.is_err(), "expected Config::from_env() to fail");
+    let err_msg2 = cfg_err2.unwrap_err().to_string();
+    assert!(
+        err_msg2.contains("EDIT_WINDOW_SECONDS"),
+        "error message should contain EDIT_WINDOW_SECONDS, got: {}",
+        err_msg2
+    );
+
+    // Clean up env vars
+    std::env::remove_var("SERVER_MAX_EDIT_WINDOW_SECONDS");
+    std::env::remove_var("EDIT_WINDOW_SECONDS");
+    std::env::remove_var("APP_ENV");
+}

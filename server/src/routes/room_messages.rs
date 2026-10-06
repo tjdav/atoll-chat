@@ -39,7 +39,6 @@ pub struct SubmitMessageRequest {
 pub struct EditMessageRequest {
     pub ciphertext: Option<String>,
     pub content_type: Option<String>,
-    pub sender_client_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -374,15 +373,14 @@ pub async fn edit(
 
     // 5. Determine client_id
     let user_devices = devices::list_devices(&state.pool, &auth.user_id).await?;
-    let requester_client_id = if let Some(ref cid) = payload.sender_client_id {
-        cid.clone()
-    } else if let Some(header_cid) = headers.get("x-client-id").and_then(|h| h.to_str().ok()) {
-        header_cid.to_string()
-    } else if let Some(dev) = user_devices.first() {
-        dev.client_id.clone()
-    } else {
-        return Err(ApiError::BadRequest("unknown_client_id".to_string()));
-    };
+    let requester_client_id =
+        if let Some(header_cid) = headers.get("x-client-id").and_then(|h| h.to_str().ok()) {
+            header_cid.to_string()
+        } else if let Some(dev) = user_devices.first() {
+            dev.client_id.clone()
+        } else {
+            return Err(ApiError::BadRequest("unknown_client_id".to_string()));
+        };
 
     // 6. Validate content_type if provided
     if let Some(ref ct) = payload.content_type {
@@ -430,7 +428,10 @@ pub async fn edit(
     .await;
 
     // Sockudo publish message.edited
-    // Whisper edits (Phase 10) must route to original recipients' user channels. The room channel must never receive a whisper edit.
+    // Phase 10: Whisper edits (target_user_ids non-null on the original) must be routed
+    // to each recipient's private-user-{user_id} channel and to the sender's own channel.
+    // The room channel must receive nothing for a whisper, including edits.
+    // See §8.9 notes.
     let channel = format!("private-room-{}", id);
     let event_payload = json!({
         "id": result.id,
@@ -450,9 +451,29 @@ pub async fn edit(
         tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
     }
 
+    let response_body = json!({
+        "id": result.id,
+        "room_id": result.room_id,
+        "sender_type": "user",
+        "sender_id": result.sender_user_id,
+        "sender_client_id": result.sender_client_id,
+        "epoch": result.epoch,
+        "seq": result.seq,
+        "content_type": result.content_type,
+        "ciphertext": ciphertext_b64.trim(),
+        "reply_to": result.reply_to,
+        "target_user_ids": serde_json::Value::Null,
+        "edit_of": result.edit_of,
+        "edit_sequence": result.edit_sequence,
+        "bot_key_leaf_index": serde_json::Value::Null,
+        "read_by_count": 0,
+        "created_at": result.created_at.to_rfc3339(),
+        "deleted_at": result.deleted_at,
+    });
+
     Ok((
         StatusCode::CREATED,
         [(header::CACHE_CONTROL, "no-store")],
-        Json(result),
+        Json(response_body),
     ))
 }
