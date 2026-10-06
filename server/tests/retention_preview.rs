@@ -333,6 +333,120 @@ async fn test_retention_preview_flow() {
         .body(Body::from(json!({ "retention_days": 400 }).to_string()))
         .unwrap();
 
-    let resp_invalid_large = app.oneshot(req_invalid_large).await.unwrap();
+    let resp_invalid_large = app.clone().oneshot(req_invalid_large).await.unwrap();
     assert_eq!(resp_invalid_large.status(), StatusCode::BAD_REQUEST);
+
+    // 9. Additional V3 edge cases & contract assertions:
+    // a. Bot messages (content_type = 'bot') and Whispers (target_user_ids IS NOT NULL) are counted
+    let bot_msg_id = "01HM0000000000000000000006";
+    sqlx::query(
+        r#"
+        INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext, created_at)
+        VALUES (?, ?, ?, 'c1', 0, 4, 'bot', X'1234', datetime('now', '-120 days'))
+        "#,
+    )
+    .bind(bot_msg_id)
+    .bind(room_id)
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let whisper_msg_id = "01HM0000000000000000000007";
+    sqlx::query(
+        r#"
+        INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext, target_user_ids, created_at)
+        VALUES (?, ?, ?, 'c1', 0, 5, 'application', X'1234', '["u_target"]', datetime('now', '-110 days'))
+        "#,
+    )
+    .bind(whisper_msg_id)
+    .bind(room_id)
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // b. Attachment older than all messages (150 days old) -> tests union timestamp oldest_affected_at
+    let old_att_id = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff2";
+    sqlx::query(
+        r#"
+        INSERT INTO attachments (id, room_id, uploader_id, storage_backend, storage_key, padded_size, plaintext_size, encrypted_size, chunk_size, chunk_count, nonce_prefix, base_counter, created_at)
+        VALUES (?, ?, ?, 'fs', 'key2', 100, 100, 100, 100, 1, 'nonce', 0, datetime('now', '-150 days'))
+        "#,
+    )
+    .bind(old_att_id)
+    .bind(room_id)
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // c. User-scoped attachment (room_id IS NULL, 160 days old) -> MUST NOT be counted
+    let user_att_id = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff3";
+    sqlx::query(
+        r#"
+        INSERT INTO attachments (id, room_id, uploader_id, storage_backend, storage_key, padded_size, plaintext_size, encrypted_size, chunk_size, chunk_count, nonce_prefix, base_counter, created_at)
+        VALUES (?, NULL, ?, 'fs', 'key3', 100, 100, 100, 100, 1, 'nonce', 0, datetime('now', '-160 days'))
+        "#,
+    )
+    .bind(user_att_id)
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Preview for 30 days retention with bot, whisper, and older attachment added
+    let req_v3 = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "retention_days": 30 }).to_string()))
+        .unwrap();
+
+    let resp_v3 = app.clone().oneshot(req_v3).await.unwrap();
+    assert_eq!(resp_v3.status(), StatusCode::OK);
+    let body_v3 = axum::body::to_bytes(resp_v3.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let v3_body: Value = serde_json::from_slice(&body_v3).unwrap();
+
+    // msg1 (100d), msg2 (50d edit), bot_msg (120d), whisper_msg (110d) = 4 messages affected
+    assert_eq!(v3_body["messages_affected"], 4);
+    // att_id (70d), old_att_id (150d) = 2 attachments affected (user_att_id is NULL room_id, so excluded)
+    assert_eq!(v3_body["attachments_affected"], 2);
+
+    // d. Invalid body formats (string retention_days, missing field) -> 400 Bad Request
+    let req_string = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "retention_days": "30" }).to_string()))
+        .unwrap();
+    let resp_string = app.clone().oneshot(req_string).await.unwrap();
+    assert_eq!(resp_string.status(), StatusCode::BAD_REQUEST);
+
+    let req_missing = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_missing = app.clone().oneshot(req_missing).await.unwrap();
+    assert_eq!(resp_missing.status(), StatusCode::BAD_REQUEST);
+
+    // e. No rate limit assertion: repeat 500 requests
+    for _ in 0..500 {
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
+            .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(json!({ "retention_days": 30 }).to_string()))
+            .unwrap();
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
 }

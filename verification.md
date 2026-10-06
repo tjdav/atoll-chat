@@ -154,6 +154,24 @@
     Returns `Cache-Control: no-store`.
   - **Rate Limit Policy:** Endpoint is read-only and cheap (single indexed scan). No new rate limit variant added.
 
+## Task — Retention Change Preview V3 Alignment (Phase 12)
+- **ID:** Retention Preview V3 Alignment
+- **Date:** 2026-10-06
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §3.2, §4.1, §4.2, §4.5, §7.6, §7.7, §8.4, §10
+- **Question asked:** What are the canonical endpoint contracts, retention cutoff semantics, row inclusion/exclusion rules, timestamp calculation, and rate-limit policy for `POST /rooms/:id/retention/preview`?
+- **Answer found:**
+  - **Endpoint & Authorization:** `POST /api/v1/rooms/:id/retention/preview`. Owner-only authorization (HTTP 403 `forbidden` for non-owner members, HTTP 404 `room_not_found` for non-members, HTTP 401 `unauthorized` for unauthenticated requests).
+  - **Request Body & Validation:** `{ "retention_days": <i64> }` where `0 <= retention_days <= 365`. Non-integer or out-of-range values return HTTP 400 `invalid_retention_days`.
+  - **Retention Semantics:** `retention_days = 0` means "forever" (no pruning), returning `messages_affected = 0`, `attachments_affected = 0`, `oldest_affected_at = null`, `newest_affected_at = null`.
+  - **Message Selection:** Cutoff `created_at < datetime('now', '-' || proposed_retention_days || ' days')`. Soft-deleted rows (`deleted_at IS NOT NULL`) and MLS protocol rows (`content_type IN ('commit', 'proposal')`) are excluded. Standard application messages (`content_type = 'application'`), bot messages (`content_type = 'bot'`), edit rows (`edit_of IS NOT NULL`), and whisper messages (`target_user_ids IS NOT NULL`) are included.
+  - **Attachment Selection:** Cutoff matches same retention window. Scoped strictly to room attachments (`room_id = ?`). User-scoped attachments (`room_id IS NULL`) are excluded.
+  - **Timestamp Calculation:** `oldest_affected_at` and `newest_affected_at` evaluate `MIN(created_at)` and `MAX(created_at)` across the union of affected `room_messages` and affected `attachments`. Both fields are `null` when total affected count is 0.
+  - **Current Retention Resolution:** `current_retention_days` evaluates three-tier rule (`room_override` > instance default > server hard max), returning effective retention before the proposed change.
+  - **Response Headers:** Returns `Cache-Control: no-store`.
+  - **Rate Limit & Read-Only Invariant:** Endpoint is un-rate-limited and strictly read-only (database state is unmodified).
+- **Link to report:** [verification/retention-preview-v3/report.md](verification/retention-preview-v3/report.md)
+
 ## V-F — `users.profile` Semantics and Avatar Storage Reconciliation
 - **ID:** V-F
 - **Date:** 2026-10-02
