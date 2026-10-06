@@ -87,6 +87,23 @@ pub struct RoomMember {
     pub joined_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum RoomMemberItem {
+    User {
+        user_id: String,
+        role: String,
+        joined_at: DateTime<Utc>,
+    },
+    Bot {
+        bot_id: String,
+        mode: String,
+        display_name: String,
+        avatar_file_id: Option<String>,
+        joined_at: DateTime<Utc>,
+    },
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct AddMemberOutcome {
     pub member: RoomMember,
@@ -105,7 +122,10 @@ pub struct PendingAddView {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemberCursor {
     pub room_id: String,
-    pub last_user_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_user_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_bot_id: Option<String>,
 }
 
 impl MemberCursor {
@@ -130,9 +150,8 @@ pub struct ListMembersQuery {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ListMembersResult {
-    pub members: Vec<RoomMember>,
+    pub members: Vec<RoomMemberItem>,
     pub next_cursor: Option<String>,
-    pub has_more: bool,
 }
 
 #[derive(Debug, Default)]
@@ -954,49 +973,98 @@ pub async fn list_members(
     }
 
     let fetch_limit = query.limit + 1;
-
-    let rows = if let Some(ref cursor) = query.cursor {
-        sqlx::query(
-            r#"
-            SELECT rm.user_id, u.username_token, u.encrypted_display, rm.role, rm.joined_at
-            FROM room_members rm
-            JOIN users u ON u.id = rm.user_id
-            WHERE rm.room_id = ? AND rm.user_id > ?
-            ORDER BY rm.user_id ASC
-            LIMIT ?
-            "#,
-        )
-        .bind(&query.room_id)
-        .bind(&cursor.last_user_id)
-        .bind(fetch_limit as i64)
-        .fetch_all(pool)
-        .await?
-    } else {
-        sqlx::query(
-            r#"
-            SELECT rm.user_id, u.username_token, u.encrypted_display, rm.role, rm.joined_at
-            FROM room_members rm
-            JOIN users u ON u.id = rm.user_id
-            WHERE rm.room_id = ?
-            ORDER BY rm.user_id ASC
-            LIMIT ?
-            "#,
-        )
-        .bind(&query.room_id)
-        .bind(fetch_limit as i64)
-        .fetch_all(pool)
-        .await?
-    };
-
     let mut members = Vec::new();
-    for row in rows {
-        members.push(RoomMember {
-            user_id: row.get("user_id"),
-            username_token: row.get("username_token"),
-            encrypted_display: row.get("encrypted_display"),
-            role: row.get("role"),
-            joined_at: row.get("joined_at"),
-        });
+
+    let last_user_id = query.cursor.as_ref().and_then(|c| c.last_user_id.clone());
+    let last_bot_id = query.cursor.as_ref().and_then(|c| c.last_bot_id.clone());
+
+    // If last_bot_id is set, we have already passed all user entries and are only fetching bots.
+    if last_bot_id.is_none() {
+        let user_rows = if let Some(ref l_uid) = last_user_id {
+            sqlx::query(
+                r#"
+                SELECT rm.user_id, rm.role, rm.joined_at
+                FROM room_members rm
+                WHERE rm.room_id = ? AND rm.user_id > ?
+                ORDER BY rm.user_id ASC
+                LIMIT ?
+                "#,
+            )
+            .bind(&query.room_id)
+            .bind(l_uid)
+            .bind(fetch_limit as i64)
+            .fetch_all(pool)
+            .await?
+        } else {
+            sqlx::query(
+                r#"
+                SELECT rm.user_id, rm.role, rm.joined_at
+                FROM room_members rm
+                WHERE rm.room_id = ?
+                ORDER BY rm.user_id ASC
+                LIMIT ?
+                "#,
+            )
+            .bind(&query.room_id)
+            .bind(fetch_limit as i64)
+            .fetch_all(pool)
+            .await?
+        };
+
+        for row in user_rows {
+            members.push(RoomMemberItem::User {
+                user_id: row.get("user_id"),
+                role: row.get("role"),
+                joined_at: row.get("joined_at"),
+            });
+        }
+    }
+
+    // If we haven't reached the fetch limit, fetch bots
+    if members.len() < fetch_limit {
+        let needed_bots = fetch_limit - members.len();
+        let bot_rows = if let Some(ref l_bid) = last_bot_id {
+            sqlx::query(
+                r#"
+                SELECT rb.bot_id, rb.mode, ba.display_name, ba.avatar_file_id, rb.granted_at AS joined_at
+                FROM room_bots rb
+                JOIN bot_accounts ba ON ba.id = rb.bot_id
+                WHERE rb.room_id = ? AND rb.revoked_at IS NULL AND ba.deleted_at IS NULL AND rb.bot_id > ?
+                ORDER BY rb.bot_id ASC
+                LIMIT ?
+                "#,
+            )
+            .bind(&query.room_id)
+            .bind(l_bid)
+            .bind(needed_bots as i64)
+            .fetch_all(pool)
+            .await?
+        } else {
+            sqlx::query(
+                r#"
+                SELECT rb.bot_id, rb.mode, ba.display_name, ba.avatar_file_id, rb.granted_at AS joined_at
+                FROM room_bots rb
+                JOIN bot_accounts ba ON ba.id = rb.bot_id
+                WHERE rb.room_id = ? AND rb.revoked_at IS NULL AND ba.deleted_at IS NULL
+                ORDER BY rb.bot_id ASC
+                LIMIT ?
+                "#,
+            )
+            .bind(&query.room_id)
+            .bind(needed_bots as i64)
+            .fetch_all(pool)
+            .await?
+        };
+
+        for row in bot_rows {
+            members.push(RoomMemberItem::Bot {
+                bot_id: row.get("bot_id"),
+                mode: row.get("mode"),
+                display_name: row.get("display_name"),
+                avatar_file_id: row.get("avatar_file_id"),
+                joined_at: row.get("joined_at"),
+            });
+        }
     }
 
     let has_more = members.len() > query.limit;
@@ -1005,12 +1073,19 @@ pub async fn list_members(
     }
 
     let next_cursor = if has_more {
-        members.last().map(|m| {
-            MemberCursor {
+        members.last().map(|item| match item {
+            RoomMemberItem::User { user_id, .. } => MemberCursor {
                 room_id: query.room_id.clone(),
-                last_user_id: m.user_id.clone(),
+                last_user_id: Some(user_id.clone()),
+                last_bot_id: None,
             }
-            .encode()
+            .encode(),
+            RoomMemberItem::Bot { bot_id, .. } => MemberCursor {
+                room_id: query.room_id.clone(),
+                last_user_id: None,
+                last_bot_id: Some(bot_id.clone()),
+            }
+            .encode(),
         })
     } else {
         None
@@ -1019,7 +1094,6 @@ pub async fn list_members(
     Ok(ListMembersResult {
         members,
         next_cursor,
-        has_more,
     })
 }
 

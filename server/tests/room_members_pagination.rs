@@ -101,13 +101,17 @@ async fn test_member_list_pagination_first_page_default_limit() {
     let members = json_m["members"].as_array().unwrap();
     assert_eq!(members.len(), 4);
     assert_eq!(json_m["next_cursor"], Value::Null);
-    assert_eq!(json_m["has_more"], false);
 
-    // Verify user_id ordering
-    let user_ids: Vec<&str> = members
-        .iter()
-        .map(|m| m["user_id"].as_str().unwrap())
-        .collect();
+    // Verify user_id ordering and type field per §8.4
+    let mut user_ids = Vec::new();
+    for m in members {
+        assert_eq!(m["type"], "user");
+        assert!(m.get("bot_id").is_none());
+        assert!(m.get("mode").is_none());
+        assert!(m.get("display_name").is_none());
+        assert!(m.get("avatar_file_id").is_none());
+        user_ids.push(m["user_id"].as_str().unwrap());
+    }
     let mut sorted_user_ids = user_ids.clone();
     sorted_user_ids.sort();
     assert_eq!(user_ids, sorted_user_ids);
@@ -167,7 +171,6 @@ async fn test_member_list_pagination_custom_limit_and_pages() {
 
     let members_p1 = json_p1["members"].as_array().unwrap();
     assert_eq!(members_p1.len(), 2);
-    assert_eq!(json_p1["has_more"], true);
     let cursor_1 = json_p1["next_cursor"].as_str().unwrap();
 
     // Page 2: limit=2 with cursor
@@ -190,7 +193,6 @@ async fn test_member_list_pagination_custom_limit_and_pages() {
 
     let members_p2 = json_p2["members"].as_array().unwrap();
     assert_eq!(members_p2.len(), 2);
-    assert_eq!(json_p2["has_more"], true);
     let cursor_2 = json_p2["next_cursor"].as_str().unwrap();
 
     // Ensure no overlap between page 1 and page 2
@@ -226,7 +228,6 @@ async fn test_member_list_pagination_custom_limit_and_pages() {
 
     let members_p3 = json_p3["members"].as_array().unwrap();
     assert_eq!(members_p3.len(), 1);
-    assert_eq!(json_p3["has_more"], false);
     assert_eq!(json_p3["next_cursor"], Value::Null);
 }
 
@@ -428,4 +429,253 @@ async fn test_member_list_pagination_auth_and_concurrency() {
             uid
         );
     }
+}
+
+#[tokio::test]
+async fn test_member_list_pagination_merged_users_and_bots() {
+    let (app, pool) = setup_test_app().await;
+    let (alice_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    // Create room
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    // Add 1 human member (total 2 users: alice + bob)
+    let (bob_id, _) = create_test_user(&app, &pool, "bob", "device_client_id_b_12345").await;
+    let req_add = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/members", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "user_id": bob_id }).to_string()))
+        .unwrap();
+    app.clone().oneshot(req_add).await.unwrap();
+
+    // Insert 2 bots directly into bot_accounts and room_bots
+    sqlx::query(
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id) VALUES (?, ?, ?, ?)",
+    )
+    .bind("b_bot_alpha")
+    .bind("Alpha Bot")
+    .bind(Some("f_avatar1"))
+    .bind(&alice_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO room_bots (room_id, bot_id, mode, granted_by) VALUES (?, ?, ?, ?)")
+        .bind(room_id)
+        .bind("b_bot_alpha")
+        .bind("write_only")
+        .bind(&alice_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query(
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id) VALUES (?, ?, ?, ?)",
+    )
+    .bind("b_bot_beta")
+    .bind("Beta Bot")
+    .bind::<Option<&str>>(None)
+    .bind(&alice_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO room_bots (room_id, bot_id, mode, granted_by) VALUES (?, ?, ?, ?)")
+        .bind(room_id)
+        .bind("b_bot_beta")
+        .bind("observer")
+        .bind(&alice_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Page 1: limit=3 -> Should return 2 users and 1 bot (total 3 items)
+    let req_p1 = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}/members?limit=3", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_p1 = app.clone().oneshot(req_p1).await.unwrap();
+    assert_eq!(resp_p1.status(), StatusCode::OK);
+
+    let body_p1 = axum::body::to_bytes(resp_p1.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_p1: Value = serde_json::from_slice(&body_p1).unwrap();
+
+    let members_p1 = json_p1["members"].as_array().unwrap();
+    assert_eq!(members_p1.len(), 3);
+
+    // Verify first 2 entries are users
+    assert_eq!(members_p1[0]["type"], "user");
+    assert_eq!(members_p1[1]["type"], "user");
+    assert!(members_p1[0].get("user_id").is_some());
+    assert!(members_p1[0].get("role").is_some());
+    assert!(members_p1[0].get("joined_at").is_some());
+    assert!(members_p1[0].get("bot_id").is_none());
+
+    // Verify 3rd entry is a bot
+    assert_eq!(members_p1[2]["type"], "bot");
+    assert_eq!(members_p1[2]["bot_id"], "b_bot_alpha");
+    assert_eq!(members_p1[2]["mode"], "write_only");
+    assert_eq!(members_p1[2]["display_name"], "Alpha Bot");
+    assert_eq!(members_p1[2]["avatar_file_id"], "f_avatar1");
+    assert!(members_p1[2].get("joined_at").is_some());
+    assert!(members_p1[2].get("user_id").is_none());
+    assert!(members_p1[2].get("role").is_none());
+
+    let cursor_1 = json_p1["next_cursor"].as_str().unwrap();
+
+    // Page 2: limit=3 with cursor -> Should return remaining 1 bot (b_bot_beta)
+    let req_p2 = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/api/v1/rooms/{}/members?limit=3&cursor={}",
+            room_id, cursor_1
+        ))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_p2 = app.oneshot(req_p2).await.unwrap();
+    assert_eq!(resp_p2.status(), StatusCode::OK);
+
+    let body_p2 = axum::body::to_bytes(resp_p2.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_p2: Value = serde_json::from_slice(&body_p2).unwrap();
+
+    let members_p2 = json_p2["members"].as_array().unwrap();
+    assert_eq!(members_p2.len(), 1);
+    assert_eq!(members_p2[0]["type"], "bot");
+    assert_eq!(members_p2[0]["bot_id"], "b_bot_beta");
+    assert_eq!(members_p2[0]["mode"], "observer");
+    assert_eq!(members_p2[0]["display_name"], "Beta Bot");
+    assert_eq!(members_p2[0]["avatar_file_id"], Value::Null);
+    assert_eq!(json_p2["next_cursor"], Value::Null);
+}
+
+#[tokio::test]
+async fn test_member_list_pagination_revoked_and_deleted_bots_excluded() {
+    let (app, pool) = setup_test_app().await;
+    let (alice_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    // Create room
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    // 1. Active Bot
+    sqlx::query(
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id) VALUES (?, ?, ?, ?)",
+    )
+    .bind("b_active")
+    .bind("Active Bot")
+    .bind::<Option<&str>>(None)
+    .bind(&alice_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO room_bots (room_id, bot_id, mode, granted_by) VALUES (?, ?, ?, ?)")
+        .bind(room_id)
+        .bind("b_active")
+        .bind("member")
+        .bind(&alice_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // 2. Revoked Bot (revoked_at IS NOT NULL)
+    sqlx::query(
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id) VALUES (?, ?, ?, ?)",
+    )
+    .bind("b_revoked")
+    .bind("Revoked Bot")
+    .bind::<Option<&str>>(None)
+    .bind(&alice_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query(
+        "INSERT INTO room_bots (room_id, bot_id, mode, granted_by, revoked_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+    )
+    .bind(room_id)
+    .bind("b_revoked")
+    .bind("member")
+    .bind(&alice_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // 3. Deleted Bot (deleted_at IS NOT NULL)
+    sqlx::query(
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, deleted_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+    )
+    .bind("b_deleted")
+    .bind("Deleted Bot")
+    .bind::<Option<&str>>(None)
+    .bind(&alice_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO room_bots (room_id, bot_id, mode, granted_by) VALUES (?, ?, ?, ?)")
+        .bind(room_id)
+        .bind("b_deleted")
+        .bind("member")
+        .bind(&alice_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // GET /rooms/:id/members
+    let req_mem = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}/members", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_mem = app.oneshot(req_mem).await.unwrap();
+    assert_eq!(resp_mem.status(), StatusCode::OK);
+
+    let body_m = axum::body::to_bytes(resp_mem.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_m: Value = serde_json::from_slice(&body_m).unwrap();
+
+    let members = json_m["members"].as_array().unwrap();
+    // 1 user (alice) + 1 active bot (b_active) = 2 items total
+    assert_eq!(members.len(), 2);
+
+    let bot_entries: Vec<&Value> = members.iter().filter(|m| m["type"] == "bot").collect();
+    assert_eq!(bot_entries.len(), 1);
+    assert_eq!(bot_entries[0]["bot_id"], "b_active");
 }

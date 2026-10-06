@@ -930,8 +930,8 @@ async fn test_18_list_members_succeeds() {
     let members = json_m["members"].as_array().unwrap();
 
     assert_eq!(members.len(), 2);
-    assert!(members[0]["username_token"].is_string());
-    assert!(members[1]["username_token"].is_string());
+    assert_eq!(members[0]["type"], "user");
+    assert_eq!(members[1]["type"], "user");
 
     let roles: Vec<&str> = members
         .iter()

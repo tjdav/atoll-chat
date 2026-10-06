@@ -418,3 +418,23 @@ CREATE TABLE IF NOT EXISTS oprf_audit (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_oprf_audit_created ON oprf_audit(created_at DESC);
+
+-- Minimal Bot Tables for Member Pagination Merge
+CREATE TABLE IF NOT EXISTS bot_accounts (
+    id                  TEXT PRIMARY KEY,
+    display_name        TEXT NOT NULL,
+    avatar_file_id      TEXT,
+    owner_user_id       TEXT NOT NULL REFERENCES users(id),
+    disabled_at         DATETIME,
+    deleted_at          DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS room_bots (
+    room_id    TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    bot_id     TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    mode       TEXT NOT NULL CHECK(mode IN ('write_only', 'observer', 'member')),
+    granted_by TEXT NOT NULL REFERENCES users(id),
+    granted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    revoked_at DATETIME,
+    PRIMARY KEY (room_id, bot_id)
+);
