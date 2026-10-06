@@ -879,17 +879,27 @@
   - **`message.new` Payload:** `message.new` event payload carries `sender_type: "user"`, `sender_id: "u_..."`, `reply_to` (string or `null`), omits `sender_user_id`, and omits `bot_key_leaf_index` per §8.9.
 - **Link to report:** [verification/threading-v3/report.md](verification/threading-v3/report.md)
 
-## Whisper Messages Empirical Baseline Verification
-- **ID:** Whisper Messages
+## Whisper Messages Contract & Implementation Verification
+- **ID:** Whisper Messages Contract
 - **Date:** 2026-10-06
-- **Status:** Complete.
+- **Status:** Complete. Canonical.
 - **Spec / Amendment references:** V3 Spec §7.6, §8.5, §8.5.1, §8.9, §12
-- **Question asked:** What is the current ground truth state for `target_user_ids`, message creation/edit/delete/reaction events, room channel defensive stripping, non-durability of whisper events, and `GET /rooms/:id/messages` filtering?
+- **Question asked:** What are the verified facts for `target_user_ids` validation, storage deduplication, event delivery contracts, non-durability, room channel defensive stripping, and fetch filtering for whisper messages?
 - **Answer found:**
-  - Audited ground truth baseline in `verification/whisper-messages/report.md`.
-  - Confirmed `target_user_ids` column is currently missing in `0001_v2_schema.sql` and must be added.
-  - Confirmed Phase 7 and Phase 8 stub comments exist at edit and reaction publish sites.
-  - Confirmed `Publisher` lacks defensive stripping of `target_user_ids` on room channel events.
-  - Confirmed `list_messages` requires filtering for `target_user_ids` recipients/sender.
-  - Confirmed non-durable live event delivery on user channels (`private-user-{user_id}`) without `user_seq` allocation or sync persistence.
+  - **Schema:** `target_user_ids TEXT` (nullable) added to `room_messages` in `0001_v2_schema.sql`. Null denotes public message; non-null stores compact JSON array of user IDs without index.
+  - **Validation & Deduplication Rules:**
+    - Empty array (`"target_user_ids": []`) rejected with HTTP 400 `invalid_target_user_ids`.
+    - Target list exceeding effective room size cap rejected with HTTP 400 `target_user_ids_too_large`.
+    - Target user not in `room_members` rejected with HTTP 400 `target_not_in_room`.
+    - Duplicates in `target_user_ids` are deduplicated preserving the caller's initial order before storage.
+  - **Delivery Contract & Event Routing:**
+    - Public messages (`target_user_ids` is NULL) publish `message.new` on `private-room-{room_id}` with `target_user_ids: null`.
+    - Whisper messages publish events (`message.new`, `message.edited`, `message.deleted`, `reaction.added`, `reaction.removed`) strictly on `private-user-{user_id}` for the recipient set `target_user_ids ∪ {sender_user_id}` (deduplicated). The room channel receives no event for whisper operations.
+    - Whisper payloads include `target_user_ids` matching the stored recipient list.
+  - **Room Channel Defensive Strip:**
+    - `Publisher::publish` defensively inspects payloads published to `private-room-*` channels. If `target_user_ids` is non-null and non-empty, it strips the field before publishing and logs `tracing::warn!(event_name = %event, ...)` without field values or user IDs.
+  - **Non-Durability:**
+    - Whisper events do not allocate a `user_seq`, do not write to sync tables, and do not appear in `GET /users/me/sync`.
+  - **Fetch Filtering Rule:**
+    - `GET /rooms/:id/messages` filters whisper rows so they are visible strictly to the sender (`sender_user_id == requester_id`) or recipients (`requester_id` in `target_user_ids`). Non-recipient members do not see whisper rows.
 - **Link to report:** [verification/whisper-messages/report.md](verification/whisper-messages/report.md)

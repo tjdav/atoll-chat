@@ -101,7 +101,7 @@ pub async fn submit(
     }
 
     // 5. Validate target_user_ids if present
-    if let Some(ref targets) = payload.target_user_ids {
+    let target_user_ids = if let Some(ref targets) = payload.target_user_ids {
         if targets.is_empty() {
             return Err(ApiError::BadRequest("invalid_target_user_ids".to_string()));
         }
@@ -123,12 +123,19 @@ pub async fn submit(
         let member_set: std::collections::HashSet<String> =
             member_rows.into_iter().map(|(u,)| u).collect();
 
+        let mut deduped: Vec<String> = Vec::new();
         for target_id in targets {
             if !member_set.contains(target_id) {
                 return Err(ApiError::BadRequest("target_not_in_room".to_string()));
             }
+            if !deduped.contains(target_id) {
+                deduped.push(target_id.clone());
+            }
         }
-    }
+        Some(deduped)
+    } else {
+        None
+    };
 
     // 6. Validate transcript_hash if commit
     let transcript_hash_bytes = match content_type {
@@ -161,7 +168,7 @@ pub async fn submit(
         ciphertext: ciphertext_bytes,
         transcript_hash: transcript_hash_bytes,
         reply_to: payload.reply_to.clone(),
-        target_user_ids: payload.target_user_ids.clone(),
+        target_user_ids,
     };
 
     let outcome = room_messages::submit_message(&state.pool, req).await?;
