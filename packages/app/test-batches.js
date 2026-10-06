@@ -56,6 +56,7 @@ export default [
       'tests/unit/repositories-rooms.test.js',
       'tests/unit/repositories-room-members.test.js',
       'tests/unit/repositories-room-order.test.js',
+      'tests/unit/repositories-messages.test.js',
     ],
   },
   {
