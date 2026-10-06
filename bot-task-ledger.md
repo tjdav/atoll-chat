@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 33
-- **Done:** 24
+- **Done:** 25
 - **In Progress:** 0
-- **Todo:** 9
+- **Todo:** 8
 
 ---
 
@@ -44,7 +44,7 @@ Track progress across Bot SDK implementation tasks.
 | B-021 | Context | done | §6.2, §8 | `ctx.reply` wrapper over `ctx.post` with `replyTo` non-empty string validation |
 | B-022 | Context | done | §6.3 | `ctx.sendLocal` handler for owner-targeted local messages (Amends §12 with SendLocalFailedError) |
 | B-023 | Context | done | §3.3, §6.4, §8.8.10 | Command invocation handler, arg validation, handler execution, and result dispatch |
-| B-024 | Media | todo | §8.5 | Media upload/download helper |
+| B-024 | Context | done | §3.5, §14.6 | `ctx.fetch` and `ctx.fetchUserUrl` outbound fetch utilities with scheme validation and query stripping |
 | B-025 | Rooms | todo | §8.6 | Room state query and management helpers |
 | B-026 | Users | todo | §8.7 | User lookup and key transparency query helper |
 | B-027 | Audit | todo | §8.8 | Bot audit log submission helper |

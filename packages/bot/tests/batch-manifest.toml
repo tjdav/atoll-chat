@@ -131,3 +131,9 @@ name = "ctx-command-invoked"
 files = [
   "unit/ctx-command-invoked.test.js",
 ]
+
+[[batch]]
+name = "ctx-fetch"
+files = [
+  "unit/ctx-fetch.test.js",
+]
