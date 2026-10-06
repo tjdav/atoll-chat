@@ -4,96 +4,96 @@ import { createMemoryBackend } from '../../src/lib/db/backends/memory.js'
 import { splitStatements, runMigrations } from '../../src/lib/db/migrations.js'
 import { createDb } from '../../src/lib/db/index.js'
 
-test('1. createMemoryBackend().exec CREATE TABLE succeeds', () => {
+test('1. createMemoryBackend().exec CREATE TABLE succeeds', async () => {
   const backend = createMemoryBackend()
-  const res = backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  const res = await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
   assert.deepEqual(res, { changes: 0, lastInsertId: null })
 })
 
-test('2. all SELECT on fresh table returns empty array', () => {
+test('2. all SELECT on fresh table returns empty array', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  const rows = backend.all('SELECT * FROM foo', [])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  const rows = await backend.all('SELECT * FROM foo', [])
   assert.deepEqual(rows, [])
 })
 
-test('3. exec INSERT inserts row; all returns row', () => {
+test('3. exec INSERT inserts row; all returns row', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  const res = backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  const res = await backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
   assert.equal(res.changes, 1)
-  const rows = backend.all('SELECT * FROM foo', [])
+  const rows = await backend.all('SELECT * FROM foo', [])
   assert.deepEqual(rows, [{ id: 'a', v: '1' }])
 })
 
-test('4. exec INSERT OR REPLACE replaces row', () => {
+test('4. exec INSERT OR REPLACE replaces row', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
-  backend.exec('INSERT OR REPLACE INTO foo (id, v) VALUES (?, ?)', ['a', '2'])
-  const rows = backend.all('SELECT * FROM foo', [])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  await backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
+  await backend.exec('INSERT OR REPLACE INTO foo (id, v) VALUES (?, ?)', ['a', '2'])
+  const rows = await backend.all('SELECT * FROM foo', [])
   assert.deepEqual(rows, [{ id: 'a', v: '2' }])
 })
 
-test('5. one SELECT returns first row', () => {
+test('5. one SELECT returns first row', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
-  const row = backend.one('SELECT * FROM foo WHERE id = ?', ['a'])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  await backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
+  const row = await backend.one('SELECT * FROM foo WHERE id = ?', ['a'])
   assert.deepEqual(row, { id: 'a', v: '1' })
 })
 
-test('6. one SELECT returns undefined on missing row', () => {
+test('6. one SELECT returns undefined on missing row', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  const row = backend.one('SELECT * FROM foo WHERE id = ?', ['zzz'])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  const row = await backend.one('SELECT * FROM foo WHERE id = ?', ['zzz'])
   assert.equal(row, undefined)
 })
 
-test('7. exec UPDATE updates row; one reflects change', () => {
+test('7. exec UPDATE updates row; one reflects change', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
-  const res = backend.exec('UPDATE foo SET v = ? WHERE id = ?', ['3', 'a'])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  await backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
+  const res = await backend.exec('UPDATE foo SET v = ? WHERE id = ?', ['3', 'a'])
   assert.equal(res.changes, 1)
-  const row = backend.one('SELECT * FROM foo WHERE id = ?', ['a'])
+  const row = await backend.one('SELECT * FROM foo WHERE id = ?', ['a'])
   assert.deepEqual(row, { id: 'a', v: '3' })
 })
 
-test('8. exec DELETE deletes row; all returns empty', () => {
+test('8. exec DELETE deletes row; all returns empty', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
-  const res = backend.exec('DELETE FROM foo WHERE id = ?', ['a'])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  await backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
+  const res = await backend.exec('DELETE FROM foo WHERE id = ?', ['a'])
   assert.equal(res.changes, 1)
-  const rows = backend.all('SELECT * FROM foo', [])
+  const rows = await backend.all('SELECT * FROM foo', [])
   assert.deepEqual(rows, [])
 })
 
-test('9. Unsupported SQL throws with statement in message', () => {
+test('9. Unsupported SQL throws with statement in message', async () => {
   const backend = createMemoryBackend()
-  assert.throws(() => {
-    backend.exec('DROP TABLE foo', [])
+  await assert.rejects(async () => {
+    await backend.exec('DROP TABLE foo', [])
   }, /Unsupported SQL statement in memory backend: DROP TABLE foo/)
 })
 
-test('10. begin() then exec then rollback() reverts change', () => {
+test('10. begin() then exec then rollback() reverts change', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  backend.begin()
-  backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
-  backend.rollback()
-  const rows = backend.all('SELECT * FROM foo', [])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  await backend.begin()
+  await backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
+  await backend.rollback()
+  const rows = await backend.all('SELECT * FROM foo', [])
   assert.deepEqual(rows, [])
 })
 
-test('11. begin() then exec then commit() persists change', () => {
+test('11. begin() then exec then commit() persists change', async () => {
   const backend = createMemoryBackend()
-  backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
-  backend.begin()
-  backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
-  backend.commit()
-  const rows = backend.all('SELECT * FROM foo', [])
+  await backend.exec('CREATE TABLE foo (id TEXT PRIMARY KEY, v TEXT)', [])
+  await backend.begin()
+  await backend.exec('INSERT INTO foo (id, v) VALUES (?, ?)', ['a', '1'])
+  await backend.commit()
+  const rows = await backend.all('SELECT * FROM foo', [])
   assert.deepEqual(rows, [{ id: 'a', v: '1' }])
 })
 
@@ -107,7 +107,7 @@ test('12. Fresh DB with two migrations applies both in order', async () => {
     ]
   })
   assert.deepEqual(result, { applied: ['0001-a.sql', '0002-b.sql'], skipped: [] })
-  const rows = backend.all('SELECT name FROM _migrations ORDER BY name ASC', [])
+  const rows = await backend.all('SELECT name FROM _migrations ORDER BY name ASC', [])
   assert.deepEqual(rows, [{ name: '0001-a.sql' }, { name: '0002-b.sql' }])
 })
 
@@ -130,7 +130,7 @@ test('14. Migration failing mid-execution rolls back and leaves _migrations clea
     await runMigrations({ backend, migrations })
   }, /Migration 0001-bad.sql failed/)
 
-  const rows = backend.all('SELECT name FROM _migrations ORDER BY name ASC', [])
+  const rows = await backend.all('SELECT name FROM _migrations ORDER BY name ASC', [])
   assert.deepEqual(rows, [])
 })
 
@@ -211,8 +211,9 @@ test('23. db.meta.set followed by db.meta.get returns parsed object', async () =
     ]
   })
   await db.open()
-  db.meta.set('k', { a: 1 })
-  assert.deepEqual(db.meta.get('k'), { a: 1 })
+  await db.meta.set('k', { a: 1 })
+  const val = await db.meta.get('k')
+  assert.deepEqual(val, { a: 1 })
 })
 
 test('24. db.meta.get missing key returns undefined', async () => {
@@ -227,7 +228,8 @@ test('24. db.meta.get missing key returns undefined', async () => {
     ]
   })
   await db.open()
-  assert.equal(db.meta.get('missing'), undefined)
+  const val = await db.meta.get('missing')
+  assert.equal(val, undefined)
 })
 
 test('25. db.meta.delete deletes key', async () => {
@@ -242,20 +244,22 @@ test('25. db.meta.delete deletes key', async () => {
     ]
   })
   await db.open()
-  db.meta.set('k', { a: 1 })
-  const res = db.meta.delete('k')
+  await db.meta.set('k', { a: 1 })
+  const res = await db.meta.delete('k')
   assert.equal(res.changes, 1)
-  assert.equal(db.meta.get('k'), undefined)
+  const val = await db.meta.get('k')
+  assert.equal(val, undefined)
 })
 
 test('26. db.transaction commits on success', async () => {
   const backend = createMemoryBackend()
   const db = createDb({ backend, migrations: [] })
   await db.execute('CREATE TABLE t (id TEXT PRIMARY KEY)')
-  await db.transaction(() => {
-    db.execute('INSERT INTO t (id) VALUES (?)', ['tx1'])
+  await db.transaction(async () => {
+    await db.execute('INSERT INTO t (id) VALUES (?)', ['tx1'])
   })
-  assert.deepEqual(db.query('SELECT * FROM t'), [{ id: 'tx1' }])
+  const rows = await db.query('SELECT * FROM t')
+  assert.deepEqual(rows, [{ id: 'tx1' }])
 })
 
 test('27. db.transaction rolls back and re-throws on error', async () => {
@@ -263,10 +267,11 @@ test('27. db.transaction rolls back and re-throws on error', async () => {
   const db = createDb({ backend, migrations: [] })
   await db.execute('CREATE TABLE t (id TEXT PRIMARY KEY)')
   await assert.rejects(async () => {
-    await db.transaction(() => {
-      db.execute('INSERT INTO t (id) VALUES (?)', ['tx1'])
+    await db.transaction(async () => {
+      await db.execute('INSERT INTO t (id) VALUES (?)', ['tx1'])
       throw new Error('boom')
     })
   }, /boom/)
-  assert.deepEqual(db.query('SELECT * FROM t'), [])
+  const rows = await db.query('SELECT * FROM t')
+  assert.deepEqual(rows, [])
 })

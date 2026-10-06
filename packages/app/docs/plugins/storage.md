@@ -1,26 +1,30 @@
 # Storage Plugin & Migration Runner (`storage`)
 
-The `storage` plugin provides SQLite persistence, the in-memory fallback backend abstraction, the forward-only migration runner, and key-value metadata helpers (`meta`).
+The `storage` plugin provides SQLite persistence, WASM+OPFS browser storage, in-memory fallback backend abstractions, the forward-only migration runner, and key-value metadata helpers (`meta`).
 
 ## Overview
 
 Every client data model (messages, rooms, members, preferences) is persisted in SQLite per spec §4.5 and §23.1. The `storage` plugin establishes the database factory, backend resolver, migration runner, and meta table subsystem without imposing domain schema assumptions.
 
+## Async Storage Contract
+
+OPFS file access and WASM module initialization require an asynchronous lifecycle. Every database operation (`open`, `close`, `query`, `queryOne`, `execute`, `transaction`, `meta.get`, `meta.set`, `meta.delete`) returns a `Promise`. Callers across repositories and plugins **must** `await` all storage method calls.
+
 ## The `ctx.storage` Contract
 
-The `storage` plugin name **is** the namespace. The context resolver returns methods directly on `ctx.storage` without an inner wrapper key (`ctx.storage.open()`, NOT `ctx.storage.storage.open()`).
+The `storage` plugin name **is** the namespace. The context resolver returns methods directly on `ctx.storage` without an inner wrapper key (`await ctx.storage.open()`, NOT `await ctx.storage.storage.open()`).
 
 | Method / Property | Signature | Description |
 |---|---|---|
 | `open()` | `() => Promise<{ applied: string[], skipped: string[] }>` | Opens backend and applies pending migrations. Idempotent. |
 | `close()` | `() => Promise<void>` | Closes backend connection. |
-| `query(sql, params)` | `(sql: string, params?: any[]) => Array<Record<string, any>>` | Executes read query and returns matching rows. |
-| `queryOne(sql, params)` | `(sql: string, params?: any[]) => Record<string, any> \| undefined` | Executes read query and returns first row or `undefined`. |
-| `execute(sql, params)` | `(sql: string, params?: any[]) => { changes: number, lastInsertId: number \| null }` | Executes write statement. |
+| `query(sql, params)` | `(sql: string, params?: any[]) => Promise<Array<Record<string, any>>>` | Executes read query and returns matching rows. |
+| `queryOne(sql, params)` | `(sql: string, params?: any[]) => Promise<Record<string, any> \| undefined>` | Executes read query and returns first row or `undefined`. |
+| `execute(sql, params)` | `(sql: string, params?: any[]) => Promise<{ changes: number, lastInsertId: number \| null }>` | Executes write statement. |
 | `transaction(fn)` | `<T>(fn: () => Promise<T> \| T) => Promise<T>` | Executes callback inside `BEGIN`/`COMMIT` block with `ROLLBACK` on error. |
-| `meta.get(key)` | `(key: string) => any` | Reads `_meta` key and parses `value_json`. Returns `undefined` if missing. |
-| `meta.set(key, value)` | `(key: string, value: any) => { changes: number }` | Upserts `_meta` row with `JSON.stringify(value)` and current timestamp. |
-| `meta.delete(key)` | `(key: string) => { changes: number }` | Deletes `_meta` row. |
+| `meta.get(key)` | `(key: string) => Promise<any>` | Reads `_meta` key and parses `value_json`. Returns `undefined` if missing. |
+| `meta.set(key, value)` | `(key: string, value: any) => Promise<{ changes: number }>` | Upserts `_meta` row with `JSON.stringify(value)` and current timestamp. |
+| `meta.delete(key)` | `(key: string) => Promise<{ changes: number }>` | Deletes `_meta` row. |
 
 ## Migration Workflow
 
@@ -41,27 +45,28 @@ Common keys:
 
 ```javascript
 // Example usage in client code
-ctx.storage.meta.set('last_user_seq', 1042)
-const seq = ctx.storage.meta.get('last_user_seq') // 1042
+await ctx.storage.meta.set('last_user_seq', 1042)
+const seq = await ctx.storage.meta.get('last_user_seq') // 1042
 ```
 
-## The Current Backend
+## Backends & Environment Selection
 
-Today the only supported backend is `'memory'` (`createMemoryBackend()`).
+The backend resolver `resolveBackend({ prefer })` selects the active backend:
 
-- **Why**: Allows unit testing, component tests, and degradation mode without native binaries or WASM setup.
-- **WASM Backend**: A follow-on task introduces SQLite WASM with OPFS persistence for web browser environments.
+- **WASM Backend (`'wasm'`)**: Uses `@sqlite.org/sqlite-wasm@3.53.4-build2`. Selected automatically in browser environments (`window` or `importScripts` defined). Attempts OPFS persistence (`new sqlite3.oo1.OpfsDb('/messenger.sqlite3')`).
+- **OPFS Fallback**: When OPFS open fails or is unsupported in the current context, `createWasmBackend` falls back to an in-memory SQLite database (`new sqlite3.oo1.DB(':memory:', 'c')`) and marks `isPersistent() === false`.
+- **Memory Backend (`'memory'`)**: Pure JavaScript in-memory engine used in Node environments, unit tests, or when `prefer: 'memory'` is explicitly requested.
 - **Native Backend**: Tauri/Capacitor native SQLite implementations follow the same `resolveBackend()` abstraction.
 
 ## Failure Modes
 
 1. **SSR Usage**: Calling `open()`, `query()`, `queryOne()`, `execute()`, or `transaction()` during server-side rendering throws a descriptive `Error` ("The database is client-only").
 2. **Unsupported SQL**: The memory backend parses a narrow set of SQL statements (`CREATE TABLE`, `INSERT`, `SELECT`, `UPDATE`, `DELETE`). Complex or unhandled SQL throws naming the unsupported statement.
-3. **Migration Failure**: A migration error mid-execution triggers `ROLLBACK` and throws naming the failing migration file.
+3. **OPFS Unavailability**: If OPFS fails, the WASM backend degrades gracefully to in-memory SQLite (`isPersistent() === false`).
+4. **Migration Failure**: A migration error mid-execution triggers `ROLLBACK` and throws naming the failing migration file.
 
 ## What Is Not Implemented
 
 - Domain tables (`rooms`, `messages`, `members`, etc.) — delivered in follow-on domain tasks.
 - Domain repositories — delivered alongside domain tables.
-- WASM+OPFS persistence backend — delivered in a follow-on storage backend task.
 - Native SQLite backends — delivered in platform binding tasks.

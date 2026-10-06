@@ -36,6 +36,18 @@ export default defineConfig({
       }
     }
   },
+  assets: [
+    {
+      pkg: '@sqlite.org/sqlite-wasm',
+      path: 'dist/sqlite3.wasm',
+      dest: 'assets/sqlite/sqlite3.wasm'
+    },
+    {
+      pkg: '@sqlite.org/sqlite-wasm',
+      path: 'dist/sqlite3-opfs-async-proxy.js',
+      dest: 'assets/sqlite/sqlite3-opfs-async-proxy.js'
+    }
+  ],
   csp: {
     enabled: true,
     hashAlgorithm: 'sha256',

@@ -24,7 +24,7 @@ export function splitStatements(sql) {
 
     if (inComment) {
       if (char === '\n' || char === '\r') {
-        inComment = false;
+        inComment = false
       }
       continue
     }
@@ -88,7 +88,7 @@ export function splitStatements(sql) {
  */
 export async function runMigrations({ backend, migrations = [] }) {
   // 1. Ensure _migrations table exists (idempotent bootstrap)
-  backend.exec(`
+  await backend.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
       name       TEXT PRIMARY KEY,
       applied_at INTEGER NOT NULL
@@ -96,7 +96,7 @@ export async function runMigrations({ backend, migrations = [] }) {
   `, [])
 
   // 2. Query applied migrations
-  const rows = backend.all('SELECT name FROM _migrations ORDER BY name ASC', [])
+  const rows = await backend.all('SELECT name FROM _migrations ORDER BY name ASC', [])
   const appliedSet = new Set(rows.map((r) => r.name))
 
   const applied = []
@@ -110,19 +110,19 @@ export async function runMigrations({ backend, migrations = [] }) {
     }
 
     const statements = splitStatements(migration.sql)
-    backend.begin()
+    await backend.begin()
     try {
       for (const statement of statements) {
-        backend.exec(statement, [])
+        await backend.exec(statement, [])
       }
-      backend.exec('INSERT OR REPLACE INTO _migrations (name, applied_at) VALUES (?, ?)', [
+      await backend.exec('INSERT OR REPLACE INTO _migrations (name, applied_at) VALUES (?, ?)', [
         migration.name,
         Date.now()
       ])
-      backend.commit()
+      await backend.commit()
       applied.push(migration.name)
     } catch (err) {
-      backend.rollback()
+      await backend.rollback()
       const message = err instanceof Error ? err.message : String(err)
       throw new Error(`Migration ${migration.name} failed: ${message}`)
     }

@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 30 |
+| Done | 31 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -23,6 +23,7 @@ or modify the server's ledger.
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
 | C-INFRA-8 | Storage Plugin Skeleton & Migration Runner | done | C-INFRA-7 | unit-smoke |
+| C-INFRA-9 | WASM SQLite Backend Implementation and Async DB Factory | done | C-V-G, C-INFRA-8 | unit-smoke |
 | C-V-B | Verify Client Testing Stack and Coralite Test Tooling | done | C-INFRA-2 | — |
 | C-V-C | Verify Client-Side OPRF Library Availability | done | C-AUTH-1 | — |
 | C-V-D | Verify Client OPAQUE Library Availability and Wire Compatibility | done | C-AUTH-2, C-V-C | — |
@@ -392,6 +393,17 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated `.gitignore` to unignore `!packages/app/src/db/` and `!packages/app/src/lib/db/`.
   - Authored plugin documentation at `packages/app/docs/plugins/storage.md` and updated `packages/app/docs/plugins/README.md`.
   - Added unit test suites `packages/app/tests/unit/db.test.js` (27 cases) and `packages/app/tests/unit/storage-plugin.test.js` (8 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+- **C-INFRA-9 Deliverables & Status:**
+  - Status: `done`.
+  - Installed `@sqlite.org/sqlite-wasm@3.53.4-build2` under `dependencies` in `packages/app/package.json`.
+  - Registered SQLite assets in `packages/app/coralite.config.js` copying `dist/sqlite3.wasm` -> `assets/sqlite/sqlite3.wasm` and `dist/sqlite3-opfs-async-proxy.js` -> `assets/sqlite/sqlite3-opfs-async-proxy.js`.
+  - Transitioned memory backend (`backends/memory.js`), migration runner (`migrations.js`), DB factory (`index.js`), and storage plugin (`storage-plugin.js`) to async method contracts returning Promises.
+  - Created `packages/app/src/lib/db/backends/wasm.js` exporting `createWasmBackend` with OPFS (`sqlite3.oo1.OpfsDb`) persistence and in-memory (`sqlite3.oo1.DB`) fallback mode (`isPersistent() === false`).
+  - Updated `packages/app/src/lib/db/backends/index.js` exporting `SUPPORTED_BACKENDS = ['wasm', 'memory']` and automatic browser environment selection in `resolveBackend`.
+  - Updated existing unit test suites `db.test.js` and `storage-plugin.test.js` to await Promise calls.
+  - Created unit test suite `packages/app/tests/unit/wasm-backend.test.js` testing WASM backend, OPFS fallback, transactions, migrations, and meta helpers in Node environment (registered under `unit-smoke` in `test-batches.js`).
+  - Verified WASM backend in Playwright real-browser environment via temporary probe fixture and captured `test-results/wasm-probe.png`. Reverted temporary probe component and page mount before completion.
+  - Updated documentation at `packages/app/docs/plugins/storage.md`.
 
 ## Component Authoring Policy
 
