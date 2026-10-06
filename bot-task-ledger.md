@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 33
-- **Done:** 23
+- **Done:** 24
 - **In Progress:** 0
-- **Todo:** 10
+- **Todo:** 9
 
 ---
 
@@ -43,11 +43,12 @@ Track progress across Bot SDK implementation tasks.
 | B-020a | Post Member | todo | §6.1 | Member-mode `ctx.post` via MLS (`src/runtime/context/post-member.js`) |
 | B-021 | Context | done | §6.2, §8 | `ctx.reply` wrapper over `ctx.post` with `replyTo` non-empty string validation |
 | B-022 | Context | done | §6.3 | `ctx.sendLocal` handler for owner-targeted local messages (Amends §12 with SendLocalFailedError) |
-| B-023 | Media | todo | §8.5 | Media upload/download helper |
-| B-024 | Rooms | todo | §8.6 | Room state query and management helpers |
-| B-025 | Users | todo | §8.7 | User lookup and key transparency query helper |
-| B-026 | Audit | todo | §8.8 | Bot audit log submission helper |
-| B-027 | CLI Core | todo | §15 | CLI entrypoint, argument parser, and subcommands |
-| B-028 | Webhooks | todo | §10.3 | HTTP webhook server and payload validator |
-| B-029 | Cron | todo | §10.3 | Cron schedule parser and timer engine |
-| B-030 | Integration | todo | §10.1 | Full runtime wiring and entrypoint export |
+| B-023 | Context | done | §3.3, §6.4, §8.8.10 | Command invocation handler, arg validation, handler execution, and result dispatch |
+| B-024 | Media | todo | §8.5 | Media upload/download helper |
+| B-025 | Rooms | todo | §8.6 | Room state query and management helpers |
+| B-026 | Users | todo | §8.7 | User lookup and key transparency query helper |
+| B-027 | Audit | todo | §8.8 | Bot audit log submission helper |
+| B-028 | CLI Core | todo | §15 | CLI entrypoint, argument parser, and subcommands |
+| B-029 | Webhooks | todo | §10.3 | HTTP webhook server and payload validator |
+| B-030 | Cron | todo | §10.3 | Cron schedule parser and timer engine |
+| B-031 | Integration | todo | §10.1 | Full runtime wiring and entrypoint export |

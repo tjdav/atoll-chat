@@ -125,3 +125,9 @@ name = "ctx-send-local"
 files = [
   "unit/ctx-send-local.test.js",
 ]
+
+[[batch]]
+name = "ctx-command-invoked"
+files = [
+  "unit/ctx-command-invoked.test.js",
+]

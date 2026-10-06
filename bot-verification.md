@@ -116,6 +116,28 @@
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
 
+## Task B-023 Verification Fact
+- **Command Invocation & Result Dispatch (`packages/bot/src/runtime/context/command-invoked.js`)**:
+  - The command invocation handler lives at `packages/bot/src/runtime/context/command-invoked.js` exporting `createCommandInvocationHandler`, `dispatchCommandResult`, and `COMMAND_INFO = 'bot-command-v1'`.
+  - Wire format matches settings: `ephemeral_pub(32) || nonce(12) || ct || tag(16)` (base64url).
+  - Plaintext shape matches `{ command_name, args, ephemeral_result_pubkey }` where `ephemeral_result_pubkey` is a 32-byte base64url string.
+  - Argument reader validation rejects missing required arguments, wrong-type arguments, out-of-options select values, and undeclared extra arguments.
+  - Handler never throws on invocation processing: decryption failures, malformed plaintext, unknown commands, argument validation errors, `makeBotCtx` failures, handler exceptions, and handler timeouts produce error logs or `local_message` responses and always issue command ack.
+  - Command ack (`safeAck`) and result dispatch (`safeDispatchResult`) swallow exceptions and log warnings/errors without interrupting execution.
+  - Result dispatch routes `local_message`, `toast`, and `panel` to `POST /bots/me/messages` with `target: 'invoker'`, routes `room_message` to `ctx.post`, and treats `none` as a no-op.
+  - **Spec Gap 1 Recorded**: Spec §6.31 does not name the info string for command encryption. Code assumes `COMMAND_INFO = 'bot-command-v1'`.
+  - **Spec Gap 2 Recorded**: Spec does not specify command ciphertext wire format. Code assumes settings format (`ephemeral_pub(32) || nonce(12) || ct || tag(16)`).
+  - **Spec Gap 3 Recorded**: Spec does not specify command plaintext shape. Code assumes `{ command_name, args, ephemeral_result_pubkey }`.
+  - **Spec Gap 4 Recorded**: Spec does not specify argument validation failure handling. Code returns `local_message` to invoker describing failure without invoking handler.
+  - **Spec Gap 5 Recorded**: Spec does not specify command ack timing. Code acks after dispatch (or after failure path execution) to prevent redelivery of processed commands.
+  - Registered `ctx-command-invoked` batch in `packages/bot/tests/batch-manifest.toml` and authored 31 unit tests in `packages/bot/tests/unit/ctx-command-invoked.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
 ## Task B-018 Verification Fact
 - **WebSocket Transport (`packages/bot/src/runtime/transport/websocket.js`)**:
   - The WebSocket transport lives at `packages/bot/src/runtime/transport/websocket.js` exporting `createWebSocketClient`.
