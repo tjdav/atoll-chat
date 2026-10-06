@@ -1,5 +1,5 @@
 <template id="messenger-boot">
-  <div class="boot" data-testid="boot" data-state="{{ bootState }}">
+  <div ref="root" class="boot" data-testid="boot" data-state="{{ bootState }}">
     <p ref="loading" class="loading" hidden="{{ loadingHidden }}">
       <span class="spinner" aria-hidden="true"></span>
       <span>{{ boot_loading }}</span>
@@ -93,7 +93,7 @@ export default defineComponent({
     errorHidden: ({ state }) => state.error === ''
   },
 
-  client({ refs, emit, state, signal, i18n }) {
+  client: async ({ refs, emit, state, signal, i18n, storage, globalStore }) => {
     const syncLocale = (locale) => {
       state.locale = locale
       Object.assign(state, i18n.strings([
@@ -107,24 +107,49 @@ export default defineComponent({
       syncLocale(i18n.getLocale())
     }
 
-    ;(async () => {
-      try {
-        const { bootFlow } = await import('../../lib/auth/boot.js');
-        const result = await bootFlow();
-        if (result.redirected) {
-          return;
-        }
-        state.hasOprfToken = result.hasOprfToken;
-        state.ready = true;
-        emit('app:ready', {
-          hasOprfToken: result.hasOprfToken,
-          user: result.user
-        });
-      } catch (err) {
-        state.error = err instanceof Error ? err.message : i18n.t('boot_error_failed');
-        emit('app:error', { message: state.error });
+    try {
+      const { bootFlow } = await import('../../lib/auth/boot.js')
+      const result = await bootFlow()
+      if (result.redirected) {
+        return
       }
-    })();
+      state.hasOprfToken = result.hasOprfToken
+      state.ready = true
+
+      if (globalStore?.$state) {
+        globalStore.$state.isAuthenticated = true
+        globalStore.$state.currentUser = result.user ?? null
+        globalStore.$state.oprfToken = state.oprfToken ?? null
+      }
+
+      emit('app:ready', {
+        hasOprfToken: result.hasOprfToken,
+        user: result.user
+      })
+
+      if (storage?.open) {
+        try {
+          await storage.open()
+          const persistent = typeof storage.isPersistent === 'function'
+            ? await storage.isPersistent()
+            : true
+          if (globalStore?.$state) {
+            globalStore.$state.storageReady = true
+            globalStore.$state.storagePersistent = persistent
+          }
+          const root = refs('root')
+          if (root) {
+            root.setAttribute('data-storage-ready', 'true')
+            root.setAttribute('data-storage-persistent', String(persistent))
+          }
+        } catch (_err) {
+          // Storage unavailable. storageReady remains false.
+        }
+      }
+    } catch (err) {
+      state.error = err instanceof Error ? err.message : i18n.t('boot_error_failed')
+      emit('app:error', { message: state.error })
+    }
   }
 })
 </script>

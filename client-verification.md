@@ -475,3 +475,16 @@ build task runs.
 | Test Coverage & Batches | Unit test `packages/app/tests/unit/wasm-backend.test.js` (7 test cases covering WASM initialization, in-memory fallback, `exec`/`all`/`one`, transactions, migrations, and meta helpers) registered under `unit-smoke` batch in `test-batches.js`. Updated `db.test.js` (27 cases) and `storage-plugin.test.js` (8 cases) |
 | Playwright Real-Browser Probe | Verified WASM backend opening, migration execution, read/write SQL, and reload persistence in Playwright Chromium browser via temporary `cv-wasm-probe` component. Screenshot captured at `test-results/wasm-probe.png`. Temporary fixture cleanly reverted |
 | Documentation Path | Updated `packages/app/docs/plugins/storage.md` detailing WASM backend, OPFS fallback, and async storage contract |
+
+### C-INFRA-10 — Storage Boot Integration
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Extended Shell State | `DEFAULT_SHELL_STATE` in `packages/app/src/lib/state/index.js` includes `storageReady: false` and `storagePersistent: true` |
+| Memory Backend `isPersistent()` | Method added to `packages/app/src/lib/db/backends/memory.js` returning `async () => false` |
+| Boot Storage Initialization | `messenger-boot` converts `client()` block to straight-line `async` with top-level `await` (no nested IIFE), awaits `storage.open()` post-session validation, and writes `$state.storageReady` / `$state.storagePersistent` |
+| Root Ref Diagnostic Attributes | `messenger-boot` sets `data-storage-ready` (`"true"` or `"false"`) and `data-storage-persistent` (`"true"` or `"false"`) on `ref="root"` |
+| Non-Blocking Shell Reveal | Shell reveals on `isAuthenticated` write before `storage.open()` completes; storage failure keeps `data-state="ready"` without crashing shell |
+| Documentation & Tests | Documentation at `packages/app/docs/plugins/state.md` and `packages/app/docs/plugins/storage.md`; unit tests in `tests/unit/state.test.js` and `tests/unit/db.test.js`; component tests in `tests/component/messenger-boot.spec.js` |

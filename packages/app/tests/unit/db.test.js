@@ -275,3 +275,9 @@ test('27. db.transaction rolls back and re-throws on error', async () => {
   const rows = await db.query('SELECT * FROM t')
   assert.deepEqual(rows, [])
 })
+
+test('28. createMemoryBackend().isPersistent() returns false', async () => {
+  const backend = createMemoryBackend()
+  const persistent = await backend.isPersistent()
+  assert.equal(persistent, false)
+})

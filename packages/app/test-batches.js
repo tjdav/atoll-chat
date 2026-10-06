@@ -49,7 +49,9 @@ export default [
       'tests/unit/router.test.js',
       'tests/unit/surface-reconcile.test.js',
       'tests/unit/db.test.js',
+      'tests/unit/wasm-backend.test.js',
       'tests/unit/storage-plugin.test.js',
+      'tests/unit/state.test.js',
     ],
   },
   {

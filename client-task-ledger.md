@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 31 |
+| Done | 32 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-10 | Storage Boot Integration | done | C-INFRA-8, C-INFRA-9, C-AUTH-4 | unit-smoke, component-auth |
 | C-INFRA-8 | Storage Plugin Skeleton & Migration Runner | done | C-INFRA-7 | unit-smoke |
 | C-INFRA-9 | WASM SQLite Backend Implementation and Async DB Factory | done | C-V-G, C-INFRA-8 | unit-smoke |
 | C-V-B | Verify Client Testing Stack and Coralite Test Tooling | done | C-INFRA-2 | — |
@@ -404,6 +405,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created unit test suite `packages/app/tests/unit/wasm-backend.test.js` testing WASM backend, OPFS fallback, transactions, migrations, and meta helpers in Node environment (registered under `unit-smoke` in `test-batches.js`).
   - Verified WASM backend in Playwright real-browser environment via temporary probe fixture and captured `test-results/wasm-probe.png`. Reverted temporary probe component and page mount before completion.
   - Updated documentation at `packages/app/docs/plugins/storage.md`.
+
+- **C-INFRA-10 Deliverables & Status:**
+  - Status: `done`.
+  - Created global shell state module `packages/app/src/lib/state/index.js` exporting `DEFAULT_SHELL_STATE` (`storageReady: false`, `storagePersistent: true`) and `createStateStore(initialState)`.
+  - Added `async isPersistent()` method returning `false` to memory database backend `packages/app/src/lib/db/backends/memory.js`.
+  - Updated `packages/app/src/components/containers/messenger-boot.html` converting `client()` block to straight-line `async` with top-level `await` (removing nested async IIFE), opening `storage.open()` post-session validation, updating `$state.storageReady` / `$state.storagePersistent`, and setting root ref diagnostic attributes `data-storage-ready` / `data-storage-persistent`.
+  - Created unit test suite `packages/app/tests/unit/state.test.js` and added test case 28 to `packages/app/tests/unit/db.test.js` (registered in `unit-smoke` in `test-batches.js`).
+  - Extended component test suite `packages/app/tests/component/messenger-boot.spec.js` covering storage initialization, storage failure handling, non-blocking shell reveal, and screenshot generation `test-results/messenger-boot.png`.
+  - Authored documentation at `packages/app/docs/plugins/state.md` and updated `packages/app/docs/plugins/storage.md`.
 
 ## Component Authoring Policy
 

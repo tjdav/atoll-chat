@@ -340,6 +340,15 @@ export function createMemoryBackend() {
     return rows[0]
   }
 
+  /**
+   * Returns whether storage persists across page reloads.
+   *
+   * @returns {Promise<boolean>} Resolves to false for in-memory storage.
+   */
+  async function isPersistent() {
+    return false
+  }
+
   return {
     open,
     close,
@@ -349,6 +358,7 @@ export function createMemoryBackend() {
     run: exec,
     begin,
     commit,
-    rollback
+    rollback,
+    isPersistent
   }
 }
