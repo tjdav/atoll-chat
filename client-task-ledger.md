@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 35 |
+| Done | 36 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-14 | Messages and Message Versions Tables with Repository | done | C-INFRA-13 | unit-smoke |
 | C-INFRA-13 | Rooms, Room Members, and Room Order Tables with Repositories | done | C-INFRA-12 | unit-smoke |
 | C-INFRA-12 | Users Table and Display Name Repository | done | C-INFRA-8, C-INFRA-9, C-INFRA-10 | unit-smoke |
 | C-INFRA-11 | Plugin Context Async Import Audit and Policy Update | done | C-INFRA-10 | unit-smoke, component-smoke |
@@ -491,6 +492,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `rooms`, `roomMembers`, `roomOrder` and re-exporting factory functions.
   - Created unit test suites `tests/unit/repositories-rooms.test.js`, `repositories-room-members.test.js`, and `repositories-room-order.test.js` registered under `unit-smoke` in `test-batches.js`.
   - Authored `packages/app/docs/storage/rooms.md` and updated `packages/app/docs/storage/README.md`.
+  - Verified zero SQL string interpolation, zero modifications to untouched directories/plugins, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
+
+- **C-INFRA-14 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0004-messages.sql` defining `messages` (`message_id`, `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type`, `ciphertext`, `decrypted_payload`, `reply_to`, `edited_at`, `deleted_at`, `expires_at`, `local_status`, `local_error`, `created_at`, `updated_at`) and `message_versions` (`message_id`, `edit_sequence`, `ciphertext`, `decrypted_payload`, `edited_at`, `PRIMARY KEY (message_id, edit_sequence)`) tables and their indexes.
+  - Created repository `packages/app/src/lib/db/repositories/messages.js` exporting `createMessagesRepository` with 16 async methods: `get`, `upsert` (with partial `COALESCE` update semantics and local field fallbacks), `updateLocalStatus`, `markDeleted`, transactional `remove`, transactional `removeExpired`, transactional `removeAllInRoom`, `listInRoom` (ordered by `epoch DESC, seq DESC` with `{ epoch, seq }` object cursor pagination), `listApplicationsInRoom` (filtering to `content_type = 'application'`), `countInRoom`, `countApplicationsInRoom`, `upsertVersion` (`INSERT OR REPLACE`), `listVersions` (ordered by `edit_sequence ASC`), `getVersion`, `countVersions`, and transactional `clearAll`.
+  - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `messages` and re-exporting `createMessagesRepository`.
+  - Created unit test suite `packages/app/tests/unit/repositories-messages.test.js` (24 cases) registered under `unit-smoke` in `test-batches.js`.
+  - Authored documentation at `packages/app/docs/storage/messages.md` and updated `packages/app/docs/storage/README.md`.
   - Verified zero SQL string interpolation, zero modifications to untouched directories/plugins, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
 
 ## Component Authoring Policy

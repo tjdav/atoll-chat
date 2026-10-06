@@ -531,3 +531,21 @@ build task runs.
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `{ users, rooms, roomMembers, roomOrder }` and re-export factory functions |
 | Unit Test Coverage | `tests/unit/repositories-rooms.test.js` (14 cases), `tests/unit/repositories-room-members.test.js` (12 cases), `tests/unit/repositories-room-order.test.js` (12 cases) registered under `unit-smoke` batch in `test-batches.js` |
 | Storage Documentation | `packages/app/docs/storage/rooms.md` authored with purpose, schema, repository signatures, partial updates, referential integrity, eviction, and lifecycle details. `packages/app/docs/storage/README.md` updated |
+
+### C-INFRA-14 — Messages and Message Versions Tables with Repository
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Migration `0004-messages.sql` | Defines canonical `messages` table (`message_id PRIMARY KEY`, `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type`, `ciphertext`, `decrypted_payload`, `reply_to`, `edited_at`, `deleted_at`, `expires_at`, `local_status`, `local_error`, `created_at`, `updated_at`) and `message_versions` table (`message_id`, `edit_sequence`, `ciphertext`, `decrypted_payload`, `edited_at`, `PRIMARY KEY (message_id, edit_sequence)`) with indexes |
+| Messages Repository Factory | `createMessagesRepository({ db })` in `packages/app/src/lib/db/repositories/messages.js` exposing 16 async methods |
+| Repository API Methods | `get`, `upsert`, `updateLocalStatus`, `markDeleted`, `remove`, `removeExpired`, `removeAllInRoom`, `listInRoom`, `listApplicationsInRoom`, `countInRoom`, `countApplicationsInRoom`, `upsertVersion`, `listVersions`, `getVersion`, `countVersions`, `clearAll` |
+| Ordering Rule | Thread queries order strictly by `(epoch DESC, seq DESC)` per MLS causal ordering. Cursor pagination accepts composite object `{ epoch, seq }` |
+| Application Filtering | `listApplicationsInRoom` filters to `content_type = 'application'`, excluding MLS protocol messages (`'commit'`, `'proposal'`) |
+| Version Chain History | `upsertVersion` uses `INSERT OR REPLACE` on `(message_id, edit_sequence)`. Sequence 0 represents the original; subsequent integers represent edits. `messages` base row holds the current visible version |
+| Local Sending State | `local_status` stores `'pending' | 'sending' | 'sent' | 'failed'`. `'read'` is NOT a local sending status (tracked separately in read state) |
+| Transactional Cleanups | Foreign keys are omitted for backend engine compatibility. `remove`, `removeExpired`, `removeAllInRoom`, and `clearAll` clean up version rows inside transactions |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to export `createMessagesRepository` and include `messages` in `createRepositories({ db })` |
+| Unit Test Suite | `packages/app/tests/unit/repositories-messages.test.js` (24 cases) registered under `unit-smoke` batch in `packages/app/test-batches.js` |
+| Storage Documentation | `packages/app/docs/storage/messages.md` authored covering all ten required sections; index added to `packages/app/docs/storage/README.md` |
