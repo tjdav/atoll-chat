@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS room_messages (
     sender_client_id TEXT NOT NULL,
     epoch            INTEGER NOT NULL,
     seq              INTEGER NOT NULL,
-    content_type     TEXT NOT NULL CHECK(content_type IN ('application', 'commit', 'proposal')),
+    content_type     TEXT NOT NULL CHECK(content_type IN ('application', 'commit', 'proposal', 'bot')),
     ciphertext       BLOB NOT NULL,
     deleted_at       DATETIME,
     edit_of          TEXT REFERENCES room_messages(id),

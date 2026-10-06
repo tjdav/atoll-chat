@@ -62,9 +62,10 @@
 - **Spec / Amendment references:** V3 Spec §1.2, §3.2, §4.2, §5.5, §7.6, §8.5, §8.5.1, §8.9, §10, §12
 - **Question asked:** What are the canonical flat-chain rule, `edit_window_seconds` resolution, `PATCH /rooms/:id/messages/:msg_id` status/response shape, and `message.edited` event payload shape for message editing?
 - **Answer found:**
-  - **Flat-Chain Invariant:** Edits cannot chain off other edits. An edit request targeting a message with `edit_of IS NOT NULL` is rejected with HTTP 400 Bad Request (`cannot_edit_edit`). All edits chain flat off the original message (`edit_of = original.id`) with `edit_sequence` incremented monotonically.
+  - **Flat-Chain Invariant:** Edits cannot chain off other edits. An edit request targeting a message with `edit_of IS NOT NULL` is rejected with HTTP 409 Conflict (`cannot_edit_edit`). All edits chain flat off the original message (`edit_of = original.id`) with `edit_sequence` incremented monotonically.
   - **Edit Window Resolution:** Enforced via three-tier model where `SERVER_MAX_EDIT_WINDOW_SECONDS` (server hard max, default 86400) clamps `EDIT_WINDOW_SECONDS` (instance default, default 900, range 60–86400). Runtime instance limits fetched via `limits::get_limits`. Reference timestamp for window comparison is the original message's `created_at`. Expiry returns HTTP 403 `edit_window_expired`.
   - **Response Status & Shape:** `PATCH /rooms/:id/messages/:msg_id` returns HTTP 201 Created with `RoomMessageView` in the exact same shape as `GET /rooms/:id/messages` (`id`, `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type`, `reply_to`, `edit_of`, `edit_sequence`, `edited_at`, `deleted_at`, `created_at`, `reactions`).
+  - **`edited_at` Placement:** Set on the edit row itself (`edited_at = edit_created_at`). The original row remains unchanged (`edited_at IS NULL`).
   - **`message.edited` Event Payload:** Published on `private-room-{room_id}` strictly matching §8.9: `{ "id": "<new_edit_row_id>", "edit_of": "<original_id>", "edit_sequence": <int>, "room_id": "<room_id>", "sender_type": "user" | "bot", "sender_id": "<user_id>", "created_at": "<iso8601>" }`.
   - **Whisper Invariant:** The room channel must never receive a whisper edit.
 - **Link to report:** [verification/message-editing-v3/report.md](verification/message-editing-v3/report.md)

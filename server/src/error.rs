@@ -179,8 +179,9 @@ impl From<RoomMessageError> for ApiError {
             RoomMessageError::Forbidden => ApiError::Forbidden("forbidden".to_string()),
             RoomMessageError::MessageDeleted => ApiError::NotFound("message_deleted".to_string()),
             RoomMessageError::EditDeleted => ApiError::Conflict("message_deleted".to_string()),
-            RoomMessageError::CannotEditEdit => {
-                ApiError::BadRequest("cannot_edit_edit".to_string())
+            RoomMessageError::CannotEditEdit => ApiError::Conflict("cannot_edit_edit".to_string()),
+            RoomMessageError::ContentTypeMismatch => {
+                ApiError::BadRequest("content_type_mismatch".to_string())
             }
             RoomMessageError::NotSender => ApiError::Forbidden("forbidden".to_string()),
             RoomMessageError::NotEditable => ApiError::BadRequest("not_editable".to_string()),
