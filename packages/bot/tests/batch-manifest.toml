@@ -167,3 +167,9 @@ name = "cron-engine"
 files = [
   "unit/cron-engine.test.js",
 ]
+
+[[batch]]
+name = "runtime"
+files = [
+  "unit/runtime.test.js",
+]
