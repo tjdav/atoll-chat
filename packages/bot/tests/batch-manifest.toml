@@ -95,3 +95,9 @@ name = "http"
 files = [
   "unit/http.test.js",
 ]
+
+[[batch]]
+name = "websocket"
+files = [
+  "unit/websocket.test.js",
+]

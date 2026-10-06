@@ -98,6 +98,26 @@
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
 
+## Task B-018 Verification Fact
+- **WebSocket Transport (`packages/bot/src/runtime/transport/websocket.js`)**:
+  - The WebSocket transport lives at `packages/bot/src/runtime/transport/websocket.js` exporting `createWebSocketClient`.
+  - The client speaks Pusher Protocol v7 over Node 22's global `WebSocket` without added dependencies.
+  - Connection URL construction is `<socketUrl>/app/<appKey>?protocol=7&client=<clientName>&version=<clientVersion>`.
+  - `connect()` completes handshake (`pusher:connection_established`) and is idempotent.
+  - Subscriptions are tracked by channel name and re-established on every successful connect. Multiple handlers per channel share a single subscription; `pusher:unsubscribe` is sent when the last handler for a channel unsubscribes.
+  - Ping/pong liveness checks send `pusher:ping` at `pingIntervalMs` intervals; pong timeouts close the socket with code `4000` (`"pong timeout"`).
+  - Auth failures emit `error` lifecycle events and do not block subscriptions to other channels.
+  - `close()` sends unsubscribes for active tracked channels, closes the socket, and resolves idempotently on socket close.
+  - **Server Spec Gap Recorded**: Server §5.19 configures Sockudo with `SOCKUDO_APP_KEY=auto`, but neither the public Sockudo URL nor the app key appears in Server §8.1's capabilities response or Bot §14.2 config. `socketUrl` and `appKey` are constructor parameters supplied by B-029 once server exposes them.
+  - **Server Spec Gap Recorded**: Pusher Protocol v7 requires a signed `auth` field in `pusher:subscribe` for private channels, but Server §8 does not list a Sockudo auth endpoint. `authCallback` is a constructor parameter wired by B-029.
+  - Registered `websocket` batch in `packages/bot/tests/batch-manifest.toml` and authored unit test suite in `packages/bot/tests/unit/websocket.test.js` covering all 30 required scenarios.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
 ## Task B-017 Verification Fact
 - **HTTP Client Transport (`packages/bot/src/runtime/transport/http.js`)**:
   - Authored `packages/bot/src/runtime/transport/http.js` exporting `createHttpClient`.

@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 32
-- **Done:** 18
+- **Done:** 19
 - **In Progress:** 0
-- **Todo:** 14
+- **Todo:** 13
 
 ---
 
@@ -37,7 +37,7 @@ Track progress across Bot SDK implementation tasks.
 | B-015 | Command Result Encrypt | done | §6.3, §6.4 | Command result encryption using ephemeral X25519 ECDH, HKDF-Expand, and AES-256-GCM |
 | B-016 | Settings Decrypt | done | §6.3, §7.2 | Settings payload decryption using X25519, HKDF-Expand, and AES-256-GCM |
 | B-017 | HTTP Client | done | §14.2 | REST API client for bot SDK runtime (Amends §12 with HttpRequestError) |
-| B-018 | WebSocket | todo | §14.3 | WebSocket connection manager with backoff reconnect |
+| B-018 | WebSocket | done | §14.3 | WebSocket connection manager with backoff reconnect |
 | B-019 | Context | todo | §8 | Runtime `ctx` assembly and scoping |
 | B-020 | Post Helper | todo | §8.3 | `ctx.post` implementation with publisher key lookup and encryption |
 | B-021 | Storage Wrapper | todo | §8.4 | Author-facing `ctx.storage` with reserved prefix enforcement |
