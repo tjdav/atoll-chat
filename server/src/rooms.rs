@@ -126,6 +126,8 @@ pub struct MemberCursor {
     pub last_user_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_bot_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub segment: Option<String>,
 }
 
 impl MemberCursor {
@@ -975,11 +977,14 @@ pub async fn list_members(
     let fetch_limit = query.limit + 1;
     let mut members = Vec::new();
 
+    let segment = query.cursor.as_ref().and_then(|c| c.segment.as_deref());
     let last_user_id = query.cursor.as_ref().and_then(|c| c.last_user_id.clone());
     let last_bot_id = query.cursor.as_ref().and_then(|c| c.last_bot_id.clone());
 
-    // If last_bot_id is set, we have already passed all user entries and are only fetching bots.
-    if last_bot_id.is_none() {
+    let is_bot_segment =
+        matches!(segment, Some("bots")) || (segment.is_none() && last_bot_id.is_some());
+
+    if !is_bot_segment {
         let user_rows = if let Some(ref l_uid) = last_user_id {
             sqlx::query(
                 r#"
@@ -1023,29 +1028,46 @@ pub async fn list_members(
     // If we haven't reached the fetch limit, fetch bots
     if members.len() < fetch_limit {
         let needed_bots = fetch_limit - members.len();
-        let bot_rows = if let Some(ref l_bid) = last_bot_id {
-            sqlx::query(
-                r#"
-                SELECT rb.bot_id, rb.mode, ba.display_name, ba.avatar_file_id, rb.granted_at AS joined_at
-                FROM room_bots rb
-                JOIN bot_accounts ba ON ba.id = rb.bot_id
-                WHERE rb.room_id = ? AND rb.revoked_at IS NULL AND ba.deleted_at IS NULL AND rb.bot_id > ?
-                ORDER BY rb.bot_id ASC
-                LIMIT ?
-                "#,
-            )
-            .bind(&query.room_id)
-            .bind(l_bid)
-            .bind(needed_bots as i64)
-            .fetch_all(pool)
-            .await?
+        let bot_rows = if is_bot_segment {
+            if let Some(ref l_bid) = last_bot_id {
+                sqlx::query(
+                    r#"
+                    SELECT rb.bot_id, rb.mode, ba.display_name, ba.avatar_file_id, rb.granted_at AS joined_at
+                    FROM room_bots rb
+                    JOIN bot_accounts ba ON ba.id = rb.bot_id
+                    WHERE rb.room_id = ? AND rb.revoked_at IS NULL AND ba.deleted_at IS NULL AND ba.disabled_at IS NULL AND rb.bot_id > ?
+                    ORDER BY rb.bot_id ASC
+                    LIMIT ?
+                    "#,
+                )
+                .bind(&query.room_id)
+                .bind(l_bid)
+                .bind(needed_bots as i64)
+                .fetch_all(pool)
+                .await?
+            } else {
+                sqlx::query(
+                    r#"
+                    SELECT rb.bot_id, rb.mode, ba.display_name, ba.avatar_file_id, rb.granted_at AS joined_at
+                    FROM room_bots rb
+                    JOIN bot_accounts ba ON ba.id = rb.bot_id
+                    WHERE rb.room_id = ? AND rb.revoked_at IS NULL AND ba.deleted_at IS NULL AND ba.disabled_at IS NULL
+                    ORDER BY rb.bot_id ASC
+                    LIMIT ?
+                    "#,
+                )
+                .bind(&query.room_id)
+                .bind(needed_bots as i64)
+                .fetch_all(pool)
+                .await?
+            }
         } else {
             sqlx::query(
                 r#"
                 SELECT rb.bot_id, rb.mode, ba.display_name, ba.avatar_file_id, rb.granted_at AS joined_at
                 FROM room_bots rb
                 JOIN bot_accounts ba ON ba.id = rb.bot_id
-                WHERE rb.room_id = ? AND rb.revoked_at IS NULL AND ba.deleted_at IS NULL
+                WHERE rb.room_id = ? AND rb.revoked_at IS NULL AND ba.deleted_at IS NULL AND ba.disabled_at IS NULL
                 ORDER BY rb.bot_id ASC
                 LIMIT ?
                 "#,
@@ -1078,12 +1100,14 @@ pub async fn list_members(
                 room_id: query.room_id.clone(),
                 last_user_id: Some(user_id.clone()),
                 last_bot_id: None,
+                segment: Some("users".to_string()),
             }
             .encode(),
             RoomMemberItem::Bot { bot_id, .. } => MemberCursor {
                 room_id: query.room_id.clone(),
                 last_user_id: None,
                 last_bot_id: Some(bot_id.clone()),
+                segment: Some("bots".to_string()),
             }
             .encode(),
         })

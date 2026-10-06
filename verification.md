@@ -887,10 +887,10 @@
 - **Question asked:** What is the canonical behavior for merged member list pagination (users and bots) under V3 §8.4?
 - **Answer found:**
   - **Empirical Baseline:** Step 0 report generated at `verification/member-pagination-bot-merge/report.md`.
-  - **Schema:** Minimal `bot_accounts` and `room_bots` tables added to `server/migrations/0001_v2_schema.sql`.
-  - **Ordering & Cursor:** Stable ordering and cursor across user and bot entries. All users sort by `user_id ASC`, followed by all active/non-revoked bots sorted by `bot_id ASC`. `MemberCursor` encoded as unpadded base64url JSON carries `last_user_id` or `last_bot_id`.
+  - **Schema:** Minimal `bot_accounts` and `room_bots` tables added to `server/migrations/0001_v2_schema.sql` along with `idx_room_bots_active` index.
+  - **Ordering & Cursor:** Stable ordering and cursor across user and bot entries. All users sort by `user_id ASC`, followed by all active/non-revoked/non-disabled/non-deleted bots sorted by `bot_id ASC`. `MemberCursor` encoded as unpadded base64url JSON carries `room_id`, `last_user_id` or `last_bot_id`, and `segment` (`"users"` or `"bots"`). Cursors missing `segment` default to `segment: "users"` for backward compatibility.
   - **Response Shape:** Matches V3 §8.4 with `type: "user"` (`user_id`, `role`, `joined_at`) or `type: "bot"` (`bot_id`, `mode`, `display_name`, `avatar_file_id`, `joined_at`). V2 remnants (`username_token`, `encrypted_display`, `has_more`) removed.
-  - **Exclusions:** Revoked bots (`room_bots.revoked_at IS NOT NULL`) and deleted bots (`bot_accounts.deleted_at IS NOT NULL`) are excluded from member lists.
+  - **Exclusions:** Revoked bots (`room_bots.revoked_at IS NOT NULL`), deleted bots (`bot_accounts.deleted_at IS NOT NULL`), and disabled bots (`bot_accounts.disabled_at IS NOT NULL`) are excluded from member lists.
 - **Link to report:** [verification/member-pagination-bot-merge/report.md](verification/member-pagination-bot-merge/report.md)
 
 ## Whisper Messages Contract & Implementation Verification
