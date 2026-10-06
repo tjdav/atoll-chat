@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 40 |
+| Done | 41 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-19 | Device Names and Starred Items Tables with Repositories | done | C-INFRA-18, C-INFRA-9, C-AUTH-3a, C-V-D | unit-smoke |
 | C-INFRA-18 | Room Preferences and Nicknames Tables with Repositories | done | C-INFRA-17, C-INFRA-16, C-INFRA-9 | unit-smoke |
 | C-INFRA-17 | Outbox Table and Repository | done | C-INFRA-16, C-INFRA-14, C-INFRA-9 | unit-smoke |
 | C-INFRA-16 | User State Tables: Read State, Drafts, Blocked Users | done | C-INFRA-15 | unit-smoke |
@@ -549,6 +550,16 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `roomPreferences` and `nicknames` (13 repositories total) and re-exporting factory functions.
   - Created unit test suites `packages/app/tests/unit/repositories-room-preferences.test.js` (23 cases) and `packages/app/tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
   - Authored contract documentation at `packages/app/docs/storage/room-preferences.md` and `packages/app/docs/storage/nicknames.md`, and updated `packages/app/docs/storage/README.md`.
+
+- **C-INFRA-19 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0009-device-names-starred-items.sql` defining `device_names` (`user_id`, `device_id`, `encrypted_device_name`, `user_seq`, `updated_at`, `deleted_at`, `PRIMARY KEY (user_id, device_id)`) and `starred_items` (`user_id`, `item_id`, `item_type`, `room_id`, `user_seq`, `starred_at`, `deleted_at`, `PRIMARY KEY (user_id, item_id, item_type)`), with indexes `idx_device_names_seq`, `idx_starred_items_seq`, and `idx_starred_items_room`.
+  - Created repositories under `packages/app/src/lib/db/repositories/`:
+    - `device-names.js` exporting `createDeviceNamesRepository` (`get`, `listForUser`, `listActiveForUser`, `applyRemote`, `applyBatch`, `getHighestSeq`, `remove`, `clearAll`); `applyRemote` skips stale/equal `user_seq` rows (`{ changes: 0 }`); `applyBatch` applies in sequence order in a single transaction.
+    - `starred-items.js` exporting `createStarredItemsRepository` (`get`, `isStarred`, `listForUser`, `listForRoom`, `applyRemote`, `applyAddedEvent`, `applyRemovedEvent`, `applyBatch`, `remove`, `countForUser`, `countByType`, `getHighestSeq`, `clearAll`); `listForUser` composes optional `type`, `roomId`, and cursor filters with parameterized values; `applyRemovedEvent` writes tombstones.
+  - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `deviceNames` and `starredItems` (15 repositories total) and re-exporting factory functions.
+  - Created unit test suites `packages/app/tests/unit/repositories-device-names.test.js` (17 cases) and `packages/app/tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Authored contract documentation at `packages/app/docs/storage/device-names.md` and `packages/app/docs/storage/starred-items.md`, and updated `packages/app/docs/storage/README.md`.
 
 ## Component Authoring Policy
 

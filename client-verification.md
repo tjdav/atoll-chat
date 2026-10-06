@@ -420,7 +420,7 @@ build task runs.
 | Extension Resolution | List component resolved from active rail extension (`extensions.get(railId)` or fallback `extensions.byRailOrder()[0]`); detail component resolved from route owner (`extensions.ownerOfRoute(detailRoute)`) |
 | DOM Tag Reconciliation (`reconcile`) | Replaces mounted DOM child element only when component tag changes. Navigating between routes sharing the same tag (e.g. `extension-placeholder`) retains existing child DOM node without remounting |
 | Initial Canonicalization | On initial render without `rail` query parameter, executes `router.navigate({ rail: fallback.id }, { replace: true })` using `replaceState` to align URL with active surface without polluting back history |
-| Router Extension | `createRouter` `navigate(params, options)` extended to support `options.replace` (bool) calling `history.replaceState` |
+| Router Extension | `createRouter` `navigate(params)` extended to support `options.replace` (bool) calling `history.replaceState` |
 | Rail Fallback Alignment | `rail-host.html` updated with `getEffectiveRailId()` matching `surface-host` fallback to highlight first rail item when URL lacks `rail` parameter |
 | Pass-Through Getter Rule | Getters must derive/compute state (conditionals, comparisons, coercions, composition, or `root`/`refs`/`slots` access). Bare alias getters `({ state }) => state.x` are prohibited; templates bind state keys `{{ x }}` directly |
 | Component Audit | All components audited. `railLabel` removed from `rail-host.html`. Remaining getters across all components confirmed to compute derived values |
@@ -546,7 +546,7 @@ build task runs.
 | Version Chain History | `upsertVersion` uses `INSERT OR REPLACE` on `(message_id, edit_sequence)`. Sequence 0 represents the original; subsequent integers represent edits. `messages` base row holds the current visible version |
 | Local Sending State | `local_status` stores `'pending' | 'sending' | 'sent' | 'failed'`. `'read'` is NOT a local sending status (tracked separately in read state) |
 | Transactional Cleanups | Foreign keys are omitted for backend engine compatibility. `remove`, `removeExpired`, `removeAllInRoom`, and `clearAll` clean up version rows inside transactions |
-| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to export `createMessagesRepository` and include `messages` in `createRepositories({ db })` |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to export `createMessagesRepository` & include `messages` in `createRepositories({ db })` |
 | Unit Test Suite | `packages/app/tests/unit/repositories-messages.test.js` (24 cases) registered under `unit-smoke` batch in `packages/app/test-batches.js` |
 | Storage Documentation | `packages/app/docs/storage/messages.md` authored covering all ten required sections; index added to `packages/app/docs/storage/README.md` |
 
@@ -622,3 +622,22 @@ build task runs.
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `roomPreferences` and `nicknames` (13 repositories total) and re-export factory functions |
 | Unit Test Suites | `tests/unit/repositories-room-preferences.test.js` (23 cases) and `tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` batch in `test-batches.js` |
 | Storage Contracts Documentation | `packages/app/docs/storage/room-preferences.md` and `packages/app/docs/storage/nicknames.md` authored covering all 10 contract sections; index updated in `packages/app/docs/storage/README.md` |
+
+### C-INFRA-19 — Device Names and Starred Items Sync-Backed Domains Architecture
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Migration `0009-device-names-starred-items.sql` | Defines `device_names` (`user_id`, `device_id`, `encrypted_device_name`, `user_seq`, `updated_at`, `deleted_at`, `PRIMARY KEY (user_id, device_id)`) and `starred_items` (`user_id`, `item_id`, `item_type`, `room_id`, `user_seq`, `starred_at`, `deleted_at`, `PRIMARY KEY (user_id, item_id, item_type)`), with indexes `idx_device_names_seq`, `idx_starred_items_seq`, and `idx_starred_items_room` |
+| Device Names Repository Factory | `createDeviceNamesRepository({ db })` in `packages/app/src/lib/db/repositories/device-names.js` exposing 8 async methods (`get`, `listForUser`, `listActiveForUser`, `applyRemote`, `applyBatch`, `getHighestSeq`, `remove`, `clearAll`) |
+| Starred Items Repository Factory | `createStarredItemsRepository({ db })` in `packages/app/src/lib/db/repositories/starred-items.js` exposing 13 async methods (`get`, `isStarred`, `listForUser`, `listForRoom`, `applyRemote`, `applyAddedEvent`, `applyRemovedEvent`, `applyBatch`, `remove`, `countForUser`, `countByType`, `getHighestSeq`, `clearAll`) |
+| `user_seq` Application Invariant | Stale rows where `incoming.userSeq <= existing.user_seq` are skipped (`{ changes: 0 }`). Sync responses and socket events apply only higher `user_seq` values |
+| Batch Application Semantics | `applyBatch(userId, rows)` sorts input rows by `userSeq ASC` and processes them inside a single `db.transaction` block, returning `{ applied, skipped }` |
+| Tombstone Persistence Contract | Revoked devices and unstarred items are retained as tombstones (`deleted_at` set) rather than hard deleted, preserving high-water mark sequence state |
+| Device Name Ciphertext Contract | `encrypted_device_name` is stored as base64url string ciphertext. The repository does not decrypt ciphertext; decryption via `device_name_key` is a caller concern |
+| Item Type Flexibility | `item_type` in `starred_items` has no client-side `CHECK` constraint. Unknown item types are accepted and stored |
+| Filter & Cursor Composition | `starredItems.listForUser` composes optional `type`, `roomId`, and `{ starredAt, itemId }` cursor pagination filters into parameterized SQL fragments without value interpolation |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `deviceNames` and `starredItems` (15 repositories total) and re-export factory functions |
+| Unit Test Suites | `tests/unit/repositories-device-names.test.js` (17 cases) and `tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` batch in `test-batches.js` |
+| Storage Contracts Documentation | `packages/app/docs/storage/device-names.md` and `packages/app/docs/storage/starred-items.md` authored; index updated in `packages/app/docs/storage/README.md` |

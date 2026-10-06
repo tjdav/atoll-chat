@@ -1,9 +1,3 @@
-/**
- * Repository aggregator and factory module.
- *
- * @module @atoll/app/lib/db/repositories/index
- */
-
 import { createUsersRepository } from './users.js'
 import { createRoomsRepository } from './rooms.js'
 import { createRoomMembersRepository } from './room-members.js'
@@ -17,6 +11,8 @@ import { createBlockedUsersRepository } from './blocked-users.js'
 import { createOutboxRepository } from './outbox.js'
 import { createRoomPreferencesRepository } from './room-preferences.js'
 import { createNicknamesRepository } from './nicknames.js'
+import { createDeviceNamesRepository } from './device-names.js'
+import { createStarredItemsRepository } from './starred-items.js'
 
 /**
  * Creates and returns all domain repository instances bound to the given database.
@@ -39,7 +35,9 @@ export function createRepositories({ db }) {
     blockedUsers: createBlockedUsersRepository({ db }),
     outbox: createOutboxRepository({ db }),
     roomPreferences: createRoomPreferencesRepository({ db }),
-    nicknames: createNicknamesRepository({ db })
+    nicknames: createNicknamesRepository({ db }),
+    deviceNames: createDeviceNamesRepository({ db }),
+    starredItems: createStarredItemsRepository({ db })
   }
 }
 
@@ -56,5 +54,7 @@ export {
   createBlockedUsersRepository,
   createOutboxRepository,
   createRoomPreferencesRepository,
-  createNicknamesRepository
+  createNicknamesRepository,
+  createDeviceNamesRepository,
+  createStarredItemsRepository
 }
