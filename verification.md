@@ -781,3 +781,18 @@
 - **Spec / Amendment references:** V3 Spec §7.1, §8.2, §8.9
 - **Answer found:** Ground truth empirical audit completed. Confirmed `0001_v2_schema.sql` `devices` table schema (`platform` NOT NULL CHECK constraint, `name` absent), `create_device` signature and query, existing `device.added`/`device.revoked`/`device.name_updated` event sites, absence of `device.sync`, test fixture column lists, and absence of V2 remnants. Threaded `platform` through `LoginStartRequest` and `PendingLogin`.
 - **Link to report:** [verification/device-platform-and-events/report.md](verification/device-platform-and-events/report.md)
+
+## Device Model Behavioral Contracts Verification
+- **ID:** device-contracts-verified
+- **Date:** 2026-10-05
+- **Status:** Complete.
+- **Spec / Amendment references:** V3 Spec §6.21, §6.22, §7.1, §8.2, §8.9, §8.10
+- **Question asked:** Does the implementation meet all behavioral contracts for `platform` validation, transaction atomicity for `user_seq`, event publish timing, event payload shapes, sync response contract, and test coverage?
+- **Answer found:**
+  - **`platform` validation:** Verified at `login_start` (`server/src/routes/login.rs`: lines 104–118). Missing/empty `platform` or unrecognized `platform` strings are rejected with 400 `invalid_platform`. Valid platform strings (`web`, `ios`, `android`, `desktop`) proceed.
+  - **`device.added` seq atomicity & timing:** Verified at `login_finish` (`server/src/routes/login.rs`: lines 310–360). `allocate_user_seq` executes inside the `INSERT INTO devices` transaction; publish happens post-commit.
+  - **`device.revoked` seq atomicity & timing:** Verified at `revoke_device` (`server/src/devices.rs`: lines 173–247). `allocate_user_seq` executes inside deletion transaction; publish happens post-commit.
+  - **`device.name_updated` payload & V2 remnants:** Verified at `write_device_name` (`server/src/sync/device_names.rs`: lines 95–105). Payload matches V3 §8.9 exactly (`device_id`, `encrypted_device_name`, `user_seq`). Zero references to legacy `device.sync`, `devices.name`, or `LoginFinishRequest.platform` exist.
+  - **`device_state` sync array:** Verified shape (`device_id`, `encrypted_device_name`, `user_seq`, `updated_at`, `deleted_at`) in `server/src/sync/query.rs` / `device_names.rs`.
+  - **Test coverage gaps:** Identified 7 missing test coverage items (event payload assertions for all 3 events, `login_start` missing/invalid platform rejections, and transaction rollback sequence atomicity tests).
+- **Link to report:** [verification/device-contracts-verified/report.md](verification/device-contracts-verified/report.md)

@@ -17,6 +17,16 @@
 - **Device Platform and Events Empirical Baseline Verification**: done
   - **Delivered:** `verification/device-platform-and-events/report.md`
   - **Outcome:** Audited ground truth baseline for `devices.platform`, `create_device` signature, event publishers, test fixtures, and threaded `platform` through `LoginStartRequest` and `PendingLogin`.
+- **Device Model Behavioral Contracts Verification**: done
+  - **Delivered:** `verification/device-contracts-verified/report.md`
+  - **Outcome:** Verified `platform` validation at `login_start`, `user_seq` transaction atomicity, event publish timing post-commit, `device.name_updated` payload shape, absence of legacy V2 code remnants, and `device_state` response contract in `GET /users/me/sync`. Identified 7 test coverage gaps logged as pending follow-up test items.
+
+## Pending Tasks (Follow-up Test Coverage)
+
+- **Device Model Event & Atomicity Test Coverage**: pending
+  - Add Sockudo test assertions for `device.added`, `device.revoked`, `device.name_updated` event payload shapes.
+  - Add `login_start` missing and invalid `platform` rejection tests.
+  - Add transaction rollback `user_seq` atomicity tests for device creation and device revocation.
 
 ## Completed Tasks
 
@@ -198,9 +208,9 @@
 None.
 
 ## Summary
-- **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 47
+- **Project Status:** In Progress
+- **Total Verifications/Tasks Tracked:** 48
 - **Done:** 47
+- **Pending:** 1
 - **In-Progress:** 0
-- **Pending:** 0
 - **Mismatches:** 0
