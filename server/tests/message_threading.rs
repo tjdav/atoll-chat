@@ -19,7 +19,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
 
     Mock::given(method("POST"))
         .and(path("/apps/chat/events"))
-        .respond_with(ResponseTemplate::new(500))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"ok": true})))
         .mount(&mock_server)
         .await;
 
@@ -179,6 +179,24 @@ async fn do_get(app: &Router, uri: &str, token: &str) -> (StatusCode, Value) {
     (status, json)
 }
 
+async fn do_patch(app: &Router, uri: &str, token: &str, body: &Value) -> (StatusCode, Value) {
+    let req = Request::builder()
+        .method("PATCH")
+        .uri(uri)
+        .header(header::AUTHORIZATION, format!("Bearer {token}"))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(body.to_string()))
+        .unwrap();
+
+    let resp = app.clone().oneshot(req).await.unwrap();
+    let status = resp.status();
+    let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: Value = serde_json::from_slice(&body_bytes).unwrap_or(json!({}));
+    (status, json)
+}
+
 async fn do_post(app: &Router, uri: &str, token: &str, body: &Value) -> (StatusCode, Value) {
     let req = Request::builder()
         .method("POST")
@@ -241,14 +259,6 @@ async fn test_capabilities_advertises_threading_enabled() {
 
 #[tokio::test]
 async fn test_message_send_and_fetch_threading() {
-    let mock_server = wiremock::MockServer::start().await;
-
-    Mock::given(method("POST"))
-        .and(path("/apps/chat/events"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
-        .mount(&mock_server)
-        .await;
-
     let (app, pool, _) = setup_test_app_with_config(true, "auto", 100).await;
     let (_u1, t1, c1) = create_test_user_with_device(&app, &pool, "mt1").await;
     let room_id = create_room(&app, &t1).await;
@@ -344,7 +354,7 @@ async fn test_invalid_reply_targets() {
     assert_eq!(s2, StatusCode::CREATED);
     let r2_m1_id = body2["message_id"].as_str().unwrap().to_string();
 
-    // A. Cross-room reply reference -> 400 invalid_reply_target with details.reason = "not_in_room"
+    // A. Cross-room reply reference -> 400 reply_to_not_in_room
     let (sx_room, err_x_room) = do_post(
         &app,
         &format!("/api/v1/rooms/{room1_id}/messages"),
@@ -359,10 +369,9 @@ async fn test_invalid_reply_targets() {
     )
     .await;
     assert_eq!(sx_room, StatusCode::BAD_REQUEST);
-    assert_eq!(err_x_room["error"], "invalid_reply_target");
-    assert_eq!(err_x_room["details"]["reason"], "not_in_room");
+    assert_eq!(err_x_room["error"], "reply_to_not_in_room");
 
-    // B. Nonexistent target -> 400 invalid_reply_target
+    // B. Nonexistent target -> 400 reply_to_not_found
     let (sx_nonexist, err_x_nonexist) = do_post(
         &app,
         &format!("/api/v1/rooms/{room1_id}/messages"),
@@ -377,9 +386,9 @@ async fn test_invalid_reply_targets() {
     )
     .await;
     assert_eq!(sx_nonexist, StatusCode::BAD_REQUEST);
-    assert_eq!(err_x_nonexist["error"], "invalid_reply_target");
+    assert_eq!(err_x_nonexist["error"], "reply_to_not_found");
 
-    // C. Soft-deleted target -> 400 invalid_reply_target with details.reason = "deleted"
+    // C. Soft-deleted target -> Succeeds (201 Created) per §7.6
     let (s_del, _) = do_delete(
         &app,
         &format!("/api/v1/rooms/{room1_id}/messages/{r1_m1_id}"),
@@ -388,7 +397,7 @@ async fn test_invalid_reply_targets() {
     .await;
     assert_eq!(s_del, StatusCode::NO_CONTENT);
 
-    let (sx_del, err_x_del) = do_post(
+    let (sx_del, body_del) = do_post(
         &app,
         &format!("/api/v1/rooms/{room1_id}/messages"),
         &t1,
@@ -401,12 +410,10 @@ async fn test_invalid_reply_targets() {
         }),
     )
     .await;
-    assert_eq!(sx_del, StatusCode::BAD_REQUEST);
-    assert_eq!(err_x_del["error"], "invalid_reply_target");
-    assert_eq!(err_x_del["details"]["reason"], "deleted");
+    assert_eq!(sx_del, StatusCode::CREATED);
+    assert_eq!(body_del["reply_to"], r1_m1_id);
 
-    // D. Commit or Proposal target -> 400 invalid_reply_target with details.reason = "not_application"
-    // Insert a dummy proposal row into room1
+    // D. Commit or Proposal target -> Succeeds (201 Created) per §7.6
     let proposal_id = "01HXXXXXXXPROPOSAL000000";
     sqlx::query(
         "INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext) VALUES (?, ?, ?, ?, 0, 99, 'proposal', ?)",
@@ -420,7 +427,7 @@ async fn test_invalid_reply_targets() {
     .await
     .unwrap();
 
-    let (sx_prop, err_x_prop) = do_post(
+    let (sx_prop, body_prop) = do_post(
         &app,
         &format!("/api/v1/rooms/{room1_id}/messages"),
         &t1,
@@ -433,9 +440,8 @@ async fn test_invalid_reply_targets() {
         }),
     )
     .await;
-    assert_eq!(sx_prop, StatusCode::BAD_REQUEST);
-    assert_eq!(err_x_prop["error"], "invalid_reply_target");
-    assert_eq!(err_x_prop["details"]["reason"], "not_application");
+    assert_eq!(sx_prop, StatusCode::CREATED);
+    assert_eq!(body_prop["reply_to"], proposal_id);
 }
 
 #[tokio::test]
@@ -520,7 +526,219 @@ async fn test_event_payload_and_publish_failure_handling() {
             // Verify reply_to is present
             if body_json["name"] == "message.new" {
                 assert!(data_val.get("reply_to").is_some());
+                assert_eq!(data_val["sender_type"], "user");
             }
         }
     }
+}
+
+#[tokio::test]
+async fn test_edit_reply_inherits_reply_to() {
+    let (app, pool, mock_server) = setup_test_app_with_sockudo_mock().await;
+    let (_u1, t1, c1) = create_test_user_with_device(&app, &pool, "mt_ed1").await;
+    let room_id = create_room(&app, &t1).await;
+
+    let ct1 = BASE64.encode(b"original root");
+    let ct2 = BASE64.encode(b"original reply");
+    let ct3 = BASE64.encode(b"edited reply");
+
+    // Send root message
+    let (_, body1) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct1
+        }),
+    )
+    .await;
+    let m1_id = body1["message_id"].as_str().unwrap().to_string();
+
+    // Send reply to root message
+    let (_, body2) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct2,
+            "reply_to": m1_id
+        }),
+    )
+    .await;
+    let m2_id = body2["message_id"].as_str().unwrap().to_string();
+    assert_eq!(body2["reply_to"], m1_id);
+
+    // Edit the reply
+    let (s_edit, edit_body) = do_patch(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{m2_id}"),
+        &t1,
+        &json!({
+            "ciphertext": ct3
+        }),
+    )
+    .await;
+    assert_eq!(s_edit, StatusCode::CREATED);
+    assert_eq!(edit_body["reply_to"], m1_id);
+
+    // Verify event payload for message.edited does NOT carry reply_to
+    let requests = mock_server.received_requests().await.unwrap();
+    let edited_events: Vec<Value> = requests
+        .iter()
+        .map(|r| serde_json::from_slice::<Value>(&r.body).unwrap())
+        .filter(|b| b["name"] == "message.edited")
+        .collect();
+
+    assert!(!edited_events.is_empty());
+    let last_edit_event_data: Value =
+        serde_json::from_str(edited_events.last().unwrap()["data"].as_str().unwrap()).unwrap();
+    assert!(
+        last_edit_event_data.get("reply_to").is_none(),
+        "message.edited must NOT carry reply_to"
+    );
+}
+
+#[tokio::test]
+async fn test_flat_reply_chains() {
+    let (app, pool, _) = setup_test_app_with_config(true, "auto", 100).await;
+    let (_u1, t1, c1) = create_test_user_with_device(&app, &pool, "mt_flat1").await;
+    let room_id = create_room(&app, &t1).await;
+
+    let ct = BASE64.encode(b"content");
+
+    // 1. Send root m1
+    let (_, body1) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct
+        }),
+    )
+    .await;
+    let m1_id = body1["message_id"].as_str().unwrap().to_string();
+
+    // 2. Send reply m2 -> reply_to: m1
+    let (_, body2) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct,
+            "reply_to": m1_id
+        }),
+    )
+    .await;
+    let m2_id = body2["message_id"].as_str().unwrap().to_string();
+
+    // 3. Send reply m3 -> reply_to: m2 (direct parent, flat pointer model)
+    let (_, body3) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct,
+            "reply_to": m2_id
+        }),
+    )
+    .await;
+    let m3_id = body3["message_id"].as_str().unwrap().to_string();
+
+    assert_eq!(body3["reply_to"], m2_id);
+
+    // Fetch messages and verify flat parent pointers
+    let (_, list_body) = do_get(&app, &format!("/api/v1/rooms/{room_id}/messages"), &t1).await;
+    let msgs = list_body["messages"].as_array().unwrap();
+    assert_eq!(msgs.len(), 3);
+
+    let m1_view = msgs.iter().find(|m| m["id"] == m1_id).unwrap();
+    let m2_view = msgs.iter().find(|m| m["id"] == m2_id).unwrap();
+    let m3_view = msgs.iter().find(|m| m["id"] == m3_id).unwrap();
+
+    assert_eq!(m1_view["reply_to"], Value::Null);
+    assert_eq!(m2_view["reply_to"], m1_id);
+    assert_eq!(m3_view["reply_to"], m2_id);
+}
+
+#[tokio::test]
+async fn test_cascade_deletion_and_paging_independence() {
+    let (app, pool, _) = setup_test_app_with_config(true, "auto", 100).await;
+    let (_u1, t1, c1) = create_test_user_with_device(&app, &pool, "mt_cas1").await;
+    let room_id = create_room(&app, &t1).await;
+
+    let ct = BASE64.encode(b"content");
+
+    // 1. Send parent m1
+    let (_, body1) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct
+        }),
+    )
+    .await;
+    let m1_id = body1["message_id"].as_str().unwrap().to_string();
+
+    // 2. Send reply m2 -> reply_to: m1
+    let (_, body2) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &t1,
+        &json!({
+            "sender_client_id": c1,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": ct,
+            "reply_to": m1_id
+        }),
+    )
+    .await;
+    let m2_id = body2["message_id"].as_str().unwrap().to_string();
+
+    // 3. Delete parent m1 (tombstone m1)
+    let (s_del, _) = do_delete(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{m1_id}"),
+        &t1,
+    )
+    .await;
+    assert_eq!(s_del, StatusCode::NO_CONTENT);
+
+    // 4. Fetch messages -> m2 is still returned with reply_to = m1
+    let (_, list_body) = do_get(&app, &format!("/api/v1/rooms/{room_id}/messages"), &t1).await;
+    let msgs = list_body["messages"].as_array().unwrap();
+    let m2_view = msgs.iter().find(|m| m["id"] == m2_id).unwrap();
+    assert_eq!(m2_view["reply_to"], m1_id);
+
+    // 5. Fetch messages with cursor skipping m1 -> m2 still carries reply_to = m1
+    // Fetch since epoch 0, seq 1 (skips seq 1 m1)
+    let (_, paged_body) = do_get(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages?since_epoch=0&since_seq=1"),
+        &t1,
+    )
+    .await;
+    let paged_msgs = paged_body["messages"].as_array().unwrap();
+    assert_eq!(paged_msgs.len(), 1);
+    assert_eq!(paged_msgs[0]["id"], m2_id);
+    assert_eq!(paged_msgs[0]["reply_to"], m1_id);
 }

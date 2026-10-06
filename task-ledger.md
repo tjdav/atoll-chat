@@ -61,9 +61,9 @@
   - **Migration:** None (Case A: schema in `0001_v2_schema.sql` matches §7.6 exactly).
   - **Delivered:** Empirical report at `verification/reactions-v3/report.md`, `server/src/reactions/mod.rs`, `server/src/reactions/write.rs`, `server/src/routes/reactions.rs`, `server/src/lib.rs`, `server/tests/reaction_write.rs`, `server/tests/reaction_events.rs`, `server/tests/reaction_validation.rs`, `server/tests/reaction_list.rs`. Aligned V3 §8.5 and §8.9 contracts: idempotent repeat add returns HTTP 200 with existing row ID, fresh/reactivated add returns HTTP 201 Created, DELETE route targets `:reaction_id` with owner/moderator authorization, rate limiting `RATE_REACTION_PER_MIN` enforced on add endpoint only, reaction operations on tombstoned messages permitted per §7.6, exact §8.9 event payloads (`reaction.added` and `reaction.removed`), and Phase 10 whisper stub comments.
   - **Batch:** `messaging`
-- **Task 29 — Message Threading (`reply_to`)**: done
-  - **Migration:** `0029_message_reply_to.sql` (Case A: added `reply_to TEXT REFERENCES room_messages(id)` column and `idx_room_messages_reply_to` partial index).
-  - **Delivered:** `0029_message_reply_to.sql`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/routes/capabilities.rs`, `server/src/error.rs`, `message_threading.rs`.
+- **Task 29 — Message Threading V3 Alignment (Phase 9)**: done
+  - **Migration:** None (Case A: schema in `0001_v2_schema.sql` matches §7.6).
+  - **Delivered:** Step 0 report at `verification/threading-v3/report.md`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/error.rs`, `server/tests/message_threading.rs`, `verification.md`.
   - **Batch:** `messaging`
 - **Task 15b-R — Push Payload `sender_ref` Retrofit**: done
   - **Delivered:** `server/src/identity/token.rs`, `server/src/push/payload.rs`, `server/src/push/delivery.rs`, `server/src/push/apns.rs`, `server/src/push/fcm.rs`, `server/tests/push_payload.rs`, `server/tests/push_delivery.rs`, `server/tests/push_delivery_native.rs`, `server/tests/push_subscriptions.rs`, `server/tests/push_suppression.rs`.

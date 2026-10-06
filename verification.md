@@ -861,3 +861,19 @@
   - **Authorization:** `owner` or `moderator` (Discord mode) / `owner` (Messenger mode) per §3.2.
   - **Opacity Invariant:** The server never decrypts or inspects `metadata`. Verbatim ciphertext string roundtrip verified byte-for-byte.
 - **Link to report:** [verification/room-metadata-encrypted/report.md](verification/room-metadata-encrypted/report.md)
+
+## Task — Threading V3 Alignment Rules (Phase 9)
+- **ID:** Threading V3 Alignment
+- **Date:** 2026-10-06
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §1.6, §7.6, §8.5, §8.5.1, §8.9, §10, §11 (Phase 9)
+- **Question asked:** What are the canonical reply validation rules, tombstone parent rules, flat parent model rules, edit inheritance rules, and event payloads for message threading (`reply_to`)?
+- **Answer found:**
+  - **Flat-Parent Model:** Threading model is flat: `reply_to` points to a direct parent message (`"m_..."` or `null`). No `thread_id` or `root_id` columns exist. Reply chains are flat parent pointers; client renders trees if desired. Replying to a reply sets `reply_to` to that reply's ID, not the root's ID.
+  - **Cross-Room Rejection:** A `reply_to` referencing a message in a different room is rejected with HTTP 400 `reply_to_not_in_room`.
+  - **Non-Existent Target Rejection:** A `reply_to` referencing a non-existent message is rejected with HTTP 400 `reply_to_not_found`.
+  - **Tombstone-Parent Acceptance:** Replying to a tombstoned parent (`deleted_at IS NOT NULL`) in the same room is accepted and succeeds (HTTP 201 Created). Deleting a parent message does not cascade-delete replies.
+  - **Edit Inheritance Rule:** When a reply is edited, the new edit row inherits the original message's `reply_to` value.
+  - **`message.edited` Payload:** `message.edited` event payload does NOT carry `reply_to`.
+  - **`message.new` Payload:** `message.new` event payload carries `reply_to` (string or `null`) per §8.9.
+- **Link to report:** [verification/threading-v3/report.md](verification/threading-v3/report.md)
