@@ -796,3 +796,12 @@
   - **`device_state` sync array:** Verified shape (`device_id`, `encrypted_device_name`, `user_seq`, `updated_at`, `deleted_at`) in `server/src/sync/query.rs` / `device_names.rs`.
   - **Test coverage gaps:** Identified 7 missing test coverage items (event payload assertions for all 3 events, `login_start` missing/invalid platform rejections, and transaction rollback sequence atomicity tests).
 - **Link to report:** [verification/device-contracts-verified/report.md](verification/device-contracts-verified/report.md)
+
+## Device Model Test Coverage Empirical Report
+- **ID:** device-model-tests-empirical
+- **Date:** 2026-10-06
+- **Status:** Complete.
+- **Spec / Amendment references:** V3 Spec §6.21, §6.22, §7.1, §8.2, §8.9, §8.10
+- **Question asked:** What is the repository state across existing device tests, event capture harnesses, login test helpers, transaction rollback patterns, user_seq inspection, batch assignments, and V2 remnants?
+- **Answer found:** Verified all existing tests, confirmed Sockudo MockServer harness pattern, documented `login_user` and Axum `oneshot` request helpers, detailed direct `user_seq` query pattern, confirmed batch assignment (`auth` batch for `devices.rs` and `login.rs`), and documented limitation regarding production test hooks for forced rollbacks (leading to `#[ignore]` strategy for tests 6 & 7).
+- **Link to report:** [verification/device-model-tests/report.md](verification/device-model-tests/report.md)

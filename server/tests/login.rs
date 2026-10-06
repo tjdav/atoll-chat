@@ -356,3 +356,138 @@ async fn test_12_session_token_is_not_stored_in_plaintext() {
     assert_eq!(token_hash.len(), 64);
     assert!(token_hash.chars().all(|c| c.is_ascii_hexdigit()));
 }
+
+#[tokio::test]
+async fn test_13_login_start_invalid_platform_rejection() {
+    let (app, pool) = setup_test_app().await;
+
+    register_user(&app, "alice", "password123", None).await;
+    let username_token = obtain_username_token(&app, "alice").await;
+
+    let mut rng = OsRng;
+    let client_start = ClientLogin::<DefaultCipherSuite>::start(&mut rng, b"password123")
+        .expect("ClientLogin::start failed");
+    let cred_req_b64 = STANDARD.encode(client_start.message.serialize());
+
+    // Send login_start with platform = "windows"
+    let req_win = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/login/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "username_token": username_token,
+                "credential_request": cred_req_b64,
+                "client_id": TEST_CLIENT_ID,
+                "platform": "windows",
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_win = app.clone().oneshot(req_win).await.unwrap();
+    assert_eq!(resp_win.status(), StatusCode::BAD_REQUEST);
+    let body_bytes_win = axum::body::to_bytes(resp_win.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let body_win: Value = serde_json::from_slice(&body_bytes_win).unwrap();
+    assert_eq!(body_win["error"], "invalid_platform");
+
+    // Send login_start with platform = "toaster"
+    let req_toaster = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/login/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "username_token": username_token,
+                "credential_request": cred_req_b64,
+                "client_id": TEST_CLIENT_ID,
+                "platform": "toaster",
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_toaster = app.clone().oneshot(req_toaster).await.unwrap();
+    assert_eq!(resp_toaster.status(), StatusCode::BAD_REQUEST);
+    let body_bytes_toaster = axum::body::to_bytes(resp_toaster.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let body_toaster: Value = serde_json::from_slice(&body_bytes_toaster).unwrap();
+    assert_eq!(body_toaster["error"], "invalid_platform");
+
+    // Assert no session created
+    let session_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(session_count, 0);
+}
+
+#[tokio::test]
+async fn test_14_login_start_missing_platform_rejection() {
+    let (app, pool) = setup_test_app().await;
+
+    register_user(&app, "alice", "password123", None).await;
+    let username_token = obtain_username_token(&app, "alice").await;
+
+    let mut rng = OsRng;
+    let client_start = ClientLogin::<DefaultCipherSuite>::start(&mut rng, b"password123")
+        .expect("ClientLogin::start failed");
+    let cred_req_b64 = STANDARD.encode(client_start.message.serialize());
+
+    // Send login_start with platform field missing
+    let req_missing = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/login/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "username_token": username_token,
+                "credential_request": cred_req_b64,
+                "client_id": TEST_CLIENT_ID,
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_missing = app.clone().oneshot(req_missing).await.unwrap();
+    assert_eq!(resp_missing.status(), StatusCode::BAD_REQUEST);
+    let body_bytes_missing = axum::body::to_bytes(resp_missing.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let body_missing: Value = serde_json::from_slice(&body_bytes_missing).unwrap();
+    assert_eq!(body_missing["error"], "invalid_platform");
+
+    // Send login_start with platform = ""
+    let req_empty = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/login/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "username_token": username_token,
+                "credential_request": cred_req_b64,
+                "client_id": TEST_CLIENT_ID,
+                "platform": "",
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_empty = app.clone().oneshot(req_empty).await.unwrap();
+    assert_eq!(resp_empty.status(), StatusCode::BAD_REQUEST);
+    let body_bytes_empty = axum::body::to_bytes(resp_empty.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let body_empty: Value = serde_json::from_slice(&body_bytes_empty).unwrap();
+    assert_eq!(body_empty["error"], "invalid_platform");
+
+    // Assert no session created
+    let session_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(session_count, 0);
+}

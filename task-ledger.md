@@ -21,12 +21,6 @@
   - **Delivered:** `verification/device-contracts-verified/report.md`
   - **Outcome:** Verified `platform` validation at `login_start`, `user_seq` transaction atomicity, event publish timing post-commit, `device.name_updated` payload shape, absence of legacy V2 code remnants, and `device_state` response contract in `GET /users/me/sync`. Identified 7 test coverage gaps logged as pending follow-up test items.
 
-## Pending Tasks (Follow-up Test Coverage)
-
-- **Device Model Event & Atomicity Test Coverage**: pending
-  - Add Sockudo test assertions for `device.added`, `device.revoked`, `device.name_updated` event payload shapes.
-  - Add `login_start` missing and invalid `platform` rejection tests.
-  - Add transaction rollback `user_seq` atomicity tests for device creation and device revocation.
 
 ## Completed Tasks
 
@@ -201,6 +195,9 @@
 - **Device Model Implementation**: done
   - **Migration:** Updated baseline migration `server/migrations/0001_v2_schema.sql` (`devices.platform` NOT NULL CHECK constraint, removing legacy `devices.name`).
   - **Delivered:** Step 0 report at `verification/device-model-implementation/report.md`, updated `Device` struct and methods in `server/src/devices.rs`, updated `LoginFinishRequest` and `login_finish` in `server/src/routes/login.rs` accepting and validating `platform`, published durable `device.added` event post-commit, published durable `device.revoked` event on `revoke_device`, corrected `device.name_updated` event name and payload in `server/src/sync/device_names.rs`, updated test fixtures across `sync_contract.rs`, `identity_schema.rs`, `cleanup.rs`, `push_delivery.rs`, `common/mod.rs`, and added integration tests in `server/tests/devices.rs`.
+  - **Batch:** `auth`
+- **Device Model Event & Atomicity Test Coverage**: done
+  - **Delivered:** Step 0 empirical report at `verification/device-model-tests/report.md`, `device.added`, `device.revoked`, and `device.name_updated` event payload shape tests in `server/tests/devices.rs`, `login_start` invalid and missing `platform` rejection tests in `server/tests/login.rs`, and sequence rollback atomicity tests implemented as `#[ignore]` with documented test-hook limitation.
   - **Batch:** `auth`
 
 ## Annotations for Future Tasks

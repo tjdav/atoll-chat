@@ -356,6 +356,7 @@ async fn test_08_memory_store_purge_removes_expired_entries() {
             username_token: DUMMY_TOKEN.to_string(),
             encrypted_display: None,
             client_id: "c1".to_string(),
+            platform: "web".to_string(),
             server_login_state: server_login.state,
             created_at: expired_time,
         },
