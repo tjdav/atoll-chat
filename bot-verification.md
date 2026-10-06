@@ -461,3 +461,22 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-027 Verification Fact
+- **Webhook Trigger Server (`packages/bot/src/runtime/triggers/webhook.js`)**:
+  - Lives at `packages/bot/src/runtime/triggers/webhook.js` exporting `createWebhookServer`, `verifySignature`, and `extractHeader`.
+  - Takes `config`, `triggers`, `makeBotCtx`, `idempotency`, `env`, `logger`. Returns a server object with `start`, `stop`, `getBoundPort`.
+  - Zero declared triggers makes `start()` a no-op and `getBoundPort()` returns `null`.
+  - Requests match on method (`trigger.method ?? 'POST'`) and full path (`basePath + trigger.path`) with query string stripping.
+  - Body size limit is enforced during chunk reading with `413 request_too_large` and socket `req.destroy()`.
+  - Secret verification resolves variable named by `trigger.secret` from `env`. `_SECRET` suffix verifies HMAC-SHA256 (`x-hub-signature-256` or `x-signature-256`, stripping optional `sha256=` prefix). `_TOKEN` suffix verifies Bearer token. Digests are hashed before constant-time comparison via `crypto.timingSafeEqual`.
+  - Idempotency deduplicates requests after verification via `idempotency.checkAndRecord`. Handler or `makeBotCtx` failure removes the key via `idempotency.remove`.
+  - **Spec Gap 1 Recorded**: HMAC header format is unspecified. The server accepts both `sha256=<hex>` and raw `<hex>`.
+  - **Spec Gap 2 Recorded**: Response bodies for success are empty with 200 OK. Errors return JSON envelopes (`{ error, message }`).
+  - Registered `webhook-server` batch in `packages/bot/tests/batch-manifest.toml` and authored 43 unit tests in `packages/bot/tests/unit/webhook-server.test.js` using local `node:http` servers.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).

@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 33
-- **Done:** 27
+- **Done:** 28
 - **In Progress:** 0
-- **Todo:** 6
+- **Todo:** 5
 
 ---
 
@@ -47,8 +47,6 @@ Track progress across Bot SDK implementation tasks.
 | B-024 | Context | done | §3.5, §14.6 | `ctx.fetch` and `ctx.fetchUserUrl` outbound fetch utilities with scheme validation and query stripping |
 | B-025 | Context | done | §3.5, §7, §12 | Encrypted settings store caching, subscriber notifications, coalesced refresh, and read-only throws |
 | B-026 | Stores | done | §3.5, §7.4, §9 | Author-facing `StorageStore` reserved-prefix wrapper and `RoomsStore` room list store |
-| B-027 | Audit | todo | §8.8 | Bot audit log submission helper |
-| B-028 | CLI Core | todo | §15 | CLI entrypoint, argument parser, and subcommands |
-| B-029 | Webhooks | todo | §10.3 | HTTP webhook server and payload validator |
-| B-030 | Cron | todo | §10.3 | Cron schedule parser and timer engine |
-| B-031 | Integration | todo | §10.1 | Full runtime wiring and entrypoint export |
+| B-027 | Webhooks | done | §3.4, §3.6, §10.1, §10.3, §14.4 | Webhook trigger server, signature verification, idempotency deduplication, and dispatch |
+| B-028 | Cron | todo | §10.3 | Cron schedule parser and timer engine |
+| B-029 | Integration | todo | §10.1 | Full runtime wiring and entrypoint export |
