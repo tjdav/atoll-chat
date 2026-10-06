@@ -549,3 +549,22 @@ build task runs.
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to export `createMessagesRepository` and include `messages` in `createRepositories({ db })` |
 | Unit Test Suite | `packages/app/tests/unit/repositories-messages.test.js` (24 cases) registered under `unit-smoke` batch in `packages/app/test-batches.js` |
 | Storage Documentation | `packages/app/docs/storage/messages.md` authored covering all ten required sections; index added to `packages/app/docs/storage/README.md` |
+
+### C-INFRA-15 — Attachments and Reactions Tables with Repositories
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Migration `0005-attachments-reactions.sql` | Defines `attachments` (`file_id TEXT PRIMARY KEY`, `room_id`, `purpose NOT NULL`, `content_type`, `plaintext_size`, `encrypted_size`, `thumbnail_file_id`, `duration_ms`, `uploaded_at`, `downloaded_at`, `cached_at NOT NULL`) and `reactions` (`message_id`, `sender_user_id`, `sender_client_id`, `reaction`, `created_at`, `deleted_at`, `PRIMARY KEY (message_id, sender_user_id, sender_client_id, reaction)`) tables with indexes |
+| Attachments Repository | `createAttachmentsRepository({ db })` in `packages/app/src/lib/db/repositories/attachments.js` exposing 10 async methods (`get`, `upsert`, `markUploaded`, `markDownloaded`, `getMany`, `listByRoom`, `listByPurpose`, `remove`, `countByRoom`, `clearAll`) |
+| Reactions Repository | `createReactionsRepository({ db })` in `packages/app/src/lib/db/repositories/reactions.js` exposing 10 async methods (`listForMessage`, `listForRoom`, `get`, `add`, `remove`, `removeByMessage`, `countForMessage`, `aggregateForMessage`, `hasReacted`, `clearAll`) |
+| `file_id` Semantics | SHA-256 digest of the padded ciphertext encoded as unpadded base64url. Used as server media blob identifier; does not contain cryptographic keys |
+| Attachment Purpose | Open purpose string ("message", "room-avatar", "user-avatar", "session-icon", "sticker") without schema CHECK constraint |
+| Reaction Four-Tuple Key | Primary key `(message_id, sender_user_id, sender_client_id, reaction)` mirrors server uniqueness, preserving per-device reaction origin |
+| Multi-Device Aggregation | `aggregateForMessage(messageId)` aggregates counts per emoji/sticker string using `COUNT(DISTINCT sender_user_id)` to deduplicate a user's multi-device reactions into a single count |
+| Reaction Soft-Delete & Reactivation | `remove` soft-deletes via `deleted_at = Date.now()`. `add` reactivates existing soft-deleted rows with `deleted_at = NULL` and updates `created_at` |
+| Safe `IN` Clause Generator | `getMany(fileIds)` builds `?` placeholders derived strictly from `fileIds.length` to guarantee SQL parameter binding safety |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to export `createAttachmentsRepository` & `createReactionsRepository` and include `attachments` & `reactions` in `createRepositories({ db })` |
+| Unit Test Suites | `tests/unit/repositories-attachments.test.js` (19 cases) and `tests/unit/repositories-reactions.test.js` (19 cases) registered under `unit-smoke` batch in `test-batches.js` |
+| Domain Documentation | `packages/app/docs/storage/attachments.md` and `packages/app/docs/storage/reactions.md` authored covering all ten required sections; `packages/app/docs/storage/README.md` updated |
