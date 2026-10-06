@@ -71,6 +71,7 @@ async fn setup_test_app() -> TestEnv {
         attachment_retention_days: 365,
         call_max_participants: 50,
         reactions_per_message: 50,
+        room_metadata_bytes: config.server_max_room_metadata_bytes,
     });
 
     let oprf_keys = server::oprf::OprfKeys::load(&opaque_server.setup).unwrap();

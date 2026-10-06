@@ -57,6 +57,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         attachment_retention_days: 365,
         call_max_participants: 50,
         reactions_per_message: 50,
+        room_metadata_bytes: config.server_max_room_metadata_bytes,
     });
 
     let sockudo_cfg = server::SockudoConfig {
@@ -212,9 +213,27 @@ async fn test_room_updated_event_published_on_update_and_clear() {
     let data_json: Value = serde_json::from_str(data_str).unwrap();
 
     assert_eq!(data_json["room_id"], room_id);
-    assert_eq!(data_json["metadata_version"], 2);
-    // Payload does not include metadata blob
-    assert!(data_json.get("metadata").is_none());
+    assert_eq!(data_json["metadata"], blob);
+
+    let count_before_noop = mock_sockudo.received_requests().await.unwrap().len();
+
+    // No-op PATCH with identical metadata -> returns 200 OK but sends NO new event
+    let req_patch_noop = Request::builder()
+        .method("PATCH")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "metadata": blob }).to_string()))
+        .unwrap();
+
+    let resp_patch_noop = app.clone().oneshot(req_patch_noop).await.unwrap();
+    assert_eq!(resp_patch_noop.status(), StatusCode::OK);
+
+    let count_after_noop = mock_sockudo.received_requests().await.unwrap().len();
+    assert_eq!(
+        count_after_noop, count_before_noop,
+        "No-op PATCH must not publish room.updated event"
+    );
 }
 
 #[tokio::test]
@@ -262,6 +281,7 @@ async fn test_publisher_failure_does_not_affect_http_response() {
         attachment_retention_days: 365,
         call_max_participants: 50,
         reactions_per_message: 50,
+        room_metadata_bytes: config.server_max_room_metadata_bytes,
     });
 
     let sockudo_cfg = server::SockudoConfig {

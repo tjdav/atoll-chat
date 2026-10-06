@@ -534,13 +534,19 @@ pub async fn update_metadata(
         _ => return Err(ApiError::BadRequest("invalid_metadata".to_string())),
     };
 
+    let limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
+    let effective_max_metadata_bytes = limits.room_metadata_bytes as usize;
+
+    let config = config_ops::get_config(&state.pool).await?;
+
     let result = rooms::update_room_metadata(
         &state.pool,
         &state.publisher,
         &id,
         &auth.user_id,
         metadata_str,
-        state.config.max_room_metadata_bytes,
+        effective_max_metadata_bytes,
+        &config.moderation_mode,
     )
     .await?;
 

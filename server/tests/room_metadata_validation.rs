@@ -151,9 +151,9 @@ async fn test_exact_limit_and_exceeding_limit_413() {
     let json_c: Value = serde_json::from_slice(&body_c).unwrap();
     let room_id = json_c["id"].as_str().unwrap();
 
-    // Default max_room_metadata_bytes = 4096
-    // 1. Exact limit: 4096 raw bytes base64url encoded
-    let exact_bytes = vec![0x42u8; 4096];
+    // Default max_room_metadata_bytes = 16384 (16 KB)
+    // 1. Exact limit: 16384 raw bytes base64url encoded
+    let exact_bytes = vec![0x42u8; 16384];
     let exact_encoded = URL_SAFE_NO_PAD.encode(&exact_bytes);
 
     let req_patch_exact = Request::builder()
@@ -167,8 +167,8 @@ async fn test_exact_limit_and_exceeding_limit_413() {
     let resp_patch_exact = app.clone().oneshot(req_patch_exact).await.unwrap();
     assert_eq!(resp_patch_exact.status(), StatusCode::OK);
 
-    // 2. Exceeding limit: 4097 raw bytes base64url encoded -> 413 metadata_too_large
-    let over_bytes = vec![0x42u8; 4097];
+    // 2. Exceeding limit: 16385 raw bytes base64url encoded -> 413 metadata_too_large
+    let over_bytes = vec![0x42u8; 16385];
     let over_encoded = URL_SAFE_NO_PAD.encode(&over_bytes);
 
     let req_patch_over = Request::builder()
@@ -187,8 +187,8 @@ async fn test_exact_limit_and_exceeding_limit_413() {
         .unwrap();
     let json_o: Value = serde_json::from_slice(&body_o).unwrap();
     assert_eq!(json_o["error"], "metadata_too_large");
-    assert_eq!(json_o["details"]["limit"], 4096);
-    assert_eq!(json_o["details"]["size"], 4097);
+    assert_eq!(json_o["details"]["limit"], 16384);
+    assert_eq!(json_o["details"]["size"], 16385);
 }
 
 #[tokio::test]

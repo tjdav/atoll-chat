@@ -345,31 +345,38 @@ pub async fn update_room_metadata(
     requester_id: &str,
     metadata: Option<&str>,
     max_metadata_bytes: usize,
+    moderation_mode: &str,
 ) -> Result<RoomMetadataResult, RoomMetadataError> {
     let mut tx = pool.begin().await?;
 
-    // 1. Verify requester membership
-    let member_role: Option<(String,)> =
-        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
-            .bind(room_id)
-            .bind(requester_id)
-            .fetch_optional(&mut *tx)
-            .await?;
+    // 1. Verify requester membership and fetch current metadata
+    let member_row: Option<(String, Option<String>, i64)> = sqlx::query_as(
+        r#"
+        SELECT rm.role, r.metadata, r.metadata_version
+        FROM room_members rm
+        JOIN rooms r ON r.id = rm.room_id
+        WHERE rm.room_id = ? AND rm.user_id = ?
+        "#,
+    )
+    .bind(room_id)
+    .bind(requester_id)
+    .fetch_optional(&mut *tx)
+    .await?;
 
-    let role = match member_role {
-        Some((r,)) => r,
+    let (role, current_metadata, current_version) = match member_row {
+        Some(row) => row,
         None => return Err(RoomMetadataError::RoomNotFound),
     };
 
-    // 2. Verify requester is room owner
-    if role != "owner" {
+    // 2. Authorization check per §3.2 (owner, or moderator in Discord mode)
+    let is_authorized = role == "owner" || (role == "moderator" && moderation_mode == "discord");
+    if !is_authorized {
         return Err(RoomMetadataError::Forbidden);
     }
 
     // 3. Validate metadata blob if present
     let clean_metadata = if let Some(m) = metadata {
         validate_metadata_blob(m, max_metadata_bytes)?;
-        // Store canonical unpadded string or verbatim input if valid
         use base64::engine::general_purpose::{URL_SAFE, URL_SAFE_NO_PAD};
         let decoded = URL_SAFE_NO_PAD
             .decode(m)
@@ -380,45 +387,46 @@ pub async fn update_room_metadata(
         None
     };
 
-    // 4. Update row
+    // 4. No-Op check: if metadata is unchanged, do not bump version or publish event
+    if clean_metadata == current_metadata {
+        tx.commit().await?;
+        return Ok(RoomMetadataResult {
+            room_id: room_id.to_string(),
+            metadata: current_metadata,
+            metadata_version: current_version,
+            updated_at: Utc::now(),
+        });
+    }
+
+    // 5. Update row and increment version
+    let new_version = current_version + 1;
     sqlx::query(
         r#"
         UPDATE rooms
         SET metadata = ?,
-            metadata_version = metadata_version + 1
+            metadata_version = ?
         WHERE id = ?
         "#,
     )
     .bind(&clean_metadata)
+    .bind(new_version)
     .bind(room_id)
     .execute(&mut *tx)
-    .await?;
-
-    // 5. Read back updated row
-    let row: (Option<String>, i64, DateTime<Utc>) = sqlx::query_as(
-        r#"
-        SELECT metadata, metadata_version, created_at
-        FROM rooms
-        WHERE id = ?
-        "#,
-    )
-    .bind(room_id)
-    .fetch_one(&mut *tx)
     .await?;
 
     tx.commit().await?;
 
     let result = RoomMetadataResult {
         room_id: room_id.to_string(),
-        metadata: row.0,
-        metadata_version: row.1,
+        metadata: clean_metadata,
+        metadata_version: new_version,
         updated_at: Utc::now(),
     };
 
-    // 6. Post-commit: publish room.updated
+    // 6. Post-commit: publish room.updated on private-room-{room_id} per §8.9
     let payload = serde_json::json!({
         "room_id": result.room_id,
-        "metadata_version": result.metadata_version,
+        "metadata": result.metadata,
     });
     let channel = format!("private-room-{}", room_id);
     if let Err(e) = publisher.publish(&channel, "room.updated", payload).await {

@@ -60,6 +60,7 @@ async fn setup_test_app(config_override: impl FnOnce(&mut Config)) -> (axum::Rou
             attachment_retention_days: 365,
             call_max_participants: 50,
             reactions_per_message: 50,
+            room_metadata_bytes: config_arc.server_max_room_metadata_bytes,
         }),
         publisher: Arc::new(server::Publisher::new(server::SockudoConfig {
             http_base: "http://localhost:6001".into(),
