@@ -516,3 +516,18 @@ build task runs.
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` exports `createRepositories({ db })` returning `{ users }` and re-exports `createUsersRepository` |
 | Unit Test Suite | `packages/app/tests/unit/repositories-users.test.js` exercising all 15 specified cases across backends, registered under `unit-smoke` batch in `test-batches.js` |
 | Storage Documentation | Documentation authored under `packages/app/docs/storage/`: `README.md` (index), `repositories.md` (conventions), and `users.md` (users contract) |
+
+### C-INFRA-13 — Rooms, Room Members, and Room Order Tables with Repositories
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Migration `0003-rooms.sql` | Defines `rooms` (`room_id TEXT PRIMARY KEY`, `name`, `avatar_file_id`, `description`, `disappearing_timer`, `metadata_version INTEGER DEFAULT 1`, `updated_at INTEGER`), `room_members` (`room_id`, `user_id`, `role`, `joined_at`, `PRIMARY KEY (room_id, user_id)`), and `room_order` (`room_id TEXT PRIMARY KEY`, `position INTEGER`, `updated_at INTEGER`) with indexes |
+| Rooms Repository | `createRoomsRepository({ db })` in `packages/app/src/lib/db/repositories/rooms.js` (`get`, `upsert` with partial `COALESCE` updates, transactional `remove`, `list` ordered by `updated_at DESC`, `count`, transactional `clearAll`) |
+| Room Members Repository | `createRoomMembersRepository({ db })` in `packages/app/src/lib/db/repositories/room-members.js` (`listInRoom` ordered by `joined_at ASC`, `get`, `addMember`, `removeMember`, `removeAllInRoom`, `listRoomsForUser` ordered by `joined_at DESC`, `countInRoom`, `clearAll`) |
+| Room Order Repository | `createRoomOrderRepository({ db })` in `packages/app/src/lib/db/repositories/room-order.js` (`list` ordered by `position ASC`, transactional dense `setOrder`, `moveBefore`, `getPosition`, `clearAll`) |
+| Transactional Integrity | Foreign keys are omitted for backend engine compatibility. `rooms.remove` and `rooms.clearAll` execute transactional deletes across `rooms`, `room_members`, and `room_order`. `roomOrder.setOrder` replaces order densely inside a transaction |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `{ users, rooms, roomMembers, roomOrder }` and re-export factory functions |
+| Unit Test Coverage | `tests/unit/repositories-rooms.test.js` (14 cases), `tests/unit/repositories-room-members.test.js` (12 cases), `tests/unit/repositories-room-order.test.js` (12 cases) registered under `unit-smoke` batch in `test-batches.js` |
+| Storage Documentation | `packages/app/docs/storage/rooms.md` authored with purpose, schema, repository signatures, partial updates, referential integrity, eviction, and lifecycle details. `packages/app/docs/storage/README.md` updated |

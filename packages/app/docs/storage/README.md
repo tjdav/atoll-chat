@@ -10,6 +10,7 @@ workflow, and the repository layer.
 |---|---|
 | [repositories.md](./repositories.md) | Repository convention: factory shape, async contract, file layout. |
 | [users.md](./users.md) | The users table and its repository. |
+| [rooms.md](./rooms.md) | The rooms, room members, and room order tables and their repositories. |
 
 ## Related
 

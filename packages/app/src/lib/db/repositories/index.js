@@ -7,6 +7,9 @@
  */
 
 import { createUsersRepository } from './users.js'
+import { createRoomsRepository } from './rooms.js'
+import { createRoomMembersRepository } from './room-members.js'
+import { createRoomOrderRepository } from './room-order.js'
 
 /**
  * Creates all domain repositories configured with the provided DB instance.
@@ -17,8 +20,16 @@ import { createUsersRepository } from './users.js'
  */
 export function createRepositories({ db }) {
   return {
-    users: createUsersRepository({ db })
+    users: createUsersRepository({ db }),
+    rooms: createRoomsRepository({ db }),
+    roomMembers: createRoomMembersRepository({ db }),
+    roomOrder: createRoomOrderRepository({ db })
   }
 }
 
-export { createUsersRepository }
+export {
+  createUsersRepository,
+  createRoomsRepository,
+  createRoomMembersRepository,
+  createRoomOrderRepository
+}
