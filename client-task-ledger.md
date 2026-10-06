@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 32 |
+| Done | 33 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-11 | Plugin Context Async Import Audit and Policy Update | done | C-INFRA-10 | unit-smoke, component-smoke |
 | C-INFRA-10 | Storage Boot Integration | done | C-INFRA-8, C-INFRA-9, C-AUTH-4 | unit-smoke, component-auth |
 | C-INFRA-8 | Storage Plugin Skeleton & Migration Runner | done | C-INFRA-7 | unit-smoke |
 | C-INFRA-9 | WASM SQLite Backend Implementation and Async DB Factory | done | C-V-G, C-INFRA-8 | unit-smoke |
@@ -60,6 +61,38 @@ or modify the server's ledger.
 ## Blockers
 
 None — all client tasks are unblocked.
+
+## Standing Policies
+
+### Plugin `client.context` async imports
+
+Every plugin whose `client.context` needs a value from another module must use a Phase 1 async dynamic import:
+
+```javascript
+client: {
+  context: async (pluginContext) => {
+    const { X } = await import('../lib/x.js')
+    return (_instanceContext) => ({ /* keys directly */ })
+  }
+}
+```
+
+Static top-level imports in a plugin file are available in Node but are not reliably hoisted into the serialized client bundle. The build succeeds silently; the browser throws `ReferenceError: X is not defined` at the first component that accesses `ctx.<plugin>.X`.
+
+The context keys are returned directly. The Phase 1 arrow is `async`. The Phase 2 arrow remains synchronous.
+
+### Playwright test cache and seeding
+
+Before running component batches after a plugin or component change:
+
+```bash
+rm -rf packages/app/.coralite packages/app/dist
+lsof -t -i :3000 | xargs -r kill
+```
+
+Coralite caches compiled scripts in `.coralite/manifest.json`. Playwright's `reuseExistingServer: true` will reuse a running dev server and may serve stale bundles. Clearing the cache and terminating any listening process guarantees fresh assets.
+
+Tests that expect storage to be cleared after a redirect must seed state via `page.evaluate()` on an initial route, not via `page.addInitScript()`. Init scripts re-run on every navigation, including the redirect target, and will re-insert the seeded value.
 
 ## Coralite Feedback Policy
 
@@ -101,7 +134,20 @@ All entries are recorded in `client-coralite-feedback.md` at the repo root.
 ### Client Task Template Standard Sections
 
 ````markdown
-### N. Coralite Friction
+### N. Plugin `client.context` async imports
+
+If writing or modifying a Coralite plugin:
+- Confirm `client.context` uses a Phase 1 async dynamic import (`async (pluginContext) => { const { X } = await import('...'); return (_instanceContext) => ({ ... }) }`) for any file-scope dynamic values.
+- Do not rely on top-level static imports inside `client.context`.
+
+### N+1. Cache discipline
+
+Before running Playwright component batches:
+- Clear build cache (`rm -rf packages/app/.coralite packages/app/dist`).
+- Terminate stale dev servers (`lsof -t -i :3000 | xargs -r kill`).
+- Seed state via `page.evaluate()` on an initial route rather than `page.addInitScript()` if testing state clearing across redirects.
+
+### N+2. Coralite Friction
 
 If during this task you encounter friction with Coralite — a bug, a missing
 feature, a pattern the framework does not support — stop and classify it
@@ -414,6 +460,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created unit test suite `packages/app/tests/unit/state.test.js` and added test case 28 to `packages/app/tests/unit/db.test.js` (registered in `unit-smoke` in `test-batches.js`).
   - Extended component test suite `packages/app/tests/component/messenger-boot.spec.js` covering storage initialization, storage failure handling, non-blocking shell reveal, and screenshot generation `test-results/messenger-boot.png`.
   - Authored documentation at `packages/app/docs/plugins/state.md` and updated `packages/app/docs/plugins/storage.md`.
+
+- **C-INFRA-11 Deliverables & Status:**
+  - Status: `done`.
+  - Audited all 4 application plugins (`i18n-plugin.js`, `icon-plugin.js`, `router-plugin.js`, `storage-plugin.js`). Classified `i18n`, `icons`, and `router` as already using Phase 1 async dynamic import inside `client.context`. Converted `storage-plugin.js` to Phase 1 async dynamic import pattern (`async (pluginContext) => { const { createDb } = await import('../lib/db/index.js'); ... }`).
+  - Updated `packages/app/tests/unit/storage-plugin.test.js` awaiting `plugin.client.context(...)`.
+  - Updated plugin documentation files (`packages/app/docs/plugins/README.md`, `i18n.md`, `icons.md`, `router.md`, `storage.md`, `extensions.md`, `state.md`) adding cross-cutting rule and per-plugin import pattern sections.
+  - Recorded two new standing policies in `client-task-ledger.md` ("Plugin `client.context` async imports" and "Playwright test cache and seeding") and extended the client task template standard checklist items.
+  - Extended `packages/app/TESTING.md` with "Cache discipline" and "Seeding state in Playwright tests" sections.
+  - Added comprehensive `C-INFRA-11` entry to `client-verification.md`.
 
 ## Component Authoring Policy
 

@@ -2,6 +2,28 @@
 
 > **Component prerequisite:** Every component must wrap its export in `defineComponent` from `'coralite'`. See [i18n.md](./i18n.md) for the pattern and the enforcement test.
 
+## Cross-cutting rule: plugin `client.context` imports
+
+Plugin `client.context` functions are serialized into the client bundle. Static
+top-level imports at the plugin file's top level are available in Node (SSR and
+unit tests) but are not reliably hoisted into the serialized client bundle.
+
+Every plugin whose `client.context` needs a value from another module must use
+a Phase 1 async dynamic import:
+
+```javascript
+client: {
+  context: async (pluginContext) => {
+    const { someValue } = await import('../lib/some-module.js')
+    // ...
+    return (_instanceContext) => ({ /* context keys directly */ })
+  }
+}
+```
+
+The Phase 1 arrow is `async`. The Phase 2 arrow remains synchronous. The
+context keys are returned directly — no wrapper key naming the plugin.
+
 Each plugin that ships with the client has a usage guide in this directory.
 
 | Plugin | Guide | Purpose |

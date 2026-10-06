@@ -99,6 +99,32 @@ For v1, tests target Chromium (`Desktop Chrome`). Firefox and WebKit are not ins
 ### Execution Budget
 Each Playwright batch is subject to the strict 60-second budget enforced by `scripts/run-batch.js`.
 
+## Cache discipline
+
+- Coralite caches compiled scripts in `.coralite/manifest.json`.
+- Playwright's `reuseExistingServer: true` may reuse a dev server serving stale bundles.
+- Before running component batches after a plugin or component change:
+  ```bash
+  rm -rf packages/app/.coralite packages/app/dist
+  lsof -t -i :3000 | xargs -r kill
+  ```
+- The `pnpm test:batch component-*` command does not clear these automatically. It is the test author's responsibility.
+
+## Seeding state in Playwright tests
+
+- `page.addInitScript()` runs on every navigation, including redirects. A test that seeds a session token and then verifies it was cleared after a 401 redirect will see the token re-seeded on the redirect target.
+- Seed state via `page.evaluate()` on an initial route before navigating to the target page. This pattern persists only the initial state and lets the application's cleanup logic run unobstructed.
+- Example:
+
+  ```javascript
+  await page.goto('/index.html')
+  await page.evaluate(() => {
+    localStorage.setItem('atoll.session.token', 'valid-token')
+    localStorage.setItem('atoll.session.username', 'alice')
+  })
+  await page.goto('/app.html')
+  ```
+
 ## CSS Bundle Verification
 
 - Production CSS must contain no `@import` statements. `postcss-import` inlines them at build time.

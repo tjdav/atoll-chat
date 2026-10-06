@@ -1,5 +1,9 @@
 # State Plugin Guide
 
+### Import pattern
+
+The `globalStore` state plugin's `client.context` receives `pluginContext` directly from Coralite's state store. It has no external file-scope or library imports required inside `client.context`. See `docs/plugins/README.md` for the cross-cutting rule.
+
 > **Specification reference:** §4.5 (Shell State Model), §4.8 (Offline-First Model), §21.6 (OPFS Degradation)
 
 The global state plugin provides reactive shell state across Coralite components via `globalStore`.

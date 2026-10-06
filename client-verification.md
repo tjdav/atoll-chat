@@ -488,3 +488,17 @@ build task runs.
 | Root Ref Diagnostic Attributes | `messenger-boot` sets `data-storage-ready` (`"true"` or `"false"`) and `data-storage-persistent` (`"true"` or `"false"`) on `ref="root"` |
 | Non-Blocking Shell Reveal | Shell reveals on `isAuthenticated` write before `storage.open()` completes; storage failure keeps `data-state="ready"` without crashing shell |
 | Documentation & Tests | Documentation at `packages/app/docs/plugins/state.md` and `packages/app/docs/plugins/storage.md`; unit tests in `tests/unit/state.test.js` and `tests/unit/db.test.js`; component tests in `tests/component/messenger-boot.spec.js` |
+
+### C-INFRA-11 — Plugin Context Async Import Audit & Standing Policies
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Plugin Audit Scope | All 4 application plugins under `packages/app/src/plugins/`: `i18n-plugin.js`, `icon-plugin.js`, `router-plugin.js`, `storage-plugin.js` |
+| Audit Classification | `i18n-plugin.js` (Phase 1 async import `../lib/i18n/index.js`), `icon-plugin.js` (Phase 1 async import `../lib/icons/index.js`), `router-plugin.js` (Phase 1 async import `../lib/router/index.js`), `storage-plugin.js` (converted to Phase 1 async import `../lib/db/index.js`) |
+| Async Import Pattern Rule | Static top-level imports in plugin files are not hoisted into the serialized client bundle. Every plugin `client.context` requiring values from another module MUST use Phase 1 async dynamic import (`client: { context: async (pluginContext) => { const { X } = await import('...'); return (_instanceContext) => ({ ... }) } }`) |
+| Verification Node Script | Node script verifying zero file-scope imports referenced in `client.context` blocks across `packages/app/src/plugins/*.js` exits cleanly with zero offending references |
+| Standing Policy 1 | Plugin `client.context` async imports policy recorded in `client-task-ledger.md` and `packages/app/docs/plugins/README.md` |
+| Standing Policy 2 | Playwright test cache discipline (`rm -rf packages/app/.coralite packages/app/dist` and `lsof -t -i :3000 | xargs -r kill`) and seeding pattern (`page.evaluate()` on initial route) recorded in `client-task-ledger.md` and `packages/app/TESTING.md` |
+| Task Template Checklist Items | Client task template extended with checklist items for plugin `client.context` async imports and Playwright cache discipline |

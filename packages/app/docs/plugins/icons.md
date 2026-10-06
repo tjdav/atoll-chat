@@ -1,5 +1,12 @@
 # Icon Plugin & `<ui-icon>` Primitive
 
+### Import pattern
+
+The `client.context` uses a Phase 1 async dynamic import to load
+`../lib/icons/index.js` into the browser bundle. This is required: static top-level
+imports in the plugin file are not hoisted into the serialized client
+bundle. See `docs/plugins/README.md` for the cross-cutting rule.
+
 The Icon Plugin provides centralized, tree-shaken access to the Solar Icon set (`@solar-icons/static`) and exposes the `<ui-icon>` primitive custom element for scalable SVG icon rendering across application components and shell surfaces.
 
 ---
