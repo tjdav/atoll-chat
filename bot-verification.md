@@ -98,6 +98,23 @@
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
 
+## Task B-026 Verification Fact
+- **StorageStore and RoomsStore (`packages/bot/src/runtime/context/storage.js` & `rooms.js`)**:
+  - `StorageStore` lives at `packages/bot/src/runtime/context/storage.js`. It wraps B-009's `Storage` and rejects `_runtime:` prefixed keys with `StorageReservedPrefixError` (`storage_reserved_prefix`). Keys are validated as non-empty strings (`TypeError`). `clear()` delegates directly to `storage.clear()` and preserves `_runtime:` keys.
+  - `RoomsStore` lives at `packages/bot/src/runtime/context/rooms.js`. It takes an injected `fetchRoomList` callback and performs no caching. Every `list()` or `get(roomId)` call fetches fresh.
+  - `RoomRef` mapping: `displayName` defaults to `null` when server omits `display_name`; `memberCount` defaults to `0` when server omits `member_count`.
+  - Non-array responses from `fetchRoomList` log a warning (`non_array_response`) and return `[]`. Entries without valid non-empty string `id` are skipped with a warning log (`missing_room_id`).
+  - **Spec Gap 1 (rooms) Recorded**: Server §8.4 provides no bot-facing room list endpoint (`GET /rooms` or `GET /bots/me/rooms`). The `fetchRoomList` callback is injected as a dependency until an endpoint is settled.
+  - **Spec Gap 2 (rooms) Recorded**: `RoomRef.displayName` comes from encrypted room metadata (`rooms.metadata`), which non-member bots cannot decrypt.
+  - **Spec Gap 3 (rooms) Recorded**: `RoomRef.memberCount` requires room membership (`GET /rooms/:id/members`), unavailable to write-only/observer bots.
+  - Registered `ctx-storage` (13 unit tests in `packages/bot/tests/unit/ctx-storage.test.js`) and `ctx-rooms` (18 unit tests in `packages/bot/tests/unit/ctx-rooms.test.js`) batches in `packages/bot/tests/batch-manifest.toml`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
 ## Task B-024 Verification Fact
 - **Outbound Fetch Methods (`packages/bot/src/runtime/context/fetch.js`)**:
   - The fetch methods live at `packages/bot/src/runtime/context/fetch.js` exporting `createFetchMethods` and `stripQuery`.
