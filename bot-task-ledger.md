@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 33
-- **Done:** 25
+- **Done:** 26
 - **In Progress:** 0
-- **Todo:** 8
+- **Todo:** 7
 
 ---
 
@@ -45,7 +45,7 @@ Track progress across Bot SDK implementation tasks.
 | B-022 | Context | done | §6.3 | `ctx.sendLocal` handler for owner-targeted local messages (Amends §12 with SendLocalFailedError) |
 | B-023 | Context | done | §3.3, §6.4, §8.8.10 | Command invocation handler, arg validation, handler execution, and result dispatch |
 | B-024 | Context | done | §3.5, §14.6 | `ctx.fetch` and `ctx.fetchUserUrl` outbound fetch utilities with scheme validation and query stripping |
-| B-025 | Rooms | todo | §8.6 | Room state query and management helpers |
+| B-025 | Context | done | §3.5, §7, §12 | Encrypted settings store caching, subscriber notifications, coalesced refresh, and read-only throws |
 | B-026 | Users | todo | §8.7 | User lookup and key transparency query helper |
 | B-027 | Audit | todo | §8.8 | Bot audit log submission helper |
 | B-028 | CLI Core | todo | §15 | CLI entrypoint, argument parser, and subcommands |

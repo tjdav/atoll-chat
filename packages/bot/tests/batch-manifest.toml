@@ -137,3 +137,9 @@ name = "ctx-fetch"
 files = [
   "unit/ctx-fetch.test.js",
 ]
+
+[[batch]]
+name = "settings-store"
+files = [
+  "unit/settings-store.test.js",
+]

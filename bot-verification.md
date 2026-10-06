@@ -420,3 +420,27 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-025 Verification Fact
+- **Encrypted Settings Store (`packages/bot/src/runtime/context/settings.js`)**:
+  - The settings store lives at `packages/bot/src/runtime/context/settings.js` exporting `createSettingsStore`.
+  - Storage keys are `key` for user scope and `room:{room_id}:{key}` for room scope. The caller passes `{ room }`; the store cannot infer scope from the setting declaration.
+  - Values map stores `{ value: unknown, isSecret: boolean }` decrypted via B-016 (`decryptSettingsValue`).
+  - `get(key, opts)` triggers a fetch on cold cache; subsequent calls hit the in-memory cache. Concurrent cold `get`s share a single fetch.
+  - `refresh()` coalesces within `coalesceMs` (default 500ms). If `refresh()` is called while a fetch is in flight, it schedules a second fetch after completion.
+  - Subscriber callbacks fire synchronously on `refresh()` when structural `JSON.stringify` value diffing detects a value change, key addition, or key deletion (`value === undefined`).
+  - Subscriber exceptions are caught and logged without breaking other subscribers or the refresh cycle.
+  - `set` and `delete` throw `SettingsWriteFailedError` (code `settings_write_failed`) unconditionally.
+  - Reserved prefix `_runtime:` on `key` throws `SettingsReservedPrefixError` (code `settings_reserved_prefix`).
+  - `stop()` cancels pending coalesce timers and prevents future fetches.
+  - Logging never logs setting values, plaintexts, or ciphertexts.
+  - **Spec Gap 1 Recorded**: Bot settings are read-only; no bot-facing write endpoint exists. `set` and `delete` throw `SettingsWriteFailedError`.
+  - **Spec Gap 2 Recorded**: Only full-list endpoint `GET /bots/me/settings` exists on server; refetch is full-list and diffed locally.
+  - **Spec Gap 3 Recorded**: Subscriber scope depends on caller passing `{ room }`. The store cannot infer scope from the setting declaration.
+  - Registered `settings-store` batch in `packages/bot/tests/batch-manifest.toml` and authored 32 unit tests in `packages/bot/tests/unit/settings-store.test.js` using local `node:http` servers.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
