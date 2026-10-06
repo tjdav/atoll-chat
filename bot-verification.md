@@ -322,3 +322,23 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-020 Verification Fact
+- **Post Message Response Handler (`packages/bot/src/runtime/context/post.js`)**:
+  - The `ctx.post` handler lives at `packages/bot/src/runtime/context/post.js` exporting `createPostHandler`, `generateRequestId`, and `PUBLISHER_MESSAGE_INFO = 'publisher-message-v1'`.
+  - Encrypts plaintext JSON `{ text, attachments, reply_to }` using publisher key ECDH with HKDF info `"publisher-message-v1"`.
+  - Wire format is `ephemeral_pub(32) || nonce(12) || ciphertext || tag(16)`.
+  - Signs payload `encodeBotMessagePayload({ roomId, epoch, contentType: 'bot', ciphertext })` using Ed25519 identity key (`bot_identity_private`).
+  - Sends request to `POST /rooms/${encodeURIComponent(roomId)}/bot-messages` with request body `{ epoch, ciphertext, content_type: 'bot', signature, request_id, reply_to? }`. Request sets `retry: true`.
+  - Response parses into `MessageRef` `{ id, roomId, createdAt }`.
+  - All failures wrap in `PostFailedError` (code `post_failed`), propagating inner errors via `cause`.
+  - **Spec Gap 1 Recorded**: Member mode `ctx.post` requires MLS, which the Node.js runtime currently lacks. Throws `PostFailedError` with reason `member_mode_requires_mls`. Task B-020a deferred.
+  - **Spec Gap 2 Recorded**: Server §8.8.8 request body example omits `reply_to` and `request_id`. Bot §6.1 includes `request_id`; `ctx.post` includes both as the natural reading.
+  - **Spec Gap 3 Recorded**: Server §8.8.8 response body shape omitted. Assumes response contains `{ id, created_at }`.
+  - Registered `ctx-post` batch in `packages/bot/tests/batch-manifest.toml` and authored 25 unit tests in `packages/bot/tests/unit/ctx-post.test.js` using local `node:http` servers.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
