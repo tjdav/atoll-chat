@@ -143,3 +143,15 @@ name = "settings-store"
 files = [
   "unit/settings-store.test.js",
 ]
+
+[[batch]]
+name = "ctx-storage"
+files = [
+  "unit/ctx-storage.test.js",
+]
+
+[[batch]]
+name = "ctx-rooms"
+files = [
+  "unit/ctx-rooms.test.js",
+]
