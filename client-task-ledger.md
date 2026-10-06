@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 41 |
+| Done | 42 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-20 | Sync State, Processed Events, and MLS Rooms Tables with Repositories | done | C-INFRA-19, C-INFRA-14, C-INFRA-9 | unit-smoke |
 | C-INFRA-19 | Device Names and Starred Items Tables with Repositories | done | C-INFRA-18, C-INFRA-9, C-AUTH-3a, C-V-D | unit-smoke |
 | C-INFRA-18 | Room Preferences and Nicknames Tables with Repositories | done | C-INFRA-17, C-INFRA-16, C-INFRA-9 | unit-smoke |
 | C-INFRA-17 | Outbox Table and Repository | done | C-INFRA-16, C-INFRA-14, C-INFRA-9 | unit-smoke |
@@ -560,6 +561,18 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `deviceNames` and `starredItems` (15 repositories total) and re-exporting factory functions.
   - Created unit test suites `packages/app/tests/unit/repositories-device-names.test.js` (17 cases) and `packages/app/tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
   - Authored contract documentation at `packages/app/docs/storage/device-names.md` and `packages/app/docs/storage/starred-items.md`, and updated `packages/app/docs/storage/README.md`.
+
+- **C-INFRA-20 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0010-sync-state.sql` defining `sync_state` (`room_id PRIMARY KEY`, `epoch`, `seq`, `updated_at`), `processed_events` (`event_key PRIMARY KEY`, `processed_at`), and `mls_rooms` (`room_id PRIMARY KEY`, `local_client_id`, `current_epoch`, `membership_status`, `confirmed_transcript_hash BLOB`, `last_error`, `joined_at`, `updated_at`), with indexes `idx_processed_events_at` and `idx_mls_rooms_status`.
+  - Created repositories under `packages/app/src/lib/db/repositories/`:
+    - `sync-state.js` exporting `createSyncStateRepository` (`get`, `getCursor`, `set`, `advance` enforcing monotonic `(epoch, seq)` ordering in JS, `list`, `remove`, `clearAll`).
+    - `processed-events.js` exporting `createProcessedEventsRepository` (`has`, `hasKey`, `mark` using `INSERT OR IGNORE`, `markKey`, `markBatch`, `prune`, `count`, `clearAll`) and module-level helper `makeKey(source, eventName, sequence)`.
+    - `mls-rooms.js` exporting `createMlsRoomsRepository` (`get`, `upsert` preserving existing values with `COALESCE`/`CASE WHEN`, `markJoined`, `markLeft`, `markError`, `advanceEpoch`, `listByStatus`, `listJoined`, `remove`, `clearAll`).
+  - Extended repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `syncState`, `processedEvents`, `mlsRooms` (18 total repositories) and re-exporting all factories and `makeKey`.
+  - Created unit test suites `packages/app/tests/unit/repositories-sync-state.test.js` (16 cases), `packages/app/tests/unit/repositories-processed-events.test.js` (13 cases), and `packages/app/tests/unit/repositories-mls-rooms.test.js` (16 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Authored contract documentation at `packages/app/docs/storage/sync-state.md`, `packages/app/docs/storage/processed-events.md`, and `packages/app/docs/storage/mls-rooms.md`, and updated `packages/app/docs/storage/README.md`.
+  - Reached storage layer completion checkpoint: all 18 repositories across 10 migrations are implemented and documented.
 
 ## Component Authoring Policy
 

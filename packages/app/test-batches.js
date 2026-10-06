@@ -54,7 +54,10 @@ export default [
       'tests/unit/repositories-room-preferences.test.js',
       'tests/unit/repositories-nicknames.test.js',
       'tests/unit/repositories-device-names.test.js',
-      'tests/unit/repositories-starred-items.test.js'
+      'tests/unit/repositories-starred-items.test.js',
+      'tests/unit/repositories-sync-state.test.js',
+      'tests/unit/repositories-processed-events.test.js',
+      'tests/unit/repositories-mls-rooms.test.js'
     ]
   },
   {

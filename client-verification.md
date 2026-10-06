@@ -392,7 +392,7 @@ build task runs.
 | Single Detail Route Limitation | SDK `detail` object shape is singular; `room-settings` (overlay for `core.chat`) is deferred to `core.chat`'s real-implementation task |
 | Aggregator Export | `packages/app/src/extensions/index.js` exports `extensions = [chat, media, documents, links, calls, settings, hangouts, profile, join, admin]` |
 | Vocabulary Output | `pnpm extensions:vocab` lists 10 components, 18 routes (10 details, 8 lists), and 1 session type (`voice`) |
-| Unit Tests | `packages/app/tests/unit/extend-first-party.test.js` registered under `unit-smoke` batch in `packages/app/test-batches.js` (207/207 passing unit tests) |
+| Unit Tests | `packages/app/tests/unit/extend-first-party.test.js` registered under `unit-smoke` batch in `packages/app/test-batches.js` (207/207 unit tests passing) |
 
 ### C-CHAT-5 — Router Plugin & Rail Rendering
 
@@ -641,3 +641,22 @@ build task runs.
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `deviceNames` and `starredItems` (15 repositories total) and re-export factory functions |
 | Unit Test Suites | `tests/unit/repositories-device-names.test.js` (17 cases) and `tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` batch in `test-batches.js` |
 | Storage Contracts Documentation | `packages/app/docs/storage/device-names.md` and `packages/app/docs/storage/starred-items.md` authored; index updated in `packages/app/docs/storage/README.md` |
+
+### C-INFRA-20 — Sync State, Processed Events, MLS Rooms & Storage Completion Checkpoint
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Checkpoint Summary | **Storage Layer Complete**: All 18 domain repositories across 10 migrations are fully implemented, tested, and documented |
+| Migration `0010-sync-state.sql` | Defines `sync_state` (`room_id TEXT PRIMARY KEY`, `epoch`, `seq`, `updated_at`), `processed_events` (`event_key TEXT PRIMARY KEY`, `processed_at`), and `mls_rooms` (`room_id TEXT PRIMARY KEY`, `local_client_id`, `current_epoch`, `membership_status DEFAULT 'pending'`, `confirmed_transcript_hash BLOB`, `last_error`, `joined_at`, `updated_at`), with indexes `idx_processed_events_at` and `idx_mls_rooms_status` |
+| Sync State Repository | `createSyncStateRepository({ db })` in `packages/app/src/lib/db/repositories/sync-state.js` exposing 7 async methods (`get`, `getCursor`, `set`, `advance`, `list`, `remove`, `clearAll`) |
+| Per-Room `(epoch, seq)` Cursor | `syncState.advance(roomId, { epoch, seq })` performs atomic JavaScript comparison against existing cursor; advances only when `(epoch, seq)` is strictly greater, returning `{ changes: 1 }` on advance or `{ changes: 0 }` on stale/equal skip |
+| Processed Events Repository | `createProcessedEventsRepository({ db })` in `packages/app/src/lib/db/repositories/processed-events.js` exposing 8 async methods (`has`, `hasKey`, `mark`, `markKey`, `markBatch`, `prune`, `count`, `clearAll`) and module-level helper `makeKey(source, eventName, sequence)` |
+| Composite Key Convention | Event deduplication keys use composite format `<source>:<eventName>:<sequence>` (e.g. `read:sync:42`, `starred_item:added:1288`) or message ID string |
+| MLS Rooms Repository | `createMlsRoomsRepository({ db })` in `packages/app/src/lib/db/repositories/mls-rooms.js` exposing 10 async methods (`get`, `upsert`, `markJoined`, `markLeft`, `markError`, `advanceEpoch`, `listByStatus`, `listJoined`, `remove`, `clearAll`) |
+| Strict Non-Cryptographic Invariant | `mls_rooms` contains zero keys, group secrets, or cryptographic material (all remain isolated in WASM CoreCrypto keystore); stores only client-visible metadata (`local_client_id`, `current_epoch`, `membership_status`, `confirmed_transcript_hash BLOB`, `last_error`, `joined_at`, `updated_at`) |
+| Membership Status Value Set | `'pending'` (welcome received, uninitialized), `'joined'` (active), `'left'` (removed/left), `'error'` (keystore or epoch failure with `last_error` diagnostic string) |
+| Complete Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` exports `createRepositories({ db })` returning all 18 domain repositories (`users`, `rooms`, `roomMembers`, `roomOrder`, `messages`, `attachments`, `reactions`, `readState`, `drafts`, `blockedUsers`, `outbox`, `roomPreferences`, `nicknames`, `deviceNames`, `starredItems`, `syncState`, `processedEvents`, `mlsRooms`) and re-exports all 18 factories and `makeKey` |
+| Unit Test Suites | `tests/unit/repositories-sync-state.test.js` (16 cases), `tests/unit/repositories-processed-events.test.js` (13 cases), and `tests/unit/repositories-mls-rooms.test.js` (16 cases) registered under `unit-smoke` batch in `test-batches.js` |
+| Contract Documentation | `packages/app/docs/storage/sync-state.md`, `packages/app/docs/storage/processed-events.md`, and `packages/app/docs/storage/mls-rooms.md` authored; index updated in `packages/app/docs/storage/README.md` |

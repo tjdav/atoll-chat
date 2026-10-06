@@ -13,6 +13,9 @@ import { createRoomPreferencesRepository } from './room-preferences.js'
 import { createNicknamesRepository } from './nicknames.js'
 import { createDeviceNamesRepository } from './device-names.js'
 import { createStarredItemsRepository } from './starred-items.js'
+import { createSyncStateRepository } from './sync-state.js'
+import { createProcessedEventsRepository, makeKey } from './processed-events.js'
+import { createMlsRoomsRepository } from './mls-rooms.js'
 
 /**
  * Creates and returns all domain repository instances bound to the given database.
@@ -37,7 +40,10 @@ export function createRepositories({ db }) {
     roomPreferences: createRoomPreferencesRepository({ db }),
     nicknames: createNicknamesRepository({ db }),
     deviceNames: createDeviceNamesRepository({ db }),
-    starredItems: createStarredItemsRepository({ db })
+    starredItems: createStarredItemsRepository({ db }),
+    syncState: createSyncStateRepository({ db }),
+    processedEvents: createProcessedEventsRepository({ db }),
+    mlsRooms: createMlsRoomsRepository({ db })
   }
 }
 
@@ -56,5 +62,9 @@ export {
   createRoomPreferencesRepository,
   createNicknamesRepository,
   createDeviceNamesRepository,
-  createStarredItemsRepository
+  createStarredItemsRepository,
+  createSyncStateRepository,
+  createProcessedEventsRepository,
+  makeKey,
+  createMlsRoomsRepository
 }

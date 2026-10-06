@@ -22,6 +22,9 @@ workflow, and the repository layer.
 | [nicknames.md](./nicknames.md) | The nicknames table and its repository. |
 | [device-names.md](./device-names.md) | The device_names table and its repository. |
 | [starred-items.md](./starred-items.md) | The starred_items table and its repository. |
+| [sync-state.md](./sync-state.md) | The sync_state table and its repository for per-room message sync cursors. |
+| [processed-events.md](./processed-events.md) | The processed_events table and its repository for durable event deduplication. |
+| [mls-rooms.md](./mls-rooms.md) | The mls_rooms table and its repository for client-visible MLS group metadata. |
 
 ## Related
 
