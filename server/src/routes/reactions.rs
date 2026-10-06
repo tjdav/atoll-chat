@@ -141,26 +141,29 @@ pub async fn add(
     )
     .await;
 
-    // Phase 10: For whisper messages (target_user_ids non-null on the parent message),
-    // reaction events must route to each recipient's private-user-{user_id} channel and
-    // to the sender's own channel. The room channel must receive nothing for a whisper.
-    // See §8.9 notes.
-    let channel = format!("private-room-{}", room_id);
-    let event_payload = json!({
-        "id": result.id,
-        "room_id": room_id,
-        "message_id": msg_id,
-        "sender_user_id": auth.user_id,
-        "reaction": reaction_str,
-        "created_at": result.created_at.to_rfc3339(),
-    });
+    // Publish event only if this is a new or reactivated reaction (result.is_new)
+    if result.is_new {
+        // Phase 10: For whisper messages (target_user_ids non-null on the parent message),
+        // reaction events must route to each recipient's private-user-{user_id} channel and
+        // to the sender's own channel. The room channel must receive nothing for a whisper.
+        // See §8.9 notes.
+        let channel = format!("private-room-{}", room_id);
+        let event_payload = json!({
+            "id": result.id,
+            "room_id": room_id,
+            "message_id": msg_id,
+            "sender_user_id": auth.user_id,
+            "reaction": reaction_str,
+            "created_at": result.created_at.to_rfc3339(),
+        });
 
-    if let Err(e) = state
-        .publisher
-        .publish(&channel, "reaction.added", event_payload)
-        .await
-    {
-        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+        if let Err(e) = state
+            .publisher
+            .publish(&channel, "reaction.added", event_payload)
+            .await
+        {
+            tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+        }
     }
 
     let status_code = if result.is_new {
@@ -192,6 +195,8 @@ pub async fn remove(
 ) -> Result<impl IntoResponse, ApiError> {
     // Note: Per V3 spec, rate limit applies to ADD endpoint only. Delete is not rate-limited.
 
+    let config = crate::config_ops::get_config(&state.pool).await?;
+
     let remove_req = RemoveRequest {
         room_id: room_id.clone(),
         message_id: msg_id.clone(),
@@ -199,29 +204,32 @@ pub async fn remove(
         requester_user_id: auth.user_id.clone(),
     };
 
-    let remove_res = match reactions::write::remove_reaction(&state.pool, remove_req).await {
-        Ok(res) => res,
-        Err(ReactionError::InvalidReaction(reason)) => {
-            return Err(ApiError::InternalWithDetails(
-                StatusCode::BAD_REQUEST,
-                "invalid_reaction".to_string(),
-                json!({ "reason": reason }),
-            ));
-        }
-        Err(ReactionError::NotAMember) => {
-            return Err(ApiError::NotFound("room_not_found".to_string()));
-        }
-        Err(ReactionError::NotFound) => {
-            return Err(ApiError::NotFound("reaction_not_found".to_string()));
-        }
-        Err(ReactionError::Forbidden) => {
-            return Err(ApiError::Forbidden("forbidden".to_string()));
-        }
-        Err(ReactionError::Database(e)) => return Err(ApiError::Internal(e.into())),
-        Err(ReactionError::MessageNotFound)
-        | Err(ReactionError::AlreadyExists)
-        | Err(ReactionError::LimitReached) => unreachable!(),
-    };
+    let remove_res =
+        match reactions::write::remove_reaction(&state.pool, remove_req, &config.moderation_mode)
+            .await
+        {
+            Ok(res) => res,
+            Err(ReactionError::InvalidReaction(reason)) => {
+                return Err(ApiError::InternalWithDetails(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_reaction".to_string(),
+                    json!({ "reason": reason }),
+                ));
+            }
+            Err(ReactionError::NotAMember) => {
+                return Err(ApiError::NotFound("room_not_found".to_string()));
+            }
+            Err(ReactionError::NotFound) => {
+                return Err(ApiError::NotFound("reaction_not_found".to_string()));
+            }
+            Err(ReactionError::Forbidden) => {
+                return Err(ApiError::Forbidden("forbidden".to_string()));
+            }
+            Err(ReactionError::Database(e)) => return Err(ApiError::Internal(e.into())),
+            Err(ReactionError::MessageNotFound)
+            | Err(ReactionError::AlreadyExists)
+            | Err(ReactionError::LimitReached) => unreachable!(),
+        };
 
     // Audit log
     let _ = audit::log(

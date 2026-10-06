@@ -405,4 +405,140 @@ async fn test_reaction_write_flow() {
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NO_CONTENT);
+
+    // 14. Moderator authorization in Discord vs Messenger mode
+    // User2 adds a reaction
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
+        .header("Authorization", format!("Bearer {}", user2_token))
+        .header("Content-Type", "application/json")
+        .body(axum::body::Body::from(
+            json!({
+                "reaction": "🚀",
+                "sender_client_id": user2_client_id
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let mod_target_rxn_id = serde_json::from_slice::<Value>(&body_bytes).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Promote user3 to moderator
+    sqlx::query("UPDATE room_members SET role = 'moderator' WHERE room_id = ? AND user_id = ?")
+        .bind(room_id)
+        .bind(&user3_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // In Messenger mode (default), moderator user3 tries to delete user2's reaction -> 403 Forbidden
+    let req = axum::http::Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions/{}",
+            room_id, msg_id, mod_target_rxn_id
+        ))
+        .header("Authorization", format!("Bearer {}", user3_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+    // Set moderation_override = 'discord' for room
+    sqlx::query("UPDATE rooms SET moderation_override = 'discord' WHERE id = ?")
+        .bind(room_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // In Discord mode, moderator user3 deletes user2's reaction -> 204 No Content
+    let req = axum::http::Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions/{}",
+            room_id, msg_id, mod_target_rxn_id
+        ))
+        .header("Authorization", format!("Bearer {}", user3_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
+
+    // 15. Delete endpoint is unthrottled: 100 sequential deletes return 404 (or 204) without 429
+    for i in 0..100 {
+        let req = axum::http::Request::builder()
+            .method("DELETE")
+            .uri(format!(
+                "/api/v1/rooms/{}/messages/{}/reactions/nonexistent_rxn_{}",
+                room_id, msg_id, i
+            ))
+            .header("Authorization", format!("Bearer {}", owner_token))
+            .body(axum::body::Body::empty())
+            .unwrap();
+        let res = app.clone().oneshot(req).await.unwrap();
+        assert_ne!(
+            res.status(),
+            StatusCode::TOO_MANY_REQUESTS,
+            "Delete endpoint must not be rate limited"
+        );
+    }
+
+    // 16. Database UNIQUE constraint enforcement
+    let insert_result = sqlx::query(
+        r#"
+        INSERT INTO reactions (id, room_id, message_id, sender_user_id, sender_client_id, reaction)
+        VALUES ('dup_1', ?, ?, ?, ?, '🎉'), ('dup_2', ?, ?, ?, ?, '🎉')
+        "#,
+    )
+    .bind(room_id)
+    .bind(msg_id)
+    .bind(&user2_id)
+    .bind(user2_client_id)
+    .bind(room_id)
+    .bind(msg_id)
+    .bind(&user2_id)
+    .bind(user2_client_id)
+    .execute(&pool)
+    .await;
+    assert!(
+        insert_result.is_err(),
+        "Direct insert of duplicate reaction must trigger SQLite UNIQUE constraint violation"
+    );
+
+    // 17. Database Cascade Deletion on parent room deletion
+    let rxn_count_before: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM reactions WHERE room_id = ?")
+            .bind(room_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(rxn_count_before > 0);
+
+    sqlx::query("DELETE FROM rooms WHERE id = ?")
+        .bind(room_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let rxn_count_after: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM reactions WHERE room_id = ?")
+            .bind(room_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(
+        rxn_count_after, 0,
+        "Deleting parent room must cascade-delete all reactions in database"
+    );
 }
