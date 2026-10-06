@@ -143,6 +143,7 @@ async fn test_sync_response_contract_bot_settings_and_max_seq() {
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: config.server_max_room_metadata_bytes,
+        edit_window_seconds: config.server_max_edit_window_seconds,
     });
 
     let cleanup_ctx = server::cleanup::CleanupContext {
@@ -334,6 +335,7 @@ async fn test_sync_pruning_job_tombstone_active_and_idempotency() {
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: config.server_max_room_metadata_bytes,
+        edit_window_seconds: config.server_max_edit_window_seconds,
     });
 
     let cleanup_ctx = server::cleanup::CleanupContext {

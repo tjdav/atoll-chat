@@ -190,20 +190,23 @@ async fn test_message_edit_write_flow() {
     )
     .await;
 
-    assert_eq!(status_e1, StatusCode::OK);
+    assert_eq!(status_e1, StatusCode::CREATED);
     assert_eq!(headers_e1.get("cache-control").unwrap(), "no-store");
-    assert_eq!(edit1_body["original_id"], orig_msg_id);
+    assert_eq!(edit1_body["edit_of"], orig_msg_id);
     assert_eq!(edit1_body["edit_sequence"], 1);
     assert_eq!(edit1_body["epoch"], 0);
-    let edit1_id = edit1_body["edit_id"].as_str().unwrap().to_string();
+    let edit1_id = edit1_body["id"].as_str().unwrap().to_string();
 
-    // Verify original message has edited_at set
-    let (orig_edited_at,): (Option<String>,) =
-        sqlx::query_as("SELECT edited_at FROM room_messages WHERE id = ?")
-            .bind(&orig_msg_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    // Verify original message retains original ciphertext, created_at, edit_sequence=0
+    let (orig_ct_db, orig_seq, orig_edited_at): (Vec<u8>, i64, Option<String>) = sqlx::query_as(
+        "SELECT ciphertext, edit_sequence, edited_at FROM room_messages WHERE id = ?",
+    )
+    .bind(&orig_msg_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(orig_ct_db, BASE64.decode(&orig_ct).unwrap());
+    assert_eq!(orig_seq, 0);
     assert!(orig_edited_at.is_some());
 
     // 4. Second edit
@@ -217,8 +220,8 @@ async fn test_message_edit_write_flow() {
     )
     .await;
 
-    assert_eq!(status_e2, StatusCode::OK);
-    assert_eq!(edit2_body["original_id"], orig_msg_id);
+    assert_eq!(status_e2, StatusCode::CREATED);
+    assert_eq!(edit2_body["edit_of"], orig_msg_id);
     assert_eq!(edit2_body["edit_sequence"], 2);
 
     // 5. Verify edit row properties
@@ -356,4 +359,44 @@ async fn test_message_edit_authorization_and_states() {
     .await;
     assert_eq!(status_commit, StatusCode::BAD_REQUEST);
     assert_eq!(edit_commit_body["error"], "not_editable");
+
+    // 6. Editing an edit row (flat-chain rule) -> 400 cannot_edit_edit
+    let fresh_msg_ct = BASE64.encode(b"fresh message");
+    let (status_fresh, submit_fresh) = do_post(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages"),
+        &token1,
+        &json!({
+            "sender_client_id": client1_id,
+            "epoch": 0,
+            "content_type": "application",
+            "ciphertext": fresh_msg_ct
+        }),
+    )
+    .await;
+    assert_eq!(status_fresh, StatusCode::CREATED);
+    let fresh_msg_id = submit_fresh["message_id"].as_str().unwrap();
+
+    let (status_edit1, edit1_res, _) = do_patch(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{fresh_msg_id}"),
+        &token1,
+        Some(&client1_id),
+        &json!({ "ciphertext": edit_ct }),
+    )
+    .await;
+    assert_eq!(status_edit1, StatusCode::CREATED);
+    let edit_row_id = edit1_res["id"].as_str().unwrap();
+
+    // Attempt to edit the edit row directly
+    let (status_edit_of_edit, edit_of_edit_body, _) = do_patch(
+        &app,
+        &format!("/api/v1/rooms/{room_id}/messages/{edit_row_id}"),
+        &token1,
+        Some(&client1_id),
+        &json!({ "ciphertext": edit_ct }),
+    )
+    .await;
+    assert_eq!(status_edit_of_edit, StatusCode::BAD_REQUEST);
+    assert_eq!(edit_of_edit_body["error"], "cannot_edit_edit");
 }

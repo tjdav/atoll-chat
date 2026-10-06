@@ -15,6 +15,7 @@ pub struct InstanceLimits {
     pub call_max_participants: i64,
     pub reactions_per_message: i64,
     pub room_metadata_bytes: i64,
+    pub edit_window_seconds: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -29,6 +30,7 @@ pub struct ServerHardMax {
     pub call_max_participants: i64,
     pub reactions_per_message: i64,
     pub room_metadata_bytes: i64,
+    pub edit_window_seconds: i64,
 }
 
 impl Default for ServerHardMax {
@@ -44,6 +46,7 @@ impl Default for ServerHardMax {
             call_max_participants: 50,
             reactions_per_message: 50,
             room_metadata_bytes: 65536,
+            edit_window_seconds: 86400,
         }
     }
 }
@@ -60,6 +63,7 @@ impl LimitMin {
     pub const CALL_MAX_PARTICIPANTS: i64 = 2;
     pub const REACTIONS_PER_MESSAGE: i64 = 1;
     pub const ROOM_METADATA_BYTES: i64 = 1024; // 1KB
+    pub const EDIT_WINDOW_SECONDS: i64 = 60;
 }
 
 pub struct LimitDefault;
@@ -74,6 +78,7 @@ impl LimitDefault {
     pub const CALL_MAX_PARTICIPANTS: i64 = 8;
     pub const REACTIONS_PER_MESSAGE: i64 = 50;
     pub const ROOM_METADATA_BYTES: i64 = 16384;
+    pub const EDIT_WINDOW_SECONDS: i64 = 900;
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -163,6 +168,12 @@ pub async fn get_limits(
         .unwrap_or(LimitDefault::ROOM_METADATA_BYTES)
         .min(server_max.room_metadata_bytes);
 
+    let edit_window_seconds = map
+        .get("edit_window_seconds")
+        .copied()
+        .unwrap_or(LimitDefault::EDIT_WINDOW_SECONDS)
+        .min(server_max.edit_window_seconds);
+
     Ok(InstanceLimits {
         file_size_bytes,
         room_size,
@@ -174,6 +185,7 @@ pub async fn get_limits(
         call_max_participants,
         reactions_per_message,
         room_metadata_bytes,
+        edit_window_seconds,
     })
 }
 
@@ -243,6 +255,12 @@ pub async fn set_limits(
         LimitMin::ROOM_METADATA_BYTES,
         server_max.room_metadata_bytes,
     )?;
+    validate_field(
+        "edit_window_seconds",
+        new_limits.edit_window_seconds,
+        LimitMin::EDIT_WINDOW_SECONDS,
+        server_max.edit_window_seconds,
+    )?;
 
     let mut tx = pool.begin().await?;
 
@@ -260,6 +278,7 @@ pub async fn set_limits(
         ("call_max_participants", new_limits.call_max_participants),
         ("reactions_per_message", new_limits.reactions_per_message),
         ("room_metadata_bytes", new_limits.room_metadata_bytes),
+        ("edit_window_seconds", new_limits.edit_window_seconds),
     ];
 
     for (k, v) in pairs {

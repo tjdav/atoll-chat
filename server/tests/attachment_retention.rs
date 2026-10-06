@@ -27,6 +27,7 @@ fn test_server_max() -> ServerHardMax {
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: 65536,
+        edit_window_seconds: 86400,
     }
 }
 
@@ -42,6 +43,7 @@ fn test_instance_limits() -> InstanceLimits {
         call_max_participants: 8,
         reactions_per_message: 50,
         room_metadata_bytes: 16384,
+        edit_window_seconds: 900,
     }
 }
 

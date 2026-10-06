@@ -39,6 +39,7 @@ fn build_ctx(pool: SqlitePool, config: Config) -> CleanupContextOwned {
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: 65536,
+        edit_window_seconds: config_arc.server_max_edit_window_seconds,
     });
 
     CleanupContextOwned {
