@@ -35,6 +35,7 @@ test('3. client.context returns keys directly without wrapper', async () => {
   assert.equal(typeof ctx.meta.get, 'function')
   assert.equal(typeof ctx.meta.set, 'function')
   assert.equal(typeof ctx.meta.delete, 'function')
+  assert.equal(typeof ctx.repos, 'function')
   assert.equal(ctx.storage, undefined)
 })
 
@@ -50,6 +51,7 @@ test('4. server.context returns direct key shape', () => {
   assert.equal(typeof ctx.execute, 'function')
   assert.equal(typeof ctx.transaction, 'function')
   assert.equal(typeof ctx.meta, 'object')
+  assert.equal(typeof ctx.repos, 'function')
   assert.equal(ctx.storage, undefined)
 })
 
@@ -87,6 +89,83 @@ test('7. server context close is a no-op', () => {
 test('8. server context meta.get returns undefined', async () => {
   const plugin = storagePlugin()
   const ctx = plugin.server.context({})({})
-  const val = await ctx.meta.get('anything')
-  assert.equal(val, undefined)
+  assert.equal(await ctx.meta.get('anything'), undefined)
+})
+
+test('9. client.context exposes repos as a function', async () => {
+  const plugin = storagePlugin({ migrations: sampleMigrations })
+  const clientContextResolver = await plugin.client.context({})
+  const ctx = clientContextResolver({})
+  assert.equal(typeof ctx.repos, 'function')
+})
+
+test('10. repos() returns an object with all eighteen repositories', async () => {
+  const plugin = storagePlugin({ migrations: sampleMigrations })
+  const clientContextResolver = await plugin.client.context({})
+  const ctx = clientContextResolver({})
+  const repos = ctx.repos()
+
+  const expectedRepos = [
+    'users',
+    'rooms',
+    'roomMembers',
+    'roomOrder',
+    'messages',
+    'attachments',
+    'reactions',
+    'readState',
+    'drafts',
+    'blockedUsers',
+    'outbox',
+    'roomPreferences',
+    'nicknames',
+    'deviceNames',
+    'starredItems',
+    'syncState',
+    'processedEvents',
+    'mlsRooms'
+  ]
+
+  for (const repoName of expectedRepos) {
+    assert.equal(typeof repos[repoName], 'object', `Missing repository: ${repoName}`)
+  }
+  assert.equal(Object.keys(repos).length, 18)
+})
+
+test('11. repos() returns the same object on consecutive calls (memoization)', async () => {
+  const plugin = storagePlugin({ migrations: sampleMigrations })
+  const clientContextResolver = await plugin.client.context({})
+  const ctx = clientContextResolver({})
+  assert.strictEqual(ctx.repos(), ctx.repos())
+})
+
+test('12. two calls to client.context with same pluginContext return same repos instance', async () => {
+  const plugin = storagePlugin({ migrations: sampleMigrations })
+  const pluginCtx = {}
+  const resolver1 = await plugin.client.context(pluginCtx)
+  const resolver2 = await plugin.client.context(pluginCtx)
+
+  const ctx1 = resolver1({})
+  const ctx2 = resolver2({})
+
+  assert.strictEqual(ctx1.repos(), ctx2.repos())
+})
+
+test('13. repository methods match expected convention shape', async () => {
+  const plugin = storagePlugin({ migrations: sampleMigrations })
+  const clientContextResolver = await plugin.client.context({})
+  const ctx = clientContextResolver({})
+  const repos = ctx.repos()
+
+  assert.equal(typeof repos.users.get, 'function')
+  assert.equal(typeof repos.users.upsert, 'function')
+  assert.equal(typeof repos.rooms.get, 'function')
+  assert.equal(typeof repos.messages.get, 'function')
+})
+
+test('14. server context exposes repos as a function that throws during SSR', () => {
+  const plugin = storagePlugin()
+  const ctx = plugin.server.context({})({})
+  assert.equal(typeof ctx.repos, 'function')
+  assert.throws(() => ctx.repos(), /storage.repos is not available during SSR/)
 })

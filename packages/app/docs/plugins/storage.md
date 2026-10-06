@@ -3,15 +3,15 @@
 ### Import pattern
 
 The `client.context` uses a Phase 1 async dynamic import to load
-`../lib/db/index.js` into the browser bundle. This is required: static top-level
+`../lib/db/index.js` and `../lib/db/repositories/index.js` into the browser bundle. This is required: static top-level
 imports in the plugin file are not hoisted into the serialized client
 bundle. See `docs/plugins/README.md` for the cross-cutting rule.
 
-The `storage` plugin provides SQLite persistence, WASM+OPFS browser storage, in-memory fallback backend abstractions, the forward-only migration runner, and key-value metadata helpers (`meta`).
+The `storage` plugin provides SQLite persistence, WASM+OPFS browser storage, in-memory fallback backend abstractions, the forward-only migration runner, key-value metadata helpers (`meta`), and the repository aggregator accessor (`repos`).
 
 ## Overview
 
-Every client data model (messages, rooms, members, preferences) is persisted in SQLite per spec §4.5 and §23.1. The `storage` plugin establishes the database factory, backend resolver, migration runner, and meta table subsystem without imposing domain schema assumptions.
+Every client data model (messages, rooms, members, preferences) is persisted in SQLite per spec §4.5 and §23.1. The `storage` plugin establishes the database factory, backend resolver, migration runner, meta table subsystem, and domain repository accessor without imposing direct module imports on components.
 
 ## Async Storage Contract
 
@@ -32,12 +32,39 @@ The `storage` plugin name **is** the namespace. The context resolver returns met
 | `meta.get(key)` | `(key: string) => Promise<any>` | Reads `_meta` key and parses `value_json`. Returns `undefined` if missing. |
 | `meta.set(key, value)` | `(key: string, value: any) => Promise<{ changes: number }>` | Upserts `_meta` row with `JSON.stringify(value)` and current timestamp. |
 | `meta.delete(key)` | `(key: string) => Promise<{ changes: number }>` | Deletes `_meta` row. |
+| `repos()` | `() => RepositoryAggregator` | Returns the repository aggregator bound to the singleton DB instance. |
 
 ### `isPersistent()`
 
 - **Signature**: `isPersistent(): Promise<boolean> | boolean`
 - **Returns**: `true` when the database backend persists data across browser reloads (WASM with OPFS). Returns `false` for the memory backend and for the WASM backend's in-memory fallback.
 - **Consumers**: Consumers (such as `messenger-boot`) query `isPersistent()` after opening storage and surface the result to `$state.storagePersistent`. Future notification components observe this key to warn users about ephemeral storage when OPFS is unavailable per spec §21.6.
+
+### Repository accessor — `repos()`
+
+`ctx.storage.repos()` returns the repository aggregator bound to the singleton
+DB instance. Call it once after `open()` resolves, or call it lazily wherever
+repositories are needed; it is memoized and cheap.
+
+```javascript
+const repos = storage.repos()
+const room = await repos.rooms.get('r_abc123')
+const members = await repos.roomMembers.listInRoom('r_abc123')
+```
+
+The aggregator exposes eighteen repositories. The full list and each
+repository's method set is documented at `packages/app/docs/storage/`.
+
+**Before `open()` resolves.** A repository method that hits the DB before
+`storage.open()` has resolved will throw the underlying DB error. Callers
+should await `storage.open()` — directly or via the boot sequence's
+`$state.storageReady` — before using repositories in a code path that
+runs on first paint. The boot sequence opens storage in the background
+(see C-INFRA-10); components that need data immediately await `open()` or
+observe `$state.storageReady`.
+
+**SSR.** The server context's `repos()` throws. Components that render
+data from the DB must guard on the client-only path.
 
 ## Migration Workflow
 
@@ -73,13 +100,12 @@ The backend resolver `resolveBackend({ prefer })` selects the active backend:
 
 ## Failure Modes
 
-1. **SSR Usage**: Calling `open()`, `query()`, `queryOne()`, `execute()`, or `transaction()` during server-side rendering throws a descriptive `Error` ("The database is client-only").
+1. **SSR Usage**: Calling `open()`, `query()`, `queryOne()`, `execute()`, `transaction()`, or `repos()` during server-side rendering throws a descriptive `Error` ("The database is client-only").
 2. **Unsupported SQL**: The memory backend parses a narrow set of SQL statements (`CREATE TABLE`, `INSERT`, `SELECT`, `UPDATE`, `DELETE`). Complex or unhandled SQL throws naming the unsupported statement.
 3. **OPFS Unavailability**: If OPFS fails, the WASM backend degrades gracefully to in-memory SQLite (`isPersistent() === false`).
 4. **Migration Failure**: A migration error mid-execution triggers `ROLLBACK` and throws naming the failing migration file.
 
 ## What Is Not Implemented
 
-- Domain tables (`rooms`, `messages`, `members`, etc.) — delivered in follow-on domain tasks.
-- Domain repositories — delivered alongside domain tables.
 - Native SQLite backends — delivered in platform binding tasks.
+- All 18 domain repositories are fully implemented and reachable via `ctx.storage.repos()`.
