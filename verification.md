@@ -805,3 +805,18 @@
 - **Question asked:** What is the repository state across existing device tests, event capture harnesses, login test helpers, transaction rollback patterns, user_seq inspection, batch assignments, and V2 remnants?
 - **Answer found:** Verified all existing tests, confirmed Sockudo MockServer harness pattern, documented `login_user` and Axum `oneshot` request helpers, detailed direct `user_seq` query pattern, confirmed batch assignment (`auth` batch for `devices.rs` and `login.rs`), and documented limitation regarding production test hooks for forced rollbacks (leading to `#[ignore]` strategy for tests 6 & 7).
 - **Link to report:** [verification/device-model-tests/report.md](verification/device-model-tests/report.md)
+
+## Task 26 — Room Metadata with Encrypted Blob Verification
+- **ID:** Task 26 Room Metadata Encrypted
+- **Date:** 2026-10-06
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §1.2, §3.2, §4.1, §4.4, §7.4, §8.4, §8.9, §10, §12
+- **Question asked:** What is the canonical implementation for room metadata schema, limits, authorization, `metadata_version` increment rules, and `room.updated` event payload?
+- **Answer found:**
+  - **Schema:** `rooms` table in `server/migrations/0001_v2_schema.sql` contains `metadata` (TEXT) and `metadata_version` (INTEGER NOT NULL DEFAULT 1), matching §7.4.
+  - **Limits:** Configured via `SERVER_MAX_ROOM_METADATA_BYTES` (64 KB hard max) and `ROOM_METADATA_MAX_BYTES` (16 KB instance default, range 1 KB – 64 KB).
+  - **`metadata_version` Rule:** Increments by 1 on metadata modification only. No-op PATCH with unchanged metadata preserves `metadata_version` without incrementing and skips event emission.
+  - **`room.updated` Event Payload:** Carries `{ room_id, metadata }` on `private-room-{room_id}` per §8.9. Best-effort delivery.
+  - **Authorization:** `owner` or `moderator` (Discord mode) / `owner` (Messenger mode) per §3.2.
+  - **Opacity Invariant:** The server never decrypts or inspects `metadata`. Verbatim ciphertext string roundtrip verified byte-for-byte.
+- **Link to report:** [verification/room-metadata-encrypted/report.md](verification/room-metadata-encrypted/report.md)

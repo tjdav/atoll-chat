@@ -50,6 +50,7 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
         attachment_retention_days: 365,
         call_max_participants: 50,
         reactions_per_message: 50,
+        room_metadata_bytes: config_arc.server_max_room_metadata_bytes,
     });
 
     let sockudo_config = server::SockudoConfig {

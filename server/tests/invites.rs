@@ -849,6 +849,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         attachment_retention_days: 365,
         call_max_participants: 50,
         reactions_per_message: 50,
+        room_metadata_bytes: cfg_arc.server_max_room_metadata_bytes,
     });
 
     let sockudo_config = server::SockudoConfig {

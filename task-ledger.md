@@ -49,9 +49,9 @@
 - **MIG-RESET — Consolidate Layered Migrations into a Single V2 Schema**: done
   - **Delivered:** `server/migrations/0001_v2_schema.sql` (single baseline migration replacing all 35 legacy files), `server/tests/migration_schema.rs`, `server/tests/fixtures/pre_consolidation_schema.txt`, `server/README.md`.
   - **Batch:** `operations`
-- **Task 26 — Room Metadata with Encrypted Payload**: done
-  - **Migration:** `0026_rooms_metadata.sql` (Case A: dropped `name_encrypted`, added `metadata` and `metadata_version`).
-  - **Delivered:** `0026_rooms_metadata.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/error.rs`, `server/README.md`, `room_metadata_write.rs`, `room_metadata_validation.rs`, `room_metadata_events.rs`.
+- **Task 26 — Room Metadata with Encrypted Blob (Phase 6)**: done
+  - **Migration:** None (Case A: reuses `rooms.metadata` and `rooms.metadata_version` in `0001_v2_schema.sql`).
+  - **Delivered:** Step 0 Empirical Report at `verification/room-metadata-encrypted/report.md`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/config.rs`, `server/src/limits.rs`, `server/src/main.rs`, `room_metadata_write.rs`, `room_metadata_validation.rs`, `room_metadata_events.rs`.
   - **Batch:** `messaging`
 - **Task 27 — Message Editing**: done
   - **Migration:** `0027_message_edit_columns.sql` (Case A: added `edit_of`, `edit_sequence`, `edited_at` columns and `idx_room_messages_edit_of` partial index).

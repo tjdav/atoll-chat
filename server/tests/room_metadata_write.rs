@@ -282,3 +282,269 @@ async fn test_missing_metadata_field_returns_400() {
     assert_eq!(json_p["error"], "missing_field");
     assert_eq!(json_p["details"]["field"], "metadata");
 }
+
+#[tokio::test]
+async fn test_moderation_modes_discord_and_messenger() {
+    let (app, pool) = setup_test_app().await;
+    let (_user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice_mod", "device_client_id_a_mod").await;
+    let (user_b_id, token_b) =
+        create_test_user(&app, &pool, "bob_mod", "device_client_id_b_mod").await;
+
+    // 1. Create room and add Bob
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    let req_add = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/members", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "user_id": user_b_id }).to_string()))
+        .unwrap();
+    app.clone().oneshot(req_add).await.unwrap();
+
+    // Set moderation mode to discord
+    sqlx::query("INSERT INTO instance_config (key, value) VALUES ('moderation_mode', 'discord') ON CONFLICT(key) DO UPDATE SET value = 'discord'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Promote Bob to moderator
+    let req_promote = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/api/v1/rooms/{}/members/{}/promote",
+            room_id, user_b_id
+        ))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_promote = app.clone().oneshot(req_promote).await.unwrap();
+    assert_eq!(resp_promote.status(), StatusCode::NO_CONTENT);
+
+    // In Discord mode: Moderator Bob can update metadata
+    let blob = "bW9kZXJhdG9yX2Jsb2I";
+    let req_patch_mod = Request::builder()
+        .method("PATCH")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_b))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "metadata": blob }).to_string()))
+        .unwrap();
+    let resp_patch_mod = app.clone().oneshot(req_patch_mod).await.unwrap();
+    assert_eq!(resp_patch_mod.status(), StatusCode::OK);
+
+    // Set moderation mode to messenger
+    sqlx::query("UPDATE instance_config SET value = 'messenger' WHERE key = 'moderation_mode'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // In Messenger mode: Moderator Bob is forbidden from updating metadata
+    let blob2 = "bmV3X2Jsb2I";
+    let req_patch_mod2 = Request::builder()
+        .method("PATCH")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_b))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "metadata": blob2 }).to_string()))
+        .unwrap();
+    let resp_patch_mod2 = app.clone().oneshot(req_patch_mod2).await.unwrap();
+    assert_eq!(resp_patch_mod2.status(), StatusCode::FORBIDDEN);
+
+    // Owner Alice can still update metadata in Messenger mode
+    let req_patch_owner = Request::builder()
+        .method("PATCH")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "metadata": blob2 }).to_string()))
+        .unwrap();
+    let resp_patch_owner = app.oneshot(req_patch_owner).await.unwrap();
+    assert_eq!(resp_patch_owner.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_cross_room_isolation() {
+    let (app, pool) = setup_test_app().await;
+    let (_user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice_iso", "device_client_id_a_iso").await;
+
+    // Create Room A and Room B
+    let req_create_a = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create_a = app.clone().oneshot(req_create_a).await.unwrap();
+    let body_a = axum::body::to_bytes(resp_create_a.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_a: Value = serde_json::from_slice(&body_a).unwrap();
+    let room_a_id = json_a["id"].as_str().unwrap();
+
+    let req_create_b = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create_b = app.clone().oneshot(req_create_b).await.unwrap();
+    let body_b = axum::body::to_bytes(resp_create_b.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_b: Value = serde_json::from_slice(&body_b).unwrap();
+    let room_b_id = json_b["id"].as_str().unwrap();
+
+    // PATCH Room A
+    let blob_a = "cm9vbV9hX2Jsb2I";
+    let req_patch_a = Request::builder()
+        .method("PATCH")
+        .uri(format!("/api/v1/rooms/{}", room_a_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "metadata": blob_a }).to_string()))
+        .unwrap();
+    let resp_patch_a = app.clone().oneshot(req_patch_a).await.unwrap();
+    assert_eq!(resp_patch_a.status(), StatusCode::OK);
+
+    // GET Room B -> metadata is still null, metadata_version is still 1
+    let req_get_b = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_b_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_get_b = app.oneshot(req_get_b).await.unwrap();
+    assert_eq!(resp_get_b.status(), StatusCode::OK);
+
+    let body_gb = axum::body::to_bytes(resp_get_b.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_gb: Value = serde_json::from_slice(&body_gb).unwrap();
+    assert_eq!(json_gb["metadata"], Value::Null);
+    assert_eq!(json_gb["metadata_version"], 1);
+}
+
+#[tokio::test]
+async fn test_ciphertext_roundtrip_byte_for_byte() {
+    let (app, pool) = setup_test_app().await;
+    let (_user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice_rt", "device_client_id_a_rt").await;
+
+    // Create room
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    // Store ciphertext blob representing encrypted room envelope
+    let raw_ciphertext = "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA";
+    let req_patch = Request::builder()
+        .method("PATCH")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "metadata": raw_ciphertext }).to_string(),
+        ))
+        .unwrap();
+
+    let resp_patch = app.clone().oneshot(req_patch).await.unwrap();
+    assert_eq!(resp_patch.status(), StatusCode::OK);
+
+    // GET room -> verify verbatim byte-for-byte string roundtrip
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+    assert_eq!(json_g["metadata"], raw_ciphertext);
+}
+
+#[tokio::test]
+async fn test_effective_limits_on_get_room() {
+    let (app, pool) = setup_test_app().await;
+
+    // Set instance_limits attachment_retention_days to 90
+    sqlx::query("INSERT INTO instance_limits (key, value) VALUES ('attachment_retention_days', '90') ON CONFLICT(key) DO UPDATE SET value = '90'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let (_user_a_id, token_a) =
+        create_test_user(&app, &pool, "alice_lim", "device_client_id_a_lim").await;
+
+    // Create room with custom retention and max_file_size_bytes override
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "retention_days": 30, "max_file_size_bytes": 52428800 }).to_string(),
+        ))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    assert_eq!(resp_create.status(), StatusCode::CREATED);
+
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    assert_eq!(json_c["effective_max_file_size_bytes"], 52428800);
+    assert_eq!(json_c["effective_message_retention_days"], 30);
+
+    // GET room verifies effective fields present
+    let req_get = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+
+    let resp_get = app.oneshot(req_get).await.unwrap();
+    assert_eq!(resp_get.status(), StatusCode::OK);
+
+    let body_g = axum::body::to_bytes(resp_get.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_g: Value = serde_json::from_slice(&body_g).unwrap();
+    assert_eq!(json_g["effective_max_file_size_bytes"], 52428800);
+    assert_eq!(json_g["effective_message_retention_days"], 30);
+}

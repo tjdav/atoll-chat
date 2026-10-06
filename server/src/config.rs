@@ -120,6 +120,7 @@ pub struct Config {
     pub invite_limited_max_open: i64,
     pub room_invite_default_uses: i64,
     pub room_invite_code_length: usize,
+    pub server_max_room_metadata_bytes: i64,
     pub max_room_metadata_bytes: usize,
     pub edit_window_seconds: i64,
     pub max_starred_items_per_user: u32,
@@ -392,10 +393,16 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(30);
 
-        let max_room_metadata_bytes = env::var("MAX_ROOM_METADATA_BYTES")
+        let server_max_room_metadata_bytes = env::var("SERVER_MAX_ROOM_METADATA_BYTES")
             .ok()
             .and_then(|s| s.parse().ok())
-            .unwrap_or(4096);
+            .unwrap_or(65_536);
+
+        let max_room_metadata_bytes = env::var("ROOM_METADATA_MAX_BYTES")
+            .or_else(|_| env::var("MAX_ROOM_METADATA_BYTES"))
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(16_384);
 
         let edit_window_seconds = env::var("EDIT_WINDOW_SECONDS")
             .ok()
@@ -1252,6 +1259,7 @@ impl Config {
             invite_limited_max_open,
             room_invite_default_uses,
             room_invite_code_length,
+            server_max_room_metadata_bytes,
             max_room_metadata_bytes,
             edit_window_seconds,
             max_starred_items_per_user,
@@ -1337,7 +1345,8 @@ impl Config {
             invite_limited_max_open: 50,
             room_invite_default_uses: 1,
             room_invite_code_length: 8,
-            max_room_metadata_bytes: 4096,
+            server_max_room_metadata_bytes: 65536,
+            max_room_metadata_bytes: 16384,
             rate_limits: RateLimitConfig {
                 invite_create_hourly: 50,
                 invite_create_daily: 200,

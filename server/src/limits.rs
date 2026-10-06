@@ -14,6 +14,7 @@ pub struct InstanceLimits {
     pub attachment_retention_days: i64,
     pub call_max_participants: i64,
     pub reactions_per_message: i64,
+    pub room_metadata_bytes: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -27,6 +28,7 @@ pub struct ServerHardMax {
     pub attachment_retention_days: i64,
     pub call_max_participants: i64,
     pub reactions_per_message: i64,
+    pub room_metadata_bytes: i64,
 }
 
 impl Default for ServerHardMax {
@@ -41,6 +43,7 @@ impl Default for ServerHardMax {
             attachment_retention_days: 365,
             call_max_participants: 50,
             reactions_per_message: 50,
+            room_metadata_bytes: 65536,
         }
     }
 }
@@ -56,6 +59,7 @@ impl LimitMin {
     pub const ATTACHMENT_RETENTION_DAYS: i64 = 0;
     pub const CALL_MAX_PARTICIPANTS: i64 = 2;
     pub const REACTIONS_PER_MESSAGE: i64 = 1;
+    pub const ROOM_METADATA_BYTES: i64 = 1024; // 1KB
 }
 
 pub struct LimitDefault;
@@ -69,6 +73,7 @@ impl LimitDefault {
     pub const ATTACHMENT_RETENTION_DAYS: i64 = 0;
     pub const CALL_MAX_PARTICIPANTS: i64 = 8;
     pub const REACTIONS_PER_MESSAGE: i64 = 50;
+    pub const ROOM_METADATA_BYTES: i64 = 16384;
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -152,6 +157,12 @@ pub async fn get_limits(
         .unwrap_or(LimitDefault::REACTIONS_PER_MESSAGE)
         .min(server_max.reactions_per_message);
 
+    let room_metadata_bytes = map
+        .get("room_metadata_bytes")
+        .copied()
+        .unwrap_or(LimitDefault::ROOM_METADATA_BYTES)
+        .min(server_max.room_metadata_bytes);
+
     Ok(InstanceLimits {
         file_size_bytes,
         room_size,
@@ -162,6 +173,7 @@ pub async fn get_limits(
         attachment_retention_days,
         call_max_participants,
         reactions_per_message,
+        room_metadata_bytes,
     })
 }
 
@@ -225,6 +237,12 @@ pub async fn set_limits(
         LimitMin::REACTIONS_PER_MESSAGE,
         server_max.reactions_per_message,
     )?;
+    validate_field(
+        "room_metadata_bytes",
+        new_limits.room_metadata_bytes,
+        LimitMin::ROOM_METADATA_BYTES,
+        server_max.room_metadata_bytes,
+    )?;
 
     let mut tx = pool.begin().await?;
 
@@ -241,6 +259,7 @@ pub async fn set_limits(
         ),
         ("call_max_participants", new_limits.call_max_participants),
         ("reactions_per_message", new_limits.reactions_per_message),
+        ("room_metadata_bytes", new_limits.room_metadata_bytes),
     ];
 
     for (k, v) in pairs {
