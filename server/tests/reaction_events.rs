@@ -56,7 +56,7 @@ async fn test_reaction_events_and_audit() {
     let msg_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let msg_id = msg_body["message_id"].as_str().unwrap();
 
-    // 1. Add reaction
+    // 1. Add reaction -> 201 Created
     let req = axum::http::Request::builder()
         .method("POST")
         .uri(format!(
@@ -68,13 +68,18 @@ async fn test_reaction_events_and_audit() {
         .body(axum::body::Body::from(
             json!({
                 "reaction": "🎉",
-                "client_id": client_id
+                "sender_client_id": client_id
             })
             .to_string(),
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let rxn_body: Value = serde_json::from_slice(&body_bytes).unwrap();
+    let rxn_id = rxn_body["id"].as_str().unwrap().to_string();
 
     // Verify reaction.create audit log
     let audit_rows = sqlx::query(
@@ -85,12 +90,12 @@ async fn test_reaction_events_and_audit() {
     .unwrap();
     assert_eq!(audit_rows.len(), 1);
 
-    // 2. Remove reaction
+    // 2. Remove reaction by rxn_id -> 204 No Content
     let req = axum::http::Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/api/v1/rooms/{}/messages/{}/reactions/%F0%9F%8E%89?client_id={}",
-            room_id, msg_id, client_id
+            "/api/v1/rooms/{}/messages/{}/reactions/{}",
+            room_id, msg_id, rxn_id
         ))
         .header("Authorization", format!("Bearer {}", user_token))
         .body(axum::body::Body::empty())

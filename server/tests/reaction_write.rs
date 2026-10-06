@@ -115,7 +115,7 @@ async fn test_reaction_write_flow() {
     let msg_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let msg_id = msg_body["message_id"].as_str().unwrap();
 
-    // 4. Add reaction by owner
+    // 4. Add reaction by owner -> returns 201 Created
     let req = axum::http::Request::builder()
         .method("POST")
         .uri(format!(
@@ -127,13 +127,13 @@ async fn test_reaction_write_flow() {
         .body(axum::body::Body::from(
             json!({
                 "reaction": "👍",
-                "client_id": owner_client_id
+                "sender_client_id": owner_client_id
             })
             .to_string(),
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
     assert_eq!(
         res.headers().get(header::CACHE_CONTROL).unwrap(),
         "no-store"
@@ -142,10 +142,12 @@ async fn test_reaction_write_flow() {
         .await
         .unwrap();
     let add_body: Value = serde_json::from_slice(&body_bytes).unwrap();
+    let reaction_id = add_body["id"].as_str().unwrap().to_string();
+    assert_eq!(add_body["room_id"], room_id);
     assert_eq!(add_body["message_id"], msg_id);
     assert_eq!(add_body["reaction"], "👍");
 
-    // 5. Add duplicate reaction by same user & client returns 409 already_reacted
+    // 5. Add duplicate reaction by same user & client returns 200 OK with same reaction id (idempotent repeat)
     let req = axum::http::Request::builder()
         .method("POST")
         .uri(format!(
@@ -157,20 +159,20 @@ async fn test_reaction_write_flow() {
         .body(axum::body::Body::from(
             json!({
                 "reaction": "👍",
-                "client_id": owner_client_id
+                "sender_client_id": owner_client_id
             })
             .to_string(),
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::CONFLICT);
+    assert_eq!(res.status(), StatusCode::OK);
     let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
         .await
         .unwrap();
-    let err_body: Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(err_body["error"], "already_reacted");
+    let repeat_body: Value = serde_json::from_slice(&body_bytes).unwrap();
+    assert_eq!(repeat_body["id"], reaction_id);
 
-    // 6. Two different reactions from same client succeed
+    // 6. Two different reactions from same client succeed -> 201 Created
     let req = axum::http::Request::builder()
         .method("POST")
         .uri(format!(
@@ -182,32 +184,28 @@ async fn test_reaction_write_flow() {
         .body(axum::body::Body::from(
             json!({
                 "reaction": "❤️",
-                "client_id": owner_client_id
+                "sender_client_id": owner_client_id
             })
             .to_string(),
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
 
-    // 7. Remove reaction (soft-delete)
+    // 7. Remove reaction by reaction_id (soft-delete)
     let req = axum::http::Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/api/v1/rooms/{}/messages/{}/reactions/%F0%9F%91%8D?client_id={}",
-            room_id, msg_id, owner_client_id
+            "/api/v1/rooms/{}/messages/{}/reactions/{}",
+            room_id, msg_id, reaction_id
         ))
         .header("Authorization", format!("Bearer {}", owner_token))
         .body(axum::body::Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NO_CONTENT);
-    assert_eq!(
-        res.headers().get(header::CACHE_CONTROL).unwrap(),
-        "no-store"
-    );
 
-    // 8. Subsequent add reactivates row
+    // 8. Subsequent re-add reactivates row -> 201 Created with same reaction_id
     let req = axum::http::Request::builder()
         .method("POST")
         .uri(format!(
@@ -219,13 +217,18 @@ async fn test_reaction_write_flow() {
         .body(axum::body::Body::from(
             json!({
                 "reaction": "👍",
-                "client_id": owner_client_id
+                "sender_client_id": owner_client_id
             })
             .to_string(),
         ))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let readd_body: Value = serde_json::from_slice(&body_bytes).unwrap();
+    assert_eq!(readd_body["id"], reaction_id);
 
     // 9. Non-member cannot add (HTTP 404 room_not_found)
     let (_non_member_id, non_member_token) =
@@ -274,8 +277,8 @@ async fn test_reaction_write_flow() {
     let req = axum::http::Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/api/v1/rooms/{}/messages/{}/reactions/🚀?client_id={}",
-            room_id, msg_id, owner_client_id
+            "/api/v1/rooms/{}/messages/{}/reactions/nonexistent_rxn_id",
+            room_id, msg_id
         ))
         .header("Authorization", format!("Bearer {}", owner_token))
         .body(axum::body::Body::empty())
@@ -283,16 +286,123 @@ async fn test_reaction_write_flow() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 
-    // 12. Remove another user's reaction returns 404
+    // 12. Remove another user's reaction: regular user returns 403 forbidden, room owner/moderator succeeds
+    // User2 adds a reaction
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
+        .header("Authorization", format!("Bearer {}", user2_token))
+        .header("Content-Type", "application/json")
+        .body(axum::body::Body::from(
+            json!({
+                "reaction": "🔥",
+                "sender_client_id": user2_client_id
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let user2_rxn_id = serde_json::from_slice::<Value>(&body_bytes).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Register user3 (regular member)
+    let (user3_id, user3_token) =
+        create_test_user(&app, &pool, "react_user3", "user3_client_12345").await;
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/members", room_id))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .header("Content-Type", "application/json")
+        .body(axum::body::Body::from(
+            json!({ "user_id": user3_id }).to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+
+    // Regular member user3 tries to remove user2's reaction -> 403 Forbidden
     let req = axum::http::Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/api/v1/rooms/{}/messages/{}/reactions/👍?client_id={}",
-            room_id, msg_id, owner_client_id
+            "/api/v1/rooms/{}/messages/{}/reactions/{}",
+            room_id, msg_id, user2_rxn_id
         ))
-        .header("Authorization", format!("Bearer {}", user2_token))
+        .header("Authorization", format!("Bearer {}", user3_token))
         .body(axum::body::Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+
+    // Room owner removes user2's reaction -> 204 No Content
+    let req = axum::http::Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions/{}",
+            room_id, msg_id, user2_rxn_id
+        ))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
+
+    // 13. Reaction on tombstoned message succeeds (§7.6)
+    // Delete the parent message (tombstone)
+    let req = axum::http::Request::builder()
+        .method("DELETE")
+        .uri(format!("/api/v1/rooms/{}/messages/{}", room_id, msg_id))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
+
+    // Adding reaction to tombstoned message succeeds -> 201 Created
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions",
+            room_id, msg_id
+        ))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .header("Content-Type", "application/json")
+        .body(axum::body::Body::from(
+            json!({
+                "reaction": "👏",
+                "sender_client_id": owner_client_id
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+    let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let tombstone_rxn_id = serde_json::from_slice::<Value>(&body_bytes).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Removing reaction from tombstoned message succeeds -> 204 No Content
+    let req = axum::http::Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/api/v1/rooms/{}/messages/{}/reactions/{}",
+            room_id, msg_id, tombstone_rxn_id
+        ))
+        .header("Authorization", format!("Bearer {}", owner_token))
+        .body(axum::body::Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NO_CONTENT);
 }

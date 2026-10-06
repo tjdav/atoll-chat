@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::{header, StatusCode},
     response::IntoResponse,
     Json,
@@ -25,19 +25,17 @@ use crate::{
 #[derive(Debug, Deserialize)]
 pub struct AddReactionInput {
     pub reaction: Option<String>,
-    pub client_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct RemoveReactionQuery {
+    pub sender_client_id: Option<String>,
     pub client_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 pub struct AddReactionResponse {
     pub id: String,
+    pub room_id: String,
     pub message_id: String,
     pub reaction: String,
+    pub sender_user_id: String,
     pub created_at: String,
 }
 
@@ -78,13 +76,16 @@ pub async fn add(
         )
     })?;
 
-    let client_id = payload.client_id.ok_or_else(|| {
-        ApiError::InternalWithDetails(
-            StatusCode::BAD_REQUEST,
-            "missing_field".to_string(),
-            json!({ "field": "client_id" }),
-        )
-    })?;
+    let client_id = payload
+        .sender_client_id
+        .or(payload.client_id)
+        .ok_or_else(|| {
+            ApiError::InternalWithDetails(
+                StatusCode::BAD_REQUEST,
+                "missing_field".to_string(),
+                json!({ "field": "sender_client_id" }),
+            )
+        })?;
 
     let effective_limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
     let limit = effective_limits.reactions_per_message;
@@ -112,9 +113,8 @@ pub async fn add(
         Err(ReactionError::MessageNotFound) => {
             return Err(ApiError::NotFound("message_not_found".to_string()));
         }
-        Err(ReactionError::AlreadyExists) => {
-            return Err(ApiError::Conflict("already_reacted".to_string()));
-        }
+        Err(ReactionError::AlreadyExists) => unreachable!(),
+        Err(ReactionError::Forbidden) => return Err(ApiError::Forbidden("forbidden".to_string())),
         Err(ReactionError::LimitReached) => {
             return Err(ApiError::InternalWithDetails(
                 StatusCode::CONFLICT,
@@ -141,13 +141,16 @@ pub async fn add(
     )
     .await;
 
-    // Sockudo publish reaction.added
+    // Phase 10: For whisper messages (target_user_ids non-null on the parent message),
+    // reaction events must route to each recipient's private-user-{user_id} channel and
+    // to the sender's own channel. The room channel must receive nothing for a whisper.
+    // See §8.9 notes.
     let channel = format!("private-room-{}", room_id);
     let event_payload = json!({
-        "reaction_id": result.id,
+        "id": result.id,
+        "room_id": room_id,
         "message_id": msg_id,
-        "user_id": auth.user_id,
-        "client_id": client_id,
+        "sender_user_id": auth.user_id,
         "reaction": reaction_str,
         "created_at": result.created_at.to_rfc3339(),
     });
@@ -160,57 +163,44 @@ pub async fn add(
         tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
     }
 
+    let status_code = if result.is_new {
+        StatusCode::CREATED
+    } else {
+        StatusCode::OK
+    };
+
     let resp = AddReactionResponse {
         id: result.id,
+        room_id,
         message_id: msg_id,
         reaction: reaction_str,
+        sender_user_id: auth.user_id,
         created_at: result.created_at.to_rfc3339(),
     };
 
-    Ok(([(header::CACHE_CONTROL, "no-store")], Json(resp)))
+    Ok((
+        status_code,
+        [(header::CACHE_CONTROL, "no-store")],
+        Json(resp),
+    ))
 }
 
 pub async fn remove(
     State(state): State<AppState>,
     auth: AuthUser,
-    Path((room_id, msg_id, reaction_param)): Path<(String, String, String)>,
-    Query(query): Query<RemoveReactionQuery>,
+    Path((room_id, msg_id, reaction_id)): Path<(String, String, String)>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // Rate limiting
-    let decision = rate_limit::check(
-        &state.pool,
-        &state.config.rate_limits,
-        RateLimitKey::Reaction {
-            user_id: auth.user_id.clone(),
-        },
-    )
-    .await?;
-
-    if !decision.allowed {
-        return Err(ApiError::TooManyRequests {
-            message: "rate limit exceeded for reactions".to_string(),
-            reset_at: decision.reset_at,
-        });
-    }
-
-    let client_id = query.client_id.ok_or_else(|| {
-        ApiError::InternalWithDetails(
-            StatusCode::BAD_REQUEST,
-            "missing_field".to_string(),
-            json!({ "field": "client_id" }),
-        )
-    })?;
+    // Note: Per V3 spec, rate limit applies to ADD endpoint only. Delete is not rate-limited.
 
     let remove_req = RemoveRequest {
         room_id: room_id.clone(),
         message_id: msg_id.clone(),
-        user_id: auth.user_id.clone(),
-        client_id: client_id.clone(),
-        reaction: reaction_param.clone(),
+        reaction_id: reaction_id.clone(),
+        requester_user_id: auth.user_id.clone(),
     };
 
-    let reaction_id = match reactions::write::remove_reaction(&state.pool, remove_req).await {
-        Ok(id) => id,
+    let remove_res = match reactions::write::remove_reaction(&state.pool, remove_req).await {
+        Ok(res) => res,
         Err(ReactionError::InvalidReaction(reason)) => {
             return Err(ApiError::InternalWithDetails(
                 StatusCode::BAD_REQUEST,
@@ -224,6 +214,9 @@ pub async fn remove(
         Err(ReactionError::NotFound) => {
             return Err(ApiError::NotFound("reaction_not_found".to_string()));
         }
+        Err(ReactionError::Forbidden) => {
+            return Err(ApiError::Forbidden("forbidden".to_string()));
+        }
         Err(ReactionError::Database(e)) => return Err(ApiError::Internal(e.into())),
         Err(ReactionError::MessageNotFound)
         | Err(ReactionError::AlreadyExists)
@@ -236,23 +229,24 @@ pub async fn remove(
         Some(&auth.user_id),
         audit::action::REACTION_DELETE,
         Some("reaction"),
-        Some(&reaction_id),
+        Some(&remove_res.reaction_id),
         Some(json!({
             "room_id": room_id,
             "message_id": msg_id,
-            "reaction": reaction_param,
+            "reaction": remove_res.reaction,
         })),
     )
     .await;
 
-    // Sockudo publish reaction.removed
+    // Phase 10: For whisper messages (target_user_ids non-null on the parent message),
+    // reaction events must route to each recipient's private-user-{user_id} channel and
+    // to the sender's own channel. The room channel must receive nothing for a whisper.
+    // See §8.9 notes.
     let channel = format!("private-room-{}", room_id);
     let event_payload = json!({
-        "reaction_id": reaction_id,
+        "id": remove_res.reaction_id,
+        "room_id": room_id,
         "message_id": msg_id,
-        "user_id": auth.user_id,
-        "client_id": client_id,
-        "reaction": reaction_param,
     });
 
     if let Err(e) = state

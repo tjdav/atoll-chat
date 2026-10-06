@@ -70,13 +70,31 @@
   - **Whisper Invariant:** The room channel must never receive a whisper edit.
 - **Link to report:** [verification/message-editing-v3/report.md](verification/message-editing-v3/report.md)
 
-## Task 28 — Message Reactions Schema & Unique Constraint
+## Task 28 — Message Reactions V3 Contract Alignment
 - **ID:** Task 28
-- **Date:** 2026-10-02
-- **Status:** Complete.
-- **Spec sections affected:** §2.1, §4.2, §5.6, §7.6, §8.5, §8.8, §14.8
-- **Question asked:** What was the initial schema state of the `reactions` table prior to migration 0028?
-- **Answer found:** Case A — `reactions` table did not exist. Migration `0028_reactions.sql` created the `reactions` table with composite `UNIQUE (message_id, sender_user_id, sender_client_id, reaction)` and partial index on `reactions(message_id) WHERE deleted_at IS NULL`.
+- **Date:** 2026-10-06
+- **Status:** Complete. Canonical. Cross-team contract.
+- **Spec sections affected:** §3.2, §4.2, §5.6, §7.6, §8.5, §8.9, §10, §12
+- **Question asked:** What are the canonical event payloads, tombstone retention rules, idempotent add semantics, delete route path/authorization, and rate limit scope for message reactions?
+- **Answer found:**
+  - **Schema & Indexes:** Reuses `reactions` table in `server/migrations/0001_v2_schema.sql` with `UNIQUE (message_id, sender_user_id, sender_client_id, reaction)` and partial index `idx_reactions_message ON reactions(message_id) WHERE deleted_at IS NULL`.
+  - **Add Reaction Endpoints (`POST /rooms/:id/messages/:msg_id/reactions`):**
+    - Accepts `sender_client_id` (or `client_id` fallback).
+    - Checks active reaction count against dynamic `reactions_per_message` limit (server hard max `SERVER_MAX_REACTIONS_PER_MESSAGE = 50`).
+    - Operates on tombstoned parent messages per §7.6 (`room_messages.deleted_at` is ignored during message existence check).
+    - Idempotent upsert: Active duplicate reaction returns HTTP 200 OK with existing reaction row ID; fresh addition or re-activated soft-deleted reaction clears `deleted_at`, keeps stable `id`, updates `created_at`, and returns HTTP 201 Created.
+  - **Remove Reaction Endpoints (`DELETE /rooms/:id/messages/:msg_id/reactions/:reaction_id`):**
+    - Route path targets reaction primary key `:reaction_id`.
+    - Authorization: Reaction sender or room owner/moderator may delete reactions. Non-authorized members receive HTTP 403 `forbidden`.
+    - Soft-deletes row (`deleted_at = CURRENT_TIMESTAMP`), operates on tombstoned messages, returns HTTP 204 No Content.
+  - **Rate Limiting:** `RATE_REACTION_PER_MIN` (default 60/min) is strictly enforced on the `POST` add endpoint (key `reaction:{user_id}:min:{boundary}`). The `DELETE` endpoint is NOT rate-limited by this key per V3 spec.
+  - **Event Payloads (§8.9):**
+    - `reaction.added`: Published on `private-room-{room_id}` with `{ "id": "...", "room_id": "r_...", "message_id": "m_...", "sender_user_id": "u_...", "reaction": "...", "created_at": "..." }`.
+    - `reaction.removed`: Published on `private-room-{room_id}` with `{ "id": "...", "room_id": "r_...", "message_id": "m_..." }`.
+    - Both events are published for tombstoned messages; clients filter locally per §7.6.
+    - Neither event is published on `private-user-{user_id}` channels.
+  - **Whisper Stubs:** Phase 10 whisper routing stub comments added at both event publish sites in `server/src/routes/reactions.rs`.
+- **Link to report:** [verification/reactions-v3/report.md](verification/reactions-v3/report.md)
 
 ## Task 15b-R — Push Payload `sender_ref` Wire Format
 - **ID:** Task 15b-R
