@@ -271,3 +271,19 @@ export class HttpRequestError extends BotError {
   /** @type {string | null} */
   responseErrorCode = null
 }
+
+/**
+ * Thrown by `ctx.sendLocal` when the message cannot be sent.
+ *
+ * Carries no additional fields beyond `BotError`. The `cause` field is
+ * set to the underlying error when one is available.
+ *
+ * Code: `send_local_failed`.
+ */
+export class SendLocalFailedError extends BotError {
+  /** @override */
+  name = 'SendLocalFailedError'
+
+  /** @override */
+  code = 'send_local_failed'
+}

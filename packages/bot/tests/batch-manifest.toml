@@ -119,3 +119,9 @@ name = "ctx-reply"
 files = [
   "unit/ctx-reply.test.js",
 ]
+
+[[batch]]
+name = "ctx-send-local"
+files = [
+  "unit/ctx-send-local.test.js",
+]

@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 33
-- **Done:** 22
+- **Done:** 23
 - **In Progress:** 0
-- **Todo:** 11
+- **Todo:** 10
 
 ---
 
@@ -19,7 +19,7 @@ Track progress across Bot SDK implementation tasks.
 |---|---|---|---|---|
 | B-001 | Scaffolding | done | §2 | Workspace structure and package configuration |
 | B-002 | Types | done | §3 | JSDoc type declarations for public type surface |
-| B-003 | Errors | done | §12 | Code-bearing BotError hierarchy |
+| B-003 | Errors | done | §12 | Code-bearing BotError hierarchy (Amended by B-017, B-022) |
 | B-004 | Declarations | done | §4 | Settings, command, triggers identity helpers |
 | B-004a | Types/JSDoc | done | Amendment | TS module resolution & JSDoc description standard |
 | B-005 | Factory | done | §4.5 | `defineBot` factory and config validation collector |
@@ -42,7 +42,7 @@ Track progress across Bot SDK implementation tasks.
 | B-020 | Post Helper | done | §6.1, §8.3 | `ctx.post` implementation with publisher key lookup and encryption |
 | B-020a | Post Member | todo | §6.1 | Member-mode `ctx.post` via MLS (`src/runtime/context/post-member.js`) |
 | B-021 | Context | done | §6.2, §8 | `ctx.reply` wrapper over `ctx.post` with `replyTo` non-empty string validation |
-| B-022 | Storage Wrapper | todo | §8.4 | Author-facing `ctx.storage` with reserved prefix enforcement |
+| B-022 | Context | done | §6.3 | `ctx.sendLocal` handler for owner-targeted local messages (Amends §12 with SendLocalFailedError) |
 | B-023 | Media | todo | §8.5 | Media upload/download helper |
 | B-024 | Rooms | todo | §8.6 | Room state query and management helpers |
 | B-025 | Users | todo | §8.7 | User lookup and key transparency query helper |
