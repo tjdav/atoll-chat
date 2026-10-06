@@ -60,6 +60,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: config.server_max_room_metadata_bytes,
+        edit_window_seconds: config.server_max_edit_window_seconds,
     });
 
     let sockudo_cfg = server::SockudoConfig {
@@ -439,6 +440,7 @@ async fn test_09_publish_failures_do_not_affect_http_response() {
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: config.server_max_room_metadata_bytes,
+        edit_window_seconds: config.server_max_edit_window_seconds,
     });
 
     let sockudo_cfg = server::SockudoConfig {

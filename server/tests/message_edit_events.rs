@@ -5,7 +5,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::Router;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
-use common::{login_user, register_user, setup_test_app_with_config};
+use common::{login_user, register_user};
 use serde_json::{json, Value};
 use sqlx::SqlitePool;
 use tower::ServiceExt;
@@ -114,13 +114,19 @@ async fn test_message_edit_events_and_audit() {
 
     Mock::given(method("POST"))
         .and(path("/apps/chat/events"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({"ok": true})))
         .mount(&mock_server)
         .await;
 
-    let (app, pool, _) = setup_test_app_with_config(true, "auto", 100).await;
+    let mock_uri = mock_server.uri();
+    let (app, pool, _) = common::setup_test_app_with_custom_config(|cfg| {
+        cfg.sockudo_url = mock_uri;
+        cfg.sockudo_app_key = "test-app-key".to_string();
+        cfg.sockudo_app_secret = "test-app-secret".to_string();
+    })
+    .await;
 
-    let (_user_id, token, client_id) = create_test_user_with_device(&app, &pool, "ee1").await;
+    let (user_id, token, client_id) = create_test_user_with_device(&app, &pool, "ee1").await;
     let room_id = create_room(&app, &token).await;
 
     let orig_ct = BASE64.encode(b"original content");
@@ -149,8 +155,8 @@ async fn test_message_edit_events_and_audit() {
     )
     .await;
 
-    assert_eq!(status_edit, StatusCode::OK);
-    let edit_id = edit_body["edit_id"].as_str().unwrap().to_string();
+    assert_eq!(status_edit, StatusCode::CREATED);
+    let edit_id = edit_body["id"].as_str().unwrap().to_string();
 
     // Verify audit log entry edit.create
     let (action, target_type, target_id, metadata_str): (
@@ -173,4 +179,27 @@ async fn test_message_edit_events_and_audit() {
     assert_eq!(metadata["room_id"], room_id);
     assert_eq!(metadata["original_id"], orig_msg_id);
     assert_eq!(metadata["edit_sequence"], 1);
+
+    // Verify Sockudo message.edited event payload shape
+    let requests = mock_server.received_requests().await.unwrap();
+    let edit_event_req = requests
+        .iter()
+        .find(|r| {
+            let body_json: serde_json::Value = serde_json::from_slice(&r.body).unwrap_or_default();
+            body_json["name"] == "message.edited"
+        })
+        .expect("message.edited event published");
+
+    let event_env: serde_json::Value = serde_json::from_slice(&edit_event_req.body).unwrap();
+    assert_eq!(event_env["channels"][0], format!("private-room-{room_id}"));
+    let data: serde_json::Value =
+        serde_json::from_str(event_env["data"].as_str().unwrap()).unwrap();
+
+    assert_eq!(data["id"], edit_id);
+    assert_eq!(data["edit_of"], orig_msg_id);
+    assert_eq!(data["edit_sequence"], 1);
+    assert_eq!(data["room_id"], room_id);
+    assert_eq!(data["sender_type"], "user");
+    assert_eq!(data["sender_id"], user_id);
+    assert!(data["created_at"].is_string());
 }

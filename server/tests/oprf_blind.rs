@@ -61,6 +61,7 @@ async fn setup_test_app(config_override: impl FnOnce(&mut Config)) -> (axum::Rou
             call_max_participants: 50,
             reactions_per_message: 50,
             room_metadata_bytes: config_arc.server_max_room_metadata_bytes,
+            edit_window_seconds: config_arc.server_max_edit_window_seconds,
         }),
         publisher: Arc::new(server::Publisher::new(server::SockudoConfig {
             http_base: "http://localhost:6001".into(),

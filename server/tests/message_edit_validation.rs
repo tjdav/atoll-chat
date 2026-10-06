@@ -131,7 +131,7 @@ async fn test_message_edit_window_validation() {
 
     let msg_id = submit_body["message_id"].as_str().unwrap().to_string();
 
-    // 1. Edit within window -> OK
+    // 1. Edit within window -> CREATED
     let (status_e1, _) = do_patch(
         &app,
         &format!("/api/v1/rooms/{room_id}/messages/{msg_id}"),
@@ -140,7 +140,7 @@ async fn test_message_edit_window_validation() {
         &json!({ "ciphertext": BASE64.encode(b"edit 1") }),
     )
     .await;
-    assert_eq!(status_e1, StatusCode::OK);
+    assert_eq!(status_e1, StatusCode::CREATED);
 
     // 2. Backdate created_at by 1000 seconds to exceed 900s window
     sqlx::query(

@@ -122,6 +122,7 @@ pub struct Config {
     pub room_invite_code_length: usize,
     pub server_max_room_metadata_bytes: i64,
     pub max_room_metadata_bytes: usize,
+    pub server_max_edit_window_seconds: i64,
     pub edit_window_seconds: i64,
     pub max_starred_items_per_user: u32,
     pub rate_limits: RateLimitConfig,
@@ -418,10 +419,30 @@ impl Config {
             );
         }
 
+        let server_max_edit_window_seconds = env::var("SERVER_MAX_EDIT_WINDOW_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(86400);
+
+        if !(60..=86400).contains(&server_max_edit_window_seconds) {
+            anyhow::bail!(
+                "SERVER_MAX_EDIT_WINDOW_SECONDS must be between 60 and 86400 (got {})",
+                server_max_edit_window_seconds
+            );
+        }
+
         let edit_window_seconds = env::var("EDIT_WINDOW_SECONDS")
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(900);
+
+        if !(60..=server_max_edit_window_seconds).contains(&edit_window_seconds) {
+            anyhow::bail!(
+                "EDIT_WINDOW_SECONDS must be between 60 and {} (got {})",
+                server_max_edit_window_seconds,
+                edit_window_seconds
+            );
+        }
 
         let max_starred_items_per_user: u32 = env::var("SERVER_MAX_STARRED_ITEMS_PER_USER")
             .ok()
@@ -1275,6 +1296,7 @@ impl Config {
             room_invite_code_length,
             server_max_room_metadata_bytes,
             max_room_metadata_bytes,
+            server_max_edit_window_seconds,
             edit_window_seconds,
             max_starred_items_per_user,
             rate_limits,
@@ -1433,6 +1455,7 @@ impl Config {
             stt_default_model: "moonshine-tiny".to_string(),
             tts_default_model: "supertonic-3".to_string(),
             backup_include_models: false,
+            server_max_edit_window_seconds: 86400,
             edit_window_seconds: 900,
             max_starred_items_per_user: 10000,
             cleanup_enabled: false,

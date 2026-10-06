@@ -60,6 +60,7 @@ async fn setup_app_with_custom_config(
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: config_arc.server_max_room_metadata_bytes,
+        edit_window_seconds: config_arc.server_max_edit_window_seconds,
     });
 
     let sockudo_config = server::SockudoConfig {

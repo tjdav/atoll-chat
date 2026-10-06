@@ -38,6 +38,7 @@ pub struct SubmitMessageRequest {
 #[derive(Debug, Deserialize)]
 pub struct EditMessageRequest {
     pub ciphertext: Option<String>,
+    pub content_type: Option<String>,
     pub sender_client_id: Option<String>,
 }
 
@@ -383,15 +384,23 @@ pub async fn edit(
         return Err(ApiError::BadRequest("unknown_client_id".to_string()));
     };
 
+    // 6. Validate content_type if provided
+    if let Some(ref ct) = payload.content_type {
+        if ct != "application" && ct != "bot" {
+            return Err(ApiError::BadRequest("invalid_content_type".to_string()));
+        }
+    }
+
     let edit_req = EditRequest {
         room_id: id.clone(),
         message_id: message_id.clone(),
         requester_user_id: auth.user_id.clone(),
         requester_client_id,
         new_ciphertext: ciphertext_bytes,
+        content_type: payload.content_type,
     };
 
-    let edit_window = state.config.edit_window_seconds;
+    let edit_window = instance_limits.edit_window_seconds;
 
     let result = match room_messages::edit_message(&state.pool, edit_req, edit_window).await {
         Ok(res) => res,
@@ -411,21 +420,25 @@ pub async fn edit(
         Some(&auth.user_id),
         audit::action::EDIT_CREATE,
         Some("room_message"),
-        Some(&result.edit_id),
+        Some(&result.id),
         Some(json!({
             "room_id": id,
-            "original_id": result.original_id,
+            "original_id": result.edit_of,
             "edit_sequence": result.edit_sequence,
         })),
     )
     .await;
 
     // Sockudo publish message.edited
+    // Whisper edits (Phase 10) must route to original recipients' user channels. The room channel must never receive a whisper edit.
     let channel = format!("private-room-{}", id);
     let event_payload = json!({
-        "edit_id": result.edit_id,
-        "original_id": result.original_id,
+        "id": result.id,
+        "edit_of": result.edit_of,
         "edit_sequence": result.edit_sequence,
+        "room_id": id,
+        "sender_type": "user",
+        "sender_id": auth.user_id,
         "created_at": result.created_at.to_rfc3339(),
     });
 
@@ -437,5 +450,9 @@ pub async fn edit(
         tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
     }
 
-    Ok(([(header::CACHE_CONTROL, "no-store")], Json(result)))
+    Ok((
+        StatusCode::CREATED,
+        [(header::CACHE_CONTROL, "no-store")],
+        Json(result),
+    ))
 }

@@ -347,6 +347,7 @@ async fn test_08_upload_quota_clamps_to_server_max() {
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: config_arc.server_max_room_metadata_bytes,
+        edit_window_seconds: config_arc.server_max_edit_window_seconds,
     });
 
     let sockudo_config = server::SockudoConfig {

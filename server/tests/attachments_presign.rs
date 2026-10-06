@@ -143,6 +143,7 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         call_max_participants: 50,
         reactions_per_message: 50,
         room_metadata_bytes: config_arc.server_max_room_metadata_bytes,
+        edit_window_seconds: config_arc.server_max_edit_window_seconds,
     });
 
     let sockudo_config = server::SockudoConfig {
