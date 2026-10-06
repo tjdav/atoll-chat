@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 36 |
+| Done | 37 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-15 | Attachments and Reactions Tables with Repositories | done | C-INFRA-14 | unit-smoke |
 | C-INFRA-14 | Messages and Message Versions Tables with Repository | done | C-INFRA-13 | unit-smoke |
 | C-INFRA-13 | Rooms, Room Members, and Room Order Tables with Repositories | done | C-INFRA-12 | unit-smoke |
 | C-INFRA-12 | Users Table and Display Name Repository | done | C-INFRA-8, C-INFRA-9, C-INFRA-10 | unit-smoke |
@@ -502,6 +503,17 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created unit test suite `packages/app/tests/unit/repositories-messages.test.js` (24 cases) registered under `unit-smoke` in `test-batches.js`.
   - Authored documentation at `packages/app/docs/storage/messages.md` and updated `packages/app/docs/storage/README.md`.
   - Verified zero SQL string interpolation, zero modifications to untouched directories/plugins, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
+
+- **C-INFRA-15 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0005-attachments-reactions.sql` defining `attachments` (`file_id`, `room_id`, `purpose`, `content_type`, `plaintext_size`, `encrypted_size`, `thumbnail_file_id`, `duration_ms`, `uploaded_at`, `downloaded_at`, `cached_at`) and `reactions` (`message_id`, `sender_user_id`, `sender_client_id`, `reaction`, `created_at`, `deleted_at`, `PRIMARY KEY (message_id, sender_user_id, sender_client_id, reaction)`) tables and their indexes (`idx_attachments_room`, `idx_attachments_purpose`, `idx_reactions_message` WHERE `deleted_at IS NULL`, `idx_reactions_user`).
+  - Created repositories under `packages/app/src/lib/db/repositories/`:
+    - `attachments.js` exporting `createAttachmentsRepository` (`get`, `upsert` with `COALESCE`, `markUploaded`, `markDownloaded`, `getMany` parameterizing `IN` placeholders from array length, `listByRoom`, `listByPurpose`, `remove`, `countByRoom`, `clearAll`).
+    - `reactions.js` exporting `createReactionsRepository` (`listForMessage`, `listForRoom`, `get`, `add` reactivating soft-deleted rows, `remove` soft deleting via `deleted_at`, `removeByMessage`, `countForMessage`, `aggregateForMessage` deduplicating via `COUNT(DISTINCT sender_user_id)`, `hasReacted`, `clearAll`).
+  - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `attachments` and `reactions` and re-exporting factory functions.
+  - Created unit test suites `packages/app/tests/unit/repositories-attachments.test.js` (19 cases) and `packages/app/tests/unit/repositories-reactions.test.js` (19 cases) registered under `unit-smoke` in `test-batches.js`.
+  - Authored `packages/app/docs/storage/attachments.md` and `packages/app/docs/storage/reactions.md`, and updated `packages/app/docs/storage/README.md`.
+  - Verified zero SQL string interpolation, zero modifications to untouched files, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
 
 ## Component Authoring Policy
 

@@ -12,6 +12,8 @@ workflow, and the repository layer.
 | [users.md](./users.md) | The users table and its repository. |
 | [rooms.md](./rooms.md) | The rooms, room members, and room order tables and their repositories. |
 | [messages.md](./messages.md) | The messages and message_versions tables and their repository. |
+| [attachments.md](./attachments.md) | The attachments table and its repository. |
+| [reactions.md](./reactions.md) | The reactions table and its repository. |
 
 ## Related
 

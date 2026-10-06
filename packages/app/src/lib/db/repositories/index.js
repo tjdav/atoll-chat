@@ -9,6 +9,8 @@ import { createRoomsRepository } from './rooms.js'
 import { createRoomMembersRepository } from './room-members.js'
 import { createRoomOrderRepository } from './room-order.js'
 import { createMessagesRepository } from './messages.js'
+import { createAttachmentsRepository } from './attachments.js'
+import { createReactionsRepository } from './reactions.js'
 
 /**
  * Creates and returns all domain repository instances bound to the given database.
@@ -23,7 +25,9 @@ export function createRepositories({ db }) {
     rooms: createRoomsRepository({ db }),
     roomMembers: createRoomMembersRepository({ db }),
     roomOrder: createRoomOrderRepository({ db }),
-    messages: createMessagesRepository({ db })
+    messages: createMessagesRepository({ db }),
+    attachments: createAttachmentsRepository({ db }),
+    reactions: createReactionsRepository({ db })
   }
 }
 
@@ -32,5 +36,7 @@ export {
   createRoomsRepository,
   createRoomMembersRepository,
   createRoomOrderRepository,
-  createMessagesRepository
+  createMessagesRepository,
+  createAttachmentsRepository,
+  createReactionsRepository
 }
