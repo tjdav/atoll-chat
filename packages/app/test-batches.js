@@ -52,6 +52,7 @@ export default [
       'tests/unit/wasm-backend.test.js',
       'tests/unit/storage-plugin.test.js',
       'tests/unit/state.test.js',
+      'tests/unit/repositories-users.test.js',
     ],
   },
   {

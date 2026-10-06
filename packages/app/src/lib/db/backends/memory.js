@@ -130,7 +130,7 @@ export function createMemoryBackend() {
    * @returns {Promise<{ changes: number, lastInsertId: number | null }>} Statement execution summary.
    */
   async function exec(sql, params = []) {
-    const trimmedSql = sql.trim().replace(/;$/, '')
+    const trimmedSql = sql.replace(/\s+/g, ' ').trim().replace(/;$/, '')
 
     // 1. CREATE TABLE IF NOT EXISTS <tableName> (...)
     const createTableMatch = trimmedSql.match(/^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_]+)\s*\(([\s\S]+)\)$/i)
@@ -152,13 +152,21 @@ export function createMemoryBackend() {
       return { changes: 0, lastInsertId: null }
     }
 
-    // 2. INSERT [OR REPLACE] INTO <tableName> (<cols>) VALUES (?, ...)
-    const insertMatch = trimmedSql.match(/^INSERT\s+(?:OR\s+(REPLACE)\s+)?INTO\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)$/i)
+    // CREATE INDEX [IF NOT EXISTS] <indexName> ON <tableName>(<cols>)
+    const createIndexMatch = trimmedSql.match(/^CREATE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?([a-zA-Z0-9_]+)\s+ON\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)$/i)
+    if (createIndexMatch) {
+      return { changes: 0, lastInsertId: null }
+    }
+
+    // 2. INSERT [OR REPLACE] INTO <tableName> (<cols>) VALUES (?, ...)\n    //    or INSERT INTO <tableName> (<cols>) VALUES (?, ...) ON CONFLICT(...) DO UPDATE SET ...
+    const insertMatch = trimmedSql.match(/^INSERT\s+(?:OR\s+(REPLACE)\s+)?INTO\s+([a-zA-Z0-9_]+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)(?:\s+ON\s+CONFLICT\s*\(([^)]+)\)\s+DO\s+UPDATE\s+SET\s+(.+))?$/i)
     if (insertMatch) {
       const isReplace = Boolean(insertMatch[1])
       const tableName = insertMatch[2]
       const cols = insertMatch[3].split(',').map((c) => c.trim())
       const placeholders = insertMatch[4].split(',').map((p) => p.trim())
+      const onConflictCols = insertMatch[5]
+      const doUpdateClause = insertMatch[6]
 
       const table = tables.get(tableName)
       if (!table) {
@@ -191,11 +199,32 @@ export function createMemoryBackend() {
         const pkVal = row[table.primaryKey]
         const existingIdx = table.rows.findIndex((r) => r[table.primaryKey] === pkVal)
         if (existingIdx >= 0) {
-          if (!isReplace) {
+          if (doUpdateClause) {
+            const existingRow = table.rows[existingIdx]
+            const setAssignments = doUpdateClause.split(',').map((s) => s.trim())
+            for (const assign of setAssignments) {
+              const [targetCol, rawExpr] = assign.split('=').map((s) => s.trim())
+              const coalesceMatch = rawExpr.match(/^COALESCE\s*\(\s*excluded\.([a-zA-Z0-9_]+)\s*,\s*([a-zA-Z0-9_.]+)\s*\)$/i)
+              if (coalesceMatch) {
+                const exCol = coalesceMatch[1]
+                const proposedVal = row[exCol]
+                if (proposedVal !== undefined && proposedVal !== null) {
+                  existingRow[targetCol] = proposedVal
+                }
+              } else if (rawExpr.startsWith('excluded.')) {
+                const exCol = rawExpr.replace('excluded.', '').trim()
+                existingRow[targetCol] = row[exCol]
+              } else {
+                existingRow[targetCol] = rawExpr
+              }
+            }
+            changes = 1
+          } else if (isReplace) {
+            table.rows[existingIdx] = row
+            changes = 1
+          } else {
             throw new Error(`UNIQUE constraint failed: ${tableName}.${table.primaryKey}`)
           }
-          table.rows[existingIdx] = row
-          changes = 1
         } else {
           table.rows.push(row)
           changes = 1
