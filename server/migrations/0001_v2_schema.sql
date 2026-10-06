@@ -438,3 +438,7 @@ CREATE TABLE IF NOT EXISTS room_bots (
     revoked_at DATETIME,
     PRIMARY KEY (room_id, bot_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_room_bots_active
+    ON room_bots(room_id, bot_id)
+    WHERE revoked_at IS NULL;

@@ -656,6 +656,27 @@ async fn test_member_list_pagination_revoked_and_deleted_bots_excluded() {
         .await
         .unwrap();
 
+    // 4. Disabled Bot (disabled_at IS NOT NULL)
+    sqlx::query(
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, disabled_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+    )
+    .bind("b_disabled")
+    .bind("Disabled Bot")
+    .bind::<Option<&str>>(None)
+    .bind(&alice_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO room_bots (room_id, bot_id, mode, granted_by) VALUES (?, ?, ?, ?)")
+        .bind(room_id)
+        .bind("b_disabled")
+        .bind("member")
+        .bind(&alice_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
     // GET /rooms/:id/members
     let req_mem = Request::builder()
         .method("GET")
@@ -678,4 +699,70 @@ async fn test_member_list_pagination_revoked_and_deleted_bots_excluded() {
     let bot_entries: Vec<&Value> = members.iter().filter(|m| m["type"] == "bot").collect();
     assert_eq!(bot_entries.len(), 1);
     assert_eq!(bot_entries[0]["bot_id"], "b_active");
+}
+
+#[tokio::test]
+async fn test_member_list_pagination_legacy_cursor_compatibility() {
+    let (app, pool) = setup_test_app().await;
+    let (_alice_id, token_a) =
+        create_test_user(&app, &pool, "alice", "device_client_id_a_12345").await;
+
+    // Create room
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_c = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_c: Value = serde_json::from_slice(&body_c).unwrap();
+    let room_id = json_c["id"].as_str().unwrap();
+
+    // Add user_1
+    let (uid1, _) = create_test_user(&app, &pool, "user_1", "client_id_1_123456789").await;
+    let req_add = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/members", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "user_id": uid1 }).to_string()))
+        .unwrap();
+    app.clone().oneshot(req_add).await.unwrap();
+
+    // Construct a legacy cursor without `segment`
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+    let legacy_cursor_json = json!({
+        "room_id": room_id,
+        "last_user_id": uid1
+    });
+    let legacy_cursor_b64 = URL_SAFE_NO_PAD.encode(legacy_cursor_json.to_string().as_bytes());
+
+    // Fetch with legacy cursor
+    let req_mem = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/api/v1/rooms/{}/members?cursor={}",
+            room_id, legacy_cursor_b64
+        ))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp_mem = app.oneshot(req_mem).await.unwrap();
+    assert_eq!(resp_mem.status(), StatusCode::OK);
+
+    let body_m = axum::body::to_bytes(resp_mem.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_m: Value = serde_json::from_slice(&body_m).unwrap();
+
+    // Should return 0 or remaining users (since alice and uid1 are sorted; if uid1 < alice, alice is returned, or vice versa)
+    let members = json_m["members"].as_array().unwrap();
+    for m in members {
+        assert_ne!(m["user_id"], uid1);
+    }
 }
