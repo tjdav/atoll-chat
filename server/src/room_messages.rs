@@ -35,6 +35,7 @@ pub struct RoomMessageView {
     pub seq: i64,
     pub content_type: String,
     pub reply_to: Option<String>,
+    pub target_user_ids: Option<Vec<String>>,
     pub edit_of: Option<String>,
     pub edit_sequence: i64,
     pub edited_at: Option<DateTime<Utc>>,
@@ -69,6 +70,8 @@ pub enum SubmitOutcome {
         epoch: i64,
         seq: i64,
         reply_to: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        target_user_ids: Option<Vec<String>>,
         created_at: DateTime<Utc>,
     },
     Commit {
@@ -90,6 +93,7 @@ pub struct SubmitRequest {
     pub ciphertext: Vec<u8>,
     pub transcript_hash: Option<Vec<u8>>,
     pub reply_to: Option<String>,
+    pub target_user_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -280,10 +284,15 @@ pub async fn submit_message(
                 let next_sequence = current_sequence + 1;
                 let message_id = Ulid::new().to_string();
 
+                let target_user_ids_json = req
+                    .target_user_ids
+                    .as_ref()
+                    .map(|t| serde_json::to_string(t).unwrap_or_default());
+
                 sqlx::query(
                     r#"
-                    INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext, reply_to)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext, reply_to, target_user_ids)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     "#,
                 )
                 .bind(&message_id)
@@ -295,6 +304,7 @@ pub async fn submit_message(
                 .bind(req.content_type.as_str())
                 .bind(&req.ciphertext)
                 .bind(&req.reply_to)
+                .bind(&target_user_ids_json)
                 .execute(&mut *conn)
                 .await?;
 
@@ -315,6 +325,7 @@ pub async fn submit_message(
                     epoch: current_epoch,
                     seq: next_sequence,
                     reply_to: req.reply_to,
+                    target_user_ids: req.target_user_ids,
                     created_at,
                 })
             }
@@ -385,19 +396,24 @@ pub async fn list_messages(
 
     let fetch_limit = limit + 1;
 
+    let like_pattern = format!("%\"{}\"%", query.requester_id);
+
     let (messages, has_more) = match query.since {
         Some(since) => {
             let rows = sqlx::query(
                 r#"
-                SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, edit_of, edit_sequence, edited_at, deleted_at, created_at
+                    SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, edited_at, deleted_at, created_at
                 FROM room_messages
                 WHERE room_id = ?
+                      AND (target_user_ids IS NULL OR sender_user_id = ? OR target_user_ids LIKE ?)
                   AND (epoch, seq) > (?, ?)
                 ORDER BY epoch ASC, seq ASC
                 LIMIT ?
                 "#,
             )
             .bind(&query.room_id)
+                .bind(&query.requester_id)
+                .bind(&like_pattern)
             .bind(since.epoch)
             .bind(since.seq)
             .bind(fetch_limit)
@@ -416,25 +432,39 @@ pub async fn list_messages(
 
             let mut msgs: Vec<RoomMessageView> = rows
                 .into_iter()
-                .map(|row| {
+                .filter_map(|row| {
                     let id: String = row.get("id");
+                    let sender_user_id: String = row.get("sender_user_id");
+                    let target_user_ids_raw: Option<String> = row.get("target_user_ids");
+                    let target_user_ids: Option<Vec<String>> =
+                        target_user_ids_raw.and_then(|s| serde_json::from_str(&s).ok());
+
+                    if let Some(ref targets) = target_user_ids {
+                        if sender_user_id != query.requester_id
+                            && !targets.contains(&query.requester_id)
+                        {
+                            return None;
+                        }
+                    }
+
                     let reactions = reactions_map.get(&id).cloned().unwrap_or_default();
-                    RoomMessageView {
+                    Some(RoomMessageView {
                         id,
                         room_id: row.get("room_id"),
-                        sender_user_id: row.get("sender_user_id"),
+                        sender_user_id,
                         sender_client_id: row.get("sender_client_id"),
                         epoch: row.get("epoch"),
                         seq: row.get("seq"),
                         content_type: row.get("content_type"),
                         reply_to: row.get("reply_to"),
+                        target_user_ids,
                         edit_of: row.get("edit_of"),
                         edit_sequence: row.get("edit_sequence"),
                         edited_at: row.get("edited_at"),
                         deleted_at: row.get("deleted_at"),
                         created_at: row.get("created_at"),
                         reactions,
-                    }
+                    })
                 })
                 .collect();
 
@@ -447,14 +477,17 @@ pub async fn list_messages(
         None => {
             let rows = sqlx::query(
                 r#"
-                SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, edit_of, edit_sequence, edited_at, deleted_at, created_at
+                    SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, edited_at, deleted_at, created_at
                 FROM room_messages
                 WHERE room_id = ?
+                      AND (target_user_ids IS NULL OR sender_user_id = ? OR target_user_ids LIKE ?)
                 ORDER BY epoch DESC, seq DESC
                 LIMIT ?
                 "#,
             )
             .bind(&query.room_id)
+                .bind(&query.requester_id)
+                .bind(&like_pattern)
             .bind(fetch_limit)
             .fetch_all(pool)
             .await?;
@@ -471,25 +504,39 @@ pub async fn list_messages(
 
             let mut msgs: Vec<RoomMessageView> = rows
                 .into_iter()
-                .map(|row| {
+                .filter_map(|row| {
                     let id: String = row.get("id");
+                    let sender_user_id: String = row.get("sender_user_id");
+                    let target_user_ids_raw: Option<String> = row.get("target_user_ids");
+                    let target_user_ids: Option<Vec<String>> =
+                        target_user_ids_raw.and_then(|s| serde_json::from_str(&s).ok());
+
+                    if let Some(ref targets) = target_user_ids {
+                        if sender_user_id != query.requester_id
+                            && !targets.contains(&query.requester_id)
+                        {
+                            return None;
+                        }
+                    }
+
                     let reactions = reactions_map.get(&id).cloned().unwrap_or_default();
-                    RoomMessageView {
+                    Some(RoomMessageView {
                         id,
                         room_id: row.get("room_id"),
-                        sender_user_id: row.get("sender_user_id"),
+                        sender_user_id,
                         sender_client_id: row.get("sender_client_id"),
                         epoch: row.get("epoch"),
                         seq: row.get("seq"),
                         content_type: row.get("content_type"),
                         reply_to: row.get("reply_to"),
+                        target_user_ids,
                         edit_of: row.get("edit_of"),
                         edit_sequence: row.get("edit_sequence"),
                         edited_at: row.get("edited_at"),
                         deleted_at: row.get("deleted_at"),
                         created_at: row.get("created_at"),
                         reactions,
-                    }
+                    })
                 })
                 .collect();
 
@@ -546,7 +593,16 @@ pub async fn get_message_ciphertext(
     }
 }
 
-pub async fn delete_message(pool: &SqlitePool, req: DeleteRequest) -> Result<(), RoomMessageError> {
+#[derive(Debug, Clone)]
+pub struct DeleteResult {
+    pub sender_user_id: String,
+    pub target_user_ids: Option<Vec<String>>,
+}
+
+pub async fn delete_message(
+    pool: &SqlitePool,
+    req: DeleteRequest,
+) -> Result<DeleteResult, RoomMessageError> {
     let mut conn = pool.acquire().await?;
     sqlx::query("BEGIN IMMEDIATE").execute(&mut *conn).await?;
 
@@ -565,15 +621,15 @@ pub async fn delete_message(pool: &SqlitePool, req: DeleteRequest) -> Result<(),
         };
 
         // 2. Fetch message
-        let msg_row: Option<(String, Option<DateTime<Utc>>)> = sqlx::query_as(
-            "SELECT sender_user_id, deleted_at FROM room_messages WHERE id = ? AND room_id = ?",
+        let msg_row: Option<(String, Option<DateTime<Utc>>, Option<String>)> = sqlx::query_as(
+            "SELECT sender_user_id, deleted_at, target_user_ids FROM room_messages WHERE id = ? AND room_id = ?",
         )
         .bind(&req.message_id)
         .bind(&req.room_id)
         .fetch_optional(&mut *conn)
         .await?;
 
-        let (sender_user_id, deleted_at) = match msg_row {
+        let (sender_user_id, deleted_at, target_user_ids_raw) = match msg_row {
             Some(row) => row,
             None => return Err(RoomMessageError::MessageNotFound),
         };
@@ -600,14 +656,21 @@ pub async fn delete_message(pool: &SqlitePool, req: DeleteRequest) -> Result<(),
         .execute(&mut *conn)
         .await?;
 
-        Ok(())
+        let target_user_ids: Option<Vec<String>> = target_user_ids_raw
+            .as_ref()
+            .and_then(|s| serde_json::from_str(s).ok());
+
+        Ok(DeleteResult {
+            sender_user_id,
+            target_user_ids,
+        })
     }
     .await;
 
     match result {
-        Ok(()) => {
+        Ok(res) => {
             sqlx::query("COMMIT").execute(&mut *conn).await?;
-            Ok(())
+            Ok(res)
         }
         Err(err) => {
             let _ = sqlx::query("ROLLBACK").execute(&mut *conn).await;
@@ -647,21 +710,26 @@ pub async fn edit_message(
             epoch: i64,
             edit_of: Option<String>,
             reply_to: Option<String>,
+            target_user_ids: Option<String>,
         }
 
         let orig_row: Option<OrigMsgRow> =
             sqlx::query_as(
-                "SELECT sender_user_id, content_type, created_at, deleted_at, epoch, edit_of, reply_to FROM room_messages WHERE id = ? AND room_id = ?"
+                "SELECT sender_user_id, content_type, created_at, deleted_at, epoch, edit_of, reply_to, target_user_ids FROM room_messages WHERE id = ? AND room_id = ?"
             )
             .bind(&req.message_id)
             .bind(&req.room_id)
             .fetch_optional(&mut *conn)
             .await?;
 
-        let OrigMsgRow { sender_user_id, content_type: orig_content_type, created_at, deleted_at, epoch: original_epoch, edit_of, reply_to: orig_reply_to } = match orig_row {
+        let OrigMsgRow { sender_user_id, content_type: orig_content_type, created_at, deleted_at, epoch: original_epoch, edit_of, reply_to: orig_reply_to, target_user_ids: orig_target_user_ids_raw } = match orig_row {
             Some(row) => row,
             None => return Err(RoomMessageError::MessageNotFound),
         };
+
+        let orig_target_user_ids: Option<Vec<String>> = orig_target_user_ids_raw
+            .as_ref()
+            .and_then(|s| serde_json::from_str(s).ok());
 
         // Flat chain check: Edits cannot chain off other edits
         if edit_of.is_some() {
@@ -717,9 +785,9 @@ pub async fn edit_message(
             r#"
             INSERT INTO room_messages (
                 id, room_id, sender_user_id, sender_client_id,
-                epoch, seq, content_type, ciphertext, reply_to,
+                epoch, seq, content_type, ciphertext, reply_to, target_user_ids,
                 edit_of, edit_sequence, edited_at, created_at
-            ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             "#,
         )
         .bind(&edit_id)
@@ -730,6 +798,7 @@ pub async fn edit_message(
         .bind(final_content_type)
         .bind(&req.new_ciphertext)
         .bind(&orig_reply_to)
+        .bind(&orig_target_user_ids_raw)
         .bind(&req.message_id)
         .bind(next_edit_sequence)
         .execute(&mut *conn)
@@ -750,6 +819,7 @@ pub async fn edit_message(
             seq: 0,
             content_type: final_content_type.to_string(),
             reply_to: orig_reply_to,
+            target_user_ids: orig_target_user_ids,
             edit_of: Some(req.message_id),
             edit_sequence: next_edit_sequence,
             edited_at: Some(edit_created_at),

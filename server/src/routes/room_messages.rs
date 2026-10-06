@@ -33,6 +33,7 @@ pub struct SubmitMessageRequest {
     pub ciphertext: String,
     pub transcript_hash: Option<String>,
     pub reply_to: Option<String>,
+    pub target_user_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -99,7 +100,37 @@ pub async fn submit(
         ));
     }
 
-    // 5. Validate transcript_hash if commit
+    // 5. Validate target_user_ids if present
+    if let Some(ref targets) = payload.target_user_ids {
+        if targets.is_empty() {
+            return Err(ApiError::BadRequest("invalid_target_user_ids".to_string()));
+        }
+
+        let instance_limits = limits::get_limits(&state.pool, &state.server_hard_max).await?;
+        let cap = instance_limits.room_size as usize;
+        if targets.len() > cap {
+            return Err(ApiError::BadRequest(
+                "target_user_ids_too_large".to_string(),
+            ));
+        }
+
+        let member_rows: Vec<(String,)> =
+            sqlx::query_as("SELECT user_id FROM room_members WHERE room_id = ?")
+                .bind(&id)
+                .fetch_all(&state.pool)
+                .await?;
+
+        let member_set: std::collections::HashSet<String> =
+            member_rows.into_iter().map(|(u,)| u).collect();
+
+        for target_id in targets {
+            if !member_set.contains(target_id) {
+                return Err(ApiError::BadRequest("target_not_in_room".to_string()));
+            }
+        }
+    }
+
+    // 6. Validate transcript_hash if commit
     let transcript_hash_bytes = match content_type {
         MessageContentType::Commit => {
             let th_str = payload
@@ -130,42 +161,80 @@ pub async fn submit(
         ciphertext: ciphertext_bytes,
         transcript_hash: transcript_hash_bytes,
         reply_to: payload.reply_to.clone(),
+        target_user_ids: payload.target_user_ids.clone(),
     };
 
     let outcome = room_messages::submit_message(&state.pool, req).await?;
 
     // Publish event after commit
-    let channel = format!("private-room-{}", id);
+    let room_channel = format!("private-room-{}", id);
     match &outcome {
         SubmitOutcome::Application {
             message_id,
             epoch,
             seq,
             reply_to,
+            target_user_ids,
             created_at,
         } => {
-            // Phase 10: For whisper replies (target_user_ids non-null), the message.new event
-            // is routed to each recipient's private-user-{user_id} channel and the sender's own
-            // channel. The room channel must receive nothing. reply_to carries the same value
-            // as for a public reply. See §8.9 notes.
-            let msg_payload = json!({
-                "id": message_id,
-                "room_id": id,
-                "sender_type": "user",
-                "sender_id": auth.user_id,
-                "sender_client_id": payload.sender_client_id,
-                "epoch": epoch,
-                "seq": seq,
-                "content_type": content_type.as_str(),
-                "reply_to": reply_to,
-                "created_at": created_at.to_rfc3339(),
-            });
-            if let Err(e) = state
-                .publisher
-                .publish(&channel, "message.new", msg_payload)
-                .await
-            {
-                tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+            let is_whisper = target_user_ids.as_ref().is_some_and(|t| !t.is_empty());
+
+            if is_whisper {
+                let whisper_targets = target_user_ids.as_ref().unwrap();
+                let mut recipients: Vec<String> = Vec::new();
+                for target_id in whisper_targets {
+                    if !recipients.contains(target_id) {
+                        recipients.push(target_id.clone());
+                    }
+                }
+                if !recipients.contains(&auth.user_id) {
+                    recipients.push(auth.user_id.clone());
+                }
+
+                let msg_payload = json!({
+                    "id": message_id,
+                    "room_id": id,
+                    "sender_type": "user",
+                    "sender_id": auth.user_id,
+                    "sender_client_id": payload.sender_client_id,
+                    "epoch": epoch,
+                    "seq": seq,
+                    "content_type": content_type.as_str(),
+                    "reply_to": reply_to,
+                    "target_user_ids": whisper_targets,
+                    "created_at": created_at.to_rfc3339(),
+                });
+
+                for recipient_id in recipients {
+                    let user_channel = format!("private-user-{}", recipient_id);
+                    if let Err(e) = state
+                        .publisher
+                        .publish(&user_channel, "message.new", msg_payload.clone())
+                        .await
+                    {
+                        tracing::warn!(error = %e, channel = %user_channel, "sockudo whisper publish failed");
+                    }
+                }
+            } else {
+                let msg_payload = json!({
+                    "id": message_id,
+                    "room_id": id,
+                    "sender_type": "user",
+                    "sender_id": auth.user_id,
+                    "sender_client_id": payload.sender_client_id,
+                    "epoch": epoch,
+                    "seq": seq,
+                    "content_type": content_type.as_str(),
+                    "reply_to": reply_to,
+                    "created_at": created_at.to_rfc3339(),
+                });
+                if let Err(e) = state
+                    .publisher
+                    .publish(&room_channel, "message.new", msg_payload)
+                    .await
+                {
+                    tracing::warn!(error = %e, channel = %room_channel, "sockudo publish failed");
+                }
             }
 
             if state.config.push_delivery_enabled {
@@ -201,10 +270,10 @@ pub async fn submit(
             });
             if let Err(e) = state
                 .publisher
-                .publish(&channel, "message.new", msg_payload)
+                .publish(&room_channel, "message.new", msg_payload)
                 .await
             {
-                tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+                tracing::warn!(error = %e, channel = %room_channel, "sockudo publish failed");
             }
 
             let epoch_payload = json!({
@@ -214,10 +283,10 @@ pub async fn submit(
             });
             if let Err(e) = state
                 .publisher
-                .publish(&channel, "epoch.updated", epoch_payload)
+                .publish(&room_channel, "epoch.updated", epoch_payload)
                 .await
             {
-                tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+                tracing::warn!(error = %e, channel = %room_channel, "sockudo publish failed");
             }
         }
     }
@@ -297,7 +366,7 @@ pub async fn delete_message(
         moderation_mode: config.moderation_mode,
     };
 
-    room_messages::delete_message(&state.pool, req).await?;
+    let delete_res = room_messages::delete_message(&state.pool, req).await?;
 
     let _ = audit::log(
         &state.pool,
@@ -309,18 +378,53 @@ pub async fn delete_message(
     )
     .await;
 
-    let channel = format!("private-room-{}", id);
-    let payload = json!({
-        "id": message_id,
-        "room_id": id,
-    });
+    let is_whisper = delete_res
+        .target_user_ids
+        .as_ref()
+        .is_some_and(|t| !t.is_empty());
 
-    if let Err(e) = state
-        .publisher
-        .publish(&channel, "message.deleted", payload)
-        .await
-    {
-        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+    if is_whisper {
+        let whisper_targets = delete_res.target_user_ids.as_ref().unwrap();
+        let mut recipients: Vec<String> = Vec::new();
+        for target_id in whisper_targets {
+            if !recipients.contains(target_id) {
+                recipients.push(target_id.clone());
+            }
+        }
+        if !recipients.contains(&delete_res.sender_user_id) {
+            recipients.push(delete_res.sender_user_id.clone());
+        }
+
+        let payload = json!({
+            "id": message_id,
+            "room_id": id,
+            "target_user_ids": whisper_targets,
+        });
+
+        for recipient_id in recipients {
+            let user_channel = format!("private-user-{}", recipient_id);
+            if let Err(e) = state
+                .publisher
+                .publish(&user_channel, "message.deleted", payload.clone())
+                .await
+            {
+                tracing::warn!(error = %e, channel = %user_channel, "sockudo whisper delete publish failed");
+            }
+        }
+    } else {
+        let channel = format!("private-room-{}", id);
+        let payload = json!({
+            "id": message_id,
+            "room_id": id,
+        });
+
+        if let Err(e) = state
+            .publisher
+            .publish(&channel, "message.deleted", payload)
+            .await
+        {
+            tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+        }
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -434,27 +538,63 @@ pub async fn edit(
     .await;
 
     // Sockudo publish message.edited
-    // Phase 10: Whisper edits (target_user_ids non-null on the original) must be routed
-    // to each recipient's private-user-{user_id} channel and to the sender's own channel.
-    // The room channel must receive nothing for a whisper, including edits.
-    // See §8.9 notes.
-    let channel = format!("private-room-{}", id);
-    let event_payload = json!({
-        "id": result.id,
-        "edit_of": result.edit_of,
-        "edit_sequence": result.edit_sequence,
-        "room_id": id,
-        "sender_type": "user",
-        "sender_id": auth.user_id,
-        "created_at": result.created_at.to_rfc3339(),
-    });
+    let is_whisper = result
+        .target_user_ids
+        .as_ref()
+        .is_some_and(|t| !t.is_empty());
 
-    if let Err(e) = state
-        .publisher
-        .publish(&channel, "message.edited", event_payload)
-        .await
-    {
-        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+    if is_whisper {
+        let whisper_targets = result.target_user_ids.as_ref().unwrap();
+        let mut recipients: Vec<String> = Vec::new();
+        for target_id in whisper_targets {
+            if !recipients.contains(target_id) {
+                recipients.push(target_id.clone());
+            }
+        }
+        if !recipients.contains(&auth.user_id) {
+            recipients.push(auth.user_id.clone());
+        }
+
+        let event_payload = json!({
+            "id": result.id,
+            "edit_of": result.edit_of,
+            "edit_sequence": result.edit_sequence,
+            "room_id": id,
+            "sender_type": "user",
+            "sender_id": auth.user_id,
+            "target_user_ids": whisper_targets,
+            "created_at": result.created_at.to_rfc3339(),
+        });
+
+        for recipient_id in recipients {
+            let user_channel = format!("private-user-{}", recipient_id);
+            if let Err(e) = state
+                .publisher
+                .publish(&user_channel, "message.edited", event_payload.clone())
+                .await
+            {
+                tracing::warn!(error = %e, channel = %user_channel, "sockudo whisper edit publish failed");
+            }
+        }
+    } else {
+        let channel = format!("private-room-{}", id);
+        let event_payload = json!({
+            "id": result.id,
+            "edit_of": result.edit_of,
+            "edit_sequence": result.edit_sequence,
+            "room_id": id,
+            "sender_type": "user",
+            "sender_id": auth.user_id,
+            "created_at": result.created_at.to_rfc3339(),
+        });
+
+        if let Err(e) = state
+            .publisher
+            .publish(&channel, "message.edited", event_payload)
+            .await
+        {
+            tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+        }
     }
 
     let response_body = json!({
@@ -468,7 +608,7 @@ pub async fn edit(
         "content_type": result.content_type,
         "ciphertext": ciphertext_b64.trim(),
         "reply_to": result.reply_to,
-        "target_user_ids": serde_json::Value::Null,
+        "target_user_ids": result.target_user_ids,
         "edit_of": result.edit_of,
         "edit_sequence": result.edit_sequence,
         "bot_key_leaf_index": serde_json::Value::Null,

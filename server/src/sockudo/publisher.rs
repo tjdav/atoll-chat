@@ -54,6 +54,26 @@ impl Publisher {
         event: &str,
         data: serde_json::Value,
     ) -> Result<(), SockudoError> {
+        let mut data = data;
+        if channel.starts_with("private-room-") {
+            if let Some(obj) = data.as_object_mut() {
+                if let Some(val) = obj.get("target_user_ids") {
+                    let is_non_null_and_non_empty = match val {
+                        serde_json::Value::Null => false,
+                        serde_json::Value::Array(arr) => !arr.is_empty(),
+                        _ => true,
+                    };
+                    if is_non_null_and_non_empty {
+                        warn!(
+                            event_name = %event,
+                            "defensive strip: removed target_user_ids from room channel payload"
+                        );
+                        obj.remove("target_user_ids");
+                    }
+                }
+            }
+        }
+
         let data_str =
             serde_json::to_string(&data).map_err(|e| SockudoError::PublishFailed(e.to_string()))?;
 
