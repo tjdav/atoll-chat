@@ -585,3 +585,21 @@ build task runs.
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `readState`, `drafts`, and `blockedUsers` (10 repositories total) and re-export factory functions |
 | Unit Test Suites | `tests/unit/repositories-read-state.test.js` (15 cases), `tests/unit/repositories-drafts.test.js` (12 cases), and `tests/unit/repositories-blocked-users.test.js` (9 cases) registered under `unit-smoke` batch in `test-batches.js` |
 | Domain Documentation | `packages/app/docs/storage/read-state.md`, `packages/app/docs/storage/drafts.md`, and `packages/app/docs/storage/blocked-users.md` authored; `packages/app/docs/storage/README.md` updated |
+
+### C-INFRA-17 — Outbox Queue and Storage Contract
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Migration `0007-outbox.sql` | Defines canonical `outbox` table (`message_id TEXT PRIMARY KEY`, `room_id TEXT NOT NULL`, `enqueued_at INTEGER NOT NULL`, `attempts INTEGER NOT NULL DEFAULT 0`, `next_attempt_at INTEGER NOT NULL`, `last_attempt_at INTEGER`, `last_error TEXT`) and indexes `idx_outbox_next_attempt` and `idx_outbox_room` |
+| Outbox Repository Factory | `createOutboxRepository({ db })` in `packages/app/src/lib/db/repositories/outbox.js` exposing 13 async methods |
+| Repository Methods | `enqueue`, `dequeue`, `peek`, `list`, `get`, `markSent`, `markFailed`, `count`, `countDue`, `listByRoom`, `removeByRoom`, `remove`, `clearAll` |
+| FIFO Ordering Invariant | Outbox queue is ordered strictly by `(next_attempt_at ASC, enqueued_at ASC)`. `enqueued_at` serves as the tie-breaker |
+| Due Eligibility Boundary | A row is due for send attempt when `next_attempt_at <= Date.now()` |
+| Non-Destructive Dequeue | `dequeue()` queries the next due row (`LIMIT 1`) without removing it from the table |
+| Failure State & Terminal Handling | `markFailed(messageId, error, { attempts, nextAttemptAt, terminal })` updates attempt state when `terminal: false`, and deletes the outbox row when `terminal: true` |
+| Separation of Queue & Content | The `outbox` table stores scheduling/attempts tracking only. The `messages` table owns content, payload, `local_status`, and `local_error`. Terminal failure deletes the outbox row and sets `messages.local_status = 'failed'` with error text |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `outbox` (11 repositories total) and re-export `createOutboxRepository` |
+| Unit Test Suite | `packages/app/tests/unit/repositories-outbox.test.js` (23 test cases) registered under `unit-smoke` batch in `packages/app/test-batches.js` |
+| Domain Documentation | `packages/app/docs/storage/outbox.md` authored covering all 10 contract sections; index updated in `packages/app/docs/storage/README.md` |

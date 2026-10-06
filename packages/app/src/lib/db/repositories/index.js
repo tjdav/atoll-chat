@@ -14,6 +14,7 @@ import { createReactionsRepository } from './reactions.js'
 import { createReadStateRepository } from './read-state.js'
 import { createDraftsRepository } from './drafts.js'
 import { createBlockedUsersRepository } from './blocked-users.js'
+import { createOutboxRepository } from './outbox.js'
 
 /**
  * Creates and returns all domain repository instances bound to the given database.
@@ -33,7 +34,8 @@ export function createRepositories({ db }) {
     reactions: createReactionsRepository({ db }),
     readState: createReadStateRepository({ db }),
     drafts: createDraftsRepository({ db }),
-    blockedUsers: createBlockedUsersRepository({ db })
+    blockedUsers: createBlockedUsersRepository({ db }),
+    outbox: createOutboxRepository({ db })
   }
 }
 
@@ -47,5 +49,6 @@ export {
   createReactionsRepository,
   createReadStateRepository,
   createDraftsRepository,
-  createBlockedUsersRepository
+  createBlockedUsersRepository,
+  createOutboxRepository
 }
