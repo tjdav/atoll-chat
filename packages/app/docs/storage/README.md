@@ -17,6 +17,7 @@ workflow, and the repository layer.
 | [read-state.md](./read-state.md) | The read_state table and its repository. |
 | [drafts.md](./drafts.md) | The drafts table and its repository. |
 | [blocked-users.md](./blocked-users.md) | The blocked_users table and its repository. |
+| [outbox.md](./outbox.md) | The outbox queue for outgoing messages. |
 
 ## Related
 

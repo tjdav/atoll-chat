@@ -62,6 +62,7 @@ export default [
       'tests/unit/repositories-read-state.test.js',
       'tests/unit/repositories-drafts.test.js',
       'tests/unit/repositories-blocked-users.test.js',
+      'tests/unit/repositories-outbox.test.js',
     ],
   },
   {

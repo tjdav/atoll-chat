@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 38 |
+| Done | 39 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-17 | Outbox Table and Repository | done | C-INFRA-16, C-INFRA-14, C-INFRA-9 | unit-smoke |
 | C-INFRA-16 | User State Tables: Read State, Drafts, Blocked Users | done | C-INFRA-15 | unit-smoke |
 | C-INFRA-15 | Attachments and Reactions Tables with Repositories | done | C-INFRA-14 | unit-smoke |
 | C-INFRA-14 | Messages and Message Versions Tables with Repository | done | C-INFRA-13 | unit-smoke |
@@ -527,6 +528,16 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created unit test suites `packages/app/tests/unit/repositories-read-state.test.js` (15 cases), `packages/app/tests/unit/repositories-drafts.test.js` (12 cases), and `packages/app/tests/unit/repositories-blocked-users.test.js` (9 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
   - Authored `packages/app/docs/storage/read-state.md`, `packages/app/docs/storage/drafts.md`, and `packages/app/docs/storage/blocked-users.md`, and updated `packages/app/docs/storage/README.md`.
   - Verified zero SQL string interpolation, zero modifications to untouched files, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
+
+- **C-INFRA-17 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0007-outbox.sql` defining `outbox` table (`message_id PRIMARY KEY`, `room_id`, `enqueued_at`, `attempts DEFAULT 0`, `next_attempt_at`, `last_attempt_at`, `last_error`) and indexes `idx_outbox_next_attempt` and `idx_outbox_room`.
+  - Created outbox repository `packages/app/src/lib/db/repositories/outbox.js` exporting `createOutboxRepository` with 13 async methods: `enqueue`, `dequeue`, `peek`, `list` (with FIFO cursor pagination), `get`, `markSent`, `markFailed` (updating attempt state or deleting row on `terminal: true`), `count`, `countDue`, `listByRoom`, `removeByRoom`, `remove`, `clearAll`.
+  - Updated in-memory SQLite backend `packages/app/src/lib/db/backends/memory.js` supporting `ON CONFLICT DO NOTHING`, compound `WHERE` clauses, and `COUNT(*)` alias expressions.
+  - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `outbox` (11 repositories total) and re-exporting `createOutboxRepository`.
+  - Created unit test suite `packages/app/tests/unit/repositories-outbox.test.js` (23 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Authored `packages/app/docs/storage/outbox.md` and updated `packages/app/docs/storage/README.md`.
+  - Recorded architectural decision: row deleted on terminal failure (`terminal: true`), delegating failed state representation to `messages.local_status = 'failed'` and `messages.local_error`.
 
 ## Component Authoring Policy
 
