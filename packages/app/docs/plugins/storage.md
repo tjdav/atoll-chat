@@ -26,6 +26,12 @@ The `storage` plugin name **is** the namespace. The context resolver returns met
 | `meta.set(key, value)` | `(key: string, value: any) => Promise<{ changes: number }>` | Upserts `_meta` row with `JSON.stringify(value)` and current timestamp. |
 | `meta.delete(key)` | `(key: string) => Promise<{ changes: number }>` | Deletes `_meta` row. |
 
+### `isPersistent()`
+
+- **Signature**: `isPersistent(): Promise<boolean> | boolean`
+- **Returns**: `true` when the database backend persists data across browser reloads (WASM with OPFS). Returns `false` for the memory backend and for the WASM backend's in-memory fallback.
+- **Consumers**: Consumers (such as `messenger-boot`) query `isPersistent()` after opening storage and surface the result to `$state.storagePersistent`. Future notification components observe this key to warn users about ephemeral storage when OPFS is unavailable per spec §21.6.
+
 ## Migration Workflow
 
 1. **Location & Naming**: Migrations live in `packages/app/src/db/migrations/` as `.sql` files named `NNNN-name.sql` (e.g. `0001-meta.sql`).
