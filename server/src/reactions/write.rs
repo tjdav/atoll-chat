@@ -209,21 +209,28 @@ pub async fn add_reaction(
 pub async fn remove_reaction(
     pool: &SqlitePool,
     req: RemoveRequest,
+    instance_moderation_mode: &str,
 ) -> Result<RemoveResult, ReactionError> {
     let mut conn = pool.acquire().await?;
     sqlx::query("BEGIN IMMEDIATE").execute(&mut *conn).await?;
 
     let result = async {
-        // 1. Verify membership
-        let member_role: Option<(String,)> =
-            sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
-                .bind(&req.room_id)
-                .bind(&req.requester_user_id)
-                .fetch_optional(&mut *conn)
-                .await?;
+        // 1. Verify membership and fetch room owner & moderation override
+        let member_row: Option<(String, String, Option<String>)> = sqlx::query_as(
+            r#"
+            SELECT rm.role, r.owner_id, r.moderation_override
+            FROM room_members rm
+            JOIN rooms r ON r.id = rm.room_id
+            WHERE rm.room_id = ? AND rm.user_id = ?
+            "#,
+        )
+        .bind(&req.room_id)
+        .bind(&req.requester_user_id)
+        .fetch_optional(&mut *conn)
+        .await?;
 
-        let requester_role = match member_role {
-            Some((role,)) => role,
+        let (requester_role, room_owner_id, moderation_override) = match member_row {
+            Some(row) => row,
             None => return Err(ReactionError::NotAMember),
         };
 
@@ -246,10 +253,20 @@ pub async fn remove_reaction(
             None => return Err(ReactionError::NotFound),
         };
 
-        // 3. Authorization check: sender or room owner/moderator
+        // 3. Authorization check:
+        // - Reaction sender
+        // - Room owner
+        // - Room moderator when effective moderation_mode == "discord"
+        let effective_moderation_mode = moderation_override
+            .as_deref()
+            .unwrap_or(instance_moderation_mode);
+
         let is_sender = sender_user_id == req.requester_user_id;
-        let is_owner_or_mod = requester_role == "owner" || requester_role == "moderator";
-        if !is_sender && !is_owner_or_mod {
+        let is_owner = room_owner_id == req.requester_user_id || requester_role == "owner";
+        let is_mod_discord =
+            requester_role == "moderator" && effective_moderation_mode == "discord";
+
+        if !is_sender && !is_owner && !is_mod_discord {
             return Err(ReactionError::Forbidden);
         }
 
