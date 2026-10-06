@@ -245,9 +245,17 @@ async fn test_01_message_new_published_after_application_message_submission() {
     assert_eq!(status, StatusCode::CREATED);
 
     let requests = mock_server.received_requests().await.unwrap();
-    assert_eq!(requests.len(), 1);
+    let msg_events: Vec<&wiremock::Request> = requests
+        .iter()
+        .filter(|r| {
+            let body: Value = serde_json::from_slice(&r.body).unwrap();
+            body["name"] == "message.new"
+        })
+        .collect();
 
-    let req = &requests[0];
+    assert_eq!(msg_events.len(), 1);
+
+    let req = msg_events[0];
     assert!(req.url.query().unwrap().contains("auth_signature="));
 
     let body_json: Value = serde_json::from_slice(&req.body).unwrap();
@@ -262,6 +270,10 @@ async fn test_01_message_new_published_after_application_message_submission() {
     assert_eq!(data_json["id"], body["message_id"].as_str().unwrap());
     assert_eq!(data_json["room_id"], room_id);
     assert_eq!(data_json["content_type"], "application");
+    assert_eq!(data_json["sender_type"], "user");
+    assert_eq!(data_json["sender_id"], _user_a);
+    assert!(data_json.get("sender_user_id").is_none());
+    assert!(data_json.get("bot_key_leaf_index").is_none());
 }
 
 #[tokio::test]
@@ -289,16 +301,16 @@ async fn test_02_commit_publishes_message_new_and_epoch_updated() {
     assert_eq!(status, StatusCode::CREATED);
 
     let requests = mock_server.received_requests().await.unwrap();
-    assert_eq!(requests.len(), 2);
-
     let names: Vec<String> = requests
         .iter()
         .map(|r| {
             let body: Value = serde_json::from_slice(&r.body).unwrap();
             body["name"].as_str().unwrap().to_string()
         })
+        .filter(|name| name != "device.added")
         .collect();
 
+    assert_eq!(names.len(), 2);
     assert!(names.contains(&"message.new".to_string()));
     assert!(names.contains(&"epoch.updated".to_string()));
 }
@@ -333,11 +345,17 @@ async fn test_05_message_deleted_published_after_deletion() {
     assert_eq!(del_status, StatusCode::NO_CONTENT);
 
     let requests = mock_server.received_requests().await.unwrap();
-    assert_eq!(requests.len(), 2); // 1: message.new, 2: message.deleted
+    let del_events: Vec<&wiremock::Request> = requests
+        .iter()
+        .filter(|r| {
+            let body: Value = serde_json::from_slice(&r.body).unwrap();
+            body["name"] == "message.deleted"
+        })
+        .collect();
 
-    let body_json: Value = serde_json::from_slice(&requests[1].body).unwrap();
-    assert_eq!(body_json["name"], "message.deleted");
+    assert_eq!(del_events.len(), 1);
 
+    let body_json: Value = serde_json::from_slice(&del_events[0].body).unwrap();
     let data_str = body_json["data"].as_str().unwrap();
     let data_json: Value = serde_json::from_str(data_str).unwrap();
     assert_eq!(data_json["id"], msg_id);
@@ -382,16 +400,20 @@ async fn test_06_room_member_added_and_removed_events() {
     assert_eq!(leave_status, StatusCode::OK);
 
     let requests = mock_server.received_requests().await.unwrap();
-    assert_eq!(requests.len(), 3); // 1: member_added, 2: member_removed (kick), 3: member_removed (leave)
+    let room_events: Vec<Value> = requests
+        .iter()
+        .map(|r| serde_json::from_slice::<Value>(&r.body).unwrap())
+        .filter(|b| {
+            b["name"]
+                .as_str()
+                .is_some_and(|n| n.starts_with("room.member_"))
+        })
+        .collect();
 
-    let body_1: Value = serde_json::from_slice(&requests[0].body).unwrap();
-    assert_eq!(body_1["name"], "room.member_added");
-
-    let body_2: Value = serde_json::from_slice(&requests[1].body).unwrap();
-    assert_eq!(body_2["name"], "room.member_removed");
-
-    let body_3: Value = serde_json::from_slice(&requests[2].body).unwrap();
-    assert_eq!(body_3["name"], "room.member_removed");
+    assert_eq!(room_events.len(), 3); // 1: member_added, 2: member_removed (kick), 3: member_removed (leave)
+    assert_eq!(room_events[0]["name"], "room.member_added");
+    assert_eq!(room_events[1]["name"], "room.member_removed");
+    assert_eq!(room_events[2]["name"], "room.member_removed");
 }
 
 #[tokio::test]
@@ -543,5 +565,11 @@ async fn test_10_no_publish_when_transaction_fails() {
     assert_eq!(body["error"], "epoch_mismatch");
 
     let requests = mock_server.received_requests().await.unwrap();
-    assert_eq!(requests.len(), 0);
+    let msg_events: Vec<Value> = requests
+        .iter()
+        .map(|r| serde_json::from_slice::<Value>(&r.body).unwrap())
+        .filter(|b| b["name"] == "message.new")
+        .collect();
+
+    assert_eq!(msg_events.len(), 0);
 }

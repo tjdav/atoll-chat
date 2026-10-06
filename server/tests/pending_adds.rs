@@ -445,12 +445,20 @@ async fn test_mls_add_pending_event_published_with_mock() {
 
     // Verify events received by mock server
     let requests = mock_server.received_requests().await.unwrap();
-    assert_eq!(requests.len(), 2); // 1: room.member_added, 2: mls.add_pending
+    let events: Vec<&wiremock::Request> = requests
+        .iter()
+        .filter(|r| {
+            let body: Value = serde_json::from_slice(&r.body).unwrap();
+            body["name"] != "device.added"
+        })
+        .collect();
 
-    let body_1: Value = serde_json::from_slice(&requests[0].body).unwrap();
+    assert_eq!(events.len(), 2); // 1: room.member_added, 2: mls.add_pending
+
+    let body_1: Value = serde_json::from_slice(&events[0].body).unwrap();
     assert_eq!(body_1["name"], "room.member_added");
 
-    let body_2: Value = serde_json::from_slice(&requests[1].body).unwrap();
+    let body_2: Value = serde_json::from_slice(&events[1].body).unwrap();
     assert_eq!(body_2["name"], "mls.add_pending");
     assert_eq!(
         body_2["channels"],
