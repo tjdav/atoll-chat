@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 37 |
+| Done | 38 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-16 | User State Tables: Read State, Drafts, Blocked Users | done | C-INFRA-15 | unit-smoke |
 | C-INFRA-15 | Attachments and Reactions Tables with Repositories | done | C-INFRA-14 | unit-smoke |
 | C-INFRA-14 | Messages and Message Versions Tables with Repository | done | C-INFRA-13 | unit-smoke |
 | C-INFRA-13 | Rooms, Room Members, and Room Order Tables with Repositories | done | C-INFRA-12 | unit-smoke |
@@ -513,6 +514,18 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `attachments` and `reactions` and re-exporting factory functions.
   - Created unit test suites `packages/app/tests/unit/repositories-attachments.test.js` (19 cases) and `packages/app/tests/unit/repositories-reactions.test.js` (19 cases) registered under `unit-smoke` in `test-batches.js`.
   - Authored `packages/app/docs/storage/attachments.md` and `packages/app/docs/storage/reactions.md`, and updated `packages/app/docs/storage/README.md`.
+  - Verified zero SQL string interpolation, zero modifications to untouched files, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
+
+- **C-INFRA-16 Deliverables & Status:**
+  - Status: `done`.
+  - Created migration `packages/app/src/db/migrations/0006-user-state.sql` defining `read_state` (`user_id`, `room_id`, `last_read_message_id`, `last_read_at`, `marked_unread`, `updated_at`, `PRIMARY KEY (user_id, room_id)`), `drafts` (`room_id PRIMARY KEY`, `text`, `updated_at`), and `blocked_users` (`user_id PRIMARY KEY`, `blocked_at`) tables and their indexes (`idx_read_state_room`, `idx_blocked_users_blocked_at`).
+  - Created repositories under `packages/app/src/lib/db/repositories/`:
+    - `read-state.js` exporting `createReadStateRepository` (`get`, `getForRoom`, `upsert` preserving `marked_unread`, `setMarkedUnread`, `clearMarkedUnread`, `listForUser`, `remove`, `removeAll`, `clearAll`).
+    - `drafts.js` exporting `createDraftsRepository` (`get`, `getText`, `set` deleting row on empty/whitespace text, `remove`, `list`, `count`, `clearAll`).
+    - `blocked-users.js` exporting `createBlockedUsersRepository` (`isBlocked`, `list`, `add` using `INSERT OR REPLACE`, `remove`, `count`, `clearAll`).
+  - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `readState`, `drafts`, `blockedUsers` (10 repositories total) and re-exporting factory functions.
+  - Created unit test suites `packages/app/tests/unit/repositories-read-state.test.js` (15 cases), `packages/app/tests/unit/repositories-drafts.test.js` (12 cases), and `packages/app/tests/unit/repositories-blocked-users.test.js` (9 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Authored `packages/app/docs/storage/read-state.md`, `packages/app/docs/storage/drafts.md`, and `packages/app/docs/storage/blocked-users.md`, and updated `packages/app/docs/storage/README.md`.
   - Verified zero SQL string interpolation, zero modifications to untouched files, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
 
 ## Component Authoring Policy

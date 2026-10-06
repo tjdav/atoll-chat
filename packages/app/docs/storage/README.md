@@ -14,6 +14,9 @@ workflow, and the repository layer.
 | [messages.md](./messages.md) | The messages and message_versions tables and their repository. |
 | [attachments.md](./attachments.md) | The attachments table and its repository. |
 | [reactions.md](./reactions.md) | The reactions table and its repository. |
+| [read-state.md](./read-state.md) | The read_state table and its repository. |
+| [drafts.md](./drafts.md) | The drafts table and its repository. |
+| [blocked-users.md](./blocked-users.md) | The blocked_users table and its repository. |
 
 ## Related
 

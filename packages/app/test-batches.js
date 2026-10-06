@@ -59,6 +59,9 @@ export default [
       'tests/unit/repositories-messages.test.js',
       'tests/unit/repositories-attachments.test.js',
       'tests/unit/repositories-reactions.test.js',
+      'tests/unit/repositories-read-state.test.js',
+      'tests/unit/repositories-drafts.test.js',
+      'tests/unit/repositories-blocked-users.test.js',
     ],
   },
   {

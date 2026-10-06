@@ -568,3 +568,20 @@ build task runs.
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to export `createAttachmentsRepository` & `createReactionsRepository` and include `attachments` & `reactions` in `createRepositories({ db })` |
 | Unit Test Suites | `tests/unit/repositories-attachments.test.js` (19 cases) and `tests/unit/repositories-reactions.test.js` (19 cases) registered under `unit-smoke` batch in `test-batches.js` |
 | Domain Documentation | `packages/app/docs/storage/attachments.md` and `packages/app/docs/storage/reactions.md` authored covering all ten required sections; `packages/app/docs/storage/README.md` updated |
+
+### C-INFRA-16 — User State Tables: Read State, Drafts, Blocked Users
+
+**Verified:** 2026-10-06
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Migration `0006-user-state.sql` | Defines `read_state` (`user_id`, `room_id`, `last_read_message_id`, `last_read_at`, `marked_unread`, `updated_at`, `PRIMARY KEY (user_id, room_id)`), `drafts` (`room_id PRIMARY KEY`, `text`, `updated_at`), and `blocked_users` (`user_id PRIMARY KEY`, `blocked_at`) tables and their indexes |
+| Read State Repository | `createReadStateRepository({ db })` in `packages/app/src/lib/db/repositories/read-state.js` exposing 9 async methods (`get`, `getForRoom`, `upsert`, `setMarkedUnread`, `clearMarkedUnread`, `listForUser`, `remove`, `removeAll`, `clearAll`) |
+| Read State `marked_unread` Policy | `upsert` updates `last_read_message_id` and `last_read_at` without touching `marked_unread`. `setMarkedUnread` and `clearMarkedUnread` control the manual unread flag explicitly |
+| Drafts Repository | `createDraftsRepository({ db })` in `packages/app/src/lib/db/repositories/drafts.js` exposing 7 async methods (`get`, `getText`, `set`, `remove`, `list`, `count`, `clearAll`) |
+| Draft Empty Text Deletion | `set(roomId, text)` automatically deletes the draft row if `text` is empty or whitespace-only |
+| Blocked Users Repository | `createBlockedUsersRepository({ db })` in `packages/app/src/lib/db/repositories/blocked-users.js` exposing 6 async methods (`isBlocked`, `list`, `add`, `remove`, `count`, `clearAll`) |
+| Blocked Users Re-block | `add(userId)` uses `INSERT OR REPLACE` to update `blocked_at` on re-block |
+| Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `readState`, `drafts`, and `blockedUsers` (10 repositories total) and re-export factory functions |
+| Unit Test Suites | `tests/unit/repositories-read-state.test.js` (15 cases), `tests/unit/repositories-drafts.test.js` (12 cases), and `tests/unit/repositories-blocked-users.test.js` (9 cases) registered under `unit-smoke` batch in `test-batches.js` |
+| Domain Documentation | `packages/app/docs/storage/read-state.md`, `packages/app/docs/storage/drafts.md`, and `packages/app/docs/storage/blocked-users.md` authored; `packages/app/docs/storage/README.md` updated |
