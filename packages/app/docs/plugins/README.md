@@ -32,5 +32,6 @@ Each plugin that ships with the client has a usage guide in this directory.
 | `i18n` | [i18n.md](./i18n.md) | Translation, locale detection, and the `t()` and `strings()` helpers. |
 | `router` | [router.md](./router.md) | In-page routing: query-param parsing, navigation, and change subscriptions. |
 | `storage` | [storage.md](./storage.md) | SQLite persistence, backend abstraction, migration runner, and `meta` helpers. |
+| `sync` | [sync.md](./sync.md) | User-scoped sync via `GET /users/me/sync`. |
 
 New plugin tasks add their guide here in the same commit that lands the plugin.
