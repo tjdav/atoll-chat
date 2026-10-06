@@ -107,3 +107,9 @@ name = "sse"
 files = [
   "unit/sse.test.js",
 ]
+
+[[batch]]
+name = "ctx-post"
+files = [
+  "unit/ctx-post.test.js",
+]
