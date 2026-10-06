@@ -342,3 +342,20 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-021 Verification Fact
+- **Reply Handler Wrapper (`packages/bot/src/runtime/context/reply.js`)**:
+  - The `ctx.reply` handler lives at `packages/bot/src/runtime/context/reply.js` exporting `createReplyHandler`.
+  - Validates `opts.replyTo` as a non-empty string.
+  - Missing or empty `replyTo` rejects with `ReplyRequiresReplyToError` (code `reply_requires_reply_to`).
+  - When `logger` is provided, rejection emits a debug log entry with `meta: { room_id }` resolving `room_id` from `opts.roomId`, then `ctx.grant.roomId`, then `null`.
+  - Valid calls delegate to `post(opts, ctx)` unchanged.
+  - Errors from `post` propagate unchanged (same error instance and error code).
+  - The wrapper performs no crypto, HTTP, or response parsing, and does not log message content or `replyTo`.
+  - Registered `ctx-reply` batch in `packages/bot/tests/batch-manifest.toml` and authored 25 unit tests in `packages/bot/tests/unit/ctx-reply.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).

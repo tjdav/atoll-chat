@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 33
-- **Done:** 21
+- **Done:** 22
 - **In Progress:** 0
-- **Todo:** 12
+- **Todo:** 11
 
 ---
 
@@ -41,7 +41,7 @@ Track progress across Bot SDK implementation tasks.
 | B-019 | SSE Client | done | §6.1, §8.8.9 | SSE transport for observer stream |
 | B-020 | Post Helper | done | §6.1, §8.3 | `ctx.post` implementation with publisher key lookup and encryption |
 | B-020a | Post Member | todo | §6.1 | Member-mode `ctx.post` via MLS (`src/runtime/context/post-member.js`) |
-| B-021 | Context | todo | §8 | Runtime `ctx` assembly and scoping |
+| B-021 | Context | done | §6.2, §8 | `ctx.reply` wrapper over `ctx.post` with `replyTo` non-empty string validation |
 | B-022 | Storage Wrapper | todo | §8.4 | Author-facing `ctx.storage` with reserved prefix enforcement |
 | B-023 | Media | todo | §8.5 | Media upload/download helper |
 | B-024 | Rooms | todo | §8.6 | Room state query and management helpers |
