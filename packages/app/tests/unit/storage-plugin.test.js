@@ -20,9 +20,9 @@ test('2. storagePlugin has server.context and client.context functions', () => {
   assert.equal(typeof plugin.client.context, 'function')
 })
 
-test('3. client.context returns keys directly without wrapper', () => {
+test('3. client.context returns keys directly without wrapper', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
-  const clientContextResolver = plugin.client.context({})
+  const clientContextResolver = await plugin.client.context({})
   const ctx = clientContextResolver({})
 
   assert.equal(typeof ctx.open, 'function')
@@ -56,7 +56,7 @@ test('4. server.context returns direct key shape', () => {
 test('5. client.context uses singleton guard across calls', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
   const pluginCtx = {}
-  const resolver = plugin.client.context(pluginCtx)
+  const resolver = await plugin.client.context(pluginCtx)
   const ctx1 = resolver({})
   const ctx2 = resolver({})
 

@@ -1,5 +1,12 @@
 # Storage Plugin & Migration Runner (`storage`)
 
+### Import pattern
+
+The `client.context` uses a Phase 1 async dynamic import to load
+`../lib/db/index.js` into the browser bundle. This is required: static top-level
+imports in the plugin file are not hoisted into the serialized client
+bundle. See `docs/plugins/README.md` for the cross-cutting rule.
+
 The `storage` plugin provides SQLite persistence, WASM+OPFS browser storage, in-memory fallback backend abstractions, the forward-only migration runner, and key-value metadata helpers (`meta`).
 
 ## Overview

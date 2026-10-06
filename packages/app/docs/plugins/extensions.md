@@ -1,5 +1,9 @@
 # Extension System Usage Guide (`@atoll/extend`)
 
+### Import pattern
+
+The extension plugin (`@atoll/extend/plugin`)'s `client.context` receives the shared `ExtensionRegistry` instance initialized on the plugin instance. It has no external file-scope dynamic module imports inside `client.context`. See `docs/plugins/README.md` for the cross-cutting rule.
+
 ## Prerequisite: `defineComponent` & `i18n` Patterns
 
 - **`defineComponent` Rule:** Every component's `<script type="module">` block MUST `import { defineComponent } from 'coralite'` and `export default defineComponent({ ... })`.

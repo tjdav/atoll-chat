@@ -1,5 +1,12 @@
 # Router Plugin (`router`)
 
+### Import pattern
+
+The `client.context` uses a Phase 1 async dynamic import to load
+`../lib/router/index.js` into the browser bundle. This is required: static top-level
+imports in the plugin file are not hoisted into the serialized client
+bundle. See `docs/plugins/README.md` for the cross-cutting rule.
+
 The `router` plugin provides lightweight, pure JS in-page routing for Atoll single-page applications by managing query parameters and subscriber notifications.
 
 ## 1. Overview
