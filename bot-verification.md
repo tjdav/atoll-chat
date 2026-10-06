@@ -98,6 +98,26 @@
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
 
+## Task B-028 Verification Fact
+- **Cron Schedule Trigger Engine (`packages/bot/src/runtime/triggers/cron.js`)**:
+  - Lives at `packages/bot/src/runtime/triggers/cron.js` exporting `createCronEngine`, `parseCron`, and `nextFireTime`.
+  - The cron grammar parses five space-separated fields (`minute`, `hour`, `dayOfMonth`, `month`, `dayOfWeek`), supporting wildcards `*`, values `n`, ranges `n-m`, steps `n-m/s` and `*/s`, and lists `n,m`. Normalizes day-of-week 7 to 0. Rejects invalid field counts, malformed ranges, step 0, out-of-range values, and unknown characters with descriptive field error messages.
+  - `nextFireTime` computes the next fire strictly after the baseline date in the given IANA timezone using `Intl.DateTimeFormat`. Applies standard cron OR-when-both-restricted rule for day-of-month and day-of-week. DST skipped hours advance to the next valid minute (producing no fire on transition day); DST repeated hours fire once. Exceeding a 5-year search limit throws.
+  - `createCronEngine` accepts dependencies `config`, `triggers`, `makeBotCtx`, `idempotency`, `stateStore` (`get`/`set`), optional `sleep`, `now`, `logger`, `handlerTimeoutMs`.
+  - Zero schedule triggers makes `start()` a no-op. Invalid triggers (expression or timezone) are skipped during `start()` with warning logs.
+  - State key `_runtime:cron:<name>:last_fire` stores the ISO timestamp of the last successful dispatch.
+  - Catch-up (`config.catchUp === true`) evaluates missed windows between `last_fire` and `now()`, bounded by `MAX_CATCH_UP_FIRES` (100, keeping the most recent and logging a warning on overflow).
+  - Deduplication uses `idempotency.checkAndRecord('<name>:<scheduledAt>')`. Handler failures log an error and leave the idempotency key intact (at-most-once semantics).
+  - `fireNow(name)` dispatches immediately, bypassing idempotency, and awaits the handler.
+  - `stop()` cancels all pending sleep timers and awaits in-flight handler dispatches.
+  - Registered `cron-engine` batch in `packages/bot/tests/batch-manifest.toml` and authored 56 unit test cases in `packages/bot/tests/unit/cron-engine.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+
 ## Task B-026 Verification Fact
 - **StorageStore and RoomsStore (`packages/bot/src/runtime/context/storage.js` & `rooms.js`)**:
   - `StorageStore` lives at `packages/bot/src/runtime/context/storage.js`. It wraps B-009's `Storage` and rejects `_runtime:` prefixed keys with `StorageReservedPrefixError` (`storage_reserved_prefix`). Keys are validated as non-empty strings (`TypeError`). `clear()` delegates directly to `storage.clear()` and preserves `_runtime:` keys.

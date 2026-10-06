@@ -161,3 +161,9 @@ name = "webhook-server"
 files = [
   "unit/webhook-server.test.js",
 ]
+
+[[batch]]
+name = "cron-engine"
+files = [
+  "unit/cron-engine.test.js",
+]
