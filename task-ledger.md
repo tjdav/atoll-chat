@@ -197,7 +197,8 @@
   - **Delivered:** Step 0 report at `verification/device-model-implementation/report.md`, updated `Device` struct and methods in `server/src/devices.rs`, updated `LoginFinishRequest` and `login_finish` in `server/src/routes/login.rs` accepting and validating `platform`, published durable `device.added` event post-commit, published durable `device.revoked` event on `revoke_device`, corrected `device.name_updated` event name and payload in `server/src/sync/device_names.rs`, updated test fixtures across `sync_contract.rs`, `identity_schema.rs`, `cleanup.rs`, `push_delivery.rs`, `common/mod.rs`, and added integration tests in `server/tests/devices.rs`.
   - **Batch:** `auth`
 - **Device Model Event & Atomicity Test Coverage**: done
-  - **Delivered:** Step 0 empirical report at `verification/device-model-tests/report.md`, `device.added`, `device.revoked`, and `device.name_updated` event payload shape tests in `server/tests/devices.rs`, `login_start` invalid and missing `platform` rejection tests in `server/tests/login.rs`, and sequence rollback atomicity tests implemented as `#[ignore]` with documented test-hook limitation.
+  - **Delivered:** Step 0 empirical report at `verification/device-model-tests/report.md`, five passing integration tests (`device.added` payload shape test in `server/tests/login.rs`, `device.revoked` payload shape test in `server/tests/devices.rs`, `device.name_updated` payload shape test in `server/tests/devices.rs`, invalid `platform` rejection test in `server/tests/login.rs`, missing `platform` rejection test in `server/tests/login.rs`), and two `#[ignore]` sequence atomicity tests (`server/tests/login.rs` and `server/tests/devices.rs`) with documented test-hook limitation.
+  - **Follow-up Item:** Add a production test hook or failpoint to force transaction rollback post-`allocate_user_seq` to enable un-ignoring tests 6 & 7.
   - **Batch:** `auth`
 
 ## Annotations for Future Tasks

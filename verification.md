@@ -768,9 +768,9 @@
 - **Status:** Complete. Canonical.
 - **Spec / Amendment references:** V3 Spec §7.1, §8.9
 - **Verified Facts:**
-  - `device.added`: Published on durable user channel `private-user-{user_id}` when a new device is created during `POST /auth/login/finish`. Payload: `{ "device_id": String, "platform": "web" | "ios" | "android" | "desktop", "added_at": ISO8601, "user_seq": i64 }`.
-  - `device.revoked`: Published on durable user channel `private-user-{user_id}` when a device is revoked via `DELETE /users/me/devices/:id`. Payload: `{ "device_id": String, "reason": "revoked_by_user", "user_seq": i64 }`.
-  - `device.name_updated`: Published on durable user channel `private-user-{user_id}` when a device name is updated via `write_device_name`. Payload: `{ "device_id": String, "encrypted_device_name": String, "user_seq": i64 }`.
+  - `device.added`: Published on durable user channel `private-user-{user_id}` when a new device is created during `POST /auth/login/finish`. Payload shape (`device_id`, `platform`, `added_at`, `user_seq`) verified by `test_15_device_added_event_payload_shape` in `server/tests/login.rs`.
+  - `device.revoked`: Published on durable user channel `private-user-{user_id}` when a device is revoked via `DELETE /users/me/devices/:id`. Payload shape (`device_id`, `reason == "revoked_by_user"`, `user_seq`) verified by `test_19_device_revoked_event_payload_shape` in `server/tests/devices.rs`.
+  - `device.name_updated`: Published on durable user channel `private-user-{user_id}` when a device name is updated via `write_device_name`. Payload shape (`device_id`, `encrypted_device_name`, `user_seq`) verified by `test_20_device_name_updated_event_payload_shape` in `server/tests/devices.rs` (which also asserts zero `device.sync` events published).
   - `device.sync` is no longer published.
   - `user_seq` for each event is allocated inside the same SQL transaction that inserts or mutates state.
 
