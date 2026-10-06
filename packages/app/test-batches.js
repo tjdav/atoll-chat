@@ -1,15 +1,3 @@
-/**
- * Client test batches.
- *
- * Every test file must appear in exactly one batch. The check-batches
- * script enforces this invariant.
- *
- * Each batch runs in under 60 seconds. If a batch exceeds that, split it.
- *
- * Adding a test file: add its path to an existing batch, or create a new
- * batch. Then run `pnpm check-batches`.
- */
-
 export default [
   {
     name: 'unit-smoke',
@@ -65,7 +53,9 @@ export default [
       'tests/unit/repositories-outbox.test.js',
       'tests/unit/repositories-room-preferences.test.js',
       'tests/unit/repositories-nicknames.test.js',
-    ],
+      'tests/unit/repositories-device-names.test.js',
+      'tests/unit/repositories-starred-items.test.js'
+    ]
   },
   {
     name: 'component-smoke',
@@ -80,8 +70,8 @@ export default [
       'tests/component/shell.spec.js',
       'tests/component/rail.spec.js',
       'tests/component/surface.spec.js',
-      'tests/component/ui-icon.spec.js',
-    ],
+      'tests/component/ui-icon.spec.js'
+    ]
   },
   {
     name: 'component-auth',
@@ -93,8 +83,8 @@ export default [
       'tests/component/auth-login-flow.spec.js',
       'tests/component/register-form.spec.js',
       'tests/component/messenger-boot.spec.js',
-      'tests/component/auth-recovery.spec.js',
-    ],
+      'tests/component/auth-recovery.spec.js'
+    ]
   },
   {
     name: 'component-i18n',
@@ -102,7 +92,7 @@ export default [
     runner: 'playwright',
     description: 'Component tests for i18n locale rendering and migration verification.',
     files: [
-      'tests/component/i18n-migration.spec.js',
-    ],
-  },
+      'tests/component/i18n-migration.spec.js'
+    ]
+  }
 ]

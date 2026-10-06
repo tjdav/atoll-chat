@@ -20,6 +20,8 @@ workflow, and the repository layer.
 | [outbox.md](./outbox.md) | The outbox queue for outgoing messages. |
 | [room-preferences.md](./room-preferences.md) | The room_preferences table and its repository. |
 | [nicknames.md](./nicknames.md) | The nicknames table and its repository. |
+| [device-names.md](./device-names.md) | The device_names table and its repository. |
+| [starred-items.md](./starred-items.md) | The starred_items table and its repository. |
 
 ## Related
 
