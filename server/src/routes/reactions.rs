@@ -143,26 +143,61 @@ pub async fn add(
 
     // Publish event only if this is a new or reactivated reaction (result.is_new)
     if result.is_new {
-        // Phase 10: For whisper messages (target_user_ids non-null on the parent message),
-        // reaction events must route to each recipient's private-user-{user_id} channel and
-        // to the sender's own channel. The room channel must receive nothing for a whisper.
-        // See §8.9 notes.
-        let channel = format!("private-room-{}", room_id);
-        let event_payload = json!({
-            "id": result.id,
-            "room_id": room_id,
-            "message_id": msg_id,
-            "sender_user_id": auth.user_id,
-            "reaction": reaction_str,
-            "created_at": result.created_at.to_rfc3339(),
-        });
+        let is_whisper = result
+            .target_user_ids
+            .as_ref()
+            .is_some_and(|t| !t.is_empty());
 
-        if let Err(e) = state
-            .publisher
-            .publish(&channel, "reaction.added", event_payload)
-            .await
-        {
-            tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+        if is_whisper {
+            let whisper_targets = result.target_user_ids.as_ref().unwrap();
+            let mut recipients: Vec<String> = Vec::new();
+            for target_id in whisper_targets {
+                if !recipients.contains(target_id) {
+                    recipients.push(target_id.clone());
+                }
+            }
+            if !recipients.contains(&result.parent_sender_user_id) {
+                recipients.push(result.parent_sender_user_id.clone());
+            }
+
+            let event_payload = json!({
+                "id": result.id,
+                "room_id": room_id,
+                "message_id": msg_id,
+                "sender_user_id": auth.user_id,
+                "reaction": reaction_str,
+                "target_user_ids": whisper_targets,
+                "created_at": result.created_at.to_rfc3339(),
+            });
+
+            for recipient_id in recipients {
+                let user_channel = format!("private-user-{}", recipient_id);
+                if let Err(e) = state
+                    .publisher
+                    .publish(&user_channel, "reaction.added", event_payload.clone())
+                    .await
+                {
+                    tracing::warn!(error = %e, channel = %user_channel, "sockudo whisper reaction.added publish failed");
+                }
+            }
+        } else {
+            let channel = format!("private-room-{}", room_id);
+            let event_payload = json!({
+                "id": result.id,
+                "room_id": room_id,
+                "message_id": msg_id,
+                "sender_user_id": auth.user_id,
+                "reaction": reaction_str,
+                "created_at": result.created_at.to_rfc3339(),
+            });
+
+            if let Err(e) = state
+                .publisher
+                .publish(&channel, "reaction.added", event_payload)
+                .await
+            {
+                tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+            }
         }
     }
 
@@ -246,23 +281,55 @@ pub async fn remove(
     )
     .await;
 
-    // Phase 10: For whisper messages (target_user_ids non-null on the parent message),
-    // reaction events must route to each recipient's private-user-{user_id} channel and
-    // to the sender's own channel. The room channel must receive nothing for a whisper.
-    // See §8.9 notes.
-    let channel = format!("private-room-{}", room_id);
-    let event_payload = json!({
-        "id": remove_res.reaction_id,
-        "room_id": room_id,
-        "message_id": msg_id,
-    });
+    let is_whisper = remove_res
+        .target_user_ids
+        .as_ref()
+        .is_some_and(|t| !t.is_empty());
 
-    if let Err(e) = state
-        .publisher
-        .publish(&channel, "reaction.removed", event_payload)
-        .await
-    {
-        tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+    if is_whisper {
+        let whisper_targets = remove_res.target_user_ids.as_ref().unwrap();
+        let mut recipients: Vec<String> = Vec::new();
+        for target_id in whisper_targets {
+            if !recipients.contains(target_id) {
+                recipients.push(target_id.clone());
+            }
+        }
+        if !recipients.contains(&remove_res.parent_sender_user_id) {
+            recipients.push(remove_res.parent_sender_user_id.clone());
+        }
+
+        let event_payload = json!({
+            "id": remove_res.reaction_id,
+            "room_id": room_id,
+            "message_id": msg_id,
+            "target_user_ids": whisper_targets,
+        });
+
+        for recipient_id in recipients {
+            let user_channel = format!("private-user-{}", recipient_id);
+            if let Err(e) = state
+                .publisher
+                .publish(&user_channel, "reaction.removed", event_payload.clone())
+                .await
+            {
+                tracing::warn!(error = %e, channel = %user_channel, "sockudo whisper reaction.removed publish failed");
+            }
+        }
+    } else {
+        let channel = format!("private-room-{}", room_id);
+        let event_payload = json!({
+            "id": remove_res.reaction_id,
+            "room_id": room_id,
+            "message_id": msg_id,
+        });
+
+        if let Err(e) = state
+            .publisher
+            .publish(&channel, "reaction.removed", event_payload)
+            .await
+        {
+            tracing::warn!(error = %e, channel = %channel, "sockudo publish failed");
+        }
     }
 
     Ok((

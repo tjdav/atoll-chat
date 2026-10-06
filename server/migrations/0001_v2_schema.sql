@@ -159,11 +159,12 @@ CREATE TABLE IF NOT EXISTS room_messages (
     seq              INTEGER NOT NULL,
     content_type     TEXT NOT NULL CHECK(content_type IN ('application', 'commit', 'proposal', 'bot')),
     ciphertext       BLOB NOT NULL,
-    deleted_at       DATETIME,
+    reply_to         TEXT REFERENCES room_messages(id),
+    target_user_ids  TEXT,
     edit_of          TEXT REFERENCES room_messages(id),
     edit_sequence    INTEGER NOT NULL DEFAULT 0,
     edited_at        DATETIME,
-    reply_to         TEXT REFERENCES room_messages(id),
+    deleted_at       DATETIME,
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_room_messages_room_epoch_seq ON room_messages(room_id, epoch, seq);

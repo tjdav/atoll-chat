@@ -21,6 +21,8 @@ pub struct AddResult {
     pub created_at: DateTime<Utc>,
     pub reactions_per_message_effective: i64,
     pub is_new: bool,
+    pub parent_sender_user_id: String,
+    pub target_user_ids: Option<Vec<String>>,
 }
 
 pub struct RemoveRequest {
@@ -34,6 +36,8 @@ pub struct RemoveResult {
     pub reaction_id: String,
     pub sender_user_id: String,
     pub reaction: String,
+    pub parent_sender_user_id: String,
+    pub target_user_ids: Option<Vec<String>>,
 }
 
 fn validate_reaction_string(r: &str) -> Result<(), ReactionError> {
@@ -90,17 +94,22 @@ pub async fn add_reaction(
         }
 
         // 2. Verify message existence in room (including tombstoned messages per §7.6)
-        let msg_exists: Option<(String,)> = sqlx::query_as(
-            "SELECT id FROM room_messages WHERE id = ? AND room_id = ?",
+        let msg_row: Option<(String, Option<String>)> = sqlx::query_as(
+            "SELECT sender_user_id, target_user_ids FROM room_messages WHERE id = ? AND room_id = ?",
         )
         .bind(&req.message_id)
         .bind(&req.room_id)
         .fetch_optional(&mut *conn)
         .await?;
 
-        if msg_exists.is_none() {
-            return Err(ReactionError::MessageNotFound);
-        }
+        let (parent_sender_user_id, target_user_ids_raw) = match msg_row {
+            Some(row) => row,
+            None => return Err(ReactionError::MessageNotFound),
+        };
+
+        let target_user_ids: Option<Vec<String>> = target_user_ids_raw
+            .as_ref()
+            .and_then(|s| serde_json::from_str(s).ok());
 
         // 3. Count non-deleted reactions on message
         let (active_count,): (i64,) = sqlx::query_as(
@@ -190,6 +199,8 @@ pub async fn add_reaction(
             created_at,
             reactions_per_message_effective: per_message_limit,
             is_new,
+            parent_sender_user_id,
+            target_user_ids,
         })
     }
     .await;
@@ -234,12 +245,13 @@ pub async fn remove_reaction(
             None => return Err(ReactionError::NotAMember),
         };
 
-        // 2. Find active reaction row by reaction_id, room_id, message_id
-        let active_row: Option<(String, String, String)> = sqlx::query_as(
+        // 2. Find active reaction row by reaction_id, room_id, message_id and fetch parent message target_user_ids
+        let active_row: Option<(String, String, String, String, Option<String>)> = sqlx::query_as(
             r#"
-            SELECT id, sender_user_id, reaction
-            FROM reactions
-            WHERE id = ? AND room_id = ? AND message_id = ? AND deleted_at IS NULL
+            SELECT r.id, r.sender_user_id, r.reaction, m.sender_user_id, m.target_user_ids
+            FROM reactions r
+            JOIN room_messages m ON m.id = r.message_id
+            WHERE r.id = ? AND r.room_id = ? AND r.message_id = ? AND r.deleted_at IS NULL
             "#,
         )
         .bind(&req.reaction_id)
@@ -248,10 +260,15 @@ pub async fn remove_reaction(
         .fetch_optional(&mut *conn)
         .await?;
 
-        let (id, sender_user_id, reaction) = match active_row {
-            Some(row) => row,
-            None => return Err(ReactionError::NotFound),
-        };
+        let (id, sender_user_id, reaction, parent_sender_user_id, target_user_ids_raw) =
+            match active_row {
+                Some(row) => row,
+                None => return Err(ReactionError::NotFound),
+            };
+
+        let target_user_ids: Option<Vec<String>> = target_user_ids_raw
+            .as_ref()
+            .and_then(|s| serde_json::from_str(s).ok());
 
         // 3. Authorization check:
         // - Reaction sender
@@ -280,6 +297,8 @@ pub async fn remove_reaction(
             reaction_id: id,
             sender_user_id,
             reaction,
+            parent_sender_user_id,
+            target_user_ids,
         })
     }
     .await;

@@ -878,3 +878,18 @@
   - **`message.edited` Payload:** `message.edited` event payload does NOT carry `reply_to`.
   - **`message.new` Payload:** `message.new` event payload carries `sender_type: "user"`, `sender_id: "u_..."`, `reply_to` (string or `null`), omits `sender_user_id`, and omits `bot_key_leaf_index` per §8.9.
 - **Link to report:** [verification/threading-v3/report.md](verification/threading-v3/report.md)
+
+## Whisper Messages Empirical Baseline Verification
+- **ID:** Whisper Messages
+- **Date:** 2026-10-06
+- **Status:** Complete.
+- **Spec / Amendment references:** V3 Spec §7.6, §8.5, §8.5.1, §8.9, §12
+- **Question asked:** What is the current ground truth state for `target_user_ids`, message creation/edit/delete/reaction events, room channel defensive stripping, non-durability of whisper events, and `GET /rooms/:id/messages` filtering?
+- **Answer found:**
+  - Audited ground truth baseline in `verification/whisper-messages/report.md`.
+  - Confirmed `target_user_ids` column is currently missing in `0001_v2_schema.sql` and must be added.
+  - Confirmed Phase 7 and Phase 8 stub comments exist at edit and reaction publish sites.
+  - Confirmed `Publisher` lacks defensive stripping of `target_user_ids` on room channel events.
+  - Confirmed `list_messages` requires filtering for `target_user_ids` recipients/sender.
+  - Confirmed non-durable live event delivery on user channels (`private-user-{user_id}`) without `user_seq` allocation or sync persistence.
+- **Link to report:** [verification/whisper-messages/report.md](verification/whisper-messages/report.md)

@@ -201,14 +201,19 @@
   - **Follow-up Item:** Add a production test hook or failpoint to force transaction rollback post-`allocate_user_seq` to enable un-ignoring tests 6 & 7.
   - **Batch:** `auth`
 
+- **Whisper Messages**: done
+  - **Migration:** `0001_v2_schema.sql` (`room_messages.target_user_ids` TEXT column added).
+  - **Delivered:** Step 0 report at `verification/whisper-messages/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/reactions/write.rs`, `server/src/routes/reactions.rs`, `server/src/sockudo/publisher.rs`, `server/tests/message_whispers.rs`, `server/tests/batch-manifest.toml`. Implemented whisper validation, user-channel event delivery for message creation, edits, deletions, and reactions, room channel defensive stripping in `Publisher`, whisper row filtering in message listing, and 9 integration tests.
+  - **Batch:** `messaging`
+
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 48
-- **Done:** 48
+- **Total Verifications/Tasks Tracked:** 49
+- **Done:** 49
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0
