@@ -221,3 +221,9 @@ name = "runtime-shutdown"
 files = [
   "unit/runtime-shutdown.test.js",
 ]
+
+[[batch]]
+name = "create-test-ctx"
+files = [
+  "unit/create-test-ctx.test.js",
+]
