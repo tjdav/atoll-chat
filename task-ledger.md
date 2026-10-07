@@ -229,14 +229,23 @@
   - **Delivered:** Step 0 report at `verification/pending-mls-removes-bot-targets/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/rooms.rs`, `server/src/devices.rs`, `server/src/gdpr.rs`, `server/src/config.rs`, `server/src/routes/pending_removes.rs`, `server/src/cleanup/pending_removes.rs`, `server/src/cleanup/mod.rs`, `server/src/main.rs`, `server/tests/pending_removes.rs`.
   - **Batch:** `sockudo`
 
+- **Key Transparency Schema and User Endpoint Alignment (Phase 16 Schema/User Scope)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Updated `key_transparency_log` with nullable target columns, `command_pubkey`, and XOR `CHECK ((user_id IS NOT NULL AND bot_id IS NULL) OR (user_id IS NULL AND bot_id IS NOT NULL))`; updated `bot_accounts` with nullable pubkey columns).
+  - **Delivered:** Step 0 report at `verification/kt-bot-keys/report.md` (including "Amendment Request" section), `server/migrations/0001_v2_schema.sql`, `server/src/routes/key_transparency.rs`, `server/src/routes/mod.rs`, `server/src/lib.rs`, `server/tests/kt_endpoints.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`. Implemented `GET /kt/user/{id}` (omitting `username_token` per §12 and §14.6 with inclusion proof and `Cache-Control: no-store`) and `GET /kt/snapshot` (omitting `signature` per §8.11.3 with `Cache-Control: no-store`). Added 5 test cases in `kt_endpoints.rs`.
+  - **Batch:** `identity`
+
+- **Key Transparency bot endpoints and helper**: pending
+  - **Blocked:** Blocked on bot leaf serialization amendment approval by spec owner (see `verification/kt-bot-keys/report.md` §"Amendment Request").
+  - **Scope:** `append_bot_leaf` helper, `GET /kt/bot/:id`, `GET /kt/bot/:id/history`, bot leaf serialization, bot anonymization helper.
+
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 50
-- **Done:** 50
-- **Pending:** 0
+- **Total Verifications/Tasks Tracked:** 52
+- **Done:** 51
+- **Pending:** 1
 - **In-Progress:** 0
 - **Mismatches:** 0

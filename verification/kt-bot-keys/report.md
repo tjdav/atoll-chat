@@ -167,3 +167,29 @@ Both files are assigned to the `identity` batch in `server/tests/batch-manifest.
 - `key_transparency_log` schema assumes `user_id` is NOT NULL and lacks bot columns.
 - `LogLeaf` struct and `compute_root` in `merkle.rs` assume leaves only have `username_token` and `identity_pubkey`.
 - `create_snapshot` and CLI `server kt verify` assume user-only leaves.
+
+## Amendment Request
+
+### Proposed Bot Leaf Serialization Formula
+```
+serialize_bot_leaf(bot_identity_pubkey: &str, command_pubkey: &str, identity_pubkey: &str) -> Vec<u8>
+    = I2OSP(len(bot_identity_pubkey), 2) || bot_identity_pubkey
+    || I2OSP(len(command_pubkey), 2) || command_pubkey
+    || I2OSP(len(identity_pubkey), 2) || identity_pubkey
+```
+where each length is a 16-bit big-endian unsigned integer (`u16`), and each field's bytes are the UTF-8 byte sequence of the base64url-encoded string representation.
+
+### Rationale
+This formula maintains strict consistency with §8.10's length-prefixed binary serialization convention and directly mirrors the V2 Task 34b user leaf serialization (`I2OSP(len(username_token), 2) || username_token || I2OSP(len(identity_pubkey), 2) || identity_pubkey`).
+
+### Dependency & Blocked Features
+V3 Spec §7.11 defines the `key_transparency_log` database schema with `bot_id` and `command_pubkey`, but omits the byte serialization formula for bot leaves. Per Rule 4 and §15/16 clean-spec invariants, feature implementations must not introduce unspecified byte formats. Consequently:
+- `append_bot_leaf` helper
+- `GET /kt/bot/:id` endpoint
+- `GET /kt/bot/:id/history` endpoint
+- Bot account creation KT leaf integration (Phase 27)
+
+are blocked until this amendment is formally approved and published.
+
+### Proposed Amendment Target
+A new version of the V3 server specification (v3.0.4 or v3.1), in compliance with §15 which mandates that all future spec modifications are published as new versions.

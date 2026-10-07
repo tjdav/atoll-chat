@@ -990,3 +990,17 @@
     `serialize_bot_leaf(bot_identity_pubkey, command_pubkey, identity_pubkey) = I2OSP(len(bot_identity_pubkey), 2) || bot_identity_pubkey || I2OSP(len(command_pubkey), 2) || command_pubkey || I2OSP(len(identity_pubkey), 2) || identity_pubkey` where lengths are 16-bit big-endian unsigned integers and string bytes are UTF-8 bytes.
   - **Invariance:** User leaf serialization, leaf hashing (`SHA-256(0x00 || leaf_bytes)`), node hashing (`SHA-256(0x01 || left || right)`), root calculation, signing input (`I2OSP(tree_size, 8) || root_hash`), signing key derivation (`HKDF-Expand(SHA-256(oprf_key_bytes), "key-transparency-signing-v1", 32)`), GDPR anonymization (`user_id -> anon_<32 hex>`), and `kt.snapshot` payload format remain unchanged.
 - **Link to report:** [verification/kt-bot-keys/report.md](verification/kt-bot-keys/report.md)
+
+## Key Transparency Schema and User Endpoint Alignment Verification
+- **ID:** Key Transparency Schema & User Endpoints
+- **Date:** 2026-10-07
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §5.22, §7.11, §8.9, §8.11.1, §8.11.4, §12, §14.6
+- **Question asked:** What are the verified schema, endpoint JSON shapes, exclusion rules, and inclusion proof contracts for Key Transparency schema and user-scoped endpoints?
+- **Answer found:**
+  - **`key_transparency_log` Schema:** `key_transparency_log` in `server/migrations/0001_v2_schema.sql` has nullable `user_id`, `bot_id`, `username_token`, `identity_pubkey`, and `command_pubkey` columns with XOR `CHECK ((user_id IS NOT NULL AND bot_id IS NULL) OR (user_id IS NULL AND bot_id IS NOT NULL))` constraint. Index `idx_kt_bot` is partial (`WHERE bot_id IS NOT NULL`).
+  - **`bot_accounts` Schema:** `bot_accounts` in `server/migrations/0001_v2_schema.sql` has nullable `bot_identity_pubkey`, `bot_command_pubkey`, and `identity_pubkey` columns.
+  - **`GET /api/v1/kt/user/:id` Endpoint:** Requires Bearer auth (`AuthUser`). Returns `{ "user_id": "...", "leaf_index": <int>, "identity_pubkey": "<base64url>", "inclusion_proof": ["<base64url>", ...], "tree_head": { "tree_size": <int>, "root_hash": "<base64url>", "created_at": "..." }, "auditor_signatures": [] }`. Returns `Cache-Control: no-store`. Returns 404 if disabled or user/leaf missing.
+  - **`username_token` Exclusion Invariant:** `username_token` is stored in the database log but is strictly omitted from the `GET /kt/user/:id` JSON response keys per §12 and §14.6 to prevent enumeration.
+  - **`GET /api/v1/kt/snapshot` Endpoint:** Requires Bearer auth (`AuthUser`). Returns strictly `{ "tree_size": <int>, "root_hash": "<base64url>", "created_at": "..." }`. Both `signature` and `id` are omitted per §8.11.3. Returns `Cache-Control: no-store`. Returns 404 if disabled or no snapshot exists.
+  - **Inclusion Proof Verification:** The $O(\log N)$ inclusion proof in `GET /kt/user/:id` verifies against `tree_head.root_hash` and `tree_head.tree_size` using `verify_inclusion_proof`.
