@@ -439,7 +439,7 @@ build task runs.
 | Icon Plugin (`iconPlugin`) | Defined in `packages/app/src/plugins/icon-plugin.js` with `name: 'icons'`. Registered in `coralite.config.js` between `extensionPlugin` and `routerPlugin`. Exposes `ctx.icons` (`get`, `list`, `has`) across server and client contexts |
 | Primitive Component (`<ui-icon>`) | Defined in `packages/app/src/components/primitives/ui-icon.html` wrapped in `defineComponent`. Accepts attributes `name`, `size` ('sm' -> 16px, 'md' -> 20px, 'lg' -> 24px, or CSS length), `color`, `label`. Client block uses `observe('name')` to dynamically update inner wrapper with trusted SVG markup |
 | Rail Host Integration (`rail-host.html`) | Instantiates `<ui-icon>` custom elements with `ext.rail.icon.name` for each item. Letter placeholders (`.rail__placeholder`) and unused `item*` attributes removed |
-| Plugin Documentation | Created at `packages/app/docs/plugins/icons.md` and registered in `packages/app/docs/plugins/README.md` |
+| Plugin Documentation | Created at `packages/app/docs/plugins/icons.md` and updated `docs/plugins/README.md` |
 | Test Suites & Batches | Unit test `packages/app/tests/unit/icons.test.js` registered in `unit-smoke` (222 passing unit tests). Component test `packages/app/tests/component/ui-icon.spec.js` registered in `component-smoke` (33 passing Playwright tests) |
 
 ### C-CHAT-7 — Message Thread Surface Architecture
@@ -458,6 +458,24 @@ build task runs.
 | Documentation | Contract documentation authored at `packages/app/docs/views/chat.md` covering all 10 required sections; index updated in `packages/app/docs/views/README.md` |
 | Unit & Component Test Suites | `packages/app/tests/unit/view-chat-data.test.js` (29 cases) registered in `unit-smoke` batch and `packages/app/tests/component/chat-thread.spec.js` (4 cases) registered in `component-smoke` batch in `packages/app/test-batches.js` |
 | Visual Verification Artifacts | Screenshots generated at `packages/app/test-results/chat-populated.png` and `packages/app/test-results/chat-empty.png` |
+
+### C-CHAT-8 — Composer and Local Send Path Architecture
+
+**Verified:** 2026-10-07
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Pure Composer Helpers | `packages/app/src/lib/composer/index.js` exporting `generateLocalMessageId(crypto)`, `buildTextPayload(text)`, `encodePayload(payload)`, `encodeCiphertextStub(payload)`, `isDesktopPointer(win)`, `computeNextSeq(messages)` |
+| Send Message Orchestration | `sendMessage({ deps, roomId, text })` in `packages/app/src/lib/views/send-message.js`: validates non-empty text, generates/reuses `client_id` in `_meta`, computes sequence from newest message (`computeNextSeq`), creates local `pending` message row, enqueues in outbox (`repos.outbox.enqueue`), and advances sender read state (`repos.readState.upsert`) |
+| Local Message Identifier | Messages generated locally use prefix `local_` followed by random UUID or crypto hex string (e.g. `local_12345678-1234-1234-1234-123456789abc`) |
+| Client ID Key | Generated on cold boot via `generateLocalMessageId` and stored in `_meta` under key `client_id` |
+| Sequence Computation | `computeNextSeq(messages)` reads the newest application message in the room. If empty, uses `{ epoch: 0, seq: 1 }`. Otherwise bumps `seq` by 1 (`seq = maxSeq + 1`) |
+| Ciphertext Stub Marker | `encodeCiphertextStub(payload)` prefixes UTF-8 JSON bytes with `stub:`. Acts as marker blob until MLS CoreCrypto encryption integration replaces it |
+| Composer Component | `packages/app/src/components/composed/message-composer.html` wrapped in `defineComponent` with host-reflected `hasText` and `disabled` attributes, auto-growing textarea, fine-pointer Enter key handling (Enter sends on desktop, Shift+Enter inserts newline), disabled stub action buttons (`+`, `☺`, `🔊`), and zero internal `data-*` except `data-testid` |
+| Message Thread Integration | `<message-composer>` mounted in `packages/app/src/components/views/view-chat.html` footer. Listen to `composer:send` event, calling `sendMessage` and reloading thread |
+| Extended Locales & Parity | Extended all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 6 new `composer_*` keys with 100% key parity (73 keys total) |
+| Documentation | Updated `packages/app/docs/views/chat.md` with Section 9 ("Composer and local send path") |
+| Test Suites & Screenshots | `packages/app/tests/unit/composer.test.js` (18 cases) and `packages/app/tests/unit/send-message.test.js` (14 cases) in `unit-smoke` batch; `packages/app/tests/component/composer.spec.js` in `component-smoke` batch; visual verification screenshot captured at `packages/app/test-results/composer-pending.png` |
 
 ### C-INFRA-8 — Storage Plugin, In-Memory Backend & Migration Runner Contracts
 
@@ -723,3 +741,21 @@ build task runs.
 | Component Audit & Refactoring | Audited all 13 components under `packages/app/src/components/`: <br>- `conversation-row.html`: reflected `isUnread` (`reflect: true`), updated CSS selector to `:host([is-unread])`, removed internal `data-room-id` and `data-unread`. <br>- `messenger-boot.html`: reflected `ready`, `error`, `hasOprfToken`, `storageReady`, `storagePersistent`, `syncReady` (`reflect: true`), updated `client()` state mutations (removing imperative `dataset` attribute writes), updated CSS selector to `:host([ready])`. <br>- `ui-icon.html`: removed internal `data-icon-name`. <br>- `ui-profile.html`: reflected `size` (`reflect: true`), updated CSS selectors to `:host([size="..."])`. <br>- `auth-view-register.html`: added `<!-- coralite-ignore-data-attributes -->` pragma for third-party ALTCHA integration (`data-altcha`). <br>- `rail-host.html`: removed `dataset.extensionId` from `li`, retained `data-rail-id` on button. |
 | Test Query Updates | Updated Playwright tests (`hydration.spec.js`, `messenger-boot.spec.js`, `sync.spec.js`) to query reflected host attributes on `<messenger-boot>` (`[ready]`, `[error]`, etc.) rather than internal dataset attributes |
 | Enforcement Test Path | Created `packages/app/tests/unit/components-data-attrs.test.js` recursively checking component `<template>` blocks for `data-*` attributes except `data-testid` (unless `coralite-ignore-data-attributes` pragma is present) and registered it in `unit-smoke` batch in `packages/app/test-batches.js` |
+
+### C-CHAT-8 — Composer and Local Send Path Architecture
+
+**Verified:** 2026-10-07
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Pure Composer Helpers | `packages/app/src/lib/composer/index.js` exporting `generateLocalMessageId(crypto)`, `buildTextPayload(text)`, `encodePayload(payload)`, `encodeCiphertextStub(payload)`, `isDesktopPointer(win)`, `computeNextSeq(messages)` |
+| Send Message Orchestration | `sendMessage({ deps, roomId, text })` in `packages/app/src/lib/views/send-message.js`: validates non-empty text, generates/reuses `client_id` in `_meta`, computes sequence from newest message (`computeNextSeq`), creates local `pending` message row, enqueues in outbox (`repos.outbox.enqueue`), and advances sender read state (`repos.readState.upsert`) |
+| Local Message Identifier | Messages generated locally use prefix `local_` followed by random UUID or crypto hex string (e.g. `local_12345678-1234-1234-1234-123456789abc`) |
+| Client ID Key | Generated on cold boot via `generateLocalMessageId` and stored in `_meta` under key `client_id` |
+| Sequence Computation | `computeNextSeq(messages)` reads the newest application message in the room. If empty, uses `{ epoch: 0, seq: 1 }`. Otherwise bumps `seq` by 1 (`seq = maxSeq + 1`) |
+| Ciphertext Stub Marker | `encodeCiphertextStub(payload)` prefixes UTF-8 JSON bytes with `stub:`. Acts as marker blob until MLS CoreCrypto encryption integration replaces it |
+| Composer Component | `packages/app/src/components/composed/message-composer.html` wrapped in `defineComponent` with host-reflected `hasText` and `disabled` attributes, auto-growing textarea, fine-pointer Enter key handling (Enter sends on desktop, Shift+Enter inserts newline), disabled stub action buttons (`+`, `☺`, `🔊`), and zero internal `data-*` except `data-testid` |
+| Message Thread Integration | `<message-composer>` mounted in `packages/app/src/components/views/view-chat.html` footer. Listen to `composer:send` event, calling `sendMessage` and reloading thread |
+| Extended Locales & Parity | Extended all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 6 new `composer_*` keys with 100% key parity (73 keys total) |
+| Documentation | Updated `packages/app/docs/views/chat.md` with Section 9 ("Composer and local send path") |
+| Test Suites & Screenshots | `packages/app/tests/unit/composer.test.js` (18 cases) and `packages/app/tests/unit/send-message.test.js` (14 cases) in `unit-smoke` batch; `packages/app/tests/component/composer.spec.js` in `component-smoke` batch; visual verification screenshot captured at `packages/app/test-results/composer-pending.png` |
