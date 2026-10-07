@@ -132,6 +132,7 @@ pub struct Config {
     pub audit_retention_days: u64,
     pub data_retention_days: u64,
     pub sync_event_retention_days: u64,
+    pub pending_mls_remove_timeout_days: u64,
     pub export_rate_limit_hours: u64,
     pub trust_proxy: bool,
     pub hsts_max_age: u64,
@@ -911,6 +912,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(30);
 
+        let pending_mls_remove_timeout_days = env::var("PENDING_MLS_REMOVE_TIMEOUT_DAYS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
         let audit_retention_days = env::var("AUDIT_RETENTION_DAYS")
             .ok()
             .and_then(|s| s.parse().ok())
@@ -1303,6 +1309,7 @@ impl Config {
             cleanup_enabled,
             cleanup_interval_minutes,
             cleanup_startup_delay_secs,
+            pending_mls_remove_timeout_days,
             audit_retention_days,
             data_retention_days,
             sync_event_retention_days,
@@ -1461,6 +1468,7 @@ impl Config {
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,
             cleanup_startup_delay_secs: 0,
+            pending_mls_remove_timeout_days: 30,
             audit_retention_days: 90,
             data_retention_days: 0,
             sync_event_retention_days: 90,

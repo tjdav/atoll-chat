@@ -42,6 +42,15 @@ fn build_ctx(pool: SqlitePool, config: Config) -> CleanupContextOwned {
         edit_window_seconds: config_arc.server_max_edit_window_seconds,
     });
 
+    let sockudo_config = server::SockudoConfig {
+        http_base: "http://localhost:8080".to_string(),
+        app_id: "test_app".to_string(),
+        app_key: "test_key".to_string(),
+        app_secret: "test_secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+
     CleanupContextOwned {
         pool,
         config: config_arc,
@@ -50,6 +59,7 @@ fn build_ctx(pool: SqlitePool, config: Config) -> CleanupContextOwned {
         recovery_store: Arc::new(server::RecoveryStore::new()),
         storage,
         server_max,
+        publisher,
     }
 }
 

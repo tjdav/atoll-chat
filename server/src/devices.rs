@@ -223,22 +223,16 @@ pub async fn revoke_device(
 
     let mut mls_removes_queued: u64 = 0;
     for (room_id,) in rooms {
-        let mut remove_id_bytes = [0u8; 16];
-        rand::thread_rng().fill_bytes(&mut remove_id_bytes);
-        let remove_id = URL_SAFE_NO_PAD.encode(remove_id_bytes);
-
-        sqlx::query(
-            r#"
-            INSERT INTO pending_mls_removes (id, room_id, target_user_id, target_client_id)
-            VALUES (?, ?, ?, ?)
-            "#,
+        crate::rooms::queue_pending_mls_remove_batch(
+            &mut tx,
+            &room_id,
+            crate::rooms::MlsTarget::User(user_id),
         )
-        .bind(&remove_id)
-        .bind(&room_id)
-        .bind(user_id)
-        .bind(&client_id)
-        .execute(&mut *tx)
-        .await?;
+        .await
+        .map_err(|e| match e {
+            crate::rooms::RoomError::Database(err) => DeviceError::Database(err),
+            _ => DeviceError::Database(sqlx::Error::Protocol(e.to_string())),
+        })?;
 
         mls_removes_queued += 1;
     }

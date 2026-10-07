@@ -486,9 +486,9 @@ async fn test_10_revocation_cascade_queues_mls_removes() {
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 
-    // Assert a row exists in pending_mls_removes with target_client_id matching CLIENT_A
-    let mls_row: (String, String, String, String) = sqlx::query_as(
-        "SELECT room_id, target_user_id, target_client_id, consumed_at FROM pending_mls_removes WHERE room_id = ?",
+    // Assert a row exists in pending_mls_removes with target_user_id matching user_id
+    let mls_row: (String, Option<String>, Option<String>, Option<chrono::DateTime<chrono::Utc>>) = sqlx::query_as(
+        "SELECT room_id, target_user_id, target_bot_id, consumed_at FROM pending_mls_removes WHERE room_id = ?",
     )
     .bind(room_id)
     .fetch_one(&pool)
@@ -496,8 +496,8 @@ async fn test_10_revocation_cascade_queues_mls_removes() {
     .unwrap();
 
     assert_eq!(mls_row.0, room_id);
-    assert_eq!(mls_row.1, user_id);
-    assert_eq!(mls_row.2, CLIENT_A);
+    assert_eq!(mls_row.1.as_deref(), Some(user_id.as_str()));
+    assert_eq!(mls_row.2, None);
 }
 
 #[tokio::test]

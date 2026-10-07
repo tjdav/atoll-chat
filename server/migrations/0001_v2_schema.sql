@@ -224,15 +224,24 @@ CREATE TABLE IF NOT EXISTS welcomes (
 CREATE INDEX IF NOT EXISTS idx_welcomes_recipient ON welcomes(recipient_user_id, consumed, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS pending_mls_removes (
-    id               TEXT PRIMARY KEY,
-    room_id          TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    target_user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    target_client_id TEXT NOT NULL,
-    queued_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    consumed_at      DATETIME
+    id                  TEXT PRIMARY KEY,
+    room_id             TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    target_user_id      TEXT REFERENCES users(id),
+    target_bot_id       TEXT REFERENCES bot_accounts(id),
+    queued_at           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    stale_at            DATETIME,
+    consumed_at         DATETIME,
+    cancelled_at        DATETIME,
+    remove_confirmed_at DATETIME,
+    CHECK (
+        (target_user_id IS NOT NULL AND target_bot_id IS NULL)
+        OR
+        (target_user_id IS NULL AND target_bot_id IS NOT NULL)
+    )
 );
-CREATE INDEX IF NOT EXISTS idx_pending_mls_removes_pending ON pending_mls_removes(room_id, queued_at ASC) WHERE consumed_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_pending_mls_removes_active ON pending_mls_removes(room_id, consumed_at) WHERE consumed_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_pending_mls_removes_active
+    ON pending_mls_removes(room_id, consumed_at)
+    WHERE consumed_at IS NULL AND cancelled_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS pending_mls_adds (
     id               TEXT PRIMARY KEY,

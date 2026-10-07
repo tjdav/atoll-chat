@@ -146,6 +146,15 @@ async fn test_sync_response_contract_bot_settings_and_max_seq() {
         edit_window_seconds: config.server_max_edit_window_seconds,
     });
 
+    let sockudo_cfg = server::SockudoConfig {
+        http_base: "http://localhost:8080".to_string(),
+        app_id: "test_app".to_string(),
+        app_key: "test_key".to_string(),
+        app_secret: "test_secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = std::sync::Arc::new(server::Publisher::new(sockudo_cfg));
+
     let cleanup_ctx = server::cleanup::CleanupContext {
         pool: &pool,
         config: &config,
@@ -154,6 +163,7 @@ async fn test_sync_response_contract_bot_settings_and_max_seq() {
         recovery_store: &rec_store,
         storage: &storage,
         server_max: &hard_max,
+        publisher: &publisher,
     };
 
     let job = server::cleanup::sync::SyncPruningJob;
@@ -338,6 +348,15 @@ async fn test_sync_pruning_job_tombstone_active_and_idempotency() {
         edit_window_seconds: config.server_max_edit_window_seconds,
     });
 
+    let sockudo_cfg = server::SockudoConfig {
+        http_base: "http://localhost:8080".to_string(),
+        app_id: "test_app".to_string(),
+        app_key: "test_key".to_string(),
+        app_secret: "test_secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = std::sync::Arc::new(server::Publisher::new(sockudo_cfg));
+
     let cleanup_ctx = server::cleanup::CleanupContext {
         pool: &pool,
         config: &config,
@@ -346,6 +365,7 @@ async fn test_sync_pruning_job_tombstone_active_and_idempotency() {
         recovery_store: &rec_store,
         storage: &storage,
         server_max: &hard_max,
+        publisher: &publisher,
     };
 
     let job = server::cleanup::sync::SyncPruningJob;

@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, HeaderMap, HeaderValue, StatusCode},
     Json,
 };
 use serde::Serialize;
@@ -21,9 +21,11 @@ pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
     Path(id): Path<String>,
-) -> Result<Json<ListPendingRemovesResponse>, ApiError> {
+) -> Result<(HeaderMap, Json<ListPendingRemovesResponse>), ApiError> {
     let removes = rooms::list_pending_removes(&state.pool, &id, &auth.user_id).await?;
-    Ok(Json(ListPendingRemovesResponse { removes }))
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    Ok((headers, Json(ListPendingRemovesResponse { removes })))
 }
 
 pub async fn consume(
@@ -31,6 +33,13 @@ pub async fn consume(
     auth: AuthUser,
     Path((id, remove_id)): Path<(String, String)>,
 ) -> Result<StatusCode, ApiError> {
-    rooms::consume_pending_remove(&state.pool, &id, &remove_id, &auth.user_id).await?;
+    rooms::consume_pending_remove(
+        &state.pool,
+        &state.publisher,
+        &id,
+        &remove_id,
+        &auth.user_id,
+    )
+    .await?;
     Ok(StatusCode::NO_CONTENT)
 }

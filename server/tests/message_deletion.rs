@@ -467,6 +467,15 @@ async fn test_13_deletion_does_not_accelerate_retention() {
         room_metadata_bytes: config.server_max_room_metadata_bytes,
         edit_window_seconds: config.server_max_edit_window_seconds,
     });
+    let sockudo_cfg = server::SockudoConfig {
+        http_base: "http://localhost:8080".to_string(),
+        app_id: "test_app".to_string(),
+        app_key: "test_key".to_string(),
+        app_secret: "test_secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = std::sync::Arc::new(server::Publisher::new(sockudo_cfg));
+
     let ctx = server::CleanupContext {
         pool: &pool,
         config: &config,
@@ -475,6 +484,7 @@ async fn test_13_deletion_does_not_accelerate_retention() {
         recovery_store: &std::sync::Arc::new(server::RecoveryStore::new()),
         storage: &storage,
         server_max: &server_max,
+        publisher: &publisher,
     };
     let job = server::cleanup::welcomes::WelcomesJob;
     let _ = job.run(&ctx).await;

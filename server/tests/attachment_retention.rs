@@ -648,6 +648,15 @@ async fn test_11_attachments_job_runs_and_reports_notes_on_blob_error() {
 
     let server_max = Arc::new(test_server_max());
 
+    let sockudo_config = server::SockudoConfig {
+        http_base: "http://localhost:8080".to_string(),
+        app_id: "test_app".to_string(),
+        app_key: "test_key".to_string(),
+        app_secret: "test_secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+
     let ctx = CleanupContextOwned {
         pool: pool.clone(),
         config: config.clone(),
@@ -656,6 +665,7 @@ async fn test_11_attachments_job_runs_and_reports_notes_on_blob_error() {
         recovery_store: Arc::new(server::RecoveryStore::new()),
         storage: failing_storage.clone(),
         server_max,
+        publisher,
     };
 
     setup_user_and_room(&pool, "u1", "r1", Some(1)).await;
@@ -686,6 +696,15 @@ async fn test_12_scheduler_registers_attachments_job() {
     let storage = server::build_storage(&config).unwrap();
     let server_max = Arc::new(test_server_max());
 
+    let sockudo_config = server::SockudoConfig {
+        http_base: "http://localhost:8080".to_string(),
+        app_id: "test_app".to_string(),
+        app_key: "test_key".to_string(),
+        app_secret: "test_secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+
     let ctx = CleanupContextOwned {
         pool,
         config,
@@ -694,6 +713,7 @@ async fn test_12_scheduler_registers_attachments_job() {
         recovery_store: Arc::new(server::RecoveryStore::new()),
         storage,
         server_max,
+        publisher,
     };
 
     let mut scheduler = Scheduler::new(Duration::from_secs(60));

@@ -325,7 +325,7 @@ async fn main() -> anyhow::Result<()> {
         altcha_config,
         config: config.clone(),
         server_hard_max: server_hard_max.clone(),
-        publisher,
+        publisher: publisher.clone(),
         storage: storage.clone(),
         backup_lock,
         oprf_rotation_lock,
@@ -382,6 +382,9 @@ async fn main() -> anyhow::Result<()> {
         scheduler.register(Box::new(server::cleanup::oprf_audit::OprfAuditFlushJob {
             oprf_audit: oprf_audit.clone(),
         }));
+        scheduler.register(Box::new(
+            server::cleanup::pending_removes::PendingRemovesJob,
+        ));
 
         let ctx = server::cleanup::CleanupContextOwned {
             pool: pool.clone(),
@@ -391,6 +394,7 @@ async fn main() -> anyhow::Result<()> {
             recovery_store: recovery_store.clone(),
             storage: storage.clone(),
             server_max: server_hard_max.clone(),
+            publisher: publisher.clone(),
         };
         let scheduler_shutdown = shutdown_rx.clone();
 

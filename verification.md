@@ -962,3 +962,17 @@
   - **Helper Contracts:** `queue_pending_mls_add` and `queue_pending_mls_add_batch` in `server/src/rooms.rs` enforce application-level XOR target checks, select and consume non-last-resort (or fallback last-resort) key packages for the target user/bot device, and insert rows into `pending_mls_adds`.
   - **`mls.add_pending` Event Payload Shape:** Published on `private-room-{room_id}` post-commit with shape `{ "room_id": "r_...", "target_user_id": "u_..." | null, "target_bot_id": "b_..." | null, "client_ids": ["c_...", ...] }`.
 - **Link to report:** [verification/pending-mls-adds-bot-targets/report.md](verification/pending-mls-adds-bot-targets/report.md)
+
+## Pending MLS Removes Bot Targets & Timeout Verification
+- **ID:** Pending MLS Removes Bot Targets & Timeout
+- **Date:** 2026-10-07
+- **Status:** Empirical Baseline Verified.
+- **Spec / Amendment references:** V3 Spec §4.5, §7.5, §8.8.6, §8.8.7, §8.9, §11
+- **Question asked:** What are the current baseline state and V3 requirements for `pending_mls_removes` schema, queueing helper, stale timeout job, consumed-row pruning, and event channels/payloads?
+- **Answer found:**
+  - **Schema:** `pending_mls_removes` table in `server/migrations/0001_v2_schema.sql` updated to match §7.5 with nullable `target_user_id`, `target_bot_id`, XOR `CHECK`, `stale_at`, `consumed_at`, `cancelled_at`, `remove_confirmed_at`, and `idx_pending_mls_removes_active` index (`WHERE consumed_at IS NULL AND cancelled_at IS NULL`).
+  - **Queue Helper:** `queue_pending_mls_remove_batch` helper in `server/src/rooms.rs` queues target identity-level removes for `MlsTarget::User` or `MlsTarget::Bot`. Refactored existing call sites in `kick_member`, `revoke_device`, and `anonymise_user`.
+  - **Stale Timeout Job:** Hourly cleanup job evaluates rows where `stale_at IS NULL AND remove_confirmed_at IS NULL AND cancelled_at IS NULL AND queued_at < datetime('now', '-N days')` using `PENDING_MLS_REMOVE_TIMEOUT_DAYS` (default 30). Sets `stale_at = now` and emits `mls.remove_stale` once on `private-room-{room_id}` (`{ room_id, target_user_id?, target_bot_id?, queued_at, stale_since }`). Does not re-fire.
+  - **Consumed-Row Pruning:** Hourly job prunes rows with `consumed_at < datetime('now', '-30 days')` or `cancelled_at < datetime('now', '-30 days')`.
+  - **Event Delivery (`mls.remove_confirmed`):** Emits `{ room_id, target_user_id?, target_bot_id?, confirmed_at }` on `private-room-{room_id}` best-effort, and durable `{ room_id, target_user_id?, target_bot_id?, confirmed_at, user_seq }` on `private-user-{user_id}` channels (target user, confirming member, and bot owner).
+- **Link to report:** [verification/pending-mls-removes-bot-targets/report.md](verification/pending-mls-removes-bot-targets/report.md)
