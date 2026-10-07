@@ -100,8 +100,8 @@ test.describe('Component Hydration Verification', () => {
     await page.goto('/app.html')
     await page.waitForSelector('html[data-coralite-ready]')
 
-    const bootEl = page.locator('messenger-boot [data-testid="boot"]')
-    await expect(bootEl).toHaveAttribute('data-state', 'ready')
+    const bootEl = page.locator('messenger-boot')
+    await expect(bootEl).toHaveAttribute('ready', '')
   })
 
   test('6. Runtime locale switch updates the DOM', async ({ page }) => {

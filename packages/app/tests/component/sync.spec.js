@@ -62,8 +62,8 @@ test.describe('User-Scoped Sync Plugin Integration', () => {
 
     await page.goto('/app.html')
 
-    const bootElement = page.locator('[data-testid="boot"]')
-    await expect(bootElement).toHaveAttribute('data-state', 'ready', { timeout: 10000 })
+    const bootElement = page.locator('messenger-boot')
+    await expect(bootElement).toHaveAttribute('ready', '', { timeout: 10000 })
 
     const shellElement = page.locator('messenger-shell')
     await expect(shellElement).toBeVisible()
@@ -88,8 +88,8 @@ test.describe('User-Scoped Sync Plugin Integration', () => {
 
     await page.goto('/app.html')
 
-    const bootElement = page.locator('[data-testid="boot"]')
-    await expect(bootElement).toHaveAttribute('data-state', 'ready', { timeout: 10000 })
+    const bootElement = page.locator('messenger-boot')
+    await expect(bootElement).toHaveAttribute('ready', '', { timeout: 10000 })
 
     const shellElement = page.locator('messenger-shell')
     await expect(shellElement).toBeVisible()
@@ -123,8 +123,8 @@ test.describe('User-Scoped Sync Plugin Integration', () => {
 
     await page.goto('/app.html')
 
-    const bootElement = page.locator('[data-testid="boot"]')
-    await expect(bootElement).toHaveAttribute('data-state', 'ready', { timeout: 10000 })
+    const bootElement = page.locator('messenger-boot')
+    await expect(bootElement).toHaveAttribute('ready', '', { timeout: 10000 })
     expect(syncCalled).toBe(false)
   })
 })

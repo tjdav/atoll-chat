@@ -1,5 +1,5 @@
 <template id="ui-profile">
-  <span class="profile" role="img" aria-label="{{ ariaLabel }}" data-size="{{ size }}" data-testid="profile">
+  <span class="profile" role="img" aria-label="{{ ariaLabel }}" data-testid="profile">
     <span class="profile__initials">{{ initials }}</span>
   </span>
 </template>
@@ -23,9 +23,9 @@
     user-select: none;
   }
 
-  .profile[data-size="sm"] { width: 1.75rem; height: 1.75rem; font-size: var(--text-xs); }
-  .profile[data-size="md"] { width: 2.25rem; height: 2.25rem; font-size: var(--text-sm); }
-  .profile[data-size="lg"] { width: 3rem; height: 3rem; font-size: var(--text-base); }
+  :host([size="sm"]) .profile { width: 1.75rem; height: 1.75rem; font-size: var(--text-xs); }
+  :host([size="md"]) .profile { width: 2.25rem; height: 2.25rem; font-size: var(--text-sm); }
+  :host([size="lg"]) .profile { width: 3rem; height: 3rem; font-size: var(--text-base); }
 
   .profile__initials {
     line-height: 1;
@@ -38,7 +38,7 @@ import { defineComponent } from 'coralite'
 export default defineComponent({
   attributes: {
     name: { type: String, default: '' },
-    size: { type: String, default: 'md' },
+    size: { type: String, default: 'md', reflect: true },
     color: { type: String, default: '' },
     src: { type: String, default: '' }
   },

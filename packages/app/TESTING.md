@@ -67,6 +67,13 @@ Each task covers, where applicable:
 - **Events** — the expected event is emitted, if any.
 - **Rate limits** — the limit is enforced, if any.
 
+## Component attribute enforcement
+
+- Component template structure and attribute usage are enforced by `tests/unit/components-data-attrs.test.js`.
+- Template blocks under `packages/app/src/components/` MUST NOT contain internal `data-*` attributes except verbatim static `data-testid="..."`.
+- State-driven styling and testing hooks MUST use host-reflected attributes (`reflect: true`) and `:host([attr])` selectors per `packages/app/docs/components.md`.
+- Opt-out Pragma: In rare cases (e.g. third-party library integrations like ALTCHA), a component template may include the HTML comment `<!-- coralite-ignore-data-attributes -->` before the template markup to bypass the lint check.
+
 ## Timeouts
 
 Every batch runs in under 60 seconds. If a batch exceeds that, split it
