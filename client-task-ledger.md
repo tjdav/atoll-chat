@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 45 |
+| Done | 46 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -68,7 +68,8 @@ or modify the server's ledger.
 | C-CHAT-4 | First-Party Core Extensions Skeleton | done | C-CHAT-2, C-CHAT-3 | unit-smoke |
 | C-CHAT-5 | Router Plugin & Rail Item Rendering | done | C-CHAT-1, C-CHAT-4, C-INFRA-4 | unit-smoke, component-smoke |
 | C-CHAT-6 | Surface Rendering & Pass-Through Getter Cleanup | done | C-CHAT-5, C-CHAT-4, C-CHAT-1, C-INFRA-6c | unit-smoke, component-smoke |
-| C-CHAT-7 | Icon Plugin and Rail Icon Rendering | done | C-CHAT-5, C-CHAT-4, C-INFRA-6c | unit-smoke, component-smoke |
+| C-CHAT-7-icon | Icon Plugin and Rail Icon Rendering | done | C-CHAT-5, C-CHAT-4, C-INFRA-6c | unit-smoke, component-smoke |
+| C-CHAT-7 | Message Thread Surface | done | C-INFRA-23, C-INFRA-22, C-INFRA-21, C-INFRA-14, C-INFRA-16, C-INFRA-12, C-CHAT-6, C-CHAT-7-icon, C-CHAT-5 | unit-smoke, component-smoke |
 
 ## Blockers
 
@@ -447,7 +448,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated documentation at `packages/app/docs/plugins/i18n.md` ("When to use a getter" section) and `packages/app/docs/shell.md` (surface-host resolution, reconciliation, and canonicalization).
   - Added unit test `tests/unit/surface-reconcile.test.js` (registered in `unit-smoke`) and Playwright component test `tests/component/surface.spec.js` (registered in `component-smoke`).
   - Verified test suite (`pnpm check-batches`, `pnpm test:batch unit-smoke`, `pnpm test:batch component-smoke`, `pnpm --filter @atoll/app build`, `pnpm extensions:vocab`). Generated visual verification screenshots `test-results/surface-chat.png` and `test-results/surface-detail.png`.
-- **C-CHAT-7 Deliverables & Status:**
+- **C-CHAT-7-icon Deliverables & Status:**
   - Status: `done`.
   - Installed `@solar-icons/static@2.3.2` runtime dependency in `packages/app/package.json`.
   - Created `packages/app/src/lib/icons/index.js` and `solar-map.js` providing `CANONICAL_ICONS` (`chat-round-line`, `gallery`, `document-text`, `link`, `phone`, `settings`), `getIconModule(name)`, `listIcons()`, and `isIconName(name)`.
@@ -456,6 +457,18 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated `<rail-host>` component (`packages/app/src/components/shell/rail-host.html`) replacing first-letter placeholders with `<ui-icon>` elements.
   - Authored documentation at `packages/app/docs/plugins/icons.md` and updated `docs/plugins/README.md`.
   - Added unit test `tests/unit/icons.test.js` (registered in `unit-smoke`) and Playwright component test `tests/component/ui-icon.spec.js` (registered in `component-smoke`). Updated `tests/component/rail.spec.js` and `test-batches.js`.
+- **C-CHAT-7 Deliverables & Status:**
+  - Status: `done`.
+  - Implemented pure assembly module `packages/app/src/lib/views/view-chat-data.js` exporting `safeParsePayload`, `summarizePayload`, `groupMessages`, `insertDateSeparators`, `findNewMessagesDivider`, `formatTime`, and `formatDateLabel`.
+  - Created composed component `packages/app/src/components/composed/message-bubble.html` using `defineComponent`, host-reflected boolean state attributes via `toggleAttribute` (`is-own`, `is-tombstone`, `is-pending`, `is-failed`, `is-first-in-group`, `is-last-in-group`), computed getters, and scoped CSS styles.
+  - Created composed component `packages/app/src/components/composed/date-separator.html` rendering centered date pill separators.
+  - Created detail surface component `packages/app/src/components/views/view-chat.html` using `defineComponent` and four-part i18n pattern, implementing message rendering, auto-scrolling to bottom, floating scroll-to-bottom button, debounced local read state advancement (`repos.readState.upsert`), and `test-storage-seeded` window event listener.
+  - Updated `core.chat`'s `detail.component` in `packages/app/src/extensions/chat/index.js` to `'view-chat'`.
+  - Extended all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 13 new `chat_*` translation keys while maintaining 100% key parity (67 keys) and non-English uniqueness.
+  - Authored `packages/app/docs/views/chat.md` covering all 10 required contract sections and updated `packages/app/docs/views/README.md`.
+  - Created unit test suite `packages/app/tests/unit/view-chat-data.test.js` (29 cases) registered in `unit-smoke` batch and Playwright component test suite `packages/app/tests/component/chat-thread.spec.js` registered in `component-smoke` batch in `packages/app/test-batches.js`.
+  - Generated visual verification artifacts `packages/app/test-results/chat-populated.png` and `packages/app/test-results/chat-empty.png`.
+
 - **C-INFRA-8 Deliverables & Status:**
   - Status: `done`.
   - Created in-memory SQLite abstraction backend `packages/app/src/lib/db/backends/memory.js` supporting `CREATE TABLE IF NOT EXISTS`, `INSERT` / `INSERT OR REPLACE`, `SELECT`, `UPDATE`, `DELETE`, `begin`, `commit`, `rollback`.

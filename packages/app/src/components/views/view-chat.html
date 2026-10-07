@@ -1,0 +1,410 @@
+<template id="view-chat">
+  <div class="chat" data-testid="chat">
+    <header class="chat__header">
+      <h1 class="chat__title">{{ title }}</h1>
+    </header>
+    <div class="chat__thread" ref="thread" data-testid="thread">
+      <p class="chat__empty" ref="empty" hidden="{{ emptyHidden }}">{{ chat_empty_thread }}</p>
+      <div class="chat__rows" ref="rows"></div>
+    </div>
+    <div class="chat__scroll-btn" ref="scrollBtn" hidden="{{ scrollBtnHidden }}" data-testid="scroll-to-bottom">
+      <span class="chat__scroll-chevron" aria-hidden="true">↓</span>
+    </div>
+  </div>
+</template>
+
+<style>
+  :host {
+    display: block;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .chat {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    height: 100%;
+    position: relative;
+  }
+
+  .chat__header {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-0);
+  }
+
+  .chat__title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chat__thread {
+    overflow-y: auto;
+    padding: var(--space-4);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .chat__empty {
+    margin: auto;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    text-align: center;
+  }
+
+  .chat__rows {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat__divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: var(--space-3) 0;
+    color: var(--accent-text);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: relative;
+  }
+
+  .chat__divider::before,
+  .chat__divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-subtle);
+    margin: 0 var(--space-2);
+  }
+
+  .chat__scroll-btn {
+    position: absolute;
+    right: var(--space-4);
+    bottom: var(--space-4);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: var(--surface-3);
+    border: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-md);
+    font-size: var(--text-base);
+    z-index: 10;
+  }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  attributes: {
+    titleText: { type: String, default: '' },
+    scrollBtnVisible: { type: Boolean, default: false },
+    messageCount: { type: Number, default: 0 }
+  },
+
+  getters: {
+    title: ({ state }) => state.titleText || state.chat_title_fallback,
+    scrollBtnHidden: ({ state }) => !state.scrollBtnVisible,
+    emptyHidden: ({ state }) => state.messageCount > 0
+  },
+
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'chat_title_fallback',
+        'chat_empty_thread',
+        'chat_status_queued',
+        'chat_status_sending',
+        'chat_status_failed',
+        'chat_tombstone',
+        'chat_new_messages_divider',
+        'chat_placeholder_photo',
+        'chat_placeholder_video',
+        'chat_placeholder_voice',
+        'chat_placeholder_document',
+        'chat_placeholder_sticker',
+        'chat_placeholder_unknown'
+      ])
+    }
+  },
+
+  client: async ({ state, refs, i18n, storage, router, signal }) => {
+    const syncLocale = (locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'chat_title_fallback',
+        'chat_empty_thread',
+        'chat_status_queued',
+        'chat_status_sending',
+        'chat_status_failed',
+        'chat_tombstone',
+        'chat_new_messages_divider',
+        'chat_placeholder_photo',
+        'chat_placeholder_video',
+        'chat_placeholder_voice',
+        'chat_placeholder_document',
+        'chat_placeholder_sticker',
+        'chat_placeholder_unknown'
+      ]))
+    }
+
+    i18n.subscribeLocale((locale) => {
+      syncLocale(locale)
+      currentRoomId = null
+      load()
+    }, { signal })
+
+    if (state.locale !== i18n.getLocale()) {
+      syncLocale(i18n.getLocale())
+    }
+
+    const {
+      safeParsePayload,
+      summarizePayload,
+      groupMessages,
+      insertDateSeparators,
+      findNewMessagesDivider,
+      formatTime
+    } = await import('../../lib/views/view-chat-data.js')
+
+    const { api } = await import('../../lib/api/client.js')
+
+    try {
+      await storage.open()
+    } catch {}
+
+    const thread = refs('thread')
+    const rowsContainer = refs('rows')
+    const scrollBtn = refs('scrollBtn')
+
+    let currentRoomId = null
+    let messages = []
+    let readState = null
+    let repos = storage.repos()
+    let userId = ''
+
+    async function getCurrentUserId() {
+      try {
+        const me = await api.get('/users/me')
+        if (me?.id) return me.id
+      } catch {
+        // Fallback
+      }
+      return ''
+    }
+
+    function buildBubble({ msg, senderName, isOwn, isFirst, isLast }) {
+      const isTombstone = Boolean(msg.deleted_at)
+      const parsed = isTombstone ? null : safeParsePayload(msg.decrypted_payload)
+      const summary = summarizePayload(parsed)
+
+      let body
+      if (isTombstone) {
+        body = state.chat_tombstone
+      } else if (summary.kind === 'text') {
+        body = summary.text
+      } else {
+        body = state[summary.key] ?? state.chat_placeholder_unknown
+      }
+
+      const isPending = msg.local_status === 'pending' || msg.local_status === 'sending'
+      const isFailed = msg.local_status === 'failed'
+
+      const bubble = document.createElement('message-bubble')
+      bubble.setAttribute('message-id', msg.message_id)
+      bubble.setAttribute('sender-name', senderName ?? '')
+      bubble.setAttribute('body-text', body)
+      bubble.setAttribute('time-text', formatTime(msg.created_at))
+
+      bubble.toggleAttribute('is-own', Boolean(isOwn))
+      bubble.toggleAttribute('is-tombstone', Boolean(isTombstone))
+      bubble.toggleAttribute('is-pending', Boolean(isPending))
+      bubble.toggleAttribute('is-failed', Boolean(isFailed))
+      bubble.toggleAttribute('is-first-in-group', Boolean(isFirst))
+      bubble.toggleAttribute('is-last-in-group', Boolean(isLast))
+
+      if (msg.local_status === 'pending') {
+        bubble.setAttribute('status-text', state.chat_status_queued)
+      } else if (msg.local_status === 'sending') {
+        bubble.setAttribute('status-text', state.chat_status_sending)
+      } else if (msg.local_status === 'failed') {
+        bubble.setAttribute('status-text', state.chat_status_failed)
+      }
+
+      return bubble
+    }
+
+    const SCROLL_THRESHOLD = 80
+    function updateScrollBtn() {
+      if (!thread) return
+      if (messages.length === 0) {
+        state.scrollBtnVisible = false
+        return
+      }
+      const distanceFromBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight
+      state.scrollBtnVisible = distanceFromBottom > SCROLL_THRESHOLD
+    }
+
+    let readStateTimer = null
+    function markVisibleMessagesAsRead() {
+      clearTimeout(readStateTimer)
+      readStateTimer = setTimeout(async () => {
+        if (!thread || !repos || !userId || !currentRoomId) return
+        const distanceFromBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight
+        if (distanceFromBottom > SCROLL_THRESHOLD) return
+        const last = messages[messages.length - 1]
+        if (!last) return
+        if (readState?.last_read_message_id === last.message_id) return
+        await repos.readState.upsert({
+          userId,
+          roomId: currentRoomId,
+          lastReadMessageId: last.message_id,
+          lastReadAt: Date.now()
+        })
+        readState = await repos.readState.getForRoom(currentRoomId, userId)
+      }, 500)
+    }
+
+    if (thread) {
+      thread.addEventListener('scroll', () => {
+        updateScrollBtn()
+        markVisibleMessagesAsRead()
+      }, { signal, passive: true })
+    }
+
+    if (scrollBtn) {
+      scrollBtn.addEventListener('click', () => {
+        if (thread) {
+          thread.scrollTo({ top: thread.scrollHeight, behavior: 'smooth' })
+        }
+      }, { signal })
+    }
+
+    async function load() {
+      const roomId = router.getSelection()
+      if (!roomId) {
+        currentRoomId = null
+        state.titleText = state.chat_title_fallback
+        state.messageCount = 0
+        if (rowsContainer) rowsContainer.innerHTML = ''
+        return
+      }
+
+      currentRoomId = roomId
+      userId = await getCurrentUserId()
+
+      const room = await repos.rooms.get(roomId)
+      const members = await repos.roomMembers.listInRoom(roomId)
+      const others = members.map((m) => m.user_id).filter((id) => id !== userId)
+      const names = []
+      for (const id of others) {
+        const u = await repos.users.get(id)
+        names.push(u?.display_name || id)
+      }
+
+      let title = room?.name
+      if (!title) {
+        if (names.length === 1) title = names[0]
+        else if (names.length === 2) title = `${names[0]}, ${names[1]}`
+        else if (names.length > 2) title = `${names[0]}, ${names[1]} + ${names.length - 2}`
+        else title = state.chat_title_fallback
+      }
+      state.titleText = title
+
+      const PAGE = 500
+      const newestFirst = await repos.messages.listApplicationsInRoom(roomId, { limit: PAGE })
+      messages = [...newestFirst].reverse()
+      state.messageCount = messages.length
+
+      if (rowsContainer) {
+        rowsContainer.innerHTML = ''
+      }
+
+      if (messages.length === 0) {
+        updateScrollBtn()
+        return
+      }
+
+      readState = await repos.readState.getForRoom(roomId, userId)
+      const dividerIndex = findNewMessagesDivider(messages, readState?.last_read_message_id)
+
+      const groups = groupMessages(messages)
+      const items = insertDateSeparators(groups)
+
+      const senderNames = new Map()
+      for (const msg of messages) {
+        if (senderNames.has(msg.sender_user_id)) continue
+        if (msg.sender_user_id === userId) {
+          senderNames.set(msg.sender_user_id, null)
+          continue
+        }
+        const u = await repos.users.get(msg.sender_user_id)
+        senderNames.set(msg.sender_user_id, u?.display_name || msg.sender_user_id)
+      }
+
+      for (const item of items) {
+        if (item.kind === 'date') {
+          const sep = document.createElement('date-separator')
+          sep.setAttribute('label', item.label)
+          rowsContainer.appendChild(sep)
+          continue
+        }
+
+        const group = item.group
+        for (let i = group.startIndex; i <= group.endIndex; i += 1) {
+          const msg = messages[i]
+          const senderName = senderNames.get(msg.sender_user_id) ?? ''
+          const bubble = buildBubble({
+            msg,
+            senderName,
+            isOwn: msg.sender_user_id === userId,
+            isFirst: i === group.startIndex,
+            isLast: i === group.endIndex
+          })
+          rowsContainer.appendChild(bubble)
+
+          if (dividerIndex !== -1 && i === dividerIndex - 1) {
+            const divider = document.createElement('div')
+            divider.className = 'chat__divider'
+            divider.setAttribute('role', 'separator')
+            divider.textContent = state.chat_new_messages_divider
+            rowsContainer.appendChild(divider)
+          }
+        }
+      }
+
+      if (thread) {
+        thread.scrollTop = thread.scrollHeight
+      }
+
+      updateScrollBtn()
+      markVisibleMessagesAsRead()
+    }
+
+    window.addEventListener('test-storage-seeded', () => {
+      load()
+    }, { signal })
+
+    await load()
+
+    router.subscribe(() => {
+      const nextId = router.getSelection()
+      if (nextId !== currentRoomId) {
+        load()
+      }
+    }, { signal })
+  }
+})
+</script>

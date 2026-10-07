@@ -59,5 +59,19 @@ export default {
   'chats_preview_video': 'Vídeo',
   'chats_preview_voice': 'Mensaje de voz',
   'chats_preview_document': 'Documento',
-  'chats_preview_sticker': 'Sticker'
+  'chats_preview_sticker': 'Adhesivo',
+
+  'chat_title_fallback': 'Conversación',
+  'chat_empty_thread': 'Este es el comienzo de la sala.',
+  'chat_status_queued': 'En cola',
+  'chat_status_sending': 'Enviando…',
+  'chat_status_failed': 'Error',
+  'chat_tombstone': 'Este mensaje fue eliminado.',
+  'chat_new_messages_divider': 'Nuevos mensajes',
+  'chat_placeholder_photo': 'Foto',
+  'chat_placeholder_video': 'Vídeo',
+  'chat_placeholder_voice': 'Mensaje de voz',
+  'chat_placeholder_document': 'Documento',
+  'chat_placeholder_sticker': 'Adhesivo',
+  'chat_placeholder_unknown': 'Mensaje no compatible'
 }

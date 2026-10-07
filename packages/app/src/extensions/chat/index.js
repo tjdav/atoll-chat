@@ -24,7 +24,7 @@ export default defineExtension({
   detail: {
     route: 'chat',
     title: 'Chat',
-    component: 'extension-placeholder',
+    component: 'view-chat',
     actions: [],
     slots: {},
     surfaces: ['panel'],

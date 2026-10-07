@@ -374,7 +374,7 @@ build task runs.
 | Aggregator Location | `packages/app/src/extensions/index.js` exporting `extensions = []` |
 | Config Integration | `packages/app/coralite.config.js` imports `extensions` from `./src/extensions/index.js` |
 | CLI Script & Package Script | `packages/app/scripts/extensions-vocab.js` exposing testable `main(argv, io)`; registered as `"extensions:vocab": "node scripts/extensions-vocab.js"` in `packages/app/package.json` |
-| Unit Tests | `extend-validate.test.js`, `extend-validate-link.test.js`, `extend-vocab.test.js`, `extend-vocab-cli.test.js` registered under `unit-smoke` in `packages/app/test-batches.js` |
+| Unit Tests | `extend-validate.test.js`, `extend-validate-link.test.js`, `extend-vocab.test.js`, `extend-vocab-cli.test.js` registered under `unit-smoke` in `test-batches.js` |
 | Documentation | Updated `packages/app/docs/plugins/extensions.md` with Build-Time Validation and The Vocabulary Command sections |
 
 ### C-CHAT-4 — First-Party Core Extension Definitions & Shared Placeholder Component
@@ -427,7 +427,7 @@ build task runs.
 | Documentation Updates | `packages/app/docs/plugins/i18n.md` ("When to use a getter" section) and `packages/app/docs/shell.md` updated |
 | Test Suites & Screenshots | Unit test `tests/unit/surface-reconcile.test.js` (unit-smoke) and Playwright component test `tests/component/surface.spec.js` (component-smoke). Visual verification screenshots generated at `test-results/surface-chat.png` and `test-results/surface-detail.png` |
 
-### C-CHAT-7 — Icon Plugin, `<ui-icon>` Primitive & Rail Icon Rendering
+### C-CHAT-7-icon — Icon Plugin, `<ui-icon>` Primitive & Rail Icon Rendering
 
 **Verified:** 2026-10-05
 
@@ -441,6 +441,23 @@ build task runs.
 | Rail Host Integration (`rail-host.html`) | Instantiates `<ui-icon>` custom elements with `ext.rail.icon.name` for each item. Letter placeholders (`.rail__placeholder`) and unused `item*` attributes removed |
 | Plugin Documentation | Created at `packages/app/docs/plugins/icons.md` and registered in `packages/app/docs/plugins/README.md` |
 | Test Suites & Batches | Unit test `packages/app/tests/unit/icons.test.js` registered in `unit-smoke` (222 passing unit tests). Component test `packages/app/tests/component/ui-icon.spec.js` registered in `component-smoke` (33 passing Playwright tests) |
+
+### C-CHAT-7 — Message Thread Surface Architecture
+
+**Verified:** 2026-10-07
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Pure Assembly Module | `packages/app/src/lib/views/view-chat-data.js` exporting JSDoc-annotated pure functions `safeParsePayload`, `summarizePayload`, `groupMessages` (5m window & sender change rules), `insertDateSeparators` (calendar day boundaries), `findNewMessagesDivider`, `formatTime`, and `formatDateLabel` |
+| Message Bubble Component | `packages/app/src/components/composed/message-bubble.html` wrapped in `defineComponent` with getters (`avatarHidden`, `senderNameHidden`, `statusHidden`), host-reflected boolean state attributes via `toggleAttribute` (`is-own`, `is-tombstone`, `is-pending`, `is-failed`, `is-first-in-group`, `is-last-in-group`), and scoped CSS rules |
+| Date Separator Component | `packages/app/src/components/composed/date-separator.html` wrapped in `defineComponent` rendering centered date pill separators |
+| Message Thread Surface Component | `packages/app/src/components/views/view-chat.html` wrapped in `defineComponent`, registered as `core.chat`'s `detail.component` in `packages/app/src/extensions/chat/index.js`. Implements auto-scrolling to bottom, floating scroll-to-bottom button (`>80px` threshold), debounced local read state advancement (`repos.readState.upsert`), runtime locale switching, and `test-storage-seeded` window event listener |
+| Localization & Parity | Extended all seven production locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 13 new `chat_*` translation keys with 100% key parity (67 keys total) and non-English string uniqueness |
+| Playwright Route Interception Rule | `page.route('**/app.html*', ...)` MUST include wildcard `*` to ensure Content Security Policy script-src modifications apply to URLs with query parameters |
+| Boolean Attribute Reflection Rule | Boolean host attributes MUST be toggled using `el.toggleAttribute('attr', boolean)` rather than `el.setAttribute('attr', String(boolean))` so CSS `:host([attr])` presence selectors operate correctly |
+| Documentation | Contract documentation authored at `packages/app/docs/views/chat.md` covering all 10 required sections; index updated in `packages/app/docs/views/README.md` |
+| Unit & Component Test Suites | `packages/app/tests/unit/view-chat-data.test.js` (29 cases) registered in `unit-smoke` batch and `packages/app/tests/component/chat-thread.spec.js` (4 cases) registered in `component-smoke` batch in `packages/app/test-batches.js` |
+| Visual Verification Artifacts | Screenshots generated at `packages/app/test-results/chat-populated.png` and `packages/app/test-results/chat-empty.png` |
 
 ### C-INFRA-8 — Storage Plugin, In-Memory Backend & Migration Runner Contracts
 
@@ -514,7 +531,7 @@ build task runs.
 | Partial Upsert Semantics | `upsert` uses `INSERT ... ON CONFLICT(user_id) DO UPDATE SET display_name = COALESCE(excluded.display_name, users.display_name), identity_pubkey = COALESCE(excluded.identity_pubkey, users.identity_pubkey), profile_version = excluded.profile_version, cached_at = excluded.cached_at`. Non-provided or explicit `null` fields retain existing values |
 | Cursor Pagination | `list({ limit = 100, cursor } = {})` orders by `cached_at DESC` using cursor condition `cached_at < ?` |
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` exports `createRepositories({ db })` returning `{ users }` and re-exports `createUsersRepository` |
-| Unit Test Suite | `packages/app/tests/unit/repositories-users.test.js` exercising all 15 specified cases across backends, registered under `unit-smoke` batch in `test-batches.js` |
+| Unit Test Suite | `packages/app/tests/unit/repositories-users.test.js` exercising all 15 specified cases across backends, registered under `unit-smoke` batch in `packages/app/test-batches.js` |
 | Storage Documentation | Documentation authored under `packages/app/docs/storage/`: `README.md` (index), `repositories.md` (conventions), and `users.md` (users contract) |
 
 ### C-INFRA-13 — Rooms, Room Members, and Room Order Tables with Repositories
@@ -649,7 +666,7 @@ build task runs.
 | Fact / Mechanism | Signature & Contract / Behavior |
 |---|---|
 | Checkpoint Summary | **Storage Layer Complete**: All 18 domain repositories across 10 migrations are fully implemented, tested, and documented |
-| Migration `0010-sync-state.sql` | Defines `sync_state` (`room_id TEXT PRIMARY KEY`, `epoch`, `seq`, `updated_at`), `processed_events` (`event_key TEXT PRIMARY KEY`, `processed_at`), and `mls_rooms` (`room_id TEXT PRIMARY KEY`, `local_client_id`, `current_epoch`, `membership_status DEFAULT 'pending'`, `confirmed_transcript_hash BLOB`, `last_error`, `joined_at`, `updated_at`), with indexes `idx_processed_events_at` and `idx_mls_rooms_status` |
+| Migration `0010-sync-state.sql` | Defines `sync_state` (`room_id PRIMARY KEY`, `epoch`, `seq`, `updated_at`), `processed_events` (`event_key PRIMARY KEY`, `processed_at`), and `mls_rooms` (`room_id PRIMARY KEY`, `local_client_id`, `current_epoch`, `membership_status DEFAULT 'pending'`, `confirmed_transcript_hash BLOB`, `last_error`, `joined_at`, `updated_at`), with indexes `idx_processed_events_at` and `idx_mls_rooms_status` |
 | Sync State Repository | `createSyncStateRepository({ db })` in `packages/app/src/lib/db/repositories/sync-state.js` exposing 7 async methods (`get`, `getCursor`, `set`, `advance`, `list`, `remove`, `clearAll`) |
 | Per-Room `(epoch, seq)` Cursor | `syncState.advance(roomId, { epoch, seq })` performs atomic JavaScript comparison against existing cursor; advances only when `(epoch, seq)` is strictly greater, returning `{ changes: 1 }` on advance or `{ changes: 0 }` on stale/equal skip |
 | Processed Events Repository | `createProcessedEventsRepository({ db })` in `packages/app/src/lib/db/repositories/processed-events.js` exposing 8 async methods (`has`, `hasKey`, `mark`, `markKey`, `markBatch`, `prune`, `count`, `clearAll`) and module-level helper `makeKey(source, eventName, sequence)` |
@@ -673,7 +690,7 @@ build task runs.
 | Singleton Memoization Guards | DB instance guarded by `pluginContext.__storage_client__`; repository aggregator guarded by `pluginContext.__storage_repos_client__` |
 | Exposed Repositories (18) | `users`, `rooms`, `roomMembers`, `roomOrder`, `messages`, `attachments`, `reactions`, `readState`, `drafts`, `blockedUsers`, `outbox`, `roomPreferences`, `nicknames`, `deviceNames`, `starredItems`, `syncState`, `processedEvents`, `mlsRooms` |
 | Server Context Behavior | `repos()` throws `Error` ('storage.repos is not available during SSR. The database is client-only.') |
-| Test Coverage & Batches | `packages/app/tests/unit/storage-plugin.test.js` extended with 6 test cases (14 total passing in `unit-smoke` batch) |
+| Test Coverage & Batches | `packages/app/tests/unit/storage-plugin.test.js` extended with 6 new test cases (14 total passing in `unit-smoke` batch) |
 | Plugin Documentation | `packages/app/docs/plugins/storage.md` updated with "Repository accessor — repos()" section |
 
 ### C-INFRA-22 — User-Scoped Sync Plugin and Boot Integration Contract
