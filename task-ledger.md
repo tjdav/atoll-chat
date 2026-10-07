@@ -209,9 +209,9 @@
   - **Migration:** `0001_v2_schema.sql` (Minimal `bot_accounts` and `room_bots` tables).
   - **Delivered:** Step 0 report at `verification/member-pagination-bot-merge/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/tests/room_members_pagination.rs`, `server/tests/rooms.rs`.
   - **Batch:** `messaging`
-- **Retention Change Preview V3 Alignment (Phase 12)**: done
+- **Retention Change Preview Timestamp Union**: done
   - **Migration:** None (Case A: pure read-only preview query over existing `room_messages` and `attachments` tables).
-  - **Delivered:** Step 0 report at `verification/retention-preview-v3/report.md`, updated `rooms::preview_retention_change` in `server/src/rooms.rs` for union MIN/MAX timestamp evaluation across messages and attachments, expanded integration test suite in `server/tests/retention_preview.rs`.
+  - **Delivered:** `server/src/rooms.rs` (`preview_retention_change`), `server/tests/retention_preview.rs`. Closed single production gap and test coverage gaps by calculating `oldest_affected_at` and `newest_affected_at` across the union of affected `room_messages` and `attachments`. Added test cases for attachments-only, older/newer attachments, messages-only, whisper messages, bot messages, soft-deleted messages, commit/proposal messages, user-scoped attachments, other room attachments, retention_days edge cases (-1, 366, string, missing), non-owner, non-member, unauthenticated, Cache-Control header, un-rate-limited execution, read-only db state assertion, retention_days=0, and equal retention_days.
   - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
