@@ -49,6 +49,8 @@ export const COMMAND_INFO = 'bot-command-v1'
  *   HTTP client.
  * @param {(invocation: CommandInvocation) => Promise<BotCtx<any>>} deps.makeBotCtx -
  *   Constructs the BotCtx for a command invocation. Wired by B-029.
+ * @param {import('../pause-policy.js').PausePolicy} [deps.pausePolicy] -
+ *   Optional pause policy guard.
  * @param {import('../diagnostics/logger.js').Logger} [deps.logger] -
  *   Optional logger.
  * @param {number} [deps.handlerTimeoutMs=60000] - Per-handler timeout.
@@ -64,6 +66,7 @@ export function createCommandInvocationHandler ({
   bot,
   http,
   makeBotCtx,
+  pausePolicy,
   logger,
   handlerTimeoutMs = 60000,
   generateRequestId = crypto.randomUUID,
@@ -196,30 +199,85 @@ export function createCommandInvocationHandler ({
 
     // Run the handler with a timeout.
     let result
-    try {
-      result = await withTimeout(
+    if (pausePolicy?.isPaused()) {
+      logger?.warn('command dispatch skipped: bot paused', {
+        meta: {
+          command_id: event.command_id,
+          command_name: parsed.command_name
+        }
+      })
+      result = {
+        type: 'local_message',
+        content: `The bot is paused and cannot process /${parsed.command_name} right now.`
+      }
+    } else if (pausePolicy) {
+      const guardResult = await pausePolicy.guard(() => withTimeout(
         Promise.resolve().then(() => commandDecl.handler(ctx, argsReader)),
         handlerTimeoutMs
       )
-    } catch (err) {
-      /** @type {any} */
-      const errObj = err
-      const errorMsg = err instanceof Error ? err.message : String(err)
-      if (errObj.isTimeout) {
-        result = {
-          type: 'local_message',
-          content: `Command /${parsed.command_name} timed out.`
-        }
-      } else {
-        logger?.error('command handler threw', {
+      )
+
+      if (guardResult.kind === 'paused') {
+        logger?.warn('command dispatch skipped: bot paused', {
           meta: {
             command_id: event.command_id,
-            error: errorMsg
+            command_name: parsed.command_name
           }
         })
         result = {
           type: 'local_message',
-          content: `Command /${parsed.command_name} failed: ${errorMsg}`
+          content: `The bot is paused and cannot process /${parsed.command_name} right now.`
+        }
+      } else if (guardResult.kind === 'failure') {
+        /** @type {any} */
+        const errObj = guardResult.error
+        const errorMsg = errObj instanceof Error ? errObj.message : String(errObj)
+        if (errObj && errObj.isTimeout) {
+          result = {
+            type: 'local_message',
+            content: `Command /${parsed.command_name} timed out.`
+          }
+        } else {
+          logger?.error('command handler threw', {
+            meta: {
+              command_id: event.command_id,
+              error: errorMsg
+            }
+          })
+          result = {
+            type: 'local_message',
+            content: `Command /${parsed.command_name} failed: ${errorMsg}`
+          }
+        }
+      } else {
+        result = guardResult.value
+      }
+    } else {
+      try {
+        result = await withTimeout(
+          Promise.resolve().then(() => commandDecl.handler(ctx, argsReader)),
+          handlerTimeoutMs
+        )
+      } catch (err) {
+        /** @type {any} */
+        const errObj = err
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        if (errObj.isTimeout) {
+          result = {
+            type: 'local_message',
+            content: `Command /${parsed.command_name} timed out.`
+          }
+        } else {
+          logger?.error('command handler threw', {
+            meta: {
+              command_id: event.command_id,
+              error: errorMsg
+            }
+          })
+          result = {
+            type: 'local_message',
+            content: `Command /${parsed.command_name} failed: ${errorMsg}`
+          }
         }
       }
     }

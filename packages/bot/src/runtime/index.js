@@ -15,6 +15,7 @@ import { createWebSocketClient } from './transport/websocket.js'
 import { createSseClient } from './transport/sse.js'
 import { createWebhookServer } from './triggers/webhook.js'
 import { createCronEngine } from './triggers/cron.js'
+import { createPausePolicy } from './pause-policy.js'
 
 /**
  * Decodes a base64url string to Uint8Array.
@@ -154,6 +155,8 @@ export function createRuntime ({
   let webhookServer = null
   /** @type {ReturnType<import('./triggers/cron.js').createCronEngine> | null} */
   let cronEngine = null
+  /** @type {ReturnType<typeof createPausePolicy> | null} */
+  let pausePolicy = null
 
   /** @type {ReturnType<import('./context/post.js').createPostHandler> | null} */
   let postHandler = null
@@ -226,7 +229,10 @@ export function createRuntime ({
         }
       })
       logger.debug('room subscribed', {
-        meta: { room_id: roomId, kind: 'websocket' }
+        meta: {
+          room_id: roomId,
+          kind: 'websocket'
+        }
       })
     } catch (err) {
       logger.warn('room subscribe failed', {
@@ -292,7 +298,10 @@ export function createRuntime ({
         }
       })
       logger.debug('room subscribed', {
-        meta: { room_id: roomId, kind: 'sse' }
+        meta: {
+          room_id: roomId,
+          kind: 'sse'
+        }
       })
     } catch (err) {
       logger.warn('room subscribe failed', {
@@ -416,24 +425,57 @@ export function createRuntime ({
       signal: lifecycleController.signal
     })
 
-    try {
-      if (isMessageEvent) {
-        if (typeof bot.config.handlers?.message === 'function') {
-          await bot.config.handlers.message(ctx, eventObj)
-        }
-      } else {
-        if (typeof bot.config.handlers?.room === 'function') {
-          await bot.config.handlers.room(ctx, eventObj)
-        }
-      }
-    } catch (err) {
-      logger.error('room event dispatch failed', {
+    const handler = isMessageEvent
+      ? bot.config.handlers?.message
+      : bot.config.handlers?.room
+
+    if (typeof handler !== 'function') {
+      return
+    }
+
+    if (pausePolicy?.isPaused()) {
+      logger.debug('room event skipped: bot paused', {
         meta: {
           room_id: roomId,
-          event: eventName,
-          error: err instanceof Error ? err.message : String(err)
+          event: eventName
         }
       })
+      return
+    }
+
+    if (pausePolicy) {
+      const guardResult = await pausePolicy.guard(() => handler(ctx, eventObj))
+      if (guardResult.kind === 'paused') {
+        logger.debug('room event skipped: bot paused', {
+          meta: {
+            room_id: roomId,
+            event: eventName
+          }
+        })
+        return
+      }
+      if (guardResult.kind === 'failure') {
+        const errorMsg = guardResult.error instanceof Error ? guardResult.error.message : String(guardResult.error)
+        logger.error('room event dispatch failed', {
+          meta: {
+            room_id: roomId,
+            event: eventName,
+            error: errorMsg
+          }
+        })
+      }
+    } else {
+      try {
+        await handler(ctx, eventObj)
+      } catch (err) {
+        logger.error('room event dispatch failed', {
+          meta: {
+            room_id: roomId,
+            event: eventName,
+            error: err instanceof Error ? err.message : String(err)
+          }
+        })
+      }
     }
   }
 
@@ -549,7 +591,10 @@ export function createRuntime ({
               newMode = data.mode
             }
             const scopes = Array.isArray(data.scopes) ? data.scopes : []
-            grants.set(roomId, { mode: newMode, scopes })
+            grants.set(roomId, {
+              mode: newMode,
+              scopes
+            })
 
             if (oldMode !== newMode) {
               if (oldMode === 'member' || oldMode === 'observer') {
@@ -648,6 +693,14 @@ export function createRuntime ({
       fetchImpl
     })
 
+    pausePolicy = createPausePolicy({
+      reportPause: (payload) => apiHttp.request('POST', '/bots/me/pause', {
+        body: payload,
+        retry: false
+      }).then(() => undefined),
+      logger
+    })
+
     // Fetch capabilities
     const capRes = await rootHttp.request('GET', '/capabilities')
     const capBody = capRes.body
@@ -742,6 +795,7 @@ export function createRuntime ({
       bot,
       http: apiHttp,
       makeBotCtx,
+      pausePolicy,
       logger,
       handlerTimeoutMs: config.handlerTimeoutMs
     })
@@ -785,6 +839,7 @@ export function createRuntime ({
           triggers: webhookTriggers,
           makeBotCtx,
           idempotency,
+          pausePolicy,
           env: process.env,
           logger,
           onWebhook: (ctx, payload) => bot.config.handlers?.webhook?.(ctx, payload)
@@ -806,6 +861,7 @@ export function createRuntime ({
           makeBotCtx,
           idempotency,
           stateStore: storage,
+          pausePolicy,
           logger,
           handlerTimeoutMs: config.handlerTimeoutMs,
           onSchedule: (ctx, payload) => bot.config.handlers?.schedule?.(ctx, payload)

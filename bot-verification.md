@@ -1,5 +1,17 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-030 Verification Fact
+- **Pause-on-Failure Policy (`packages/bot/src/runtime/pause-policy.js`)**:
+  - The pause policy module resides at `packages/bot/src/runtime/pause-policy.js` exporting `createPausePolicy`. Added `PausedError` (code `bot_paused`, name `PausedError`) to `packages/bot/src/errors.js` (Amends Spec §12).
+  - **Parameters & Policy Behavior:** Reaching threshold 3 consecutive handler failures within 60,000 ms enters paused state permanently for the process lifetime. A success resets the counter; a failure occurring > 60,000 ms after the streak anchor starts a new streak.
+  - **Pause Reporting & Spec Gap:** On entering paused state, `createPausePolicy` fires `reportPause({ threshold, window_ms, first_failure_at })` exactly once fire-and-forget. Runtime stubs `reportPause` to send `POST /api/v1/bots/me/pause` via HTTP client (**Spec Gap**: pause reporting server endpoint omitted from Server §8; stub request fails and is logged without interrupting pause state).
+  - **Dispatch Outputs:** Dispatches are routed via `pausePolicy.guard(fn)`: command dispatches produce a `local_message` informing that the bot is paused, webhooks return HTTP 503 `bot_paused`, cron fires skip execution without updating `last_fire`, and room events skip execution with a debug log.
+  - **Testing & Batches:** 20 unit test cases in `packages/bot/tests/unit/pause-policy.test.js` (`pause-policy` batch) and 10 integration test cases in `packages/bot/tests/unit/runtime-pause.test.js` (`runtime-pause` batch). Added pause cases to `ctx-command-invoked.test.js`, `webhook-server.test.js`, and `cron-engine.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `node packages/bot/tests/manifest-check.js --batch pause-policy` passed (20 passing, status 0).
+  - `node packages/bot/tests/manifest-check.js --batch runtime-pause` passed (10 passing, status 0).
+
 ## Task B-001 Verification Fact
 - **Starting State Classification**: Case A (Workspace files `tsconfig.base.json` and `packages/bot/` absent).
 - **Workspace Tooling Setup**:

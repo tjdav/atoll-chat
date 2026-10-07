@@ -131,6 +131,7 @@ export function verifySignature ({ secretName, secretValue, rawBody, headers }) 
  * @param {WebhookTrigger[]} deps.triggers - The webhook triggers array.
  * @param {(invocation: WebhookInvocation) => Promise<BotCtx>} deps.makeBotCtx - Constructs BotCtx.
  * @param {import('../idempotency/index.js').IdempotencyStore} deps.idempotency - Idempotency store.
+ * @param {import('../pause-policy.js').PausePolicy} [deps.pausePolicy] - Pause policy guard.
  * @param {NodeJS.ProcessEnv} [deps.env=process.env] - Environment.
  * @param {import('../diagnostics/logger.js').Logger} [deps.logger] - Optional logger.
  * @param {(ctx: BotCtx, invocation: WebhookInvocation) => Promise<void> | void} [deps.onWebhook] - Optional direct webhook handler.
@@ -141,6 +142,7 @@ export function createWebhookServer ({
   triggers,
   makeBotCtx,
   idempotency,
+  pausePolicy,
   env = process.env,
   logger,
   onWebhook
@@ -355,13 +357,62 @@ export function createWebhookServer ({
     const handlerFn = onWebhook ?? ctxUntyped.webhook ?? ctxUntyped.handlers?.webhook ?? ctxUntyped.config?.handlers?.webhook
 
     const startTime = Date.now()
-    try {
-      if (typeof handlerFn === 'function') {
-        await withTimeout(
+    if (pausePolicy?.isPaused()) {
+      logger?.warn('webhook dispatch skipped: bot paused', { meta: { path: fullPath } })
+      respondJson(res, 503, {
+        error: 'bot_paused',
+        message: 'The bot is paused.'
+      })
+      return
+    }
+
+    if (pausePolicy) {
+      const guardResult = await pausePolicy.guard(() => (typeof handlerFn === 'function'
+        ? withTimeout(
           Promise.resolve().then(() => handlerFn(ctx, invocation)),
           config.timeoutMs
         )
+        : Promise.resolve())
+      )
+
+      if (guardResult.kind === 'paused') {
+        logger?.warn('webhook dispatch skipped: bot paused', { meta: { path: fullPath } })
+        respondJson(res, 503, {
+          error: 'bot_paused',
+          message: 'The bot is paused.'
+        })
+        return
       }
+
+      if (guardResult.kind === 'failure') {
+        await idempotency.remove(idempotencyKey)
+        /** @type {any} */
+        const errObj = guardResult.error
+        const errorMsg = errObj instanceof Error ? errObj.message : String(errObj)
+
+        if (errObj && errObj.isTimeout) {
+          logger?.error('webhook handler timeout', {
+            meta: {
+              path: fullPath,
+              error: errorMsg
+            }
+          })
+          respondJson(res, 504, { error: 'handler_timeout' })
+        } else {
+          logger?.error('webhook handler failed', {
+            meta: {
+              path: fullPath,
+              error: errorMsg
+            }
+          })
+          respondJson(res, 500, {
+            error: 'handler_failed',
+            message: errorMsg.slice(0, 200)
+          })
+        }
+        return
+      }
+
       const durationMs = Date.now() - startTime
       logger?.debug('webhook dispatch success', {
         meta: {
@@ -370,31 +421,48 @@ export function createWebhookServer ({
         }
       })
       respondEmpty(res, 200)
-    } catch (err) {
-      await idempotency.remove(idempotencyKey)
-      /** @type {any} */
-      const errObj = err
-      const errorMsg = err instanceof Error ? err.message : String(err)
+    } else {
+      try {
+        if (typeof handlerFn === 'function') {
+          await withTimeout(
+            Promise.resolve().then(() => handlerFn(ctx, invocation)),
+            config.timeoutMs
+          )
+        }
+        const durationMs = Date.now() - startTime
+        logger?.debug('webhook dispatch success', {
+          meta: {
+            path: fullPath,
+            duration_ms: durationMs
+          }
+        })
+        respondEmpty(res, 200)
+      } catch (err) {
+        await idempotency.remove(idempotencyKey)
+        /** @type {any} */
+        const errObj = err
+        const errorMsg = err instanceof Error ? err.message : String(err)
 
-      if (errObj && errObj.isTimeout) {
-        logger?.error('webhook handler timeout', {
-          meta: {
-            path: fullPath,
-            error: errorMsg
-          }
-        })
-        respondJson(res, 504, { error: 'handler_timeout' })
-      } else {
-        logger?.error('webhook handler failed', {
-          meta: {
-            path: fullPath,
-            error: errorMsg
-          }
-        })
-        respondJson(res, 500, {
-          error: 'handler_failed',
-          message: errorMsg.slice(0, 200)
-        })
+        if (errObj && errObj.isTimeout) {
+          logger?.error('webhook handler timeout', {
+            meta: {
+              path: fullPath,
+              error: errorMsg
+            }
+          })
+          respondJson(res, 504, { error: 'handler_timeout' })
+        } else {
+          logger?.error('webhook handler failed', {
+            meta: {
+              path: fullPath,
+              error: errorMsg
+            }
+          })
+          respondJson(res, 500, {
+            error: 'handler_failed',
+            message: errorMsg.slice(0, 200)
+          })
+        }
       }
     }
   }

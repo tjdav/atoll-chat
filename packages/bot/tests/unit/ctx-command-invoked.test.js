@@ -1727,6 +1727,122 @@ describe('ctx.commandInvoked unit tests', () => {
     }
   })
 
+  it('32. Paused state produces a local_message with the paused text and does not call the handler', async () => {
+    /** @type {Array<{ method: string | undefined, url: string | undefined, body: any }>} */
+    const requests = []
+    const server = await startServer((req, res) => {
+      requests.push({ method: req.method, url: req.url, body: req.body })
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: true }))
+    })
+
+    try {
+      let handlerCalled = false
+      const bot = defineBot({
+        id: 'test.bot',
+        apiVersion: '1.0.0',
+        hostApi: '1.0',
+        label: 'Test Bot',
+        capabilities: ['post_message'],
+        handlers: { install () {} },
+        commands: {
+          ping: {
+            args: {},
+            handler () {
+              handlerCalled = true
+              return { type: 'none' }
+            }
+          }
+        }
+      })
+
+      const pausePolicy = {
+        isPaused () { return true },
+        async guard () { return { kind: 'paused' } },
+        state () { return { paused: true, consecutive_failures: 3, first_failure_at: Date.now() } }
+      }
+
+      const http = createHttpClient({ serverUrl: server.url, botToken: 'test-token' })
+      const onCommandInvoked = createCommandInvocationHandler({
+        botCommandPrivateKey: BOT_COMMAND_PRIVATE,
+        bot,
+        http,
+        pausePolicy: /** @type {any} */ (pausePolicy),
+        makeBotCtx: async () => (/** @type {any} */ ({}))
+      })
+
+      const ciphertext = makeCommandCiphertext({ commandName: 'ping', args: {} })
+      await onCommandInvoked({
+        command_id: 'cmd_pause_1',
+        room_id: 'room_1',
+        sender_user_id: 'u_1',
+        sender_client_id: 'c_1',
+        ciphertext
+      })
+
+      assert.strictEqual(handlerCalled, false)
+      assert.strictEqual(requests.length, 2)
+      assert.strictEqual(requests[0]?.body.result_type, 'local_message')
+      assert.ok(requests[0]?.body.ciphertext)
+      assert.strictEqual(requests[1]?.url, '/bots/me/commands/cmd_pause_1/ack')
+    } finally {
+      await server.close()
+    }
+  })
+
+  it('33. Handler failure increments the pause policy counter', async () => {
+    const server = await startServer((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: true }))
+    })
+
+    try {
+      const { createPausePolicy } = await import('../../src/runtime/pause-policy.js')
+      const policy = createPausePolicy({
+        reportPause: async () => {}
+      })
+
+      const bot = defineBot({
+        id: 'test.bot',
+        apiVersion: '1.0.0',
+        hostApi: '1.0',
+        label: 'Test Bot',
+        capabilities: ['post_message'],
+        handlers: { install () {} },
+        commands: {
+          fail: {
+            args: {},
+            handler () {
+              throw new Error('command handler fail')
+            }
+          }
+        }
+      })
+
+      const http = createHttpClient({ serverUrl: server.url, botToken: 'test-token' })
+      const onCommandInvoked = createCommandInvocationHandler({
+        botCommandPrivateKey: BOT_COMMAND_PRIVATE,
+        bot,
+        http,
+        pausePolicy: policy,
+        makeBotCtx: async () => (/** @type {any} */ ({}))
+      })
+
+      const ciphertext = makeCommandCiphertext({ commandName: 'fail', args: {} })
+      await onCommandInvoked({
+        command_id: 'cmd_pause_2',
+        room_id: 'room_1',
+        sender_user_id: 'u_1',
+        sender_client_id: 'c_1',
+        ciphertext
+      })
+
+      assert.strictEqual(policy.state().consecutive_failures, 1)
+    } finally {
+      await server.close()
+    }
+  })
+
   it('dispatchCommandResult standalone checks', async () => {
     await assert.rejects(
       async () => dispatchCommandResult(/** @type {any} */ (undefined)),

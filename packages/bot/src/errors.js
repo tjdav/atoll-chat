@@ -287,3 +287,18 @@ export class SendLocalFailedError extends BotError {
   /** @override */
   code = 'send_local_failed'
 }
+
+/**
+ * Thrown internally when the runtime is paused and a handler dispatch
+ * is attempted. Never escapes to author code; dispatch sites catch it
+ * and produce their site-specific paused output.
+ *
+ * Code: `bot_paused`.
+ */
+export class PausedError extends BotError {
+  /** @override */
+  name = 'PausedError'
+
+  /** @override */
+  code = 'bot_paused'
+}

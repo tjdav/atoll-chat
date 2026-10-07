@@ -372,6 +372,7 @@ function defaultSleep (ms) {
  * @param {(invocation: ScheduleInvocation) => Promise<BotCtx>} deps.makeBotCtx - BotCtx constructor.
  * @param {import('../idempotency/index.js').IdempotencyStore} deps.idempotency - Idempotency store.
  * @param {{ get: (key: string) => Promise<unknown>, set: (key: string, value: unknown) => Promise<void> }} deps.stateStore - State store.
+ * @param {import('../pause-policy.js').PausePolicy} [deps.pausePolicy] - Pause policy guard.
  * @param {(ms: number) => Promise<void>} [deps.sleep=defaultSleep] - Sleep function.
  * @param {() => number} [deps.now=Date.now] - Clock function.
  * @param {import('../diagnostics/logger.js').Logger} [deps.logger] - Optional logger.
@@ -385,6 +386,7 @@ export function createCronEngine ({
   makeBotCtx,
   idempotency,
   stateStore,
+  pausePolicy,
   sleep = defaultSleep,
   now = Date.now,
   logger,
@@ -492,13 +494,34 @@ export function createCronEngine ({
 
     const startTime = now()
     const dispatchPromise = (async () => {
-      try {
-        if (typeof handlerFn === 'function') {
-          await withTimeout(
+      if (pausePolicy?.isPaused()) {
+        logger?.warn('cron fire skipped: bot paused', { meta: { name: trigger.name } })
+        return
+      }
+
+      if (pausePolicy) {
+        const guardResult = await pausePolicy.guard(() => (typeof handlerFn === 'function'
+          ? withTimeout(
             Promise.resolve().then(() => handlerFn(ctx, { name: trigger.name })),
             handlerTimeoutMs
           )
+          : Promise.resolve())
+        )
+
+        if (guardResult.kind === 'paused') {
+          logger?.warn('cron fire skipped: bot paused', { meta: { name: trigger.name } })
+          return
         }
+
+        if (guardResult.kind === 'failure') {
+          const errorMsg = guardResult.error instanceof Error ? guardResult.error.message : String(guardResult.error)
+          logger?.error('cron handler failed', {
+            name: trigger.name,
+            error: errorMsg
+          })
+          return
+        }
+
         const durationMs = now() - startTime
         if (isCatchUp) {
           logger?.debug('cron catch-up dispatch success', {
@@ -515,12 +538,37 @@ export function createCronEngine ({
 
         const stateKey = `_runtime:cron:${trigger.name}:last_fire`
         await stateStore.set(stateKey, scheduledAt)
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err)
-        logger?.error('cron handler failed', {
-          name: trigger.name,
-          error: errorMsg
-        })
+      } else {
+        try {
+          if (typeof handlerFn === 'function') {
+            await withTimeout(
+              Promise.resolve().then(() => handlerFn(ctx, { name: trigger.name })),
+              handlerTimeoutMs
+            )
+          }
+          const durationMs = now() - startTime
+          if (isCatchUp) {
+            logger?.debug('cron catch-up dispatch success', {
+              name: trigger.name,
+              scheduled_at: scheduledAt,
+              duration_ms: durationMs
+            })
+          } else {
+            logger?.debug('cron dispatch success', {
+              name: trigger.name,
+              duration_ms: durationMs
+            })
+          }
+
+          const stateKey = `_runtime:cron:${trigger.name}:last_fire`
+          await stateStore.set(stateKey, scheduledAt)
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err)
+          logger?.error('cron handler failed', {
+            name: trigger.name,
+            error: errorMsg
+          })
+        }
       }
     })()
 
