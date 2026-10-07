@@ -161,8 +161,8 @@ Before running Playwright component batches:
 
 ### N+2. Component Authoring
 
-New components and modified components must satisfy `packages/app/docs/components.md`.
-Specifically:
+New and modified components must satisfy `packages/app/docs/components.md`.
+Key requirements:
 
 - State is the source of truth. No internal `data-*` attributes except `data-testid`.
 - CSS state hooks read from the host via `:host([...])` with `reflect: true`.
@@ -171,6 +171,9 @@ Specifically:
 - `defineComponent` is required.
 - No pass-through getters.
 - `client()` may be `async`; no anonymous async IIFE.
+- Plugin context is delivered to `server()` and `client()` only — not to getters, `style`, or `slots`.
+- Module scope is stripped from the client bundle — no top-level imports or helpers in `client()`.
+- No environment guards inside single-environment blocks.
 
 ### N+3. Coralite Friction
 

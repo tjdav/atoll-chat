@@ -1,13 +1,17 @@
-# Documentation Index
+# Documentation
 
-Welcome to `@atoll/app` architecture and developer documentation.
+## Component authoring
 
-## Core Guides
+- [components.md](./components.md) — the component authoring guide: rules, patterns, and enforcement.
 
-- [components.md](./components.md) — The component authoring guide: rules, patterns, state reflection, and enforcement.
+## Plugins
 
-## Subsystem Documentation
+- [plugins/README.md](./plugins/README.md) — the plugin index.
 
-- [plugins/README.md](./plugins/README.md) — Coralite plugins index (i18n, icons, router, storage, state, extensions, sync).
-- [storage/README.md](./storage/README.md) — SQLite storage schema, migrations, and domain repositories index.
-- [views/README.md](./views/README.md) — Surface views and extension views index.
+## Storage
+
+- [storage/README.md](./storage/README.md) — the storage schema and repository index.
+
+## Views
+
+- [views/README.md](./views/README.md) — the view surface index.
