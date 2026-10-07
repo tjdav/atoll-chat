@@ -12,6 +12,7 @@
     "test": "coralite-scripts test",
     "test:batch": "node scripts/run-batch.js",
     "check-batches": "node scripts/check-batches.js",
+    "check:migration-bundle": "node scripts/check-migration-bundle.mjs",
     "extensions:vocab": "node scripts/extensions-vocab.js"
   },
   "devDependencies": {

@@ -455,7 +455,7 @@ build task runs.
 | Localization & Parity | Extended all seven production locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 13 new `chat_*` translation keys with 100% key parity (67 keys total) and non-English string uniqueness |
 | Playwright Route Interception Rule | `page.route('**/app.html*', ...)` MUST include wildcard `*` to ensure Content Security Policy script-src modifications apply to URLs with query parameters |
 | Boolean Attribute Reflection Rule | Boolean host attributes MUST be toggled using `el.toggleAttribute('attr', boolean)` rather than `el.setAttribute('attr', String(boolean))` so CSS `:host([attr])` presence selectors operate correctly |
-| Documentation | Contract documentation authored at `packages/app/docs/views/chat.md` covering all 10 required sections; index updated in `packages/app/docs/views/README.md` |
+| Documentation | Contract documentation authored at `packages/app/docs/views/chat.md` covering all 10 required contract sections; index updated in `packages/app/docs/views/README.md` |
 | Unit & Component Test Suites | `packages/app/tests/unit/view-chat-data.test.js` (29 cases) registered in `unit-smoke` batch and `packages/app/tests/component/chat-thread.spec.js` (4 cases) registered in `component-smoke` batch in `packages/app/test-batches.js` |
 | Visual Verification Artifacts | Screenshots generated at `packages/app/test-results/chat-populated.png` and `packages/app/test-results/chat-empty.png` |
 
@@ -558,7 +558,7 @@ build task runs.
 
 | Fact / Mechanism | Signature & Contract / Behavior |
 |---|---|
-| Migration `0003-rooms.sql` | Defines `rooms` (`room_id TEXT PRIMARY KEY`, `name`, `avatar_file_id`, `description`, `disappearing_timer`, `metadata_version INTEGER DEFAULT 1`, `updated_at INTEGER`), `room_members` (`room_id`, `user_id`, `role`, `joined_at`), and `room_order` (`room_id TEXT PRIMARY KEY`, `position INTEGER`, `updated_at INTEGER`) with indexes |
+| Migration `0003-rooms.sql` | Defines `rooms` (`room_id TEXT PRIMARY KEY`, `name`, `avatar_file_id`, `description`, `disappearing_timer`, `metadata_version INTEGER DEFAULT 1`, `updated_at INTEGER`), `room_members` (`room_id`, `user_id`, `role`, `joined_at`), and `room_order` (`room_id TEXT PRIMARY KEY`, `position INTEGER`, `updated_at INTEGER`) tables and their indexes |
 | Rooms Repository | `createRoomsRepository({ db })` in `packages/app/src/lib/db/repositories/rooms.js` (`get`, `upsert` with partial `COALESCE` updates, transactional `remove`, `list` ordered by `updated_at DESC`, `count`, transactional `clearAll`) |
 | Room Members Repository | `createRoomMembersRepository({ db })` in `packages/app/src/lib/db/repositories/room-members.js` (`listInRoom` ordered by `joined_at ASC`, `get`, `addMember`, `removeMember`, `removeAllInRoom`, `listRoomsForUser` ordered by `joined_at DESC`, `countInRoom`, `clearAll`) |
 | Room Order Repository | `createRoomOrderRepository({ db })` in `packages/app/src/lib/db/repositories/room-order.js` (`list` ordered by `position ASC`, transactional dense `setOrder`, `moveBefore`, `getPosition`, `clearAll`) |
@@ -615,7 +615,7 @@ build task runs.
 | Read State `marked_unread` Policy | `upsert` updates `last_read_message_id` and `last_read_at` without touching `marked_unread`. `setMarkedUnread` and `clearMarkedUnread` control the manual unread flag explicitly |
 | Drafts Repository | `createDraftsRepository({ db })` in `packages/app/src/lib/db/repositories/drafts.js` exposing 7 async methods (`get`, `getText`, `set`, `remove`, `list`, `count`, `clearAll`) |
 | Draft Empty Text Deletion | `set(roomId, text)` automatically deletes the draft row if `text` is empty or whitespace-only |
-| Blocked Users Repository | `createBlockedUsersRepository({ db })` in `packages/app/src/lib/db/repositories/blocked-users.js` exposing 6 async methods (`isBlocked`, `list`, `add`, `remove`, `count`, `clearAll`) |
+| Blocked Users Repository | `createBlockedUsersRepository({ db })` in `packages/app/src/lib/db/repositories/blocked-users.js` exposing 6 async methods (`isBlocked`, `list`, `add` using `INSERT OR REPLACE`, `remove`, `count`, `clearAll`) |
 | Blocked Users Re-block | `add(userId)` uses `INSERT OR REPLACE` to update `blocked_at` on re-block |
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `readState`, `drafts`, and `blockedUsers` (10 repositories total) and re-export factory functions |
 | Unit Test Suites | `tests/unit/repositories-read-state.test.js` (15 cases), `tests/unit/repositories-drafts.test.js` (12 cases), and `tests/unit/repositories-blocked-users.test.js` (9 cases) registered under `unit-smoke` batch in `test-batches.js` |
@@ -655,7 +655,7 @@ build task runs.
 | Nickname Auto-Delete on Empty Text | `nicknames.set(roomId, userId, nickname)` deletes the row when given an empty string or whitespace-only string |
 | Dynamic Placeholders | `nicknames.getMany` builds dynamic `?` placeholders derived strictly from array length |
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `roomPreferences` and `nicknames` (13 repositories total) and re-export factory functions |
-| Unit Test Suites | `tests/unit/repositories-room-preferences.test.js` (23 cases) and `tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` batch in `test-batches.js` |
+| Unit Test Suites | `tests/unit/repositories-room-preferences.test.js` (23 cases) and `tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` in `packages/app/test-batches.js` |
 | Storage Contracts Documentation | `packages/app/docs/storage/room-preferences.md` and `packages/app/docs/storage/nicknames.md` authored covering all 10 contract sections; index updated in `packages/app/docs/storage/README.md` |
 
 ### C-INFRA-19 — Device Names and Starred Items Sync-Backed Domains Architecture
@@ -665,8 +665,8 @@ build task runs.
 | Fact / Mechanism | Signature & Contract / Behavior |
 |---|---|
 | Migration `0009-device-names-starred-items.sql` | Defines `device_names` (`user_id`, `device_id`, `encrypted_device_name`, `user_seq`, `updated_at`, `deleted_at`, `PRIMARY KEY (user_id, device_id)`) and `starred_items` (`user_id`, `item_id`, `item_type`, `room_id`, `user_seq`, `starred_at`, `deleted_at`, `PRIMARY KEY (user_id, item_id, item_type)`), with indexes `idx_device_names_seq`, `idx_starred_items_seq`, and `idx_starred_items_room` |
-| Device Names Repository Factory | `createDeviceNamesRepository({ db })` in `packages/app/src/lib/db/repositories/device-names.js` exposing 8 async methods (`get`, `listForUser`, `listActiveForUser`, `applyRemote`, `applyBatch`, `getHighestSeq`, `remove`, `clearAll`) |
-| Starred Items Repository Factory | `createStarredItemsRepository({ db })` in `packages/app/src/lib/db/repositories/starred-items.js` exposing 13 async methods (`get`, `isStarred`, `listForUser`, `listForRoom`, `applyRemote`, `applyAddedEvent`, `applyRemovedEvent`, `applyBatch`, `remove`, `countForUser`, `countByType`, `getHighestSeq`, `clearAll`) |
+| Device Names Repository Factory | `createDeviceNamesRepository({ db })` in `packages/app/src/lib/db/repositories/device-names.js` exposing 8 async methods (`get`, `listForUser`, `listActiveForUser`, `applyRemote`, `applyBatch`, `getHighestSeq`, `remove`, `clearAll`); `applyRemote` skips stale/equal `user_seq` rows (`{ changes: 0 }`); `applyBatch` applies in sequence order in a single transaction. |
+| Starred Items Repository Factory | `createStarredItemsRepository({ db })` in `packages/app/src/lib/db/repositories/starred-items.js` exposing 13 async methods (`get`, `isStarred`, `listForUser`, `listForRoom`, `applyRemote`, `applyAddedEvent`, `applyRemovedEvent`, `applyBatch`, `remove`, `countForUser`, `countByType`, `getHighestSeq`, `clearAll`); `listForUser` composes optional `type`, `roomId`, and cursor filters with parameterized values; `applyRemovedEvent` writes tombstones. |
 | `user_seq` Application Invariant | Stale rows where `incoming.userSeq <= existing.user_seq` are skipped (`{ changes: 0 }`). Sync responses and socket events apply only higher `user_seq` values |
 | Batch Application Semantics | `applyBatch(userId, rows)` sorts input rows by `userSeq ASC` and processes them inside a single `db.transaction` block, returning `{ applied, skipped }` |
 | Tombstone Persistence Contract | Revoked devices and unstarred items are retained as tombstones (`deleted_at` set) rather than hard deleted, preserving high-water mark sequence state |
@@ -674,7 +674,7 @@ build task runs.
 | Item Type Flexibility | `item_type` in `starred_items` has no client-side `CHECK` constraint. Unknown item types are accepted and stored |
 | Filter & Cursor Composition | `starredItems.listForUser` composes optional `type`, `roomId`, and `{ starredAt, itemId }` cursor pagination filters into parameterized SQL fragments without value interpolation |
 | Repository Aggregator | `packages/app/src/lib/db/repositories/index.js` extended to expose `deviceNames` and `starredItems` (15 repositories total) and re-export factory functions |
-| Unit Test Suites | `tests/unit/repositories-device-names.test.js` (17 cases) and `tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` batch in `test-batches.js` |
+| Unit Test Suites | `packages/app/tests/unit/repositories-device-names.test.js` (17 cases) and `packages/app/tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` batch in `test-batches.js` |
 | Storage Contracts Documentation | `packages/app/docs/storage/device-names.md` and `packages/app/docs/storage/starred-items.md` authored; index updated in `packages/app/docs/storage/README.md` |
 
 ### C-INFRA-20 — Sync State, Processed Events, MLS Rooms & Storage Completion Checkpoint
@@ -738,7 +738,7 @@ build task runs.
 |---|---|
 | Component Authoring Guide | Created `packages/app/docs/components.md` containing 16 normative rules and 12 detailed sections covering state source of truth, host attribute reflection (`reflect: true`), `:host([attr])` CSS styling, verbatim static `data-testid` test hooks, accessibility ARIA semantics, event bubbling, four-part i18n pattern, and anti-pattern failure modes |
 | Documentation Index | Created `packages/app/docs/README.md` linking `components.md`, `plugins/README.md`, `storage/README.md`, and `views/README.md` |
-| Component Audit & Refactoring | Audited all 13 components under `packages/app/src/components/`: <br>- `conversation-row.html`: reflected `isUnread` (`reflect: true`), updated CSS selector to `:host([is-unread])`, removed internal `data-room-id` and `data-unread`. <br>- `messenger-boot.html`: reflected `ready`, `error`, `hasOprfToken`, `storageReady`, `storagePersistent`, `syncReady` (`reflect: true`), updated `client()` state mutations (removing imperative `dataset` attribute writes), updated CSS selector to `:host([ready])`. <br>- `ui-icon.html`: removed internal `data-icon-name`. <br>- `ui-profile.html`: reflected `size` (`reflect: true`), updated CSS selectors to `:host([size="..."])`. <br>- `auth-view-register.html`: added `<!-- coralite-ignore-data-attributes -->` pragma for third-party ALTCHA integration (`data-altcha`). <br>- `rail-host.html`: removed `dataset.extensionId` from `li`, retained `data-rail-id` on button. |
+| Component Audit & Refactoring | Audited all 13 components under `packages/app/src/components/`: <br>- `conversation-row.html`: reflected `isUnread` (`reflect: true`), updated CSS selector to `:host([is-unread])`, removed internal `data-room-id` and `data-unread`. <br>- `messenger-boot.html`: reflected `ready`, `error`, `hasOprfToken`, `storageReady`, `storagePersistent`, `syncReady` (`reflect: true`), updated `client()` state mutations (removing imperative `dataset` attribute writes), updated CSS to `:host([ready])`. <br>- `ui-icon.html`: removed `data-icon-name`. <br>- `ui-profile.html`: reflected `size` (`reflect: true`), updated CSS selectors to `:host([size="..."])`. <br>- `auth-view-register.html`: added `<!-- coralite-ignore-data-attributes -->` pragma for third-party ALTCHA integration (`data-altcha`). <br>- `rail-host.html`: removed `dataset.extensionId` from `li`, retained `data-rail-id` on button. |
 | Test Query Updates | Updated Playwright tests (`hydration.spec.js`, `messenger-boot.spec.js`, `sync.spec.js`) to query reflected host attributes on `<messenger-boot>` (`[ready]`, `[error]`, etc.) rather than internal dataset attributes |
 | Enforcement Test Path | Created `packages/app/tests/unit/components-data-attrs.test.js` recursively checking component `<template>` blocks for `data-*` attributes except `data-testid` (unless `coralite-ignore-data-attributes` pragma is present) and registered it in `unit-smoke` batch in `packages/app/test-batches.js` |
 
@@ -759,3 +759,29 @@ build task runs.
 | Extended Locales & Parity | Extended all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 6 new `composer_*` keys with 100% key parity (73 keys total) |
 | Documentation | Updated `packages/app/docs/views/chat.md` with Section 9 ("Composer and local send path") |
 | Test Suites & Screenshots | `packages/app/tests/unit/composer.test.js` (18 cases) and `packages/app/tests/unit/send-message.test.js` (14 cases) in `unit-smoke` batch; `packages/app/tests/component/composer.spec.js` in `component-smoke` batch; visual verification screenshot captured at `packages/app/test-results/composer-pending.png` |
+
+### C-V-H — Migration Loader and Runtime DB Schema Verification Addendum
+
+**Verified:** 2026-10-07
+
+| Fact | Value |
+|---|---|
+| Root Cause | Factory options passed to `storagePlugin({ migrations: loadMigrations() })` in `coralite.config.js` are evaluated in Node at build time and do not serialize into client context closures |
+| Framework Mechanism | Coralite provides `client.config` on `definePlugin` objects to serialize static build-time options and deliver them to client context resolvers as `pluginContext.config` |
+| Correction (recorded in C-INFRA-24) | C-V-H's observation that `options` is undefined inside `client.context` is correct. Its conclusion that "no mechanism exists" for passing build-time data to the client is wrong. Coralite provides `client.config` for this purpose. The storage plugin's bug is that it read `options.migrations` directly instead of storing the migrations in `client.config` and reading `pluginContext.config`. The recommended fix in the C-V-H report (a generator script and a generated module) is superseded by the `client.config` fix. |
+
+### C-INFRA-24 — Fix Migration Delivery via `client.config` & Document Plugin Config Pattern
+
+**Verified:** 2026-10-07
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Storage Plugin Fix | `packages/app/src/plugins/storage-plugin.js` sets `client.config = { dbName, migrations }`. The client context resolver reads `pluginContext.config?.dbName` and `pluginContext.config?.migrations` with safe defaults |
+| Dynamic Import Invariant | `storage-plugin.js` preserves Phase 1 async dynamic import (`import('../lib/db/index.js')`) in `client.context` |
+| Config Serializability | `client.config` carries plain serializable objects: `dbName` (string) and `migrations` (array of `{ name, sql }` plain string objects) |
+| Unit Regression Guard | `packages/app/tests/unit/storage-plugin-config.test.js` (9 test cases) verifies `client.config` shape, default fallback, and precedence of `pluginContext.config` over factory closure options |
+| Build Check Script | `packages/app/scripts/check-migration-bundle.mjs` (`pnpm check:migration-bundle`) verifies that all `.sql` migration files are present in `dist/assets/js/*.js` |
+| Authoring Guide | Created `packages/app/docs/plugins/authoring.md` covering all 10 plugin authoring sections, emphasizing the `client.config` framework invariant |
+| Documentation Updates | Updated `packages/app/docs/plugins/storage.md` and `packages/app/docs/plugins/README.md` |
+| Coralite Feedback Entry | Recorded CF-007 (Tier 4 documentation gap for LLM reference omission of `client.config` in plugin example) |
+| Verification Commands | `pnpm check-batches`, `pnpm test:batch unit-smoke`, `pnpm test:batch component-smoke`, `pnpm --filter @atoll/app build`, `pnpm check:migration-bundle`, `pnpm extensions:vocab` exit zero |
