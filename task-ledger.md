@@ -84,9 +84,9 @@
   - **Migration:** None (Case A: pure read-only preview using existing tables).
   - **Delivered:** `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/lib.rs`, `server/tests/retention_preview.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Batch:** `messaging`
-- **Task 32 — User Avatar Upload**: done
-  - **Migration:** `0031_attachments_nullable_room_id.sql` (Case B: recreated `attachments` table to make `room_id` nullable for user-scoped attachments).
-  - **Delivered:** `0031_attachments_nullable_room_id.sql`, `server/src/attachments.rs`, `server/src/routes/attachments.rs`, `server/src/lib.rs`, `server/tests/user_avatar.rs`, `server/tests/batch-manifest.toml`.
+- **Task 32 — User Avatar Upload (Phase 13 V3 Alignment)**: done
+  - **Migration:** None (`0001_v2_schema.sql` `attachments` table has nullable `room_id`).
+  - **Delivered:** Step 0 Empirical Report at `verification/avatar-upload-v3/report.md`, verified `POST /users/me/avatar` handler, `attachments` table schema, C2SP opacity pipe, limit resolution, dual storage backend support (`fs` and `s3`), and tests in `server/tests/user_avatar.rs`. Added tests for byte opacity, profile_version non-mutation, cross-user visibility isolation, and S3 backend uploads.
   - **Batch:** `storage`
 - **Task 33 — Pending MLS Adds Coordination**: done
   - **Migration:** `0032_pending_mls_adds.sql` (Case B: created `pending_mls_adds` table per §7.5 and partial index `idx_pending_mls_adds_active`).

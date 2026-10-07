@@ -839,7 +839,7 @@
 - **Date:** 2026-10-05
 - **Status:** Complete.
 - **Spec / Amendment references:** V3 Spec §7.1, §8.2, §8.9
-- **Answer found:** Ground truth empirical audit completed. Confirmed `0001_v2_schema.sql` `devices` table schema (`platform` NOT NULL CHECK constraint, `name` absent), `create_device` signature and query, existing `device.added`/`device.revoked`/`device.name_updated` event sites, absence of `device.sync`, test fixture column lists, and absence of V2 remnants. Threaded `platform` through `LoginStartRequest` and `PendingLogin`.
+- **Answer found:** Ground truth empirical audit completed. Confirmed `0001_v2_schema.sql` `devices` table schema (`platform` NOT NULL CHECK constraint, `name` absent), `create_device` signature and query, existing `device.added`/`device.revoked`/`device.name_updated` event sites, absence of `device.sync`, test fixtures column lists, and absence of V2 remnants. Threaded `platform` through `LoginStartRequest` and `PendingLogin`.
 - **Link to report:** [verification/device-platform-and-events/report.md](verification/device-platform-and-events/report.md)
 
 ## Device Model Behavioral Contracts Verification
@@ -936,3 +936,19 @@
   - **Fetch Filtering Rule:**
     - `GET /rooms/:id/messages` filters whisper rows so they are visible strictly to the sender (`sender_user_id == requester_id`) or recipients (`requester_id` in `target_user_ids`). Non-recipient members do not see whisper rows.
 - **Link to report:** [verification/whisper-messages/report.md](verification/whisper-messages/report.md)
+
+## Avatar Upload V3 Contract Alignment Verification Fact
+- **ID:** Task Avatar Upload V3 Alignment
+- **Date:** 2026-10-07
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §6.4, §6.10, §7.7, §8.2.7, §12
+- **Question asked:** What are the canonical contract details, schema constraints, opacity rules, storage backends, and isolation invariants for `POST /users/me/avatar`?
+- **Answer found:**
+  - **Endpoint & Auth:** `POST /api/v1/users/me/avatar` requires Bearer session token authentication (HTTP 401 on unauthenticated/missing token).
+  - **Request & Response:** Accepts `multipart/form-data` with a single file part named `file` and required C2SP manifest parameters (`claimed_id`, `plaintext_size`, `encrypted_size`, `chunk_size`, `chunk_count`, `nonce_prefix`, `base_counter`). Returns HTTP 201 Created with `AttachmentView` JSON shape and `Cache-Control: no-store` header. Multiple file parts return HTTP 400 `invalid_request`. Non-multipart requests return HTTP 415 `unsupported_media_type`.
+  - **Schema & Discriminator:** The stored row in `attachments` sets `room_id = NULL` and `uploader_id` to the calling user ID. The C2SP purpose string `"user-avatar"` is client-side context only and is not stored or validated server-side.
+  - **Size Limit Resolution:** Resolves per-user override (`users.max_file_size_bytes`) > instance default (`config.max_file_size_bytes`) > server hard max (`SERVER_MAX_FILE_SIZE_BYTES`). Oversized uploads return HTTP 413 `file_too_large`.
+  - **C2SP Opacity:** Server treats uploaded bytes as opaque C2SP ciphertext, performing SHA-256 hash validation against `claimed_id` without attempting to parse or inspect the payload.
+  - **Storage Backends:** Dual support for both filesystem (`fs`) and S3 (`s3`) storage drivers verified.
+  - **Profile Version & Isolation:** Avatar upload does not bump `users.profile_version`, does not modify `users.profile`, and publishes zero `user.updated` events. Cross-user endpoints (`POST /users/lookup` and `GET /rooms/:id/members`) do not expose the avatar attachment ID.
+- **Link to report:** [verification/avatar-upload-v3/report.md](verification/avatar-upload-v3/report.md)
