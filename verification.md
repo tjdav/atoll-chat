@@ -936,3 +936,16 @@
   - **Fetch Filtering Rule:**
     - `GET /rooms/:id/messages` filters whisper rows so they are visible strictly to the sender (`sender_user_id == requester_id`) or recipients (`requester_id` in `target_user_ids`). Non-recipient members do not see whisper rows.
 - **Link to report:** [verification/whisper-messages/report.md](verification/whisper-messages/report.md)
+
+## Avatar Upload Opacity & Profile Invariants Verification
+- **ID:** Avatar Upload Contracts
+- **Date:** 2026-10-07
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §4.1, §6.4, §6.10, §7.7, §8.2.7, §12
+- **Question asked:** What are the verified facts for server payload opacity, profile_version non-mutation, cross-user non-leakage, and S3 backend support for `POST /users/me/avatar`?
+- **Answer found:**
+  - **Server Opacity:** `POST /users/me/avatar` acts as a C2SP opaque byte pipe. Arbitrary bytes that are neither valid C2SP ciphertext nor valid image formats are accepted with HTTP 201 Created and stored without server decryption, validation, or MIME inspection, matching normative V3 §12.
+  - **`profile_version` Non-Mutation:** Uploading an avatar does not alter `users.profile`, does not bump `users.profile_version`, and publishes zero `user.updated` or other Sockudo events on any channel.
+  - **Cross-User Non-Leakage:** Cross-user endpoints `POST /users/lookup`, `GET /rooms/:id/members`, and `GET /users/me` do not expose or leak the uploader's avatar attachment ID or file ID.
+  - **S3 Storage Backend Support:** `POST /users/me/avatar` functions seamlessly under `STORAGE_BACKEND=s3`, writing rows with `storage_backend = 's3'` and issuing S3 `PUT` requests for the attachment key.
+- **Link to report:** [verification/avatar-upload-v3/report.md](verification/avatar-upload-v3/report.md)
