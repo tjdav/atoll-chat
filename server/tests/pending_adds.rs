@@ -603,14 +603,15 @@ async fn test_bot_target_pending_adds_and_consume_workflow() {
     let added_clients = server::rooms::queue_pending_mls_add_batch(
         &mut tx,
         room_id,
-        None,
-        Some(bot_id),
-        &[bot_client_id.to_string()],
+        server::rooms::MlsTarget::Bot(bot_id),
+        &[(bot_client_id.to_string(), kp_id.to_string())],
     )
     .await
     .unwrap();
     tx.commit().await.unwrap();
-    assert_eq!(added_clients, vec![bot_client_id.to_string()]);
+    assert_eq!(added_clients.len(), 1);
+    assert_eq!(added_clients[0].target_client_id, bot_client_id);
+    assert_eq!(added_clients[0].key_package_id, kp_id);
 
     // Also verify mock server event publishing for bot target batch
     let mock_server = MockServer::start().await;
@@ -922,4 +923,73 @@ async fn test_mls_add_pending_publish_failure_does_not_fail_member_add() {
         .await
         .unwrap();
     assert_eq!(add_b_resp.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn test_select_bot_key_packages_helper() {
+    let pool = common::setup_test_db().await;
+
+    // Insert user for foreign key constraint
+    sqlx::query(
+        "INSERT INTO users (id, username_token, identity_pubkey, opaque_registration) VALUES ('u_owner', 'tok_owner', 'pub_owner', X'1234')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Create a bot account in bot_accounts table
+    let bot_id = "b_select_kp_test";
+    sqlx::query(
+        "INSERT INTO bot_accounts (id, display_name, owner_user_id) VALUES (?, 'KP Bot', 'u_owner')",
+    )
+    .bind(bot_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Insert 2 non-last-resort key packages and 1 last-resort key package
+    sqlx::query(
+        "INSERT INTO key_packages (id, user_id, bot_id, client_id, is_last_resort, key_package) VALUES ('kp_b_1', NULL, ?, 'client_1', 0, X'11'), ('kp_b_2', NULL, ?, 'client_2', 0, X'22'), ('kp_b_lr', NULL, ?, 'client_1', 1, X'33')",
+    )
+    .bind(bot_id)
+    .bind(bot_id)
+    .bind(bot_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let mut tx = pool.begin().await.unwrap();
+    let selected = server::rooms::select_bot_key_packages(&mut tx, bot_id)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+
+    assert_eq!(selected.len(), 2);
+    assert_eq!(selected[0], ("client_1".to_string(), "kp_b_1".to_string()));
+    assert_eq!(selected[1], ("client_2".to_string(), "kp_b_2".to_string()));
+
+    // Verify non-last-resort packages are consumed
+    let consumed_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM key_packages WHERE bot_id = ? AND consumed = 1")
+            .bind(bot_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(consumed_count.0, 2);
+
+    // Verify last-resort package remains unconsumed
+    let lr_consumed: (i64,) =
+        sqlx::query_as("SELECT consumed FROM key_packages WHERE id = 'kp_b_lr'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(lr_consumed.0, 0);
+
+    // Call select_bot_key_packages when no active non-last-resort packages exist -> empty vec
+    let mut tx2 = pool.begin().await.unwrap();
+    let selected_empty = server::rooms::select_bot_key_packages(&mut tx2, bot_id)
+        .await
+        .unwrap();
+    tx2.commit().await.unwrap();
+    assert!(selected_empty.is_empty());
 }
