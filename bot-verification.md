@@ -1,5 +1,17 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-031 Verification Fact
+- **Reconnect Controller & Runtime Wiring (`packages/bot/src/runtime/reconnect.js` & `packages/bot/src/runtime/index.js`)**:
+  - The reconnect controller lives at `packages/bot/src/runtime/reconnect.js` exporting `computeBackoffDelay` and `createReconnectController`.
+  - **Backoff & Jitter:** `computeBackoffDelay` computes exponential backoff `min(baseBackoffMs * 2^(attempt-1), maxBackoffMs)` with proportional symmetric jitter `± jitter * base` clamped to `[0, max * (1 + jitter)]`.
+  - **Stability Threshold & Reconnect Loop:** A WebSocket connection lasting >= `stableConnectionMs` (default 5000ms) resets attempt counter to 0; shorter drops continue counter. Post-reconnect sequence refreshes settings (`settingsStore.refresh()`) and re-verifies publisher keys (`publisherKeys.reverifyAll()`).
+  - **Per-Room SSE Streams:** SSE room stream entries persist in `subscriptions` registry across closes with `connected: false`. `onClose` calls `notifySseClosed(roomId)` on the controller, driving per-room exponential backoff and coalescing rapid close notifications.
+  - **Cancellable Sleep & Stop Lifecycle:** `cancellableSleep` races sleep against a cancel Promise; `stop()` cancels pending sleeps immediately and unhooks close listeners idempotently before WebSocket teardown during runtime `stop()`.
+  - **Recorded Spec Gap 1**: The outbound queue described in §14.7 step 5 is an architectural vestige. All outbound messages use B-017's HTTP client with `retry: true`; no queue exists to replay.
+  - **Recorded Spec Gap 2**: §14.7 omits observer-mode SSE stream reconnection. Handled per-room with room-scoped backoff counters and `Last-Event-ID` resume.
+  - **Recorded Spec Gap 3**: No bot-facing grants endpoint exists (§14.7 step 2). Refetch is skipped with a warning log.
+  - Registered `reconnect` (28 unit tests in `packages/bot/tests/unit/reconnect.test.js`) and `runtime-reconnect` (10 integration tests in `packages/bot/tests/unit/runtime-reconnect.test.js`) batches in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-030 Verification Fact
 - **Pause-on-Failure Policy (`packages/bot/src/runtime/pause-policy.js`)**:
   - The pause policy module resides at `packages/bot/src/runtime/pause-policy.js` exporting `createPausePolicy`. Added `PausedError` (code `bot_paused`, name `PausedError`) to `packages/bot/src/errors.js` (Amends Spec §12).

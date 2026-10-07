@@ -197,3 +197,15 @@ name = "runtime-pause"
 files = [
   "unit/runtime-pause.test.js",
 ]
+
+[[batch]]
+name = "reconnect"
+files = [
+  "unit/reconnect.test.js",
+]
+
+[[batch]]
+name = "runtime-reconnect"
+files = [
+  "unit/runtime-reconnect.test.js",
+]
