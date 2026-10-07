@@ -373,6 +373,7 @@ function defaultSleep (ms) {
  * @param {import('../idempotency/index.js').IdempotencyStore} deps.idempotency - Idempotency store.
  * @param {{ get: (key: string) => Promise<unknown>, set: (key: string, value: unknown) => Promise<void> }} deps.stateStore - State store.
  * @param {import('../pause-policy.js').PausePolicy} [deps.pausePolicy] - Pause policy guard.
+ * @param {import('../shutdown.js').ShutdownTracker} [deps.shutdownTracker] - Shutdown tracker.
  * @param {(ms: number) => Promise<void>} [deps.sleep=defaultSleep] - Sleep function.
  * @param {() => number} [deps.now=Date.now] - Clock function.
  * @param {import('../diagnostics/logger.js').Logger} [deps.logger] - Optional logger.
@@ -387,6 +388,7 @@ export function createCronEngine ({
   idempotency,
   stateStore,
   pausePolicy,
+  shutdownTracker,
   sleep = defaultSleep,
   now = Date.now,
   logger,
@@ -459,6 +461,11 @@ export function createCronEngine ({
    * @returns {Promise<void>}
    */
   async function dispatch (trigger, scheduledAt, isCatchUp) {
+    if (shutdownTracker?.isShuttingDown()) {
+      logger?.debug('cron fire skipped: shutting down', { meta: { name: trigger.name } })
+      return
+    }
+
     const key = `${trigger.name}:${scheduledAt}`
     const seen = await idempotency.checkAndRecord(key)
     if (seen) {
@@ -492,6 +499,13 @@ export function createCronEngine ({
     const ctxUntyped = ctx
     const handlerFn = onSchedule ?? ctxUntyped.schedule ?? ctxUntyped.handlers?.schedule ?? ctxUntyped.config?.handlers?.schedule
 
+    const runHandler = () => (typeof handlerFn === 'function'
+      ? withTimeout(
+        Promise.resolve().then(() => handlerFn(ctx, { name: trigger.name })),
+        handlerTimeoutMs
+      )
+      : Promise.resolve())
+
     const startTime = now()
     const dispatchPromise = (async () => {
       if (pausePolicy?.isPaused()) {
@@ -500,13 +514,11 @@ export function createCronEngine ({
       }
 
       if (pausePolicy) {
-        const guardResult = await pausePolicy.guard(() => (typeof handlerFn === 'function'
-          ? withTimeout(
-            Promise.resolve().then(() => handlerFn(ctx, { name: trigger.name })),
-            handlerTimeoutMs
-          )
-          : Promise.resolve())
-        )
+        const executeWithTrack = () => (shutdownTracker
+          ? shutdownTracker.track(runHandler)
+          : runHandler())
+
+        const guardResult = await pausePolicy.guard(executeWithTrack)
 
         if (guardResult.kind === 'paused') {
           logger?.warn('cron fire skipped: bot paused', { meta: { name: trigger.name } })
@@ -540,11 +552,10 @@ export function createCronEngine ({
         await stateStore.set(stateKey, scheduledAt)
       } else {
         try {
-          if (typeof handlerFn === 'function') {
-            await withTimeout(
-              Promise.resolve().then(() => handlerFn(ctx, { name: trigger.name })),
-              handlerTimeoutMs
-            )
+          if (shutdownTracker) {
+            await shutdownTracker.track(runHandler)
+          } else {
+            await runHandler()
           }
           const durationMs = now() - startTime
           if (isCatchUp) {
@@ -773,6 +784,11 @@ export function createCronEngine ({
         throw new Error(`cron: unknown schedule trigger '${name}'`)
       }
 
+      if (shutdownTracker?.isShuttingDown()) {
+        logger?.debug('cron fire skipped: shutting down', { meta: { name } })
+        return
+      }
+
       const scheduledAt = new Date(now()).toISOString()
       const invocation = {
         name: trigger.name,
@@ -785,11 +801,17 @@ export function createCronEngine ({
       const ctxUntyped = ctx
       const handlerFn = onSchedule ?? ctxUntyped.schedule ?? ctxUntyped.handlers?.schedule ?? ctxUntyped.config?.handlers?.schedule
 
-      if (typeof handlerFn === 'function') {
-        await withTimeout(
+      const runHandler = () => (typeof handlerFn === 'function'
+        ? withTimeout(
           Promise.resolve().then(() => handlerFn(ctx, { name: trigger.name })),
           handlerTimeoutMs
         )
+        : Promise.resolve())
+
+      if (shutdownTracker) {
+        await shutdownTracker.track(runHandler)
+      } else {
+        await runHandler()
       }
     }
   }

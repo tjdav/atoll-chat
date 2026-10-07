@@ -17,6 +17,7 @@ import { createWebhookServer } from './triggers/webhook.js'
 import { createCronEngine } from './triggers/cron.js'
 import { createPausePolicy } from './pause-policy.js'
 import { createReconnectController } from './reconnect.js'
+import { createShutdownTracker } from './shutdown.js'
 
 /**
  * Decodes a base64url string to Uint8Array.
@@ -64,18 +65,19 @@ function isValidBase64urlKey (str, expectedLength) {
 /**
  * @typedef {object} Runtime
  * @property {() => Promise<void>} start - Runs the boot sequence and connects the WebSocket client.
- * @property {() => Promise<void>} stop - Closes the WebSocket client, calls the uninstall handler, and flushes storage.
- * @property {(invocation?: object) => Promise<import('../types.js').BotCtx>} makeBotCtx - Constructs a BotCtx for an invocation.
+ * @property {(opts?: { drainMs?: number }) => Promise<{ drained: boolean, remaining: number }>} stop - Closes resources and drains in-flight operations.
+ * @property {(invocation?: object) => Promise<BotCtx>} makeBotCtx - Constructs a BotCtx for an invocation.
  * @property {Map<string, RoomSubscription>} [subscriptions] - Internal room subscription registry.
+ * @property {import('./shutdown.js').ShutdownTracker | null} [shutdownTracker] - Shutdown tracker instance.
  */
 
 /**
  * Creates the runtime for a bot.
  *
  * @param {object} deps - Factory dependencies.
- * @param {import('../define-bot.js').Bot} deps.bot - The bot handle from `defineBot`.
+ * @param {Bot<any, any, any>} deps.bot - The bot handle from `defineBot`.
  * @param {import('./config/index.js').Config} deps.config - The resolved config from `loadConfig`.
- * @param {object} deps.keystoreData - The decrypted keystore plaintext.
+ * @param {any} deps.keystoreData - The decrypted keystore plaintext.
  * @param {import('./diagnostics/logger.js').Logger} deps.logger - The runtime logger.
  * @param {typeof globalThis.fetch} [deps.fetchImpl=globalThis.fetch] - The fetch implementation.
  * @param {typeof globalThis.WebSocket} [deps.WebSocketImpl=globalThis.WebSocket] - The WebSocket constructor.
@@ -137,7 +139,8 @@ export function createRuntime ({
   let lifecycleController = new AbortController()
 
   let isStarted = false
-  let isStopped = false
+  /** @type {Promise<{ drained: boolean, remaining: number }> | null} */
+  let stopping = null
 
   /** @type {import('./storage/index.js').Storage | null} */
   let storage = null
@@ -161,6 +164,8 @@ export function createRuntime ({
   let pausePolicy = null
   /** @type {ReturnType<typeof createReconnectController> | null} */
   let reconnectController = null
+  /** @type {import('./shutdown.js').ShutdownTracker | null} */
+  let shutdownTracker = null
 
   /** @type {ReturnType<import('./context/post.js').createPostHandler> | null} */
   let postHandler = null
@@ -265,7 +270,8 @@ export function createRuntime ({
         kind: 'sse',
         connected: false,
         client: null,
-        close: async () => {}
+        close: async () => {
+        }
       })
     }
 
@@ -308,7 +314,8 @@ export function createRuntime ({
             sub.connected = false
           }
           if (reconnectController) {
-            reconnectController.notifySseClosed(roomId).catch(() => {})
+            reconnectController.notifySseClosed(roomId).catch(() => {
+            })
           }
         }
       })
@@ -383,6 +390,17 @@ export function createRuntime ({
    * @returns {Promise<void>}
    */
   async function onRoomEvent (roomId, eventName, rawData) {
+    if (shutdownTracker?.isShuttingDown()) {
+      logger.debug('room event skipped: shutting down', {
+        meta: {
+          room_id: roomId,
+          event: eventName
+        }
+      })
+      return
+    }
+
+    /** @type {any} */
     let raw = rawData
     if (typeof rawData === 'string') {
       try {
@@ -426,7 +444,7 @@ export function createRuntime ({
           }
         }
       } else {
-        // Member mode (WebSocket)
+        // Member mode over WebSocket
         eventObj = {
           id: eventId,
           type: eventName,
@@ -460,9 +478,11 @@ export function createRuntime ({
       signal: lifecycleController.signal
     })
 
+    /** @type {any} */
+    const handlers = bot.config.handlers
     const handler = isMessageEvent
-      ? bot.config.handlers?.message
-      : bot.config.handlers?.room
+      ? handlers?.message
+      : handlers?.room
 
     if (typeof handler !== 'function') {
       return
@@ -519,9 +539,9 @@ export function createRuntime ({
    *
    * @param {object} [invocation] - Optional invocation parameters.
    * @param {string} [invocation.roomId] - Room ID for the context.
-   * @param {import('../types.js').BotEvent} [invocation.event] - Event object.
+   * @param {any} [invocation.event] - Event object.
    * @param {AbortSignal} [invocation.signal] - AbortSignal.
-   * @returns {Promise<import('../types.js').BotCtx>} The context instance.
+   * @returns {Promise<BotCtx>} The context instance.
    */
   async function makeBotCtx (invocation) {
     const roomId = invocation?.roomId ?? null
@@ -529,7 +549,29 @@ export function createRuntime ({
     const room = roomId && roomsStore ? await roomsStore.get(roomId) : null
     const signal = invocation?.signal ?? lifecycleController.signal
 
-    /** @type {import('../types.js').BotCtx} */
+    /** @type {Mode | null} */
+    let grantMode = null
+    /** @type {Capability[] | null} */
+    let grantScopes = null
+    if (grant && roomId) {
+      /** @type {any} */
+      const untypedGrant = grant
+      grantMode = untypedGrant.mode
+      grantScopes = untypedGrant.scopes
+    }
+
+    /** @type {any} */
+    const typedSettingsStore = settingsStore
+    /** @type {any} */
+    const typedStorageStore = storageStore
+    /** @type {any} */
+    const typedRoomsStore = roomsStore
+    /** @type {any} */
+    const typedFetchMethod = fetchMethod
+    /** @type {any} */
+    const typedFetchUserUrlMethod = fetchUserUrlMethod
+
+    /** @type {BotCtx} */
     const ctx = {
       bot: {
         id: botId,
@@ -540,15 +582,23 @@ export function createRuntime ({
           emoji: bot.config.avatar?.emoji ?? null
         }
       },
-      grant,
+      grant: (grantMode && grantScopes && roomId)
+        ? {
+          roomId,
+          mode: grantMode,
+          scopes: grantScopes
+        }
+        : null,
       room,
       event: invocation?.event ?? null,
-      settings: settingsStore,
-      storage: storageStore,
-      rooms: roomsStore,
-      log: (level, msg, meta) => logger.log(level, msg, meta),
-      fetch: fetchMethod,
-      fetchUserUrl: fetchUserUrlMethod,
+      settings: typedSettingsStore,
+      storage: typedStorageStore,
+      rooms: typedRoomsStore,
+      log: (level, msg, meta) => {
+        logger.log(level, msg, meta)
+      },
+      fetch: typedFetchMethod,
+      fetchUserUrl: typedFetchUserUrlMethod,
       signal,
       uploadAvatar: async () => {
         throw new Error('uploadAvatar is not yet implemented')
@@ -590,6 +640,7 @@ export function createRuntime ({
       }
     })
 
+    /** @type {any} */
     let data = rawData
     if (typeof rawData === 'string') {
       try {
@@ -610,7 +661,11 @@ export function createRuntime ({
         case 'bot.settings_updated': {
           if (settingsStore) {
             settingsStore.refresh().catch((err) => {
-              logger.error('settings refresh failed', { meta: { error: err?.message ?? String(err) } })
+              logger.error('settings refresh failed', {
+                meta: {
+                  error: err?.message ?? String(err)
+                }
+              })
             })
           }
           break
@@ -665,7 +720,7 @@ export function createRuntime ({
           if (publisherKeys) {
             publisherKeys.markAllStale()
             setTimeout(() => {
-              publisherKeys.reverifyAll().catch((err) => {
+              publisherKeys?.reverifyAll().catch((err) => {
                 logger.error('publisher key reverifyAll failed', {
                   meta: { error: err?.message ?? String(err) }
                 })
@@ -714,16 +769,19 @@ export function createRuntime ({
 
     logger.info('runtime boot', { meta: { bot_id: botId } })
 
+    shutdownTracker = createShutdownTracker(logger)
+    lifecycleController = new AbortController()
+
     const apiHttp = createHttpClient({
-      serverUrl: `${config.serverUrl}/api/v1`,
-      botToken: keystoreData.bot_token,
+      serverUrl: `${config.serverUrl ?? ''}/api/v1`,
+      botToken: keystoreData?.bot_token ?? '',
       logger,
       fetchImpl
     })
 
     const rootHttp = createHttpClient({
-      serverUrl: config.serverUrl,
-      botToken: keystoreData.bot_token,
+      serverUrl: config.serverUrl ?? '',
+      botToken: keystoreData?.bot_token ?? '',
       logger,
       fetchImpl
     })
@@ -738,6 +796,7 @@ export function createRuntime ({
 
     // Fetch capabilities
     const capRes = await rootHttp.request('GET', '/capabilities')
+    /** @type {any} */
     const capBody = capRes.body
     if (
       !capBody ||
@@ -751,6 +810,7 @@ export function createRuntime ({
 
     // Fetch bot metadata
     const botRes = await apiHttp.request('GET', `/bots/${botId}`)
+    /** @type {any} */
     const botBody = botRes.body
     if (!botBody || typeof botBody !== 'object') {
       throw new Error('Bot metadata response is malformed')
@@ -779,12 +839,13 @@ export function createRuntime ({
     publisherKeys = new PublisherKeyCache({
       lookupSignerPubkey: async (userId) => {
         const ktRes = await apiHttp.request('GET', `/kt/user/${userId}`)
-        if (!ktRes.body || typeof ktRes.body.identity_pubkey !== 'string') {
+        /** @type {any} */
+        const ktBody = ktRes.body
+        if (!ktBody || typeof ktBody.identity_pubkey !== 'string') {
           throw new Error(`Key transparency lookup failed for user ${userId}`)
         }
-        return decodeBase64url(ktRes.body.identity_pubkey)
-      },
-      logger
+        return decodeBase64url(ktBody.identity_pubkey)
+      }
     })
 
     settingsStore = createSettingsStore({
@@ -824,13 +885,17 @@ export function createRuntime ({
     fetchMethod = fetchMethods.fetch
     fetchUserUrlMethod = fetchMethods.fetchUserUrl
 
+    /** @type {any} */
+    const makeBotCtxUntyped = makeBotCtx
+
     // Command invocation handler
     commandHandler = createCommandInvocationHandler({
       botCommandPrivateKey: decodeBase64url(keystoreData.bot_command_private),
       bot,
       http: apiHttp,
-      makeBotCtx,
+      makeBotCtx: makeBotCtxUntyped,
       pausePolicy,
+      shutdownTracker,
       logger,
       handlerTimeoutMs: config.handlerTimeoutMs
     })
@@ -846,14 +911,18 @@ export function createRuntime ({
             channel_name: channelName
           }
         })
-        return authRes.body
+        /** @type {any} */
+        const authBody = authRes.body
+        return authBody
       },
       WebSocketImpl,
       logger
     })
 
     ws.on('error', (err) => {
-      logger.error('websocket error', { meta: { error: err?.message ?? String(err) } })
+      /** @type {any} */
+      const untypedErr = err
+      logger.error('websocket error', { meta: { error: untypedErr?.message ?? String(untypedErr) } })
     })
 
     ws.subscribe(`private-bot-${botId}`, handleBotChannelEvent)
@@ -892,7 +961,10 @@ export function createRuntime ({
               await subscribeRoomSse(roomId)
             } catch (err) {
               logger.warn('sse reconnect failed', {
-                meta: { room_id: roomId, error: err instanceof Error ? err.message : String(err) }
+                meta: {
+                  room_id: roomId,
+                  error: err instanceof Error ? err.message : String(err)
+                }
               })
             }
           }
@@ -914,16 +986,32 @@ export function createRuntime ({
       await ws.connect()
       reconnectController.start()
 
-      const webhookTriggers = (bot.config.triggers ?? []).filter((t) => t.type === 'webhook')
-      const scheduleTriggers = (bot.config.triggers ?? []).filter((t) => t.type === 'schedule')
+      /** @type {any[]} */
+      const triggersList = bot.config.triggers ?? []
+      const webhookTriggers = triggersList.filter((t) => t.type === 'webhook')
+      const scheduleTriggers = triggersList.filter((t) => t.type === 'schedule')
+
+      /** @type {any} */
+      const typedWebhookTriggers = webhookTriggers
+      /** @type {any} */
+      const typedScheduleTriggers = scheduleTriggers
 
       if (webhookTriggers.length > 0) {
+        const whHost = (config.webhook && typeof config.webhook.host === 'string') ? config.webhook.host : '127.0.0.1'
+        const whPort = (config.webhook && typeof config.webhook.port === 'number') ? config.webhook.port : 0
         webhookServer = createWebhookServer({
-          config: config.webhook,
-          triggers: webhookTriggers,
-          makeBotCtx,
+          config: config.webhook ?? {
+            host: '127.0.0.1',
+            port: 0,
+            basePath: '',
+            maxBodyBytes: 1024 * 1024,
+            timeoutMs: 5000
+          },
+          triggers: typedWebhookTriggers,
+          makeBotCtx: makeBotCtxUntyped,
           idempotency,
           pausePolicy,
+          shutdownTracker,
           env: process.env,
           logger,
           onWebhook: (ctx, payload) => bot.config.handlers?.webhook?.(ctx, payload)
@@ -932,20 +1020,24 @@ export function createRuntime ({
         logger.info('webhook server started', {
           meta: {
             trigger_count: webhookTriggers.length,
-            host: config.webhook.host,
-            port: webhookServer.getBoundPort() ?? config.webhook.port
+            host: whHost,
+            port: webhookServer.getBoundPort() ?? whPort
           }
         })
       }
 
       if (scheduleTriggers.length > 0) {
         cronEngine = createCronEngine({
-          config: config.cron,
-          triggers: scheduleTriggers,
-          makeBotCtx,
+          config: config.cron ?? {
+            timezone: 'UTC',
+            catchUp: false
+          },
+          triggers: typedScheduleTriggers,
+          makeBotCtx: makeBotCtxUntyped,
           idempotency,
           stateStore: storage,
           pausePolicy,
+          shutdownTracker,
           logger,
           handlerTimeoutMs: config.handlerTimeoutMs,
           onSchedule: (ctx, payload) => bot.config.handlers?.schedule?.(ctx, payload)
@@ -986,66 +1078,126 @@ export function createRuntime ({
   }
 
   /**
-   * Closes the WebSocket client, calls the uninstall handler, and flushes storage.
+   * Stops the runtime and drains in-flight operations.
    *
-   * @returns {Promise<void>}
+   * @param {object} [opts] - Options object.
+   * @param {number} [opts.drainMs=30000] - The drain budget.
+   * @returns {Promise<{ drained: boolean, remaining: number }>}
    */
-  async function stop () {
-    if (!isStarted || isStopped) {
-      return
+  function stop ({ drainMs = 30000 } = {}) {
+    if (!isStarted) {
+      return Promise.resolve({
+        drained: true,
+        remaining: 0
+      })
     }
-    isStopped = true
-
-    lifecycleController.abort()
-
-    const baseCtx = await makeBotCtx({})
-    if (typeof bot.config.handlers?.uninstall === 'function') {
-      await bot.config.handlers.uninstall(baseCtx)
+    if (stopping) {
+      return stopping
     }
 
-    if (cronEngine) {
-      await cronEngine.stop()
-      logger.info('cron engine stopped')
-      cronEngine = null
-    }
+    stopping = (async () => {
+      // Signal dispatch sites to refuse new work.
+      if (shutdownTracker) {
+        shutdownTracker.startShutdown()
+      }
 
-    if (webhookServer) {
-      await webhookServer.stop()
-      logger.info('webhook server stopped')
-      webhookServer = null
-    }
+      // Reconnect controller: stop scheduling reconnects.
+      if (reconnectController) {
+        await reconnectController.stop()
+        reconnectController = null
+      }
 
-    if (reconnectController) {
-      await reconnectController.stop()
-      reconnectController = null
-    }
+      // Uninstall handler: author cleanup with a live runtime.
+      lifecycleController.abort()
+      const baseCtx = await makeBotCtx({})
+      if (typeof bot.config.handlers?.uninstall === 'function') {
+        await bot.config.handlers.uninstall(baseCtx)
+      }
 
-    // Teardown room subscriptions before closing WebSocket
-    const subTeardowns = Array.from(subscriptions.keys()).map((roomId) => unsubscribeRoom(roomId))
-    await Promise.allSettled(subTeardowns)
+      // Tear down room subscriptions (SSE first, then WebSocket channel unsubscribes are handled by ws.close below).
+      for (const [roomId, entry] of Array.from(subscriptions.entries())) {
+        if (entry.kind === 'sse') {
+          await entry.close().catch((err) => {
+            logger.warn('room unsubscribe failed during shutdown', {
+              meta: {
+                room_id: roomId,
+                error: err instanceof Error ? err.message : String(err)
+              }
+            })
+          })
+        }
+      }
+      for (const [roomId, entry] of Array.from(subscriptions.entries())) {
+        if (entry.kind === 'websocket') {
+          await entry.close().catch((err) => {
+            logger.warn('room unsubscribe failed during shutdown', {
+              meta: {
+                room_id: roomId,
+                error: err instanceof Error ? err.message : String(err)
+              }
+            })
+          })
+        }
+      }
+      subscriptions.clear()
 
-    if (ws) {
-      await ws.close()
-    }
+      // Stop trigger servers.
+      if (cronEngine) {
+        await cronEngine.stop()
+        logger.info('cron engine stopped')
+        cronEngine = null
+      }
 
-    if (settingsStore) {
-      settingsStore.stop()
-      settingsStore = null
-    }
+      if (webhookServer) {
+        await webhookServer.stop()
+        logger.info('webhook server stopped')
+        webhookServer = null
+      }
 
-    if (storage) {
-      await storage.close()
-    }
+      // Close the WebSocket.
+      if (ws) {
+        await ws.close()
+      }
 
-    isStarted = false
+      if (settingsStore) {
+        settingsStore.stop()
+        settingsStore = null
+      }
 
-    logger.info('runtime stopped')
+      // Drain in-flight handlers.
+      let result = {
+        drained: true,
+        remaining: 0
+      }
+      if (shutdownTracker) {
+        result = await shutdownTracker.waitForAll(drainMs)
+        if (!result.drained) {
+          logger.warn('shutdown: drain timeout', { meta: { remaining: result.remaining } })
+        }
+      }
+
+      // Close storage (flushes the write queue).
+      if (storage) {
+        await storage.close()
+      }
+
+      isStarted = false
+      stopping = null
+      logger.info('runtime stopped')
+
+      return result
+    })()
+
+    return stopping
   }
 
   return {
     start,
     stop,
     makeBotCtx,
-    subscriptions
+    subscriptions,
+    get shutdownTracker () {
+      return shutdownTracker
+    }
   }
 }

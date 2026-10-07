@@ -132,6 +132,7 @@ export function verifySignature ({ secretName, secretValue, rawBody, headers }) 
  * @param {(invocation: WebhookInvocation) => Promise<BotCtx>} deps.makeBotCtx - Constructs BotCtx.
  * @param {import('../idempotency/index.js').IdempotencyStore} deps.idempotency - Idempotency store.
  * @param {import('../pause-policy.js').PausePolicy} [deps.pausePolicy] - Pause policy guard.
+ * @param {import('../shutdown.js').ShutdownTracker} [deps.shutdownTracker] - Shutdown tracker.
  * @param {NodeJS.ProcessEnv} [deps.env=process.env] - Environment.
  * @param {import('../diagnostics/logger.js').Logger} [deps.logger] - Optional logger.
  * @param {(ctx: BotCtx, invocation: WebhookInvocation) => Promise<void> | void} [deps.onWebhook] - Optional direct webhook handler.
@@ -143,6 +144,7 @@ export function createWebhookServer ({
   makeBotCtx,
   idempotency,
   pausePolicy,
+  shutdownTracker,
   env = process.env,
   logger,
   onWebhook
@@ -203,6 +205,15 @@ export function createWebhookServer ({
         path: fullPath
       }
     })
+
+    if (shutdownTracker?.isShuttingDown()) {
+      logger?.warn('webhook dispatch skipped: shutting down', { meta: { path: fullPath } })
+      respondJson(res, 503, {
+        error: 'bot_shutting_down',
+        message: 'The bot is shutting down.'
+      })
+      return
+    }
 
     // Match triggers by path
     const matchingByPath = webhookTriggers.filter((t) => `${config.basePath}${t.path}` === fullPath)
@@ -356,6 +367,13 @@ export function createWebhookServer ({
     const ctxUntyped = ctx
     const handlerFn = onWebhook ?? ctxUntyped.webhook ?? ctxUntyped.handlers?.webhook ?? ctxUntyped.config?.handlers?.webhook
 
+    const runHandler = () => (typeof handlerFn === 'function'
+      ? withTimeout(
+        Promise.resolve().then(() => handlerFn(ctx, invocation)),
+        config.timeoutMs
+      )
+      : Promise.resolve())
+
     const startTime = Date.now()
     if (pausePolicy?.isPaused()) {
       logger?.warn('webhook dispatch skipped: bot paused', { meta: { path: fullPath } })
@@ -367,13 +385,11 @@ export function createWebhookServer ({
     }
 
     if (pausePolicy) {
-      const guardResult = await pausePolicy.guard(() => (typeof handlerFn === 'function'
-        ? withTimeout(
-          Promise.resolve().then(() => handlerFn(ctx, invocation)),
-          config.timeoutMs
-        )
-        : Promise.resolve())
-      )
+      const executeWithTrack = () => (shutdownTracker
+        ? shutdownTracker.track(runHandler)
+        : runHandler())
+
+      const guardResult = await pausePolicy.guard(executeWithTrack)
 
       if (guardResult.kind === 'paused') {
         logger?.warn('webhook dispatch skipped: bot paused', { meta: { path: fullPath } })
@@ -423,11 +439,10 @@ export function createWebhookServer ({
       respondEmpty(res, 200)
     } else {
       try {
-        if (typeof handlerFn === 'function') {
-          await withTimeout(
-            Promise.resolve().then(() => handlerFn(ctx, invocation)),
-            config.timeoutMs
-          )
+        if (shutdownTracker) {
+          await shutdownTracker.track(runHandler)
+        } else {
+          await runHandler()
         }
         const durationMs = Date.now() - startTime
         logger?.debug('webhook dispatch success', {

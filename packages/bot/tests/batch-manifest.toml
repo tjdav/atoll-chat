@@ -209,3 +209,15 @@ name = "runtime-reconnect"
 files = [
   "unit/runtime-reconnect.test.js",
 ]
+
+[[batch]]
+name = "shutdown"
+files = [
+  "unit/shutdown.test.js",
+]
+
+[[batch]]
+name = "runtime-shutdown"
+files = [
+  "unit/runtime-shutdown.test.js",
+]

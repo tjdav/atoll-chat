@@ -132,7 +132,8 @@ export function createReconnectController ({
       pendingSleepCancels.add(cancel)
     }
 
-    const sleepPromise = Promise.resolve().then(() => sleep(ms)).catch(() => {})
+    const sleepPromise = Promise.resolve().then(() => sleep(ms)).catch(() => {
+    })
 
     return Promise.race([sleepPromise, cancelPromise]).finally(() => {
       if (cancel) {
@@ -155,7 +156,12 @@ export function createReconnectController ({
       jitter,
       random
     })
-    logger?.debug('reconnect scheduled', { meta: { attempt, delay_ms: delay } })
+    logger?.debug('reconnect scheduled', {
+      meta: {
+        attempt,
+        delay_ms: delay
+      }
+    })
     await cancellableSleep(delay)
     if (stopped) {
       currentLoopPromise = null
@@ -183,7 +189,12 @@ export function createReconnectController ({
       // Successful connect. The loop stops; a future close re-triggers it.
     } catch (err) {
       currentConnectPromise = null
-      logger?.warn('reconnect failed', { meta: { attempt, error: err instanceof Error ? err.message : String(err) } })
+      logger?.warn('reconnect failed', {
+        meta: {
+          attempt,
+          error: err instanceof Error ? err.message : String(err)
+        }
+      })
       if (stopped) {
         currentLoopPromise = null
         return
@@ -217,7 +228,11 @@ export function createReconnectController ({
   async function runSseReconnect (roomId) {
     let st = sseStates.get(roomId)
     if (!st) {
-      st = { attempt: 0, inFlight: false, loopPromise: null }
+      st = {
+        attempt: 0,
+        inFlight: false,
+        loopPromise: null
+      }
       sseStates.set(roomId, st)
     }
     if (st.inFlight) {
@@ -235,7 +250,13 @@ export function createReconnectController ({
           jitter,
           random
         })
-        logger?.debug('sse reconnect scheduled', { meta: { room_id: roomId, attempt: st.attempt, delay_ms: delay } })
+        logger?.debug('sse reconnect scheduled', {
+          meta: {
+            room_id: roomId,
+            attempt: st.attempt,
+            delay_ms: delay
+          }
+        })
         await cancellableSleep(delay)
         if (stopped) {
           break
@@ -247,7 +268,12 @@ export function createReconnectController ({
           logger?.debug('sse reconnected', { meta: { room_id: roomId } })
           break
         } catch (err) {
-          logger?.warn('sse reconnect failed', { meta: { room_id: roomId, error: err instanceof Error ? err.message : String(err) } })
+          logger?.warn('sse reconnect failed', {
+            meta: {
+              room_id: roomId,
+              error: err instanceof Error ? err.message : String(err)
+            }
+          })
           if (stopped) {
             break
           }
@@ -271,7 +297,11 @@ export function createReconnectController ({
     }
     let st = sseStates.get(roomId)
     if (!st) {
-      st = { attempt: 0, inFlight: false, loopPromise: null }
+      st = {
+        attempt: 0,
+        inFlight: false,
+        loopPromise: null
+      }
       sseStates.set(roomId, st)
     }
     if (st.inFlight && st.loopPromise) {
@@ -317,10 +347,12 @@ export function createReconnectController ({
     pendingSleepCancels.clear()
 
     if (currentLoopPromise) {
-      await currentLoopPromise.catch(() => {})
+      await currentLoopPromise.catch(() => {
+      })
     }
     if (currentConnectPromise) {
-      await currentConnectPromise.catch(() => {})
+      await currentConnectPromise.catch(() => {
+      })
     }
 
     const ssePromises = Array.from(sseStates.values())
