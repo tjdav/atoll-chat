@@ -1121,6 +1121,77 @@ describe('Cron Engine Unit Tests', () => {
     })
   })
 
+  describe('Pause Policy Tests', () => {
+    test('57. Paused state skips fire and does not update last_fire', async () => {
+      const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
+      const { sleep } = makeSleep(clock)
+
+      let fired = false
+      const pausePolicy = {
+        isPaused () { return true },
+        async guard () { return { kind: 'paused' } },
+        state () { return { paused: true, consecutive_failures: 3, first_failure_at: Date.now() } }
+      }
+
+      const stateStore = makeStateStore()
+      const engine = createCronEngine({
+        config: { timezone: 'UTC', catchUp: false },
+        triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
+        makeBotCtx: async () => (/** @type {any} */ ({ schedule: async () => { fired = true } })),
+        idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
+        stateStore,
+        pausePolicy: /** @type {any} */ (pausePolicy),
+        sleep,
+        now: clock.now
+      })
+
+      await engine.start()
+
+      clock.advance(3600 * 1000)
+      await new Promise((resolve) => setImmediate(resolve))
+
+      assert.equal(fired, false)
+      assert.equal(await stateStore.get('_runtime:cron:hourly:last_fire'), undefined)
+
+      await engine.stop()
+    })
+
+    test('58. Handler throw increments the pause policy counter', async () => {
+      const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
+      const { sleep } = makeSleep(clock)
+
+      const { createPausePolicy } = await import('../../src/runtime/pause-policy.js')
+      const policy = createPausePolicy({
+        reportPause: async () => {}
+      })
+
+      const stateStore = makeStateStore()
+      const engine = createCronEngine({
+        config: { timezone: 'UTC', catchUp: false },
+        triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
+        makeBotCtx: async () => (/** @type {any} */ ({
+          schedule: async () => {
+            throw new Error('cron handler fail')
+          }
+        })),
+        idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
+        stateStore,
+        pausePolicy: policy,
+        sleep,
+        now: clock.now
+      })
+
+      await engine.start()
+
+      clock.advance(3600 * 1000)
+      await new Promise((resolve) => setImmediate(resolve))
+
+      assert.equal(policy.state().consecutive_failures, 1)
+
+      await engine.stop()
+    })
+  })
+
   describe('Logging Tests', () => {
     test('53. Logger emits debug on start and dispatch', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))

@@ -72,6 +72,7 @@ async function sendRequest (urlStr, { method = 'POST', headers = {}, body } = {}
  * @param {(ctx: any, payload: any, invocation: any) => Promise<void> | void} [opts.handler]
  * @param {Partial<{ host: string, port: number, basePath: string, maxBodyBytes: number, timeoutMs: number }>} [opts.config]
  * @param {(invocation: any) => Promise<any>} [opts.makeBotCtxOverride]
+ * @param {any} [opts.pausePolicy]
  * @param {any} [opts.logger]
  */
 async function startWebhookServer ({
@@ -80,6 +81,7 @@ async function startWebhookServer ({
   handler,
   config = {},
   makeBotCtxOverride,
+  pausePolicy,
   logger
 }) {
   const tmpPath = `/tmp/wh-test-${randomUUID()}.json`
@@ -109,6 +111,7 @@ async function startWebhookServer ({
     triggers,
     makeBotCtx,
     idempotency,
+    pausePolicy,
     env: secrets,
     logger
   })
@@ -883,6 +886,57 @@ describe('Webhook Server Unit Tests', () => {
       /** @type {any} */
       const rh = receivedHeaders
       assert.equal(rh.accept, 'text/html, application/json')
+    } finally {
+      await cleanup()
+    }
+  })
+
+  test('44. Paused state returns 503 and does not call handler', async () => {
+    let handlerCalled = false
+    const pausePolicy = {
+      isPaused () { return true },
+      async guard () { return { kind: 'paused' } },
+      state () { return { paused: true, consecutive_failures: 3, first_failure_at: Date.now() } }
+    }
+
+    const { url, cleanup } = await startWebhookServer({
+      triggers: [{ type: 'webhook', path: '/hook' }],
+      pausePolicy: /** @type {any} */ (pausePolicy),
+      handler: async () => {
+        handlerCalled = true
+      }
+    })
+
+    try {
+      assert.ok(url)
+      const res = await sendRequest(`${url}/hook`, { method: 'POST' })
+      assert.equal(res.statusCode, 503)
+      assert.equal(res.json?.error, 'bot_paused')
+      assert.equal(handlerCalled, false)
+    } finally {
+      await cleanup()
+    }
+  })
+
+  test('45. Handler throw increments the pause policy counter', async () => {
+    const { createPausePolicy } = await import('../../src/runtime/pause-policy.js')
+    const policy = createPausePolicy({
+      reportPause: async () => {}
+    })
+
+    const { url, cleanup } = await startWebhookServer({
+      triggers: [{ type: 'webhook', path: '/hook' }],
+      pausePolicy: policy,
+      handler: async () => {
+        throw new Error('webhook handler error')
+      }
+    })
+
+    try {
+      assert.ok(url)
+      const res = await sendRequest(`${url}/hook`, { method: 'POST' })
+      assert.equal(res.statusCode, 500)
+      assert.equal(policy.state().consecutive_failures, 1)
     } finally {
       await cleanup()
     }

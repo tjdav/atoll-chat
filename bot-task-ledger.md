@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 33
-- **Done:** 30
+- **Done:** 31
 - **In Progress:** 0
-- **Todo:** 3
+- **Todo:** 2
 
 ---
 
@@ -19,7 +19,7 @@ Track progress across Bot SDK implementation tasks.
 |---|---|---|---|---|
 | B-001 | Scaffolding | done | §2 | Workspace structure and package configuration |
 | B-002 | Types | done | §3 | JSDoc type declarations for public type surface |
-| B-003 | Errors | done | §12 | Code-bearing BotError hierarchy (Amended by B-017, B-022) |
+| B-003 | Errors | done | §12 | Code-bearing BotError hierarchy (Amended by B-017, B-022, B-030) |
 | B-004 | Declarations | done | §4 | Settings, command, triggers identity helpers |
 | B-004a | Types/JSDoc | done | Amendment | TS module resolution & JSDoc description standard |
 | B-005 | Factory | done | §4.5 | `defineBot` factory and config validation collector |
@@ -52,3 +52,4 @@ Track progress across Bot SDK implementation tasks.
 | B-029 | Integration | done | §10.1 | Full runtime wiring and entrypoint export |
 | B-029a | Triggers Wiring | done | §10.1, §10.2, §10.3 | Wiring trigger servers (webhooks & cron) into runtime startup/shutdown lifecycle |
 | B-029b | Subscriptions Wiring | done | §3.6, §4.7, §6.1, §14.4-14.5 | Wire room channel subscriptions (WebSocket for member mode, SSE stream for observer mode) and event dispatching |
+| B-030 | Pause Policy | done | §11, §12 | Implement pause-on-failure policy, consecutive failure tracking, reportPause callback, guard wrapper across dispatches, and PausedError addition |

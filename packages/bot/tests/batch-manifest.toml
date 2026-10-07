@@ -185,3 +185,15 @@ name = "runtime-rooms"
 files = [
   "unit/runtime-rooms.test.js",
 ]
+
+[[batch]]
+name = "pause-policy"
+files = [
+  "unit/pause-policy.test.js",
+]
+
+[[batch]]
+name = "runtime-pause"
+files = [
+  "unit/runtime-pause.test.js",
+]
