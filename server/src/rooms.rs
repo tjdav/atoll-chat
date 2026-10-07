@@ -104,6 +104,18 @@ pub enum RoomMemberItem {
     },
 }
 
+pub enum MlsTarget<'a> {
+    User(&'a str),
+    Bot(&'a str),
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct QueuedAdd {
+    pub add_id: String,
+    pub target_client_id: String,
+    pub key_package_id: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct AddMemberOutcome {
     pub member: RoomMember,
@@ -1130,141 +1142,80 @@ pub async fn list_members(
     })
 }
 
-/// Inserts one row into `pending_mls_adds` for a target user or bot device.
-/// Enforces application-level XOR target validation (exactly one of `target_user_id`
-/// or `target_bot_id` must be provided). Selects and consumes an available key package.
-pub async fn queue_pending_mls_add(
-    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+/// Queues `pending_mls_adds` rows across a batch of client device key packages for a target identity (user or bot).
+/// Inserts one `pending_mls_adds` row per `(client_id, key_package_id)` pair, setting `target_user_id` or `target_bot_id`
+/// according to `MlsTarget`. Returns inserted row IDs and client IDs.
+pub async fn queue_pending_mls_add_batch(
+    tx: &mut sqlx::SqliteConnection,
     room_id: &str,
-    target_user_id: Option<&str>,
-    target_bot_id: Option<&str>,
-    target_client_id: &str,
-) -> Result<String, RoomError> {
-    match (target_user_id, target_bot_id) {
-        (Some(_), None) => {}
-        (None, Some(_)) => {}
-        _ => {
-            return Err(RoomError::Database(sqlx::Error::Protocol(
-                "Exactly one of target_user_id or target_bot_id must be set".into(),
-            )));
-        }
-    }
+    target: MlsTarget<'_>,
+    key_package_selections: &[(String, String)],
+) -> Result<Vec<QueuedAdd>, RoomError> {
+    let mut queued_adds = Vec::new();
 
-    let (normal_pkg, fallback_pkg) = if let Some(user_id) = target_user_id {
-        (
-            sqlx::query_as::<_, (String, i64)>(
-                r#"
-                SELECT id, is_last_resort
-                FROM key_packages
-                WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 0
-                ORDER BY created_at ASC, id ASC
-                LIMIT 1
-                "#,
-            )
-            .bind(user_id)
-            .bind(target_client_id)
-            .fetch_optional(&mut **tx)
-            .await?,
-            sqlx::query_as::<_, (String, i64)>(
-                r#"
-                SELECT id, is_last_resort
-                FROM key_packages
-                WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 1
-                ORDER BY created_at ASC, id ASC
-                LIMIT 1
-                "#,
-            )
-            .bind(user_id)
-            .bind(target_client_id)
-            .fetch_optional(&mut **tx)
-            .await?,
-        )
-    } else {
-        let bot_id = target_bot_id.unwrap();
-        (
-            sqlx::query_as::<_, (String, i64)>(
-                r#"
-                SELECT id, is_last_resort
-                FROM key_packages
-                WHERE bot_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 0
-                ORDER BY created_at ASC, id ASC
-                LIMIT 1
-                "#,
-            )
-            .bind(bot_id)
-            .bind(target_client_id)
-            .fetch_optional(&mut **tx)
-            .await?,
-            sqlx::query_as::<_, (String, i64)>(
-                r#"
-                SELECT id, is_last_resort
-                FROM key_packages
-                WHERE bot_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 1
-                ORDER BY created_at ASC, id ASC
-                LIMIT 1
-                "#,
-            )
-            .bind(bot_id)
-            .bind(target_client_id)
-            .fetch_optional(&mut **tx)
-            .await?,
-        )
+    let (target_user_id, target_bot_id) = match target {
+        MlsTarget::User(uid) => (Some(uid), None),
+        MlsTarget::Bot(bid) => (None, Some(bid)),
     };
 
-    let pkg = match normal_pkg {
-        Some(p) => Some(p),
-        None => fallback_pkg,
-    };
-
-    let (kp_id, is_last_resort_i64) = pkg.ok_or_else(|| sqlx::Error::RowNotFound)?;
-
-    if is_last_resort_i64 == 0 {
+    for (client_id, key_package_id) in key_package_selections {
+        let add_id = Ulid::new().to_string();
         sqlx::query(
-            "UPDATE key_packages SET consumed = 1, consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
+            r#"
+            INSERT INTO pending_mls_adds (id, room_id, target_user_id, target_bot_id, target_client_id, key_package_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+            "#,
         )
-        .bind(&kp_id)
-        .execute(&mut **tx)
+        .bind(&add_id)
+        .bind(room_id)
+        .bind(target_user_id)
+        .bind(target_bot_id)
+        .bind(client_id)
+        .bind(key_package_id)
+        .execute(&mut *tx)
         .await?;
+
+        queued_adds.push(QueuedAdd {
+            add_id,
+            target_client_id: client_id.clone(),
+            key_package_id: key_package_id.clone(),
+        });
     }
 
-    let add_id = Ulid::new().to_string();
-    sqlx::query(
-        r#"
-        INSERT INTO pending_mls_adds (id, room_id, target_user_id, target_bot_id, target_client_id, key_package_id)
-        VALUES (?, ?, ?, ?, ?, ?)
-        "#,
-    )
-    .bind(&add_id)
-    .bind(room_id)
-    .bind(target_user_id)
-    .bind(target_bot_id)
-    .bind(target_client_id)
-    .bind(&kp_id)
-    .execute(&mut **tx)
-    .await?;
-
-    Ok(add_id)
+    Ok(queued_adds)
 }
 
-/// Queues `pending_mls_adds` rows across a batch of client devices for a target identity (user or bot).
-/// Exposed for Phase 27 bot grant coordination per §8.8.5 step 6 and §8.8.6 step 5.
-pub async fn queue_pending_mls_add_batch(
-    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
-    room_id: &str,
-    target_user_id: Option<&str>,
-    target_bot_id: Option<&str>,
-    target_client_ids: &[String],
-) -> Result<Vec<String>, RoomError> {
-    let mut added_client_ids = Vec::new();
-    for client_id in target_client_ids {
-        if queue_pending_mls_add(tx, room_id, target_user_id, target_bot_id, client_id)
-            .await
-            .is_ok()
-        {
-            added_client_ids.push(client_id.clone());
+/// Selects unconsumed, non-last-resort key packages for a bot account,
+/// marks selected packages as consumed (`consumed = 1, consumed_at = CURRENT_TIMESTAMP`),
+/// and returns `(client_id, key_package_id)` pairs.
+pub async fn select_bot_key_packages(
+    tx: &mut sqlx::SqliteConnection,
+    bot_id: &str,
+) -> Result<Vec<(String, String)>, RoomError> {
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        r#"
+        SELECT client_id, id
+        FROM key_packages
+        WHERE bot_id = ? AND consumed = 0 AND is_last_resort = 0
+        ORDER BY client_id ASC, created_at ASC
+        "#,
+    )
+    .bind(bot_id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    if !rows.is_empty() {
+        for (_, kp_id) in &rows {
+            sqlx::query(
+                "UPDATE key_packages SET consumed = 1, consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
+            )
+            .bind(kp_id)
+            .execute(&mut *tx)
+            .await?;
         }
     }
-    Ok(added_client_ids)
+
+    Ok(rows)
 }
 
 pub async fn list_pending_adds(
@@ -1469,29 +1420,80 @@ pub async fn add_member(
     .execute(&mut *tx)
     .await?;
 
-    // 9. Look up target user's devices and queue pending_mls_adds
+    // 9. Look up target user's devices and select key packages
     let devices: Vec<(String,)> =
         sqlx::query_as("SELECT client_id FROM devices WHERE user_id = ? ORDER BY created_at ASC")
             .bind(target_user_id)
             .fetch_all(&mut *tx)
             .await?;
 
-    let mut added_client_ids = Vec::new();
+    let mut selections = Vec::new();
 
     for (client_id,) in devices {
-        match queue_pending_mls_add(&mut tx, room_id, Some(target_user_id), None, &client_id).await
-        {
-            Ok(_) => added_client_ids.push(client_id),
-            Err(e) => {
-                tracing::warn!(
-                    user_id = %target_user_id,
-                    client_id = %client_id,
-                    error = %e,
-                    "Failed to queue pending add for target device"
-                );
+        let normal_pkg: Option<(String, i64)> = sqlx::query_as(
+            r#"
+            SELECT id, is_last_resort
+            FROM key_packages
+            WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 0
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1
+            "#,
+        )
+        .bind(target_user_id)
+        .bind(&client_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let fallback_pkg: Option<(String, i64)> = if normal_pkg.is_none() {
+            sqlx::query_as(
+                r#"
+                SELECT id, is_last_resort
+                FROM key_packages
+                WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 1
+                ORDER BY created_at ASC, id ASC
+                LIMIT 1
+                "#,
+            )
+            .bind(target_user_id)
+            .bind(&client_id)
+            .fetch_optional(&mut *tx)
+            .await?
+        } else {
+            None
+        };
+
+        let pkg = normal_pkg.or(fallback_pkg);
+        if let Some((kp_id, is_last_resort_i64)) = pkg {
+            if is_last_resort_i64 == 0 {
+                sqlx::query(
+                    "UPDATE key_packages SET consumed = 1, consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
+                )
+                .bind(&kp_id)
+                .execute(&mut *tx)
+                .await?;
             }
+            selections.push((client_id, kp_id));
+        } else {
+            tracing::warn!(
+                user_id = %target_user_id,
+                client_id = %client_id,
+                "Failed to select key package for target device"
+            );
         }
     }
+
+    let queued_adds = queue_pending_mls_add_batch(
+        &mut tx,
+        room_id,
+        MlsTarget::User(target_user_id),
+        &selections,
+    )
+    .await?;
+
+    let added_client_ids = queued_adds
+        .into_iter()
+        .map(|q| q.target_client_id)
+        .collect();
 
     // 10. Fetch the new member record
     let row = sqlx::query(

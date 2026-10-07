@@ -208,6 +208,9 @@ CREATE TABLE IF NOT EXISTS key_packages (
     )
 );
 CREATE INDEX IF NOT EXISTS idx_kp_claim_order ON key_packages(user_id, consumed, is_last_resort, created_at ASC, id ASC) WHERE consumed = 0;
+CREATE INDEX IF NOT EXISTS idx_key_packages_bot_active
+    ON key_packages(bot_id, client_id, consumed)
+    WHERE consumed = 0 AND bot_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS welcomes (
     id                  TEXT PRIMARY KEY,
