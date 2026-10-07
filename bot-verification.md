@@ -538,3 +538,24 @@
 - **Verification Results**:
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `node --test packages/bot/tests/unit/runtime-rooms.test.js` passed (31 passing, status 0).
+
+## Task B-032 Verification Fact
+- **Implement Graceful Shutdown (`packages/bot/src/runtime/shutdown.js` and `packages/bot/src/runtime/index.js`)**:
+  - Shutdown module lives at `packages/bot/src/runtime/shutdown.js`, exporting `createShutdownTracker`, `installSignalHandlers`, and `runShutdownSequence`.
+  - `createShutdownTracker` tracks in-flight handler promises, providing `track`, `waitForAll(timeoutMs)`, `startShutdown()`, `isShuttingDown()`, and `inFlightCount()`.
+  - `installSignalHandlers` wires `SIGTERM` and `SIGINT` handlers idempotently per process, returning a cleanup function.
+  - Runtime `stop({ drainMs })` accepts a drain budget (default 30000 ms, matching `ATOL_SHUTDOWN_DRAIN_MS`) and returns `{ drained, remaining }`.
+  - Ordering in `stop()` sequence: `startShutdown()` → reconnect stop → `uninstall` handler → SSE room stream teardown → WebSocket room channel unsubscribes → cron engine stop → webhook server stop → WebSocket client close → settings store stop → drain in-flight operations via `shutdownTracker.waitForAll(drainMs)` → storage close (flushes write queue).
+  - Dispatch sites (`command-invoked.js`, `webhook.js`, `cron.js`, and room events) check `isShuttingDown()` before processing new work (commands produce a shutdown local message, webhooks return 503 `bot_shutting_down`, cron fires and room events are skipped with debug logs) and wrap handler executions in `shutdownTracker.track(...)`.
+  - `runShutdownSequence` orchestrates `runtime.stop({ drainMs })` and translates results into exit codes (0 for drained, 1 for timeout or error).
+  - **Spec Gap 1 Recorded**: The drain budget source (`ATOL_SHUTDOWN_DRAIN_MS`) is managed by the CLI/caller and passed as `drainMs` parameter to `runtime.stop()` and `runShutdownSequence`.
+  - **Spec Gap 2 Recorded**: Exit code translation is performed by `runShutdownSequence`, not by `runtime.stop()` or `process.exit()` within the runtime.
+  - Registered `shutdown` (22 unit tests in `packages/bot/tests/unit/shutdown.test.js`) and `runtime-shutdown` (14 integration tests in `packages/bot/tests/unit/runtime-shutdown.test.js`) batches in `packages/bot/tests/batch-manifest.toml`. Added shutdown test cases to `ctx-command-invoked.test.js`, `webhook-server.test.js`, and `cron-engine.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `node --test packages/bot/tests/unit/shutdown.test.js` passed (22 passing, status 0).
+  - `node --test packages/bot/tests/unit/runtime-shutdown.test.js` passed (14 passing, status 0).
+  - `node --test packages/bot/tests/unit/ctx-command-invoked.test.js` passed (10 passing, status 0).
+  - `node --test packages/bot/tests/unit/webhook-server.test.js` passed (8 passing, status 0).
+  - `node --test packages/bot/tests/unit/cron-engine.test.js` passed (59 passing, status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).

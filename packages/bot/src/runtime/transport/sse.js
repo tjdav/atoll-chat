@@ -275,7 +275,10 @@ export function createSseClient ({
       closed = true
 
       if (logger) {
-        logger.debug('sse closed', { path: cleanPath, last_event_id: lastEventIdBuffer })
+        logger.debug('sse closed', {
+          path: cleanPath,
+          last_event_id: lastEventIdBuffer
+        })
       }
 
       if (onClose) {
@@ -291,7 +294,10 @@ export function createSseClient ({
 
       if (userAborted || (abortController && abortController.signal.aborted)) {
         if (logger) {
-          logger.debug('sse closed', { path: cleanPath, last_event_id: lastEventIdBuffer })
+          logger.debug('sse closed', {
+            path: cleanPath,
+            last_event_id: lastEventIdBuffer
+          })
         }
         if (onClose) {
           try {
@@ -303,7 +309,10 @@ export function createSseClient ({
       } else {
         const errorObj = err instanceof Error ? err : new Error(String(err))
         if (logger) {
-          logger.warn('sse stream error', { path: cleanPath, message: errorObj.message })
+          logger.warn('sse stream error', {
+            path: cleanPath,
+            message: errorObj.message
+          })
         }
         if (onError) {
           try {
@@ -314,7 +323,10 @@ export function createSseClient ({
         }
         if (onClose) {
           try {
-            onClose({ code: 0, cause: errorObj })
+            onClose({
+              code: 0,
+              cause: errorObj
+            })
           } catch {
             // ignore
           }
@@ -375,7 +387,10 @@ export function createSseClient ({
       } catch (fetchErr) {
         clearTimeout(timeoutId)
         if (logger) {
-          logger.error('sse connect failed', { path: cleanPath, status: 0 })
+          logger.error('sse connect failed', {
+            path: cleanPath,
+            status: 0
+          })
         }
         if (timedOut) {
           const timeoutErr = new HttpRequestError(
@@ -409,7 +424,10 @@ export function createSseClient ({
 
       if (res.status !== 200) {
         if (logger) {
-          logger.error('sse connect failed', { path: cleanPath, status: res.status })
+          logger.error('sse connect failed', {
+            path: cleanPath,
+            status: res.status
+          })
         }
         let bodyText = null
         try {
@@ -433,7 +451,10 @@ export function createSseClient ({
       const contentType = res.headers ? res.headers.get('content-type') : null
       if (!contentType || !contentType.includes('text/event-stream')) {
         if (logger) {
-          logger.error('sse connect failed', { path: cleanPath, status: res.status })
+          logger.error('sse connect failed', {
+            path: cleanPath,
+            status: res.status
+          })
         }
         const httpErr = new HttpRequestError(
           `HTTP request failed (GET ${path}): invalid content-type ${contentType}`
@@ -450,7 +471,10 @@ export function createSseClient ({
 
       connected = true
       if (logger) {
-        logger.debug('sse connected', { path: cleanPath, status: 200 })
+        logger.debug('sse connected', {
+          path: cleanPath,
+          status: 200
+        })
       }
 
       streamSettlePromise = consumeStream(res.body)

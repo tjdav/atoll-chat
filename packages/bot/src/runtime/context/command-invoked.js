@@ -51,6 +51,8 @@ export const COMMAND_INFO = 'bot-command-v1'
  *   Constructs the BotCtx for a command invocation. Wired by B-029.
  * @param {import('../pause-policy.js').PausePolicy} [deps.pausePolicy] -
  *   Optional pause policy guard.
+ * @param {import('../shutdown.js').ShutdownTracker} [deps.shutdownTracker] -
+ *   Optional shutdown tracker.
  * @param {import('../diagnostics/logger.js').Logger} [deps.logger] -
  *   Optional logger.
  * @param {number} [deps.handlerTimeoutMs=60000] - Per-handler timeout.
@@ -67,6 +69,7 @@ export function createCommandInvocationHandler ({
   http,
   makeBotCtx,
   pausePolicy,
+  shutdownTracker,
   logger,
   handlerTimeoutMs = 60000,
   generateRequestId = crypto.randomUUID,
@@ -119,6 +122,33 @@ export function createCommandInvocationHandler ({
       args: parsed.args,
       ephemeralResultPubkey: parsed.ephemeral_result_pubkey,
       timestamp
+    }
+
+    // Check if runtime is shutting down before pause policy or handler execution.
+    if (shutdownTracker?.isShuttingDown()) {
+      logger?.debug('command dispatch skipped: shutting down', {
+        meta: {
+          command_id: event.command_id,
+          command_name: parsed.command_name
+        }
+      })
+      /** @type {CommandResult} */
+      const result = {
+        type: 'local_message',
+        content: `The bot is shutting down and cannot process /${parsed.command_name}.`
+      }
+      await safeDispatchResult({
+        result,
+        ephemeralResultPubkey: parsed.ephemeral_result_pubkey,
+        roomId: event.room_id,
+        http,
+        generateRequestId,
+        generateEphemeral,
+        logger,
+        invocation
+      })
+      await safeAck(http, event.command_id, logger)
+      return
     }
 
     // Look up the command declaration.
@@ -197,7 +227,12 @@ export function createCommandInvocationHandler ({
       return
     }
 
-    // Run the handler with a timeout.
+    // Run the handler with a timeout, tracking in-flight work.
+    const runHandler = () => withTimeout(
+      Promise.resolve().then(() => commandDecl.handler(ctx, argsReader)),
+      handlerTimeoutMs
+    )
+
     let result
     if (pausePolicy?.isPaused()) {
       logger?.warn('command dispatch skipped: bot paused', {
@@ -211,11 +246,11 @@ export function createCommandInvocationHandler ({
         content: `The bot is paused and cannot process /${parsed.command_name} right now.`
       }
     } else if (pausePolicy) {
-      const guardResult = await pausePolicy.guard(() => withTimeout(
-        Promise.resolve().then(() => commandDecl.handler(ctx, argsReader)),
-        handlerTimeoutMs
-      )
-      )
+      const executeWithTrack = () => (shutdownTracker
+        ? shutdownTracker.track(runHandler)
+        : runHandler())
+
+      const guardResult = await pausePolicy.guard(executeWithTrack)
 
       if (guardResult.kind === 'paused') {
         logger?.warn('command dispatch skipped: bot paused', {
@@ -254,10 +289,9 @@ export function createCommandInvocationHandler ({
       }
     } else {
       try {
-        result = await withTimeout(
-          Promise.resolve().then(() => commandDecl.handler(ctx, argsReader)),
-          handlerTimeoutMs
-        )
+        result = shutdownTracker
+          ? await shutdownTracker.track(runHandler)
+          : await runHandler()
       } catch (err) {
         /** @type {any} */
         const errObj = err

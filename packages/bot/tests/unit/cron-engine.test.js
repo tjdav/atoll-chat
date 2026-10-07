@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { IdempotencyStore } from '../../src/runtime/idempotency/index.js'
+import { createShutdownTracker } from '../../src/runtime/shutdown.js'
 import { createCronEngine, nextFireTime, parseCron } from '../../src/runtime/triggers/cron.js'
 
 /**
@@ -1310,6 +1311,40 @@ describe('Cron Engine Unit Tests', () => {
 
       const allLogJson = JSON.stringify(logger.logs)
       assert.equal(allLogJson.includes('classified'), false)
+
+      await engine.stop()
+    })
+  })
+
+  describe('Shutdown State Tests', () => {
+    test('59. Shutdown state skips the fire and does not update last_fire', async () => {
+      const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
+      const { sleep } = makeSleep(clock)
+
+      let fired = false
+      const shutdownTracker = createShutdownTracker()
+      shutdownTracker.startShutdown()
+
+      const stateStore = makeStateStore()
+      const engine = createCronEngine({
+        config: { timezone: 'UTC', catchUp: false },
+        triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
+        makeBotCtx: async () => (/** @type {any} */ ({ schedule: async () => { fired = true } })),
+        idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
+        stateStore,
+        shutdownTracker,
+        sleep,
+        now: clock.now
+      })
+
+      await engine.start()
+
+      clock.advance(3600 * 1000)
+      await new Promise((resolve) => setImmediate(resolve))
+
+      assert.equal(fired, false)
+      const lastFire = await stateStore.get('_runtime:cron:hourly:last_fire')
+      assert.equal(lastFire, undefined)
 
       await engine.stop()
     })
