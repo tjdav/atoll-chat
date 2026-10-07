@@ -69,10 +69,16 @@ Each task covers, where applicable:
 
 ## Component attribute enforcement
 
-- Component template structure and attribute usage are enforced by `tests/unit/components-data-attrs.test.js`.
-- Template blocks under `packages/app/src/components/` MUST NOT contain internal `data-*` attributes except verbatim static `data-testid="..."`.
-- State-driven styling and testing hooks MUST use host-reflected attributes (`reflect: true`) and `:host([attr])` selectors per `packages/app/docs/components.md`.
-- Opt-out Pragma: In rare cases (e.g. third-party library integrations like ALTCHA), a component template may include the HTML comment `<!-- coralite-ignore-data-attributes -->` before the template markup to bypass the lint check.
+`packages/app/tests/unit/components-data-attrs.test.js` walks every component under
+`src/components/`, reads its `<template>` block, and fails if any `data-*` attribute
+other than `data-testid` is present. This enforces the rules in
+`packages/app/docs/components.md`.
+
+A component may opt out by placing the comment
+`<!-- coralite-ignore-data-attributes -->` inside its `<template>` block. The pragma
+is for the rare case where a third-party library reads a `data-*` attribute from a
+specific element. It must be documented in the component file itself with a comment
+explaining why.
 
 ## Timeouts
 
