@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { Storage } from './storage/index.js'
 import { IdempotencyStore } from './idempotency/index.js'
 import { PublisherKeyCache } from './crypto/publisher.js'
@@ -11,6 +12,7 @@ import { createFetchMethods } from './context/fetch.js'
 import { createCommandInvocationHandler } from './context/command-invoked.js'
 import { createHttpClient } from './transport/http.js'
 import { createWebSocketClient } from './transport/websocket.js'
+import { createSseClient } from './transport/sse.js'
 import { createWebhookServer } from './triggers/webhook.js'
 import { createCronEngine } from './triggers/cron.js'
 
@@ -50,10 +52,18 @@ function isValidBase64urlKey (str, expectedLength) {
 }
 
 /**
+ * @typedef {object} RoomSubscription
+ * @property {'websocket' | 'sse'} kind
+ * @property {() => Promise<void>} close
+ * @property {import('./transport/sse.js').SseClient} [client]
+ */
+
+/**
  * @typedef {object} Runtime
  * @property {() => Promise<void>} start - Runs the boot sequence and connects the WebSocket client.
  * @property {() => Promise<void>} stop - Closes the WebSocket client, calls the uninstall handler, and flushes storage.
  * @property {(invocation?: object) => Promise<import('../types.js').BotCtx>} makeBotCtx - Constructs a BotCtx for an invocation.
+ * @property {Map<string, RoomSubscription>} [subscriptions] - Internal room subscription registry.
  */
 
 /**
@@ -117,6 +127,11 @@ export function createRuntime ({
 
   /** @type {Map<string, { mode: string, scopes: string[] }>} */
   const grants = new Map()
+
+  /** @type {Map<string, RoomSubscription>} */
+  const subscriptions = new Map()
+
+  let lifecycleController = new AbortController()
 
   let isStarted = false
   let isStopped = false
@@ -182,6 +197,247 @@ export function createRuntime ({
   }
 
   /**
+   * Subscribes to a WebSocket room channel.
+   *
+   * @param {string} roomId - Room ID.
+   * @returns {Promise<void>}
+   */
+  async function subscribeRoomWebSocket (roomId) {
+    if (!ws) {
+      return
+    }
+    const channelName = `private-room-${roomId}`
+    try {
+      const unsubscribe = ws.subscribe(channelName, (eventName, data) => {
+        onRoomEvent(roomId, eventName, data).catch((err) => {
+          logger.error('room event dispatch failed', {
+            meta: {
+              room_id: roomId,
+              event: eventName,
+              error: err instanceof Error ? err.message : String(err)
+            }
+          })
+        })
+      })
+      subscriptions.set(roomId, {
+        kind: 'websocket',
+        close: async () => {
+          unsubscribe()
+        }
+      })
+      logger.debug('room subscribed', {
+        meta: { room_id: roomId, kind: 'websocket' }
+      })
+    } catch (err) {
+      logger.warn('room subscribe failed', {
+        meta: {
+          room_id: roomId,
+          kind: 'websocket',
+          error: err instanceof Error ? err.message : String(err)
+        }
+      })
+    }
+  }
+
+  /**
+   * Opens an SSE stream for an observer-mode room.
+   *
+   * @param {string} roomId - Room ID.
+   * @returns {Promise<void>}
+   */
+  async function subscribeRoomSse (roomId) {
+    const path = `/rooms/${encodeURIComponent(roomId)}/observer-stream`
+    try {
+      const sse = createSseClient({
+        serverUrl: `${config.serverUrl}/api/v1`,
+        botToken: keystoreData.bot_token,
+        path,
+        fetchImpl,
+        logger,
+        onEvent: (sseEvent) => {
+          onRoomEvent(roomId, sseEvent.event, sseEvent.data).catch((err) => {
+            logger.error('sse event dispatch failed', {
+              meta: {
+                room_id: roomId,
+                event: sseEvent.event,
+                error: err instanceof Error ? err.message : String(err)
+              }
+            })
+          })
+        },
+        onError: (err) => {
+          logger.warn('sse stream error', {
+            meta: {
+              room_id: roomId,
+              error: err instanceof Error ? err.message : String(err)
+            }
+          })
+        },
+        onClose: (payload) => {
+          logger.debug('sse stream closed', {
+            meta: {
+              room_id: roomId,
+              code: payload?.code
+            }
+          })
+          subscriptions.delete(roomId)
+        }
+      })
+      await sse.connect()
+      subscriptions.set(roomId, {
+        kind: 'sse',
+        client: sse,
+        close: async () => {
+          await sse.close()
+        }
+      })
+      logger.debug('room subscribed', {
+        meta: { room_id: roomId, kind: 'sse' }
+      })
+    } catch (err) {
+      logger.warn('room subscribe failed', {
+        meta: {
+          room_id: roomId,
+          kind: 'sse',
+          error: err instanceof Error ? err.message : String(err)
+        }
+      })
+    }
+  }
+
+  /**
+   * Tears down a room subscription.
+   *
+   * @param {string} roomId - Room ID.
+   * @returns {Promise<void>}
+   */
+  async function unsubscribeRoom (roomId) {
+    const sub = subscriptions.get(roomId)
+    if (!sub) {
+      return
+    }
+    subscriptions.delete(roomId)
+    try {
+      await sub.close()
+      logger.debug('room unsubscribed', { meta: { room_id: roomId } })
+    } catch (err) {
+      logger.warn('room unsubscribe failed', {
+        meta: {
+          room_id: roomId,
+          error: err instanceof Error ? err.message : String(err)
+        }
+      })
+    }
+  }
+
+  /**
+   * Dispatches room events to handlers.
+   *
+   * @param {string} roomId - Room ID.
+   * @param {string} eventName - Event type/name.
+   * @param {unknown} rawData - Raw event payload.
+   * @returns {Promise<void>}
+   */
+  async function onRoomEvent (roomId, eventName, rawData) {
+    let raw = rawData
+    if (typeof rawData === 'string') {
+      try {
+        raw = JSON.parse(rawData)
+      } catch {
+        raw = rawData
+      }
+    }
+
+    const isMessageEvent = eventName === 'message.new' || eventName === 'message.edited' || eventName === 'message.deleted'
+    const sub = subscriptions.get(roomId)
+    const isSse = sub?.kind === 'sse'
+
+    const eventId = (raw && typeof raw === 'object' && typeof raw.id === 'string') ? raw.id : crypto.randomUUID()
+    const timestamp = new Date().toISOString()
+
+    let eventObj
+    if (isMessageEvent) {
+      if (eventName === 'message.deleted') {
+        eventObj = {
+          id: eventId,
+          type: eventName,
+          roomId,
+          timestamp,
+          data: {
+            id: raw?.id ?? eventId
+          }
+        }
+      } else if (isSse) {
+        eventObj = {
+          id: eventId,
+          type: eventName,
+          roomId,
+          timestamp,
+          data: {
+            id: raw?.id ?? eventId,
+            senderUserId: raw?.sender_user_id,
+            senderClientId: raw?.sender_client_id,
+            createdAt: raw?.created_at,
+            sizeBytes: raw?.size_bytes
+          }
+        }
+      } else {
+        // Member mode (WebSocket)
+        eventObj = {
+          id: eventId,
+          type: eventName,
+          roomId,
+          timestamp,
+          data: {
+            id: raw?.id ?? eventId,
+            senderUserId: raw?.sender_id ?? raw?.sender_user_id ?? null,
+            senderClientId: raw?.sender_client_id ?? null,
+            createdAt: raw?.created_at ?? null,
+            plaintext: null,
+            attachments: [],
+            replyTo: raw?.reply_to ?? null
+          }
+        }
+      }
+    } else {
+      // Room event
+      eventObj = {
+        id: crypto.randomUUID(),
+        type: eventName,
+        roomId,
+        timestamp,
+        data: raw
+      }
+    }
+
+    const ctx = await makeBotCtx({
+      roomId,
+      event: eventObj,
+      signal: lifecycleController.signal
+    })
+
+    try {
+      if (isMessageEvent) {
+        if (typeof bot.config.handlers?.message === 'function') {
+          await bot.config.handlers.message(ctx, eventObj)
+        }
+      } else {
+        if (typeof bot.config.handlers?.room === 'function') {
+          await bot.config.handlers.room(ctx, eventObj)
+        }
+      }
+    } catch (err) {
+      logger.error('room event dispatch failed', {
+        meta: {
+          room_id: roomId,
+          event: eventName,
+          error: err instanceof Error ? err.message : String(err)
+        }
+      })
+    }
+  }
+
+  /**
    * Constructs a BotCtx for an invocation.
    *
    * @param {object} [invocation] - Optional invocation parameters.
@@ -194,7 +450,7 @@ export function createRuntime ({
     const roomId = invocation?.roomId ?? null
     const grant = roomId ? (grants.get(roomId) ?? null) : null
     const room = roomId && roomsStore ? await roomsStore.get(roomId) : null
-    const signal = invocation?.signal ?? new AbortController().signal
+    const signal = invocation?.signal ?? lifecycleController.signal
 
     /** @type {import('../types.js').BotCtx} */
     const ctx = {
@@ -284,17 +540,40 @@ export function createRuntime ({
         }
         case 'bot.grant_updated': {
           if (data && typeof data === 'object' && typeof data.room_id === 'string') {
-            const mode = typeof data.mode === 'string' ? data.mode : ''
+            const roomId = data.room_id
+            const oldMode = grants.get(roomId)?.mode ?? null
+            let newMode = ''
+            if (typeof data.new_mode === 'string') {
+              newMode = data.new_mode
+            } else if (typeof data.mode === 'string') {
+              newMode = data.mode
+            }
             const scopes = Array.isArray(data.scopes) ? data.scopes : []
-            grants.set(data.room_id, {
-              mode,
-              scopes
-            })
+            grants.set(roomId, { mode: newMode, scopes })
 
-            const ctx = await makeBotCtx({ roomId: data.room_id })
+            if (oldMode !== newMode) {
+              if (oldMode === 'member' || oldMode === 'observer') {
+                await unsubscribeRoom(roomId)
+              }
+              if (newMode === 'member') {
+                await subscribeRoomWebSocket(roomId)
+              } else if (newMode === 'observer') {
+                await subscribeRoomSse(roomId)
+              }
+            }
+
+            const ctx = await makeBotCtx({ roomId })
             if (typeof bot.config.handlers?.grantUpdated === 'function') {
               await bot.config.handlers.grantUpdated(ctx, data)
             }
+          }
+          break
+        }
+        case 'bot.revoked': {
+          if (data && typeof data === 'object' && typeof data.room_id === 'string') {
+            const roomId = data.room_id
+            grants.delete(roomId)
+            await unsubscribeRoom(roomId)
           }
           break
         }
@@ -307,7 +586,9 @@ export function createRuntime ({
             publisherKeys.markAllStale()
             setTimeout(() => {
               publisherKeys.reverifyAll().catch((err) => {
-                logger.error('publisher key reverifyAll failed', { meta: { error: err?.message ?? String(err) } })
+                logger.error('publisher key reverifyAll failed', {
+                  meta: { error: err?.message ?? String(err) }
+                })
               })
             }, 0)
           }
@@ -575,6 +856,8 @@ export function createRuntime ({
     }
     isStopped = true
 
+    lifecycleController.abort()
+
     const baseCtx = await makeBotCtx({})
     if (typeof bot.config.handlers?.uninstall === 'function') {
       await bot.config.handlers.uninstall(baseCtx)
@@ -591,6 +874,10 @@ export function createRuntime ({
       logger.info('webhook server stopped')
       webhookServer = null
     }
+
+    // Teardown room subscriptions before closing WebSocket
+    const subTeardowns = Array.from(subscriptions.keys()).map((roomId) => unsubscribeRoom(roomId))
+    await Promise.allSettled(subTeardowns)
 
     if (ws) {
       await ws.close()
@@ -613,6 +900,7 @@ export function createRuntime ({
   return {
     start,
     stop,
-    makeBotCtx
+    makeBotCtx,
+    subscriptions
   }
 }
