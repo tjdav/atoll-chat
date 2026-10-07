@@ -10,6 +10,17 @@
     <div class="chat__scroll-btn" ref="scrollBtn" hidden="{{ scrollBtnHidden }}" data-testid="scroll-to-bottom">
       <span class="chat__scroll-chevron" aria-hidden="true">↓</span>
     </div>
+    <footer class="chat__composer">
+      <message-composer
+        ref="composer"
+        placeholder="{{ composer_placeholder }}"
+        attach-label="{{ composer_attach_label }}"
+        emoji-label="{{ composer_emoji_label }}"
+        readaloud-label="{{ composer_readaloud_label }}"
+        input-label="{{ composer_input_label }}"
+        send-label="{{ composer_send_label }}"
+      ></message-composer>
+    </footer>
   </div>
 </template>
 
@@ -22,7 +33,7 @@
 
   .chat {
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto 1fr auto;
     height: 100%;
     position: relative;
   }
@@ -87,7 +98,7 @@
   .chat__scroll-btn {
     position: absolute;
     right: var(--space-4);
-    bottom: var(--space-4);
+    bottom: 80px;
     width: 40px;
     height: 40px;
     border-radius: var(--radius-full);
@@ -100,6 +111,12 @@
     box-shadow: var(--shadow-md);
     font-size: var(--text-base);
     z-index: 10;
+  }
+
+  .chat__composer {
+    padding: var(--space-2);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--surface-0);
   }
 </style>
 
@@ -135,7 +152,13 @@ export default defineComponent({
         'chat_placeholder_voice',
         'chat_placeholder_document',
         'chat_placeholder_sticker',
-        'chat_placeholder_unknown'
+        'chat_placeholder_unknown',
+        'composer_placeholder',
+        'composer_attach_label',
+        'composer_emoji_label',
+        'composer_readaloud_label',
+        'composer_input_label',
+        'composer_send_label'
       ])
     }
   },
@@ -156,7 +179,13 @@ export default defineComponent({
         'chat_placeholder_voice',
         'chat_placeholder_document',
         'chat_placeholder_sticker',
-        'chat_placeholder_unknown'
+        'chat_placeholder_unknown',
+        'composer_placeholder',
+        'composer_attach_label',
+        'composer_emoji_label',
+        'composer_readaloud_label',
+        'composer_input_label',
+        'composer_send_label'
       ]))
     }
 
@@ -188,6 +217,7 @@ export default defineComponent({
     const thread = refs('thread')
     const rowsContainer = refs('rows')
     const scrollBtn = refs('scrollBtn')
+    const composer = refs('composer')
 
     let currentRoomId = null
     let messages = []
@@ -289,6 +319,28 @@ export default defineComponent({
         if (thread) {
           thread.scrollTo({ top: thread.scrollHeight, behavior: 'smooth' })
         }
+      }, { signal })
+    }
+
+    if (composer) {
+      composer.addEventListener('composer:send', async (event) => {
+        const text = event.detail?.text
+        if (!text || !currentRoomId) return
+        const { sendMessage } = await import('../../lib/views/send-message.js')
+        const globalStore = { $state: { currentUser: { id: userId } } }
+        const result = await sendMessage({
+          deps: {
+            repos,
+            storage,
+            globalStore,
+            crypto: globalThis.crypto
+          },
+          roomId: currentRoomId,
+          text
+        })
+        if (result.skipped) return
+        currentRoomId = null
+        await load()
       }, { signal })
     }
 

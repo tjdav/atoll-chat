@@ -62,7 +62,9 @@ export default [
       'tests/unit/sync.test.js',
       'tests/unit/sync-plugin.test.js',
       'tests/unit/view-chats-data.test.js',
-      'tests/unit/view-chat-data.test.js'
+      'tests/unit/view-chat-data.test.js',
+      'tests/unit/composer.test.js',
+      'tests/unit/send-message.test.js'
     ]
   },
   {
@@ -80,7 +82,8 @@ export default [
       'tests/component/surface.spec.js',
       'tests/component/ui-icon.spec.js',
       'tests/component/conversation-list.spec.js',
-      'tests/component/chat-thread.spec.js'
+      'tests/component/chat-thread.spec.js',
+      'tests/component/composer.spec.js'
     ]
   },
   {

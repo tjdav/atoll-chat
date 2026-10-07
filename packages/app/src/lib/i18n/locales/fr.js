@@ -73,5 +73,12 @@ export default {
   'chat_placeholder_voice': 'Message vocal',
   'chat_placeholder_document': 'Fichier',
   'chat_placeholder_sticker': 'Autocollant',
-  'chat_placeholder_unknown': 'Message non pris en charge'
+  'chat_placeholder_unknown': 'Message non pris en charge',
+
+  'composer_placeholder': 'Écrire un message',
+  'composer_attach_label': 'Joindre un fichier',
+  'composer_emoji_label': 'Émoticônes et autocollants',
+  'composer_readaloud_label': 'Lecture à haute voix',
+  'composer_input_label': 'Champ de message',
+  'composer_send_label': 'Envoyer le message'
 }

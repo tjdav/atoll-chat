@@ -73,5 +73,12 @@ export default {
   'chat_placeholder_voice': 'Voice message',
   'chat_placeholder_document': 'Document',
   'chat_placeholder_sticker': 'Sticker',
-  'chat_placeholder_unknown': 'Unsupported message'
+  'chat_placeholder_unknown': 'Unsupported message',
+
+  'composer_placeholder': 'Message',
+  'composer_attach_label': 'Attach file',
+  'composer_emoji_label': 'Emoji and stickers',
+  'composer_readaloud_label': 'Read aloud',
+  'composer_input_label': 'Message input',
+  'composer_send_label': 'Send message'
 }
