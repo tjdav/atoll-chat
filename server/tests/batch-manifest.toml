@@ -19,6 +19,7 @@ files = [
     "identity_schema",
     "key_transparency_log",
     "key_transparency_snapshots",
+    "kt_endpoints",
     "login_oprf",
     "lookup_oprf",
     "profile_oprf",

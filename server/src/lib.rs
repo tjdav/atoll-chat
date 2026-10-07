@@ -244,6 +244,14 @@ pub fn build_app(state: AppState) -> Router {
             post(routes::admin::post_key_transparency_snapshot_handler),
         )
         .route(
+            "/kt/user/{id}",
+            get(routes::key_transparency::get_user_kt_handler),
+        )
+        .route(
+            "/kt/snapshot",
+            get(routes::key_transparency::get_kt_snapshot_handler),
+        )
+        .route(
             "/admin/backups",
             get(routes::admin_backups::list).post(routes::admin_backups::trigger),
         )

@@ -9,6 +9,7 @@ pub mod extensions_proxy;
 pub mod health;
 pub mod invites;
 pub mod key_packages;
+pub mod key_transparency;
 pub mod link_preview;
 pub mod login;
 pub mod models;

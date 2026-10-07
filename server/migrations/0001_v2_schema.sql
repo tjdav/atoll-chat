@@ -330,13 +330,22 @@ CREATE INDEX IF NOT EXISTS idx_recovery_codes_user ON recovery_codes(user_id, co
 
 -- Key Transparency
 CREATE TABLE IF NOT EXISTS key_transparency_log (
-    leaf_index      INTEGER PRIMARY KEY,
-    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    username_token  TEXT NOT NULL,
-    identity_pubkey TEXT NOT NULL,
-    added_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    leaf_index       INTEGER PRIMARY KEY,
+    user_id          TEXT REFERENCES users(id) ON DELETE CASCADE,
+    bot_id           TEXT REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    username_token   TEXT,
+    identity_pubkey  TEXT,
+    command_pubkey   TEXT,
+    added_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+        (user_id IS NOT NULL AND bot_id IS NULL)
+        OR
+        (user_id IS NULL AND bot_id IS NOT NULL)
+    )
 );
 CREATE INDEX IF NOT EXISTS idx_kt_user ON key_transparency_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_kt_bot ON key_transparency_log(bot_id)
+    WHERE bot_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_kt_added ON key_transparency_log(added_at);
 
 CREATE TABLE IF NOT EXISTS key_transparency_snapshots (
@@ -449,6 +458,9 @@ CREATE TABLE IF NOT EXISTS bot_accounts (
     display_name        TEXT NOT NULL,
     avatar_file_id      TEXT,
     owner_user_id       TEXT NOT NULL REFERENCES users(id),
+    bot_identity_pubkey TEXT,
+    bot_command_pubkey  TEXT,
+    identity_pubkey     TEXT,
     disabled_at         DATETIME,
     deleted_at          DATETIME
 );
