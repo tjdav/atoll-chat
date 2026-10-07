@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 44 |
+| Done | 45 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-23 | Component Data-Attribute Audit and Component Authoring Guide | done | C-CHAT-6, C-INFRA-6b, C-INFRA-6c, C-V-E, C-V-F | unit-smoke |
 | C-INFRA-22 | User-Scoped Sync Plugin | done | C-INFRA-21, C-INFRA-20, C-INFRA-19, C-INFRA-16, C-INFRA-10, C-INFRA-11 | unit-smoke, component-auth |
 | C-INFRA-21 | Repository Accessor in the Storage Plugin Context | done | C-INFRA-20, C-INFRA-11, C-INFRA-9, C-INFRA-10 | unit-smoke |
 | C-INFRA-20 | Sync State, Processed Events, and MLS Rooms Tables with Repositories | done | C-INFRA-19, C-INFRA-14, C-INFRA-9 | unit-smoke |
@@ -158,7 +159,20 @@ Before running Playwright component batches:
 - Terminate stale dev servers (`lsof -t -i :3000 | xargs -r kill`).
 - Seed state via `page.evaluate()` on an initial route rather than `page.addInitScript()` if testing state clearing across redirects.
 
-### N+2. Coralite Friction
+### N+2. Component Authoring
+
+New components and modified components must satisfy `packages/app/docs/components.md`.
+Specifically:
+
+- State is the source of truth. No internal `data-*` attributes except `data-testid`.
+- CSS state hooks read from the host via `:host([...])` with `reflect: true`.
+- `data-testid` is the only sanctioned test hook, and only when no role/name query works.
+- The four-part i18n pattern applies to user-facing strings.
+- `defineComponent` is required.
+- No pass-through getters.
+- `client()` may be `async`; no anonymous async IIFE.
+
+### N+3. Coralite Friction
 
 If during this task you encounter friction with Coralite — a bug, a missing
 feature, a pattern the framework does not support — stop and classify it
@@ -179,7 +193,7 @@ silently.
 Every entry gets an ID (`CF-NNN`, sequential). Record it in the task's
 report and in `client-coralite-feedback.md`.
 
-### N+1. Tracking File Updates
+### N+4. Tracking File Updates
 
 On completion:
 
@@ -594,6 +608,22 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created Playwright component test `packages/app/tests/component/sync.spec.js` (3 cases) registered under `component-auth`, and generated screenshot `packages/app/test-results/sync-boot.png`.
   - Authored plugin contract documentation at `packages/app/docs/plugins/sync.md` and updated `packages/app/docs/plugins/README.md`.
   - Scope decision: deferred `user_preferences` section application to a follow-on task to avoid inventing storage mappings before spec settlement.
+
+- **C-INFRA-23 Deliverables & Status:**
+  - Status: `done`.
+  - Authored `packages/app/docs/components.md` containing the complete Component Authoring Guide (16 rules, 12 sections).
+  - Created `packages/app/docs/README.md` index.
+  - Audited all components under `packages/app/src/components/`:
+    - `conversation-row.html`: reflected `isUnread` (`reflect: true`), updated CSS selector to `:host([is-unread])`, removed `data-room-id` and `data-unread`.
+    - `messenger-boot.html`: reflected `ready`, `error`, `hasOprfToken`, `storageReady`, `storagePersistent`, `syncReady` (`reflect: true`), updated `client()` state mutations (removing imperative dataset writes), updated CSS to `:host([ready])`.
+    - `ui-icon.html`: removed `data-icon-name`.
+    - `ui-profile.html`: reflected `size` (`reflect: true`), updated CSS selectors to `:host([size="..."])`.
+    - `auth-view-register.html`: added `<!-- coralite-ignore-data-attributes -->` pragma for ALTCHA.
+    - `rail-host.html`: removed `dataset.extensionId` from `li`, retained `data-rail-id` on button.
+  - Updated Playwright test files (`hydration.spec.js`, `messenger-boot.spec.js`, `sync.spec.js`) to target `messenger-boot` reflected host attributes.
+  - Created enforcement unit test `packages/app/tests/unit/components-data-attrs.test.js` and registered it in `unit-smoke` in `packages/app/test-batches.js`.
+  - Updated `packages/app/TESTING.md` with Component attribute enforcement section.
+  - Extended client task template standard checklist in `client-task-ledger.md` with Component Authoring section.
 
 ## Component Authoring Policy
 

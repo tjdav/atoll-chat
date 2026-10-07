@@ -147,19 +147,18 @@ test.describe('Conversation List Component Tests', () => {
       })
     })
 
-    const rows = page.locator('[data-testid="conversation-row"]')
+    const rows = page.locator('conversation-row')
     await expect(rows).toHaveCount(3)
 
     const row1 = rows.nth(0)
     await expect(row1.locator('.row__name')).toHaveText('Design Team')
-    await expect(row1.locator('.row__preview')).toHaveText('Draft response to Bob')
-    await expect(row1.locator('.row__preview')).toHaveClass(/row__preview--draft/)
-    await expect(row1).toHaveAttribute('data-unread', 'true')
+    await expect(row1.locator('.row__snippet')).toHaveText('Draft response to Bob')
+    await expect(row1).toHaveAttribute('is-unread', '')
 
     const row2 = rows.nth(1)
     await expect(row2.locator('.row__name')).toHaveText('Bob')
-    await expect(row2.locator('.row__preview')).toHaveText('Bob: See you tomorrow')
-    await expect(row2).toHaveAttribute('data-unread', 'false')
+    await expect(row2.locator('.row__snippet')).toHaveText('Bob: See you tomorrow')
+    await expect(row2).not.toHaveAttribute('is-unread')
 
     const row3 = rows.nth(2)
     await expect(row3.locator('.row__name')).toHaveText('Bob, Charlie')
@@ -181,7 +180,7 @@ test.describe('Conversation List Component Tests', () => {
       })
     })
 
-    const row = page.locator('[data-testid="conversation-row"]').first()
+    const row = page.locator('conversation-row').first()
     await expect(row).toBeVisible()
     await row.click()
 

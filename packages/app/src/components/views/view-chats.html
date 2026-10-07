@@ -210,25 +210,22 @@ export default defineComponent({
         const li = document.createElement('li')
         const row = document.createElement('conversation-row')
         row.setAttribute('room-id', r.roomId)
-        row.setAttribute('roomid', r.roomId)
-        row.setAttribute('name', r.name)
-        row.setAttribute('preview', r.preview)
-        row.setAttribute('timestamp', r.timestamp)
-        row.setAttribute('is-unread', String(r.isUnread))
-        row.setAttribute('isunread', String(r.isUnread))
-        row.setAttribute('is-active', String(r.roomId === activeRoomId))
-        row.setAttribute('isactive', String(r.roomId === activeRoomId))
-        row.setAttribute('has-draft', String(r.hasDraft))
-        row.setAttribute('hasdraft', String(r.hasDraft))
-        row.setAttribute('is-group', String(r.isGroup))
-        row.setAttribute('isgroup', String(r.isGroup))
+        row.setAttribute('title', r.name)
+        row.setAttribute('last-message-snippet', r.preview)
+        row.setAttribute('last-message-timestamp', String(r.timestamp))
+        if (r.isUnread) {
+          row.setAttribute('is-unread', '')
+        }
+        if (r.roomId === activeRoomId) {
+          row.setAttribute('is-active', '')
+        }
 
-        row.addEventListener('conversation-selected', (event) => {
+        row.addEventListener('select', (event) => {
           router.navigate({ rail: 'core.chat', detail: 'chat', id: event.detail.roomId })
         }, { signal })
 
         li.appendChild(row)
-        list.appendChild(list.appendChild ? li : li)
+        list.appendChild(li)
       }
     }
 

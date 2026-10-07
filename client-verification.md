@@ -694,3 +694,15 @@ build task runs.
 | Diagnostic Marker | Sets `data-sync-ready="true"` on boot's root element (`refs('root')`) when sync completes successfully |
 | Documentation Path | `packages/app/docs/plugins/sync.md` authored covering all 10 contract sections; index updated in `packages/app/docs/plugins/README.md` |
 | Visual Artifact | Screenshot captured at `packages/app/test-results/sync-boot.png` |
+
+### C-INFRA-23 — Component Data-Attribute Audit, Reflected Host Attributes & Authoring Guide
+
+**Verified:** 2026-10-07
+
+| Fact / Mechanism | Signature & Contract / Behavior |
+|---|---|
+| Component Authoring Guide | Created `packages/app/docs/components.md` containing 16 normative rules and 12 detailed sections covering state source of truth, host attribute reflection (`reflect: true`), `:host([attr])` CSS styling, verbatim static `data-testid` test hooks, accessibility ARIA semantics, event bubbling, four-part i18n pattern, and anti-pattern failure modes |
+| Documentation Index | Created `packages/app/docs/README.md` linking `components.md`, `plugins/README.md`, `storage/README.md`, and `views/README.md` |
+| Component Audit & Refactoring | Audited all 13 components under `packages/app/src/components/`: <br>- `conversation-row.html`: reflected `isUnread` (`reflect: true`), updated CSS selector to `:host([is-unread])`, removed internal `data-room-id` and `data-unread`. <br>- `messenger-boot.html`: reflected `ready`, `error`, `hasOprfToken`, `storageReady`, `storagePersistent`, `syncReady` (`reflect: true`), updated `client()` state mutations (removing imperative `dataset` attribute writes), updated CSS selector to `:host([ready])`. <br>- `ui-icon.html`: removed internal `data-icon-name`. <br>- `ui-profile.html`: reflected `size` (`reflect: true`), updated CSS selectors to `:host([size="..."])`. <br>- `auth-view-register.html`: added `<!-- coralite-ignore-data-attributes -->` pragma for third-party ALTCHA integration (`data-altcha`). <br>- `rail-host.html`: removed `dataset.extensionId` from `li`, retained `data-rail-id` on button. |
+| Test Query Updates | Updated Playwright tests (`hydration.spec.js`, `messenger-boot.spec.js`, `sync.spec.js`) to query reflected host attributes on `<messenger-boot>` (`[ready]`, `[error]`, etc.) rather than internal dataset attributes |
+| Enforcement Test Path | Created `packages/app/tests/unit/components-data-attrs.test.js` recursively checking component `<template>` blocks for `data-*` attributes except `data-testid` (unless `coralite-ignore-data-attributes` pragma is present) and registered it in `unit-smoke` batch in `packages/app/test-batches.js` |

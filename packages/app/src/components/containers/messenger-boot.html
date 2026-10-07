@@ -1,5 +1,5 @@
 <template id="messenger-boot">
-  <div ref="root" class="boot" data-testid="boot" data-state="{{ bootState }}">
+  <div class="boot" data-testid="boot">
     <p ref="loading" class="loading" hidden="{{ loadingHidden }}">
       <span class="spinner" aria-hidden="true"></span>
       <span>{{ boot_loading }}</span>
@@ -18,7 +18,6 @@
     height: 100dvh;
   }
 
-  :host([ready="true"]),
   :host([ready]) {
     display: none !important;
   }
@@ -72,9 +71,12 @@ import { defineComponent } from 'coralite'
 
 export default defineComponent({
   attributes: {
-    ready: { type: Boolean, default: false },
-    error: { type: String, default: '' },
-    hasOprfToken: { type: Boolean, default: false }
+    ready: { type: Boolean, default: false, reflect: true },
+    error: { type: String, default: '', reflect: true },
+    hasOprfToken: { type: Boolean, default: false, reflect: true },
+    storageReady: { type: Boolean, default: false, reflect: true },
+    storagePersistent: { type: Boolean, default: true, reflect: true },
+    syncReady: { type: Boolean, default: false, reflect: true }
   },
 
   server({ i18n }) {
@@ -88,12 +90,11 @@ export default defineComponent({
   },
 
   getters: {
-    bootState: ({ state }) => state.error ? 'error' : (state.ready ? 'ready' : 'booting'),
     loadingHidden: ({ state }) => state.ready || state.error !== '',
     errorHidden: ({ state }) => state.error === ''
   },
 
-  client: async ({ refs, emit, state, signal, i18n, storage, sync, globalStore }) => {
+  client: async ({ emit, state, signal, i18n, storage, sync, globalStore }) => {
     const syncLocale = (locale) => {
       state.locale = locale
       Object.assign(state, i18n.strings([
@@ -133,14 +134,12 @@ export default defineComponent({
           const persistent = typeof storage.isPersistent === 'function'
             ? await storage.isPersistent()
             : true
+          state.storageReady = true
+          state.storagePersistent = persistent
+
           if (globalStore?.$state) {
             globalStore.$state.storageReady = true
             globalStore.$state.storagePersistent = persistent
-          }
-          const root = refs('root')
-          if (root) {
-            root.dataset.storageReady = 'true'
-            root.dataset.storagePersistent = String(persistent)
           }
 
           if (result.user?.id && sync?.runUserScopedSync) {
@@ -151,9 +150,7 @@ export default defineComponent({
                 api,
                 storage
               })
-              if (root) {
-                root.dataset.syncReady = 'true'
-              }
+              state.syncReady = true
             } catch (_syncErr) {
               // Sync failed. The local database is unchanged. A future task retries on reconnect.
             }

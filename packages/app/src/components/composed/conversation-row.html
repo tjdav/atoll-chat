@@ -1,14 +1,23 @@
 <template id="conversation-row">
-  <button ref="row" type="button" class="row" data-testid="conversation-row" data-room-id="{{ roomId }}" data-unread="{{ isUnread }}" aria-current="{{ ariaCurrent }}">
-    <ui-profile name="{{ name }}" size="md"></ui-profile>
-    <div class="row__body">
-      <div class="row__top">
-        <span class="row__name">{{ name }}</span>
-        <span class="row__time">{{ timestamp }}</span>
+  <button
+    ref="button"
+    type="button"
+    class="row"
+    aria-current="{{ ariaCurrent }}"
+    data-testid="conversation-row"
+  >
+    <ui-profile
+      name="{{ title }}"
+      size="md"
+      class="row__avatar"
+    ></ui-profile>
+    <div class="row__content">
+      <div class="row__header">
+        <span class="row__name">{{ title }}</span>
+        <span class="row__time" hidden="{{ timeHidden }}">{{ formattedTime }}</span>
       </div>
-      <div class="row__bottom">
-        <span class="row__preview {{ previewClass }}">{{ preview }}</span>
-        <span class="row__unread" hidden="{{ unreadHidden }}" aria-label="Unread"></span>
+      <div class="row__footer">
+        <span class="row__snippet">{{ lastMessageSnippet }}</span>
       </div>
     </div>
   </button>
@@ -24,29 +33,75 @@
     align-items: center;
     gap: var(--space-3);
     width: 100%;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
     border: none;
     background: transparent;
+    color: var(--text-primary);
     text-align: left;
     cursor: pointer;
     font: inherit;
-    color: inherit;
-    border-radius: var(--radius-md);
-    box-sizing: border-box;
+    transition: background var(--duration-fast, 150ms) ease;
   }
 
-  .row:hover { background: var(--surface-2); }
-  .row[aria-current="true"] { background: var(--surface-3); }
+  .row:hover {
+    background: var(--surface-2);
+  }
 
-  .row__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-  .row__top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
-  .row__name { font-weight: var(--weight-medium); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row[data-unread="true"] .row__name { font-weight: var(--weight-bold); }
-  .row__time { font-size: var(--text-xs); color: var(--text-muted); white-space: nowrap; }
-  .row__bottom { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
-  .row__preview { font-size: var(--text-sm); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-  .row__preview--draft { font-style: italic; }
-  .row__unread { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--accent-fill); flex-shrink: 0; }
+  .row[aria-current="true"] {
+    background: var(--surface-3, var(--surface-2));
+  }
+
+  :host([is-unread]) .row__name,
+  :host([isunread]) .row__name {
+    font-weight: var(--weight-bold);
+  }
+
+  .row__avatar {
+    flex-shrink: 0;
+  }
+
+  .row__content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .row__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .row__name {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .row__time {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .row__footer {
+    display: flex;
+    align-items: center;
+  }
+
+  .row__snippet {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 </style>
 
 <script type="module">
@@ -55,26 +110,33 @@ import { defineComponent } from 'coralite'
 export default defineComponent({
   attributes: {
     roomId: { type: String, default: '' },
-    name: { type: String, default: '' },
-    preview: { type: String, default: '' },
-    timestamp: { type: String, default: '' },
-    isUnread: { type: Boolean, default: false },
-    isActive: { type: Boolean, default: false },
-    hasDraft: { type: Boolean, default: false },
-    isGroup: { type: Boolean, default: false }
+    title: { type: String, default: '' },
+    lastMessageSnippet: { type: String, default: '' },
+    lastMessageTimestamp: { type: Number, default: 0 },
+    isUnread: { type: Boolean, default: false, reflect: true },
+    isActive: { type: Boolean, default: false }
   },
 
   getters: {
     ariaCurrent: ({ state }) => (state.isActive ? 'true' : 'false'),
-    previewClass: ({ state }) => (state.hasDraft ? 'row__preview--draft' : ''),
-    unreadHidden: ({ state }) => !state.isUnread
+    timeHidden: ({ state }) => state.lastMessageTimestamp === 0,
+    formattedTime: ({ state }) => {
+      if (!state.lastMessageTimestamp) return ''
+      const date = new Date(state.lastMessageTimestamp)
+      const now = new Date()
+      const isToday = date.toDateString() === now.toDateString()
+      if (isToday) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+    }
   },
 
-  client({ state, refs, emit, signal }) {
-    const rowEl = refs('row')
-    if (rowEl) {
-      rowEl.addEventListener('click', () => {
-        emit('conversation-selected', { roomId: state.roomId })
+  client({ refs, emit, state, signal }) {
+    const button = refs('button')
+    if (button) {
+      button.addEventListener('click', () => {
+        emit('select', { roomId: state.roomId })
       }, { signal })
     }
   }
