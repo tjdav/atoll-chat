@@ -16,6 +16,7 @@ import { createSseClient } from './transport/sse.js'
 import { createWebhookServer } from './triggers/webhook.js'
 import { createCronEngine } from './triggers/cron.js'
 import { createPausePolicy } from './pause-policy.js'
+import { createReconnectController } from './reconnect.js'
 
 /**
  * Decodes a base64url string to Uint8Array.
@@ -55,8 +56,9 @@ function isValidBase64urlKey (str, expectedLength) {
 /**
  * @typedef {object} RoomSubscription
  * @property {'websocket' | 'sse'} kind
+ * @property {boolean} [connected]
  * @property {() => Promise<void>} close
- * @property {import('./transport/sse.js').SseClient} [client]
+ * @property {import('./transport/sse.js').SseClient | null} [client]
  */
 
 /**
@@ -157,6 +159,8 @@ export function createRuntime ({
   let cronEngine = null
   /** @type {ReturnType<typeof createPausePolicy> | null} */
   let pausePolicy = null
+  /** @type {ReturnType<typeof createReconnectController> | null} */
+  let reconnectController = null
 
   /** @type {ReturnType<import('./context/post.js').createPostHandler> | null} */
   let postHandler = null
@@ -252,7 +256,19 @@ export function createRuntime ({
    * @returns {Promise<void>}
    */
   async function subscribeRoomSse (roomId) {
+    const existingEntry = subscriptions.get(roomId)
+    const initialLastEventId = existingEntry?.client?.getLastEventId()
     const path = `/rooms/${encodeURIComponent(roomId)}/observer-stream`
+
+    if (!existingEntry) {
+      subscriptions.set(roomId, {
+        kind: 'sse',
+        connected: false,
+        client: null,
+        close: async () => {}
+      })
+    }
+
     try {
       const sse = createSseClient({
         serverUrl: `${config.serverUrl}/api/v1`,
@@ -260,6 +276,7 @@ export function createRuntime ({
         path,
         fetchImpl,
         logger,
+        ...(initialLastEventId ? { initialLastEventId } : {}),
         onEvent: (sseEvent) => {
           onRoomEvent(roomId, sseEvent.event, sseEvent.data).catch((err) => {
             logger.error('sse event dispatch failed', {
@@ -286,17 +303,34 @@ export function createRuntime ({
               code: payload?.code
             }
           })
-          subscriptions.delete(roomId)
+          const sub = subscriptions.get(roomId)
+          if (sub && sub.kind === 'sse') {
+            sub.connected = false
+          }
+          if (reconnectController) {
+            reconnectController.notifySseClosed(roomId).catch(() => {})
+          }
         }
       })
       await sse.connect()
-      subscriptions.set(roomId, {
-        kind: 'sse',
-        client: sse,
-        close: async () => {
+      const sub = subscriptions.get(roomId)
+      if (sub) {
+        sub.kind = 'sse'
+        sub.connected = true
+        sub.client = sse
+        sub.close = async () => {
           await sse.close()
         }
-      })
+      } else {
+        subscriptions.set(roomId, {
+          kind: 'sse',
+          connected: true,
+          client: sse,
+          close: async () => {
+            await sse.close()
+          }
+        })
+      }
       logger.debug('room subscribed', {
         meta: {
           room_id: roomId,
@@ -311,6 +345,7 @@ export function createRuntime ({
           error: err instanceof Error ? err.message : String(err)
         }
       })
+      throw err
     }
   }
 
@@ -817,18 +852,67 @@ export function createRuntime ({
       logger
     })
 
-    ws.on('close', (payload) => {
-      logger.warn('websocket closed', { meta: payload })
-    })
-
     ws.on('error', (err) => {
       logger.error('websocket error', { meta: { error: err?.message ?? String(err) } })
     })
 
     ws.subscribe(`private-bot-${botId}`, handleBotChannelEvent)
 
+    /**
+     * Post-reconnect sequence execution.
+     *
+     * @returns {Promise<void>}
+     */
+    async function postReconnectSequence () {
+      logger.warn('reconnect: grant refetch skipped; no bot-facing endpoint')
+      if (settingsStore) {
+        await settingsStore.refresh()
+      }
+      if (publisherKeys) {
+        await publisherKeys.reverifyAll()
+      }
+    }
+
+    /**
+     * SSE reconnect callback for reconnect controller.
+     *
+     * @param {string} [targetRoomId] - Optional room ID.
+     * @returns {Promise<void>}
+     */
+    async function reconnectSse (targetRoomId) {
+      if (targetRoomId) {
+        const entry = subscriptions.get(targetRoomId)
+        if (entry && entry.kind === 'sse' && !entry.connected) {
+          await subscribeRoomSse(targetRoomId)
+        }
+      } else {
+        for (const [roomId, entry] of subscriptions.entries()) {
+          if (entry.kind === 'sse' && !entry.connected) {
+            try {
+              await subscribeRoomSse(roomId)
+            } catch (err) {
+              logger.warn('sse reconnect failed', {
+                meta: { room_id: roomId, error: err instanceof Error ? err.message : String(err) }
+              })
+            }
+          }
+        }
+      }
+    }
+
+    reconnectController = createReconnectController({
+      ws,
+      baseBackoffMs: config.reconnect?.baseBackoffMs ?? 1000,
+      maxBackoffMs: config.reconnect?.maxBackoffMs ?? 30000,
+      jitter: config.reconnect?.jitter ?? 0.2,
+      onConnected: postReconnectSequence,
+      reconnectSse,
+      logger
+    })
+
     try {
       await ws.connect()
+      reconnectController.start()
 
       const webhookTriggers = (bot.config.triggers ?? []).filter((t) => t.type === 'webhook')
       const scheduleTriggers = (bot.config.triggers ?? []).filter((t) => t.type === 'schedule')
@@ -929,6 +1013,11 @@ export function createRuntime ({
       await webhookServer.stop()
       logger.info('webhook server stopped')
       webhookServer = null
+    }
+
+    if (reconnectController) {
+      await reconnectController.stop()
+      reconnectController = null
     }
 
     // Teardown room subscriptions before closing WebSocket

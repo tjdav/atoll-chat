@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 33
-- **Done:** 31
+- **Total Tasks:** 34
+- **Done:** 32
 - **In Progress:** 0
 - **Todo:** 2
 
@@ -53,3 +53,4 @@ Track progress across Bot SDK implementation tasks.
 | B-029a | Triggers Wiring | done | §10.1, §10.2, §10.3 | Wiring trigger servers (webhooks & cron) into runtime startup/shutdown lifecycle |
 | B-029b | Subscriptions Wiring | done | §3.6, §4.7, §6.1, §14.4-14.5 | Wire room channel subscriptions (WebSocket for member mode, SSE stream for observer mode) and event dispatching |
 | B-030 | Pause Policy | done | §11, §12 | Implement pause-on-failure policy, consecutive failure tracking, reportPause callback, guard wrapper across dispatches, and PausedError addition |
+| B-031 | Reconnection | done | §4.7, §14.2, §14.7 | Implement WebSocket and observer SSE reconnection loop with exponential backoff and proportional jitter |
