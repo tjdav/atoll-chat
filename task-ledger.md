@@ -224,14 +224,19 @@
   - **Delivered:** Step 0 report at `verification/pending-mls-adds-bot-targets/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/tests/pending_adds.rs`. Implemented `queue_pending_mls_add` and `queue_pending_mls_add_batch` helpers with application-level and DB-level XOR target enforcement, updated `PendingAddView` response shape (`target_user_id` and `target_bot_id` present, null when unset), updated `mls.add_pending` event payload to include `target_bot_id`, exposed batch helper for Phase 27 bot grant integration, and added 3 test cases in `pending_adds.rs`.
   - **Batch:** `sockudo`
 
+- **Pending MLS Removes Coordination with Bot Targets and Timeout (Phase 15)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Updated `pending_mls_removes` schema per V3 §7.5).
+  - **Delivered:** Step 0 report at `verification/pending-mls-removes-bot-targets/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/rooms.rs`, `server/src/devices.rs`, `server/src/gdpr.rs`, `server/src/config.rs`, `server/src/routes/pending_removes.rs`, `server/src/cleanup/pending_removes.rs`, `server/src/cleanup/mod.rs`, `server/src/main.rs`, `server/tests/pending_removes.rs`.
+  - **Batch:** `sockudo`
+
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 49
-- **Done:** 49
+- **Total Verifications/Tasks Tracked:** 50
+- **Done:** 50
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

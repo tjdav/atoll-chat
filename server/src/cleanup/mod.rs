@@ -3,6 +3,7 @@ use crate::limits::ServerHardMax;
 use crate::login::LoginStore;
 use crate::recovery::RecoveryStore;
 use crate::registration::RegistrationStore;
+use crate::sockudo::Publisher;
 use crate::storage::Storage;
 use async_trait::async_trait;
 use sqlx::SqlitePool;
@@ -23,6 +24,7 @@ pub struct CleanupContext<'a> {
     pub recovery_store: &'a Arc<RecoveryStore>,
     pub storage: &'a Arc<dyn Storage>,
     pub server_max: &'a Arc<ServerHardMax>,
+    pub publisher: &'a Arc<Publisher>,
 }
 
 #[derive(Clone)]
@@ -34,6 +36,7 @@ pub struct CleanupContextOwned {
     pub recovery_store: Arc<RecoveryStore>,
     pub storage: Arc<dyn Storage>,
     pub server_max: Arc<ServerHardMax>,
+    pub publisher: Arc<Publisher>,
 }
 
 impl CleanupContextOwned {
@@ -46,6 +49,7 @@ impl CleanupContextOwned {
             recovery_store: &self.recovery_store,
             storage: &self.storage,
             server_max: &self.server_max,
+            publisher: &self.publisher,
         }
     }
 }
@@ -145,6 +149,7 @@ pub mod attachments;
 pub mod audit;
 pub mod memory;
 pub mod oprf_audit;
+pub mod pending_removes;
 pub mod rate_limits;
 pub mod sessions;
 pub mod sync;

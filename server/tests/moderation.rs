@@ -392,19 +392,18 @@ async fn test_10_kick_queues_mls_removes() {
     let resp = app.oneshot(req_kick).await.unwrap();
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
 
-    // Assert 2 rows in pending_mls_removes for Bob
-    let rows: Vec<(String, String)> = sqlx::query_as(
-        "SELECT target_user_id, target_client_id FROM pending_mls_removes WHERE room_id = ?",
+    // Assert 1 row in pending_mls_removes for Bob
+    let rows: Vec<(Option<String>, Option<String>)> = sqlx::query_as(
+        "SELECT target_user_id, target_bot_id FROM pending_mls_removes WHERE room_id = ?",
     )
     .bind(&room_id)
     .fetch_all(&pool)
     .await
     .unwrap();
 
-    assert_eq!(rows.len(), 2);
-    assert_eq!(rows[0].0, user_b);
-    assert_eq!(rows[1].0, user_b);
-    assert_ne!(rows[0].1, rows[1].1);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].0.as_deref(), Some(user_b.as_str()));
+    assert_eq!(rows[0].1, None);
 }
 
 // 11. Kick by owner in discord mode without moderator also works.

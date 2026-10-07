@@ -7,7 +7,6 @@ use serde_json::json;
 use sqlx::{Row, SqlitePool};
 use std::io::Write;
 use tracing::info;
-use ulid::Ulid;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
@@ -71,12 +70,11 @@ pub async fn anonymise_user(
     };
 
     // 4. Queue MLS Removes for every room the user is a member of
-    let rooms_and_clients: Vec<(String, String)> = match sqlx::query_as(
+    let rooms: Vec<(String,)> = match sqlx::query_as(
         r#"
-        SELECT rm.room_id, d.client_id
-        FROM room_members rm
-        JOIN devices d ON d.user_id = rm.user_id
-        WHERE rm.user_id = ?
+        SELECT room_id
+        FROM room_members
+        WHERE user_id = ?
         "#,
     )
     .bind(user_id)
@@ -89,20 +87,17 @@ pub async fn anonymise_user(
     };
 
     let mut mls_removes_queued: u64 = 0;
-    for (room_id, client_id) in rooms_and_clients {
-        let remove_id = Ulid::new().to_string();
-        sqlx::query(
-            r#"
-            INSERT INTO pending_mls_removes (id, room_id, target_user_id, target_client_id)
-            VALUES (?, ?, ?, ?)
-            "#,
+    for (room_id,) in rooms {
+        crate::rooms::queue_pending_mls_remove_batch(
+            &mut tx,
+            &room_id,
+            crate::rooms::MlsTarget::User(user_id),
         )
-        .bind(&remove_id)
-        .bind(&room_id)
-        .bind(user_id)
-        .bind(&client_id)
-        .execute(&mut *tx)
-        .await?;
+        .await
+        .map_err(|e| match e {
+            crate::rooms::RoomError::Database(err) => GdprError::Database(err),
+            _ => GdprError::Database(sqlx::Error::Protocol(e.to_string())),
+        })?;
 
         mls_removes_queued += 1;
     }

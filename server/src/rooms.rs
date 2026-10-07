@@ -73,9 +73,11 @@ pub fn effective_message_retention_days(
 pub struct PendingRemove {
     pub id: String,
     pub room_id: String,
-    pub target_user_id: String,
-    pub target_client_id: String,
+    pub target_user_id: Option<String>,
+    pub target_bot_id: Option<String>,
     pub queued_at: DateTime<Utc>,
+    pub stale_at: Option<DateTime<Utc>>,
+    pub remove_confirmed_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -788,10 +790,10 @@ pub async fn list_pending_removes(
 
     let rows = sqlx::query(
         r#"
-        SELECT id, room_id, target_user_id, target_client_id, queued_at
+        SELECT id, room_id, target_user_id, target_bot_id, queued_at, stale_at, remove_confirmed_at
         FROM pending_mls_removes
-        WHERE room_id = ? AND consumed_at IS NULL
-        ORDER BY queued_at ASC
+        WHERE room_id = ? AND consumed_at IS NULL AND cancelled_at IS NULL
+        ORDER BY queued_at ASC, id ASC
         "#,
     )
     .bind(room_id)
@@ -804,8 +806,10 @@ pub async fn list_pending_removes(
             id: row.get("id"),
             room_id: row.get("room_id"),
             target_user_id: row.get("target_user_id"),
-            target_client_id: row.get("target_client_id"),
+            target_bot_id: row.get("target_bot_id"),
             queued_at: row.get("queued_at"),
+            stale_at: row.get("stale_at"),
+            remove_confirmed_at: row.get("remove_confirmed_at"),
         });
     }
 
@@ -814,6 +818,7 @@ pub async fn list_pending_removes(
 
 pub async fn consume_pending_remove(
     pool: &SqlitePool,
+    publisher: &Publisher,
     room_id: &str,
     remove_id: &str,
     requester_id: &str,
@@ -831,28 +836,106 @@ pub async fn consume_pending_remove(
         return Err(RoomError::NotAMember);
     }
 
-    let row: Option<(Option<DateTime<Utc>>,)> =
-        sqlx::query_as("SELECT consumed_at FROM pending_mls_removes WHERE id = ? AND room_id = ?")
+    #[derive(sqlx::FromRow)]
+    struct RemoveDetails {
+        consumed_at: Option<DateTime<Utc>>,
+        target_user_id: Option<String>,
+        target_bot_id: Option<String>,
+    }
+
+    let row: Option<RemoveDetails> =
+        sqlx::query_as("SELECT consumed_at, target_user_id, target_bot_id FROM pending_mls_removes WHERE id = ? AND room_id = ?")
             .bind(remove_id)
             .bind(room_id)
             .fetch_optional(&mut *tx)
             .await?;
 
-    match row {
-        Some((None,)) => {
-            sqlx::query(
-                "UPDATE pending_mls_removes SET consumed_at = CURRENT_TIMESTAMP WHERE id = ? AND room_id = ?",
-            )
-            .bind(remove_id)
-            .bind(room_id)
-            .execute(&mut *tx)
-            .await?;
+    let (consumed_at_opt, target_user_id, target_bot_id) = match row {
+        Some(r) => (r.consumed_at, r.target_user_id, r.target_bot_id),
+        None => return Err(RoomError::RemoveNotFound),
+    };
 
-            tx.commit().await?;
-            Ok(())
-        }
-        _ => Err(RoomError::RemoveNotFound),
+    if consumed_at_opt.is_some() {
+        return Err(RoomError::RemoveNotFound);
     }
+
+    let now = Utc::now();
+
+    sqlx::query(
+        "UPDATE pending_mls_removes SET consumed_at = ?, remove_confirmed_at = ? WHERE id = ? AND room_id = ?",
+    )
+    .bind(now)
+    .bind(now)
+    .bind(remove_id)
+    .bind(room_id)
+    .execute(&mut *tx)
+    .await?;
+
+    let mut seq_targets: Vec<(String, i64)> = Vec::new();
+
+    if let Some(ref tu_id) = target_user_id {
+        let target_seq = crate::sync::allocate_user_seq(&mut tx, tu_id)
+            .await
+            .map_err(|e| RoomError::Database(sqlx::Error::Protocol(e.to_string())))?;
+        seq_targets.push((tu_id.clone(), target_seq));
+    }
+
+    if target_user_id.as_deref() != Some(requester_id) {
+        let req_seq = crate::sync::allocate_user_seq(&mut tx, requester_id)
+            .await
+            .map_err(|e| RoomError::Database(sqlx::Error::Protocol(e.to_string())))?;
+        seq_targets.push((requester_id.to_string(), req_seq));
+    }
+
+    if let Some(ref tb_id) = target_bot_id {
+        let owner_row: Option<(String,)> =
+            sqlx::query_as("SELECT owner_user_id FROM bot_accounts WHERE id = ?")
+                .bind(tb_id)
+                .fetch_optional(&mut *tx)
+                .await?;
+
+        if let Some((owner_id,)) = owner_row {
+            if !seq_targets.iter().any(|(uid, _)| uid == &owner_id) {
+                let owner_seq = crate::sync::allocate_user_seq(&mut tx, &owner_id)
+                    .await
+                    .map_err(|e| RoomError::Database(sqlx::Error::Protocol(e.to_string())))?;
+                seq_targets.push((owner_id, owner_seq));
+            }
+        }
+    }
+
+    tx.commit().await?;
+
+    let room_payload = serde_json::json!({
+        "room_id": room_id,
+        "target_user_id": target_user_id,
+        "target_bot_id": target_bot_id,
+        "confirmed_at": now.to_rfc3339(),
+    });
+    let room_channel = format!("private-room-{}", room_id);
+    if let Err(e) = publisher
+        .publish(&room_channel, "mls.remove_confirmed", room_payload)
+        .await
+    {
+        tracing::warn!(error = %e, room_id = %room_id, "mls.remove_confirmed room publish failed");
+    }
+
+    for (uid, user_seq) in seq_targets {
+        let user_payload = serde_json::json!({
+            "room_id": room_id,
+            "target_user_id": target_user_id,
+            "target_bot_id": target_bot_id,
+            "confirmed_at": now.to_rfc3339(),
+            "user_seq": user_seq,
+        });
+        let envelope =
+            crate::sync::UserEventEnvelope::new("mls.remove_confirmed", user_seq, user_payload);
+        if let Err(e) = crate::sync::publish_user_event(publisher, &uid, &envelope).await {
+            tracing::warn!(error = %e, user_id = %uid, "mls.remove_confirmed user publish failed");
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn leave_room(
@@ -1140,6 +1223,35 @@ pub async fn list_members(
         members,
         next_cursor,
     })
+}
+
+/// Queues a `pending_mls_removes` row for a target identity (user or bot) in a room.
+/// Sets `target_user_id` or `target_bot_id` according to `MlsTarget`. Returns inserted row ID.
+pub async fn queue_pending_mls_remove_batch(
+    tx: &mut sqlx::SqliteConnection,
+    room_id: &str,
+    target: MlsTarget<'_>,
+) -> Result<String, RoomError> {
+    let (target_user_id, target_bot_id) = match target {
+        MlsTarget::User(uid) => (Some(uid), None),
+        MlsTarget::Bot(bid) => (None, Some(bid)),
+    };
+
+    let remove_id = Ulid::new().to_string();
+    sqlx::query(
+        r#"
+        INSERT INTO pending_mls_removes (id, room_id, target_user_id, target_bot_id)
+        VALUES (?, ?, ?, ?)
+        "#,
+    )
+    .bind(&remove_id)
+    .bind(room_id)
+    .bind(target_user_id)
+    .bind(target_bot_id)
+    .execute(&mut *tx)
+    .await?;
+
+    Ok(remove_id)
 }
 
 /// Queues `pending_mls_adds` rows across a batch of client device key packages for a target identity (user or bot).
@@ -1580,27 +1692,8 @@ pub async fn kick_member(
         .execute(&mut *tx)
         .await?;
 
-    // 6. Queue MLS Removes for every device target has
-    let devices: Vec<(String,)> = sqlx::query_as("SELECT client_id FROM devices WHERE user_id = ?")
-        .bind(target_user_id)
-        .fetch_all(&mut *tx)
-        .await?;
-
-    for (client_id,) in devices {
-        let remove_id = Ulid::new().to_string();
-        sqlx::query(
-            r#"
-            INSERT INTO pending_mls_removes (id, room_id, target_user_id, target_client_id)
-            VALUES (?, ?, ?, ?)
-            "#,
-        )
-        .bind(&remove_id)
-        .bind(room_id)
-        .bind(target_user_id)
-        .bind(&client_id)
-        .execute(&mut *tx)
-        .await?;
-    }
+    // 6. Queue MLS Remove for target user
+    queue_pending_mls_remove_batch(&mut tx, room_id, MlsTarget::User(target_user_id)).await?;
 
     tx.commit().await?;
 

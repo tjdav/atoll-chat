@@ -228,7 +228,9 @@ async fn test_08_owner_can_update_limits() {
         "message_size_bytes": 8192,
         "attachment_retention_days": 30,
         "call_max_participants": 4,
-        "reactions_per_message": 50
+        "reactions_per_message": 50,
+        "room_metadata_bytes": 16384,
+        "edit_window_seconds": 900
     });
 
     let req = Request::builder()
@@ -264,7 +266,9 @@ async fn test_09_limits_exceeding_server_hard_max_returns_400() {
         "message_size_bytes": 16384,
         "attachment_retention_days": 0,
         "call_max_participants": 8,
-        "reactions_per_message": 50
+        "reactions_per_message": 50,
+        "room_metadata_bytes": 16384,
+        "edit_window_seconds": 900
     });
 
     let req = Request::builder()
@@ -298,7 +302,9 @@ async fn test_10_limits_below_minimum_returns_400() {
         "message_size_bytes": 16384,
         "attachment_retention_days": 0,
         "call_max_participants": 8,
-        "reactions_per_message": 50
+        "reactions_per_message": 50,
+        "room_metadata_bytes": 16384,
+        "edit_window_seconds": 900
     });
 
     let req = Request::builder()
