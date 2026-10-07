@@ -949,3 +949,16 @@
   - **Cross-User Non-Leakage:** Cross-user endpoints `POST /users/lookup`, `GET /rooms/:id/members`, and `GET /users/me` do not expose or leak the uploader's avatar attachment ID or file ID.
   - **S3 Storage Backend Support:** `POST /users/me/avatar` functions seamlessly under `STORAGE_BACKEND=s3`, writing rows with `storage_backend = 's3'` and issuing S3 `PUT` requests for the attachment key.
 - **Link to report:** [verification/avatar-upload-v3/report.md](verification/avatar-upload-v3/report.md)
+
+## Pending MLS Adds Bot Targets & Key Package Extension Verification
+- **ID:** Pending MLS Adds Bot Targets
+- **Date:** 2026-10-07
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §7.5, §7.10, §8.5, §8.8.5, §8.8.6, §8.9, §11
+- **Question asked:** What are the verified facts for `pending_mls_adds` and `key_packages` bot target schema XOR enforcement, `PendingAddView` JSON shape, helper contracts, and event payload structure?
+- **Answer found:**
+  - **Schema & XOR Enforcement:** Both `pending_mls_adds` and `key_packages` tables in `server/migrations/0001_v2_schema.sql` allow `user_id`/`target_user_id` and `bot_id`/`target_bot_id` to be nullable and enforce XOR `CHECK ((target_user_id IS NOT NULL AND target_bot_id IS NULL) OR (target_user_id IS NULL AND target_bot_id IS NOT NULL))`. Attempting to insert both or neither target produces a database CHECK constraint error.
+  - **`PendingAddView` API Response Shape:** `GET /rooms/:id/pending-adds` returns `{"pending_adds": [...]}` with `Cache-Control: no-store`. Both `target_user_id` and `target_bot_id` fields are present in every row item in JSON output (populated as a string for the target identity and `null` for the other).
+  - **Helper Contracts:** `queue_pending_mls_add` and `queue_pending_mls_add_batch` in `server/src/rooms.rs` enforce application-level XOR target checks, select and consume non-last-resort (or fallback last-resort) key packages for the target user/bot device, and insert rows into `pending_mls_adds`.
+  - **`mls.add_pending` Event Payload Shape:** Published on `private-room-{room_id}` post-commit with shape `{ "room_id": "r_...", "target_user_id": "u_..." | null, "target_bot_id": "b_..." | null, "client_ids": ["c_...", ...] }`.
+- **Link to report:** [verification/pending-mls-adds-bot-targets/report.md](verification/pending-mls-adds-bot-targets/report.md)

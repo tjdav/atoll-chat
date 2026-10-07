@@ -191,7 +191,8 @@ CREATE INDEX IF NOT EXISTS idx_reactions_room ON reactions(room_id, created_at D
 -- MLS Coordination
 CREATE TABLE IF NOT EXISTS key_packages (
     id             TEXT PRIMARY KEY,
-    user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id        TEXT REFERENCES users(id) ON DELETE CASCADE,
+    bot_id         TEXT REFERENCES bot_accounts(id) ON DELETE CASCADE,
     client_id      TEXT NOT NULL,
     cipher_suite   INTEGER NOT NULL DEFAULT 1,
     key_package    BLOB NOT NULL,
@@ -199,7 +200,12 @@ CREATE TABLE IF NOT EXISTS key_packages (
     is_last_resort INTEGER NOT NULL DEFAULT 0,
     consumed       INTEGER NOT NULL DEFAULT 0,
     consumed_at    DATETIME,
-    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+        (user_id IS NOT NULL AND bot_id IS NULL)
+        OR
+        (user_id IS NULL AND bot_id IS NOT NULL)
+    )
 );
 CREATE INDEX IF NOT EXISTS idx_kp_claim_order ON key_packages(user_id, consumed, is_last_resort, created_at ASC, id ASC) WHERE consumed = 0;
 
@@ -228,11 +234,17 @@ CREATE INDEX IF NOT EXISTS idx_pending_mls_removes_active ON pending_mls_removes
 CREATE TABLE IF NOT EXISTS pending_mls_adds (
     id               TEXT PRIMARY KEY,
     room_id          TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    target_user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    target_user_id   TEXT REFERENCES users(id),
+    target_bot_id    TEXT REFERENCES bot_accounts(id),
     target_client_id TEXT NOT NULL,
     key_package_id   TEXT NOT NULL REFERENCES key_packages(id),
     queued_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    consumed_at      DATETIME
+    consumed_at      DATETIME,
+    CHECK (
+        (target_user_id IS NOT NULL AND target_bot_id IS NULL)
+        OR
+        (target_user_id IS NULL AND target_bot_id IS NOT NULL)
+    )
 );
 CREATE INDEX IF NOT EXISTS idx_pending_mls_adds_active ON pending_mls_adds(room_id, consumed_at) WHERE consumed_at IS NULL;
 

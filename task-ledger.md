@@ -219,6 +219,11 @@
   - **Delivered:** Step 0 report at `verification/avatar-upload-v3/report.md`, `server/tests/user_avatar.rs`. Added tests for server opacity (`test_user_avatar_upload_opaque_payload`), `profile_version` non-mutation (`test_user_avatar_upload_profile_version_non_mutation`), cross-user non-leakage (`test_user_avatar_upload_cross_user_visibility`), S3 storage backend (`test_user_avatar_upload_s3_backend`), and extended `test_user_avatar_upload_happy_path` to assert zero Sockudo events are published on upload.
   - **Batch:** `storage` (sub-batch `user_avatar`)
 
+- **Pending MLS Adds Coordination with Bot Targets (Phase 14)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Extended `pending_mls_adds` and `key_packages` tables with nullable user/bot target columns and XOR `CHECK` constraints).
+  - **Delivered:** Step 0 report at `verification/pending-mls-adds-bot-targets/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/tests/pending_adds.rs`. Implemented `queue_pending_mls_add` and `queue_pending_mls_add_batch` helpers with application-level and DB-level XOR target enforcement, updated `PendingAddView` response shape (`target_user_id` and `target_bot_id` present, null when unset), updated `mls.add_pending` event payload to include `target_bot_id`, exposed batch helper for Phase 27 bot grant integration, and added 3 test cases in `pending_adds.rs`.
+  - **Batch:** `sockudo`
+
 ## Annotations for Future Tasks
 
 None.
