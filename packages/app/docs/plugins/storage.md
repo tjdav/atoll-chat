@@ -1,11 +1,18 @@
 # Storage Plugin & Migration Runner (`storage`)
 
-### Import pattern
+### Import & Configuration Pattern
 
 The `client.context` uses a Phase 1 async dynamic import to load
 `../lib/db/index.js` and `../lib/db/repositories/index.js` into the browser bundle. This is required: static top-level
 imports in the plugin file are not hoisted into the serialized client
 bundle. See `docs/plugins/README.md` for the cross-cutting rule.
+
+Build-time data (including SQL migration objects loaded via `loadMigrations()`) is passed into the plugin factory and delivered to the client context via Coralite's `client.config` mechanism:
+
+- The storage plugin sets `client.config = { dbName, migrations }`.
+- Coralite serializes `client.config` into the client JavaScript bundle at build time.
+- The client context resolver reads `pluginContext.config?.dbName` and `pluginContext.config?.migrations`.
+- A build verification check (`pnpm check:migration-bundle`) verifies that every `.sql` migration file is present in the compiled JavaScript bundle.
 
 The `storage` plugin provides SQLite persistence, WASM+OPFS browser storage, in-memory fallback backend abstractions, the forward-only migration runner, key-value metadata helpers (`meta`), and the repository aggregator accessor (`repos`).
 

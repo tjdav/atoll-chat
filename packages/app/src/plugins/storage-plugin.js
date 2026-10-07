@@ -1,9 +1,13 @@
 import { definePlugin } from 'coralite'
 import { fileURLToPath } from 'node:url'
-import { createDb } from '../lib/db/index.js'
 
 /**
  * Storage Coralite plugin factory.
+ *
+ * Factory options are evaluated at build time in Node. They are not
+ * serialized into the client bundle. Coralite delivers the `client.config`
+ * object to the context resolver as `pluginContext.config`. Do not read
+ * `options` directly inside `client.context`.
  *
  * @param {object} [options] - Plugin configuration options.
  * @param {string} [options.dbName='messenger'] - Database name.
@@ -49,20 +53,14 @@ export default (options = {}) => {
     },
 
     client: {
+      config: { dbName, migrations },
       context: async (pluginContext) => {
         const [{ createDb }, { createRepositories }] = await Promise.all([
           import('../lib/db/index.js'),
           import('../lib/db/repositories/index.js')
         ])
-        const activeDbName = (typeof options !== 'undefined' && options?.dbName) ? options.dbName : 'messenger'
-        const activeMigrations = (typeof options !== 'undefined' && options?.migrations && options.migrations.length > 0)
-          ? options.migrations
-          : [
-              {
-                name: '0001-meta.sql',
-                sql: 'CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS _meta (key TEXT PRIMARY KEY, value_json TEXT NOT NULL, updated_at INTEGER NOT NULL);'
-              }
-            ]
+        const activeDbName = pluginContext.config?.dbName ?? 'messenger'
+        const activeMigrations = pluginContext.config?.migrations ?? []
         const db = pluginContext.__storage_client__ ??
           (pluginContext.__storage_client__ = createDb({ dbName: activeDbName, migrations: activeMigrations }))
         const repos = pluginContext.__storage_repos_client__ ??

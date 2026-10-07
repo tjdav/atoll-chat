@@ -40,6 +40,7 @@ export default [
       'tests/unit/db.test.js',
       'tests/unit/wasm-backend.test.js',
       'tests/unit/storage-plugin.test.js',
+      'tests/unit/storage-plugin-config.test.js',
       'tests/unit/state.test.js',
       'tests/unit/repositories-users.test.js',
       'tests/unit/repositories-rooms.test.js',

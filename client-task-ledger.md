@@ -14,7 +14,7 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 0 |
-| Done | 47 |
+| Done | 48 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -22,6 +22,7 @@ or modify the server's ledger.
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
 | C-V-A | Verify repo state and toolchain | done | — | — |
+| C-INFRA-24 | Fix Migration Delivery via `client.config` and Document Plugin Config Pattern | done | C-V-H, C-INFRA-20, C-INFRA-8 | unit-smoke, component-smoke |
 | C-INFRA-23 | Component Data-Attribute Audit and Component Authoring Guide | done | C-CHAT-6, C-INFRA-6b, C-INFRA-6c, C-V-E, C-V-F | unit-smoke |
 | C-INFRA-22 | User-Scoped Sync Plugin | done | C-INFRA-21, C-INFRA-20, C-INFRA-19, C-INFRA-16, C-INFRA-10, C-INFRA-11 | unit-smoke, component-auth |
 | C-INFRA-21 | Repository Accessor in the Storage Plugin Context | done | C-INFRA-20, C-INFRA-11, C-INFRA-9, C-INFRA-10 | unit-smoke |
@@ -231,6 +232,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
 | CF-004 | C-INFRA-5b | Enhancement (dev/prod CSS `@import` resolution divergence in default build pipeline) | T4 | filed-upstream; client-mitigated-by-configuration |
 | CF-005 | C-V-E | Documentation bug (Getters context definition in LLM ref §6.4 vs runtime) | T4 | filed-upstream; client-mitigated-by-architecture |
 | CF-006 | C-INFRA-6b | Bug / Framework constraint (SSR in-place AST token mutation prevents multi-render token substitution) | T1/T2 | filed-upstream; client-mitigated-by-architecture |
+| CF-007 | C-INFRA-24 | Documentation bug (LLM reference omits `client.config` in plugin example) | T4 | filed-upstream; client-mitigated-by-architecture |
 
 ## Notes
 
@@ -652,6 +654,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created enforcement unit test `packages/app/tests/unit/components-data-attrs.test.js` and registered it in `unit-smoke` in `packages/app/test-batches.js`.
   - Updated `packages/app/TESTING.md` with Component attribute enforcement section.
   - Extended client task template standard checklist in `client-task-ledger.md` with Component Authoring section.
+
+- **C-INFRA-24 Deliverables & Status:**
+  - Status: `done`.
+  - Modified `packages/app/src/plugins/storage-plugin.js` setting `client.config = { dbName, migrations }` and reading `pluginContext.config?.dbName` / `pluginContext.config?.migrations` in `client.context`.
+  - Created unit regression test `packages/app/tests/unit/storage-plugin-config.test.js` (9 cases) registered under `unit-smoke` batch in `packages/app/test-batches.js`.
+  - Created build-time verification script `packages/app/scripts/check-migration-bundle.mjs` and added `"check:migration-bundle"` script to `packages/app/package.json`.
+  - Authored `packages/app/docs/plugins/authoring.md` (10 sections detailing plugin authoring and `client.config` delivery pattern).
+  - Updated `packages/app/docs/plugins/README.md` and `packages/app/docs/plugins/storage.md`.
+  - Recorded T4 feedback entry CF-007 in `client-coralite-feedback.md` and addendum in `client-verification.md`.
 
 ## Component Authoring Policy
 

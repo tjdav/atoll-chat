@@ -72,3 +72,14 @@ Status: Active — tracks client-team friction with Coralite and its upstream di
 - **Component:** `coralite` v1.0.0-rc.5
 - **Description:** In `index.js` (`replaceToken`), Coralite performs SSR `<c-token>` substitution by directly mutating cached component AST text nodes (`node.data = node.data.replace(content, value)`). On subsequent SSR render passes, the cached AST nodes no longer contain the `{{ token }}` string pattern, leaving `<c-token></c-token>` placeholders empty in HTML responses.
 - **Impact:** SSR renders empty `<c-token>` tags after the first render pass across all custom elements using server state bindings.
+
+### CF-007 — LLM reference omits `client.config` from the plugin example
+
+- **Task:** C-INFRA-24
+- **Tier:** T4 — Documentation bug / enhancement
+- **Status:** filed-upstream; client-mitigated-by-architecture
+- **Client-side action taken:** Authored `docs/plugins/authoring.md` documenting `client.config` delivery pattern and updated `storage-plugin.js` to set `client.config`.
+- **Issue URL:** https://codeberg.org/tjdavid/coralite/issues
+- **Component:** `coralite` v1.0.0-rc.5
+- **Description:** The Coralite LLM reference's `definePlugin` example (§7.1) shows `client.context` but omits `client.config`. The published Coralite documentation at coralite.dev documents `client.config` as the sanctioned mechanism for passing build-time data to the client. The omission in the LLM reference caused the client team to conclude that no such mechanism existed, leading to a misdiagnosis (C-V-H) and an unnecessary workaround proposal.
+- **Impact:** A verification task (C-V-H) concluded that plugin factory options cannot be delivered to the client at all. The correct mechanism (`client.config` → `pluginContext.config`) was discovered later. The misdiagnosis cost one verification cycle and one wrongly-scoped fix task.
