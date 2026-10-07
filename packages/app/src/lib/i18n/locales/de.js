@@ -49,5 +49,15 @@ export default {
   'app_shell_detail_label': 'Aktive Ansicht',
 
   'ext_placeholder_heading': 'In Bearbeitung',
-  'ext_placeholder_body': 'Diese Oberfläche ist noch nicht implementiert.'
+  'ext_placeholder_body': 'Diese Oberfläche ist noch nicht implementiert.',
+
+  'chats_empty_title': 'Noch keine Chats',
+  'chats_empty_body': 'Erstellen Sie einen Raum oder treten Sie mit einem Einladungslink bei.',
+  'chats_preview_no_messages': 'Noch keine Nachrichten',
+  'chats_preview_you_prefix': 'Du',
+  'chats_preview_photo': 'Foto',
+  'chats_preview_video': 'Video',
+  'chats_preview_voice': 'Sprachnachricht',
+  'chats_preview_document': 'Dokument',
+  'chats_preview_sticker': 'Sticker'
 }

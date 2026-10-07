@@ -49,8 +49,8 @@ test.describe('Surface Host Component Tests', () => {
     const listPanel = page.locator('[data-testid="list-panel"]')
     await expect(listPanel).toBeVisible()
 
-    const listPlaceholder = listPanel.locator('[data-testid="extension-placeholder"]')
-    await expect(listPlaceholder).toBeVisible()
+    const listComponent = listPanel.locator('[data-testid="chats"]')
+    await expect(listComponent).toBeVisible()
 
     const detailPanel = page.locator('[data-testid="detail-panel"]')
     await expect(detailPanel).toBeVisible()

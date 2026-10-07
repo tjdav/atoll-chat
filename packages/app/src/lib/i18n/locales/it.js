@@ -49,5 +49,15 @@ export default {
   'app_shell_detail_label': 'Vista attiva',
 
   'ext_placeholder_heading': 'In costruzione',
-  'ext_placeholder_body': 'Questa superficie non è ancora implementata.'
+  'ext_placeholder_body': 'Questa superficie non è ancora implementata.',
+
+  'chats_empty_title': 'Ancora nessuna chat',
+  'chats_empty_body': 'Crea una stanza o unisciti con un link di invito.',
+  'chats_preview_no_messages': 'Ancora nessun messaggio',
+  'chats_preview_you_prefix': 'Tu',
+  'chats_preview_photo': 'Foto',
+  'chats_preview_video': 'Video',
+  'chats_preview_voice': 'Messaggio vocale',
+  'chats_preview_document': 'Documento',
+  'chats_preview_sticker': 'Sticker'
 }

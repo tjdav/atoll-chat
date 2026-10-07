@@ -1,0 +1,243 @@
+<template id="view-chats">
+  <div class="chats" data-testid="chats">
+    <ul class="chats__list" ref="list" hidden="{{ listHidden }}"></ul>
+    <div class="chats__empty" ref="empty" hidden="{{ emptyHidden }}">
+      <p class="chats__empty-title">{{ chats_empty_title }}</p>
+      <p class="chats__empty-body">{{ chats_empty_body }}</p>
+    </div>
+  </div>
+</template>
+
+<style>
+  :host {
+    display: block;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  .chats {
+    padding: var(--space-2);
+    box-sizing: border-box;
+    height: 100%;
+  }
+
+  .chats__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chats__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 100%;
+    padding: var(--space-8);
+    color: var(--text-muted);
+    gap: var(--space-2);
+    box-sizing: border-box;
+  }
+
+  .chats__empty-title {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .chats__empty-body {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  attributes: {
+    roomsCount: { type: Number, default: 0 }
+  },
+
+  getters: {
+    listHidden: ({ state }) => state.roomsCount === 0,
+    emptyHidden: ({ state }) => state.roomsCount > 0
+  },
+
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'chats_empty_title',
+        'chats_empty_body',
+        'chats_preview_no_messages',
+        'chats_preview_you_prefix',
+        'chats_preview_photo',
+        'chats_preview_video',
+        'chats_preview_voice',
+        'chats_preview_document',
+        'chats_preview_sticker'
+      ])
+    }
+  },
+
+  client: async ({ state, refs, i18n, storage, router, signal }) => {
+    const { assembleRooms } = await import('../../lib/views/view-chats-data.js')
+    const { api } = await import('../../lib/api/client.js')
+
+    const syncLocale = (locale) => {
+      state.locale = locale
+      Object.assign(state, i18n.strings([
+        'chats_empty_title',
+        'chats_empty_body',
+        'chats_preview_no_messages',
+        'chats_preview_you_prefix',
+        'chats_preview_photo',
+        'chats_preview_video',
+        'chats_preview_voice',
+        'chats_preview_document',
+        'chats_preview_sticker'
+      ]))
+    }
+
+    i18n.subscribeLocale((locale) => {
+      syncLocale(locale)
+      loadRooms().then(render)
+    }, { signal })
+
+    if (state.locale !== i18n.getLocale()) {
+      syncLocale(i18n.getLocale())
+    }
+
+    window.addEventListener('test-storage-seeded', () => {
+      loadRooms().then(render)
+    }, { signal })
+
+    const list = refs('list')
+    let assembledRooms = []
+
+    try {
+      await storage.open()
+    } catch {
+      // Storage initialization error handling
+    }
+    const repos = storage.repos()
+
+    async function getCurrentUserId() {
+      try {
+        const me = await api.get('/users/me')
+        if (me?.id) return me.id
+      } catch {
+        // Fallback if offline
+      }
+      return ''
+    }
+
+    async function loadRooms() {
+      try {
+        const currentUserId = await getCurrentUserId()
+        const allRooms = await repos.rooms.list({ limit: 500 })
+        const orderRows = await repos.roomOrder.list()
+        const readStates = await repos.readState.listForUser(currentUserId)
+        const drafts = await repos.drafts.list()
+
+        const lastMessagesByRoom = {}
+        const displayNamesByRoom = {}
+        const memberCountsByRoom = {}
+
+        for (const room of allRooms) {
+          const roomId = room.room_id
+          const lastMsgs = await repos.messages.listApplicationsInRoom(roomId, { limit: 1 })
+          lastMessagesByRoom[roomId] = lastMsgs[0] ?? null
+
+          const members = await repos.roomMembers.listInRoom(roomId)
+          memberCountsByRoom[roomId] = members.length
+
+          const otherMemberIds = members
+            .map((m) => m.user_id)
+            .filter((id) => id !== currentUserId)
+
+          const displayNames = []
+          for (const id of otherMemberIds) {
+            const user = await repos.users.get(id)
+            displayNames.push(user?.display_name || id)
+          }
+          displayNamesByRoom[roomId] = displayNames
+        }
+
+        const translations = i18n.strings([
+          'chats_preview_no_messages',
+          'chats_preview_you_prefix',
+          'chats_preview_photo',
+          'chats_preview_video',
+          'chats_preview_voice',
+          'chats_preview_document',
+          'chats_preview_sticker'
+        ])
+
+        assembledRooms = assembleRooms({
+          rooms: allRooms,
+          orderRows,
+          readStates,
+          drafts,
+          lastMessagesByRoom,
+          displayNamesByRoom,
+          memberCountsByRoom,
+          currentUserId,
+          translations
+        })
+
+        state.roomsCount = assembledRooms.length
+      } catch {
+        assembledRooms = []
+        state.roomsCount = 0
+      }
+    }
+
+    function render() {
+      if (!list) return
+      list.innerHTML = ''
+      const activeRoomId = new URL(window.location.href).searchParams.get('id')
+
+      for (const r of assembledRooms) {
+        const li = document.createElement('li')
+        const row = document.createElement('conversation-row')
+        row.setAttribute('room-id', r.roomId)
+        row.setAttribute('roomid', r.roomId)
+        row.setAttribute('name', r.name)
+        row.setAttribute('preview', r.preview)
+        row.setAttribute('timestamp', r.timestamp)
+        row.setAttribute('is-unread', String(r.isUnread))
+        row.setAttribute('isunread', String(r.isUnread))
+        row.setAttribute('is-active', String(r.roomId === activeRoomId))
+        row.setAttribute('isactive', String(r.roomId === activeRoomId))
+        row.setAttribute('has-draft', String(r.hasDraft))
+        row.setAttribute('hasdraft', String(r.hasDraft))
+        row.setAttribute('is-group', String(r.isGroup))
+        row.setAttribute('isgroup', String(r.isGroup))
+
+        row.addEventListener('conversation-selected', (event) => {
+          router.navigate({ rail: 'core.chat', detail: 'chat', id: event.detail.roomId })
+        }, { signal })
+
+        li.appendChild(row)
+        list.appendChild(list.appendChild ? li : li)
+      }
+    }
+
+    router.subscribe(() => {
+      render()
+    })
+
+    await loadRooms()
+    render()
+  }
+})
+</script>
