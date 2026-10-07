@@ -1,5 +1,20 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-034 Verification Fact
+- **Mock Server Implementation (`packages/bot/src/testing/mock-server.js`)**:
+  - The mock server double lives at `packages/bot/src/testing/mock-server.js` exporting factory `createMockServer`.
+  - `createMockServer` returns a started Node `http` server on `127.0.0.1` (ephemeral port 0 by default) exposing `getUrl`, `getPort`, `requests`, `setResponse`, `setHandler`, `sseEmit`, and `close`.
+  - Implements standard default handlers for eleven endpoints: `GET /capabilities`, `GET /api/v1/bots/:id`, `POST /sockudo/auth`, `GET /api/v1/bots/me/settings`, `POST /api/v1/bots/me/messages`, `POST /api/v1/bots/me/commands/:id/ack`, `POST /api/v1/bots/me/pause`, `POST /api/v1/rooms/:id/bot-messages`, `GET /api/v1/kt/user/:id`, `GET /api/v1/rooms/:id/observer-stream`, and `POST /api/v1/rooms/:id/bot-commands`.
+  - Request recording records every request (including 404s) into `requests` array capturing `method`, `path`, `query`, `headers`, `body`, and parsed `json`.
+  - Override precedence evaluates in order: `onRequest` callback > `setHandler` > `setResponse` > default endpoint handler.
+  - `validateCrypto: true` mode verifies Ed25519 signatures on `POST /rooms/:id/bot-messages` and `POST /rooms/:id/publisher-key` using signing primitives from `crypto/signing.js` (`verify`, `encodeBotMessagePayload`, `encodePublisherKeyPayload`), performing base64url and minimum wire-length checks. Rejects invalid signatures or shapes with status 400 and error envelope `{ error: 'signature_invalid' }` or `{ error: 'invalid_request' }`.
+  - Does not verify HKDF outputs, publisher key derivations, or Key Transparency inclusion proofs (out of scope for mock server double).
+  - SSE stream management (`GET /observer-stream`) writes `retry: 1000` header on stream open and dispatches test-injected events via `sseEmit`. `Last-Event-ID` replay is not implemented.
+  - `close()` is idempotent and destroys active SSE streams before closing the HTTP server.
+  - **Spec Gap 1 (endpoint list)**: §13.3 states "implements every bot-facing endpoint" but does not enumerate them. The mock implements the eleven endpoints used by the runtime and test suite.
+  - **Spec Gap 2 (validation depth)**: §13.3 specifies `validateCrypto: true` verifies signatures and parses wire formats without defining depth. The mock performs Ed25519 signature and length verification on `bot-messages` and `publisher-key`, omitting HKDF output verification, publisher key derivations, and KT inclusion proofs.
+  - Registered `mock-server` batch (46 unit test cases in `packages/bot/tests/unit/mock-server.test.js`) in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-033 Verification Fact
 - **Implement `createTestCtx` and `@atoll/bot/testing` (`packages/bot/src/testing/create-test-ctx.js` & `packages/bot/src/testing/index.js`)**:
   - The testing entry point is `packages/bot/src/testing/index.js` re-exporting `createTestCtx`. Package export condition `./testing` created by B-001 was verified intact in `package.json`.

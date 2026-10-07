@@ -18,6 +18,10 @@
     "./testing": {
       "types": "./dist/testing/index.d.ts",
       "default": "./src/testing/index.js"
+    },
+    "./testing/mock-server": {
+      "types": "./dist/testing/mock-server.d.ts",
+      "default": "./src/testing/mock-server.js"
     }
   },
   "files": [

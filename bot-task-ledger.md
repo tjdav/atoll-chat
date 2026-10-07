@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 35
-- **Done:** 34
+- **Total Tasks:** 36
+- **Done:** 35
 - **In Progress:** 0
 - **Todo:** 1
 
@@ -17,6 +17,7 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-034 | Testing | done | §8.8, §13.3 | Implement the mock server double (`packages/bot/src/testing/mock-server.js`) with optional crypto validation |
 | B-033 | Testing | done | §3.5, §13.1 | Implement `createTestCtx` helper, in-memory stores, and `@atoll/bot/testing` entry point |
 | B-001 | Scaffolding | done | §2 | Workspace structure and package configuration |
 | B-002 | Types | done | §3 | JSDoc type declarations for public type surface |

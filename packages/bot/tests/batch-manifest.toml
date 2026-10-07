@@ -227,3 +227,9 @@ name = "create-test-ctx"
 files = [
   "unit/create-test-ctx.test.js",
 ]
+
+[[batch]]
+name = "mock-server"
+files = [
+  "unit/mock-server.test.js",
+]
