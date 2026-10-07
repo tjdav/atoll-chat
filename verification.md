@@ -153,6 +153,7 @@
     ```
     Returns `Cache-Control: no-store`.
   - **Rate Limit Policy:** Endpoint is read-only and cheap (single indexed scan). No new rate limit variant added.
+  - **Delta (V3 Alignment):** V3 confirms the V2 Task 31 fact with one correction — `oldest_affected_at` and `newest_affected_at` timestamps are computed across the union of affected messages and room-scoped attachments (taking overall `MIN(created_at)` and `MAX(created_at)` across both tables), not messages only.
 
 ## Task — Retention Change Preview V3 Alignment (Phase 12)
 - **ID:** Retention Preview V3 Alignment

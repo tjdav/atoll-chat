@@ -167,6 +167,21 @@ async fn test_retention_preview_flow() {
     .await
     .unwrap();
 
+    // Message 4b: 65 days old (proposal protocol message) -> should NOT be counted
+    let msg4b_id = "01HM000000000000000000004B";
+    sqlx::query(
+        r#"
+        INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext, created_at)
+        VALUES (?, ?, ?, 'c1', 0, 0, 'proposal', X'1234', datetime('now', '-65 days'))
+        "#,
+    )
+    .bind(msg4b_id)
+    .bind(room_id)
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
     // Message 5: 10 days old (regular application message) -> should NOT be affected by 30-day retention
     let msg5_id = "01HM0000000000000000000005";
     sqlx::query(
@@ -198,7 +213,17 @@ async fn test_retention_preview_flow() {
     .unwrap();
 
     // Snapshot DB state before preview
+    let room_retention_before: Option<i64> =
+        sqlx::query_scalar("SELECT retention_days FROM rooms WHERE id = ?")
+            .bind(room_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     let msg_count_before: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM room_messages")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let att_count_before: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM attachments")
         .fetch_one(&pool)
         .await
         .unwrap();
@@ -231,12 +256,24 @@ async fn test_retention_preview_flow() {
     assert!(res_body["oldest_affected_at"].is_string());
     assert!(res_body["newest_affected_at"].is_string());
 
-    // 2. Read-only assertion: verify DB row counts unchanged
+    // 2. Read-only assertion: verify DB row counts and room retention_days unchanged
+    let room_retention_after: Option<i64> =
+        sqlx::query_scalar("SELECT retention_days FROM rooms WHERE id = ?")
+            .bind(room_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     let msg_count_after: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM room_messages")
         .fetch_one(&pool)
         .await
         .unwrap();
+    let att_count_after: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM attachments")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(room_retention_before, room_retention_after);
     assert_eq!(msg_count_before, msg_count_after);
+    assert_eq!(att_count_before, att_count_after);
 
     // 3. Same retention preview (proposed = 90 days)
     let req_same = Request::builder()
@@ -254,6 +291,7 @@ async fn test_retention_preview_flow() {
         .unwrap();
     let same_body: Value = serde_json::from_slice(&body_same).unwrap();
     assert_eq!(same_body["messages_affected"], 1); // msg1 (100d old) is > 90 days
+    assert_eq!(same_body["attachments_affected"], 0);
 
     // 4. Proposed retention = 0 (forever -> 0 affected)
     let req_forever = Request::builder()
@@ -319,7 +357,7 @@ async fn test_retention_preview_flow() {
         .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
         .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "retention_days": -5 }).to_string()))
+        .body(Body::from(json!({ "retention_days": -1 }).to_string()))
         .unwrap();
 
     let resp_invalid_neg = app.clone().oneshot(req_invalid_neg).await.unwrap();
@@ -330,7 +368,7 @@ async fn test_retention_preview_flow() {
         .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
         .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "retention_days": 400 }).to_string()))
+        .body(Body::from(json!({ "retention_days": 366 }).to_string()))
         .unwrap();
 
     let resp_invalid_large = app.clone().oneshot(req_invalid_large).await.unwrap();
@@ -368,16 +406,17 @@ async fn test_retention_preview_flow() {
 
     // b. Attachment older than all messages (150 days old) -> tests union timestamp oldest_affected_at
     let old_att_id = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff2";
-    sqlx::query(
+    let old_att_ts: String = sqlx::query_scalar(
         r#"
         INSERT INTO attachments (id, room_id, uploader_id, storage_backend, storage_key, padded_size, plaintext_size, encrypted_size, chunk_size, chunk_count, nonce_prefix, base_counter, created_at)
         VALUES (?, ?, ?, 'fs', 'key2', 100, 100, 100, 100, 1, 'nonce', 0, datetime('now', '-150 days'))
+        RETURNING strftime('%Y-%m-%dT%H:%M:%SZ', created_at)
         "#,
     )
     .bind(old_att_id)
     .bind(room_id)
     .bind(&owner_user_id)
-    .execute(&pool)
+    .fetch_one(&pool)
     .await
     .unwrap();
 
@@ -390,6 +429,28 @@ async fn test_retention_preview_flow() {
         "#,
     )
     .bind(user_att_id)
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // d. Attachment in another room (170 days old) -> MUST NOT be counted
+    let other_room_id = "r_other_room_999";
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES (?, ?)")
+        .bind(other_room_id)
+        .bind(&owner_user_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let other_att_id = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff4";
+    sqlx::query(
+        r#"
+        INSERT INTO attachments (id, room_id, uploader_id, storage_backend, storage_key, padded_size, plaintext_size, encrypted_size, chunk_size, chunk_count, nonce_prefix, base_counter, created_at)
+        VALUES (?, ?, ?, 'fs', 'key4', 100, 100, 100, 100, 1, 'nonce', 0, datetime('now', '-170 days'))
+        "#,
+    )
+    .bind(other_att_id)
+    .bind(other_room_id)
     .bind(&owner_user_id)
     .execute(&pool)
     .await
@@ -413,10 +474,12 @@ async fn test_retention_preview_flow() {
 
     // msg1 (100d), msg2 (50d edit), bot_msg (120d), whisper_msg (110d) = 4 messages affected
     assert_eq!(v3_body["messages_affected"], 4);
-    // att_id (70d), old_att_id (150d) = 2 attachments affected (user_att_id is NULL room_id, so excluded)
+    // att_id (70d), old_att_id (150d) = 2 attachments affected (user_att_id is NULL room_id, other_att_id is in another room, so excluded)
     assert_eq!(v3_body["attachments_affected"], 2);
+    // oldest_affected_at should equal the attachment's timestamp because 150d old attachment is older than 120d bot message
+    assert_eq!(v3_body["oldest_affected_at"].as_str().unwrap(), old_att_ts);
 
-    // d. Invalid body formats (string retention_days, missing field) -> 400 Bad Request
+    // e. Invalid body formats (string retention_days, missing field) -> 400 Bad Request
     let req_string = Request::builder()
         .method("POST")
         .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
@@ -437,7 +500,7 @@ async fn test_retention_preview_flow() {
     let resp_missing = app.clone().oneshot(req_missing).await.unwrap();
     assert_eq!(resp_missing.status(), StatusCode::BAD_REQUEST);
 
-    // e. No rate limit assertion: repeat 500 requests
+    // f. No rate limit assertion: repeat 500 requests
     for _ in 0..500 {
         let req = Request::builder()
             .method("POST")
@@ -449,4 +512,187 @@ async fn test_retention_preview_flow() {
         let resp = app.clone().oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
+}
+
+#[tokio::test]
+async fn test_retention_preview_attachments_only_and_newer_attachment() {
+    let (app, pool) = setup_test_app().await;
+
+    let (owner_user_id, owner_token) =
+        create_test_user(&app, &pool, "owner_att_only", "client_id_att_only").await;
+
+    sqlx::query(
+        "INSERT INTO instance_limits (key, value, updated_by) VALUES ('attachment_retention_days', '365', ?)",
+    )
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Create room with default retention (90 days)
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "retention_days": 90,
+                "max_file_size_bytes": 10485760
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_bytes = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let room_json: Value = serde_json::from_slice(&body_bytes).unwrap();
+    let room_id = room_json["id"].as_str().unwrap();
+
+    // Seed room with ONLY an attachment (50 days old) and NO messages
+    let att1_id = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff10";
+    let att1_ts: String = sqlx::query_scalar(
+        r#"
+        INSERT INTO attachments (id, room_id, uploader_id, storage_backend, storage_key, padded_size, plaintext_size, encrypted_size, chunk_size, chunk_count, nonce_prefix, base_counter, created_at)
+        VALUES (?, ?, ?, 'fs', 'key10', 100, 100, 100, 100, 1, 'nonce', 0, datetime('now', '-50 days'))
+        RETURNING strftime('%Y-%m-%dT%H:%M:%SZ', created_at)
+        "#,
+    )
+    .bind(att1_id)
+    .bind(room_id)
+    .bind(&owner_user_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    // Preview for retention = 30 days -> attachments_affected = 1, messages_affected = 0
+    let req_preview1 = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "retention_days": 30 }).to_string()))
+        .unwrap();
+
+    let resp_preview1 = app.clone().oneshot(req_preview1).await.unwrap();
+    assert_eq!(resp_preview1.status(), StatusCode::OK);
+    let body_bytes1 = axum::body::to_bytes(resp_preview1.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let res1: Value = serde_json::from_slice(&body_bytes1).unwrap();
+
+    assert_eq!(res1["messages_affected"], 0);
+    assert_eq!(res1["attachments_affected"], 1);
+    assert_eq!(res1["oldest_affected_at"].as_str().unwrap(), att1_ts);
+    assert_eq!(res1["newest_affected_at"].as_str().unwrap(), att1_ts);
+
+    // Now seed a message that is older (100 days old)
+    sqlx::query(
+        r#"
+        INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext, created_at)
+        VALUES ('01HM0000000000000000000010', ?, ?, 'c1', 0, 1, 'application', X'1234', datetime('now', '-100 days'))
+        "#,
+    )
+    .bind(room_id)
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Now preview with retention = 30 days:
+    // Message is 100d old, attachment is 50d old.
+    // Attachment (50d) is NEWER than message (100d).
+    // newest_affected_at should equal attachment's timestamp (att1_ts).
+    let req_preview2 = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "retention_days": 30 }).to_string()))
+        .unwrap();
+
+    let resp_preview2 = app.clone().oneshot(req_preview2).await.unwrap();
+    assert_eq!(resp_preview2.status(), StatusCode::OK);
+    let body_bytes2 = axum::body::to_bytes(resp_preview2.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let res2: Value = serde_json::from_slice(&body_bytes2).unwrap();
+
+    assert_eq!(res2["messages_affected"], 1);
+    assert_eq!(res2["attachments_affected"], 1);
+    assert_eq!(res2["newest_affected_at"].as_str().unwrap(), att1_ts);
+}
+
+#[tokio::test]
+async fn test_retention_preview_messages_only() {
+    let (app, pool) = setup_test_app().await;
+
+    let (owner_user_id, owner_token) =
+        create_test_user(&app, &pool, "owner_msg_only", "client_id_msg_only").await;
+
+    sqlx::query(
+        "INSERT INTO instance_limits (key, value, updated_by) VALUES ('attachment_retention_days', '365', ?)",
+    )
+    .bind(&owner_user_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Create room with default retention (90 days)
+    let req_create = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "retention_days": 90,
+                "max_file_size_bytes": 10485760
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_create = app.clone().oneshot(req_create).await.unwrap();
+    let body_bytes = axum::body::to_bytes(resp_create.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let room_json: Value = serde_json::from_slice(&body_bytes).unwrap();
+    let room_id = room_json["id"].as_str().unwrap();
+
+    // Seed messages only, no attachments
+    let msg1_ts: String = sqlx::query_scalar(
+        r#"
+        INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext, created_at)
+        VALUES ('01HM0000000000000000000020', ?, ?, 'c1', 0, 1, 'application', X'1234', datetime('now', '-60 days'))
+        RETURNING strftime('%Y-%m-%dT%H:%M:%SZ', created_at)
+        "#,
+    )
+    .bind(room_id)
+    .bind(&owner_user_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
+    let req_preview = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/retention/preview", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", owner_token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "retention_days": 30 }).to_string()))
+        .unwrap();
+
+    let resp_preview = app.clone().oneshot(req_preview).await.unwrap();
+    assert_eq!(resp_preview.status(), StatusCode::OK);
+    let body_bytes = axum::body::to_bytes(resp_preview.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let res: Value = serde_json::from_slice(&body_bytes).unwrap();
+
+    assert_eq!(res["messages_affected"], 1);
+    assert_eq!(res["attachments_affected"], 0);
+    assert_eq!(res["oldest_affected_at"].as_str().unwrap(), msg1_ts);
+    assert_eq!(res["newest_affected_at"].as_str().unwrap(), msg1_ts);
 }
