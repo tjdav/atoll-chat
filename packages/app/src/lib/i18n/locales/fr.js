@@ -55,9 +55,23 @@ export default {
   'chats_empty_body': 'Créez un salon ou rejoignez-en un avec un lien d’invitation.',
   'chats_preview_no_messages': 'Aucun message pour le moment',
   'chats_preview_you_prefix': 'Vous',
-  'chats_preview_photo': 'Photo',
+  'chats_preview_photo': 'Image',
   'chats_preview_video': 'Vidéo',
   'chats_preview_voice': 'Message vocal',
-  'chats_preview_document': 'Document',
-  'chats_preview_sticker': 'Sticker'
+  'chats_preview_document': 'Fichier',
+  'chats_preview_sticker': 'Autocollant',
+
+  'chat_title_fallback': 'Discussion',
+  'chat_empty_thread': 'C’est le début du salon.',
+  'chat_status_queued': 'En attente',
+  'chat_status_sending': 'Envoi en cours…',
+  'chat_status_failed': 'Échec',
+  'chat_tombstone': 'Ce message a été supprimé.',
+  'chat_new_messages_divider': 'Nouveaux messages',
+  'chat_placeholder_photo': 'Image',
+  'chat_placeholder_video': 'Vidéo',
+  'chat_placeholder_voice': 'Message vocal',
+  'chat_placeholder_document': 'Fichier',
+  'chat_placeholder_sticker': 'Autocollant',
+  'chat_placeholder_unknown': 'Message non pris en charge'
 }

@@ -94,8 +94,13 @@ describe('First-Party Extension Definitions', () => {
     assert.strictEqual(vocab.sessions[0].extensionId, 'core.hangouts')
   })
 
-  it('9. The placeholder component tag is referenced by all list and detail surfaces', () => {
+  it('9. The placeholder component tag is referenced by all un-implemented list and detail surfaces', () => {
     for (const ext of extensions) {
+      if (ext.id === 'core.chat') {
+        assert.strictEqual(ext.list.component, 'view-chats')
+        assert.strictEqual(ext.detail.component, 'view-chat')
+        continue
+      }
       assert.strictEqual(
         ext.detail.component,
         'extension-placeholder',

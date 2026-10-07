@@ -59,5 +59,19 @@ export default {
   'chats_preview_video': 'Video',
   'chats_preview_voice': 'Voice message',
   'chats_preview_document': 'Document',
-  'chats_preview_sticker': 'Sticker'
+  'chats_preview_sticker': 'Sticker',
+
+  'chat_title_fallback': 'Chat',
+  'chat_empty_thread': 'This is the beginning of the room.',
+  'chat_status_queued': 'Queued',
+  'chat_status_sending': 'Sending…',
+  'chat_status_failed': 'Failed',
+  'chat_tombstone': 'This message was deleted.',
+  'chat_new_messages_divider': 'New messages',
+  'chat_placeholder_photo': 'Photo',
+  'chat_placeholder_video': 'Video',
+  'chat_placeholder_voice': 'Voice message',
+  'chat_placeholder_document': 'Document',
+  'chat_placeholder_sticker': 'Sticker',
+  'chat_placeholder_unknown': 'Unsupported message'
 }

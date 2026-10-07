@@ -43,7 +43,7 @@ export default {
   'boot_error_failed': 'Falha na inicialização.',
 
   'app_rail_aria_label': 'Extensões',
-  'app_shell_rail_label': 'Navegação principal',
+  'app_shell_rail_label': 'Navegacao principal',
   'app_shell_bottom_nav_label': 'Navegação principal',
   'app_shell_list_label': 'Conversas',
   'app_shell_detail_label': 'Visualização ativa',
@@ -59,5 +59,19 @@ export default {
   'chats_preview_video': 'Vídeo',
   'chats_preview_voice': 'Mensagem de voz',
   'chats_preview_document': 'Documento',
-  'chats_preview_sticker': 'Sticker'
+  'chats_preview_sticker': 'Adesivo',
+
+  'chat_title_fallback': 'Conversa',
+  'chat_empty_thread': 'Este é o início da sala.',
+  'chat_status_queued': 'Na fila',
+  'chat_status_sending': 'Enviando…',
+  'chat_status_failed': 'Falhou',
+  'chat_tombstone': 'Esta mensagem foi apagada.',
+  'chat_new_messages_divider': 'Novas mensagens',
+  'chat_placeholder_photo': 'Foto',
+  'chat_placeholder_video': 'Vídeo',
+  'chat_placeholder_voice': 'Mensagem de voz',
+  'chat_placeholder_document': 'Documento',
+  'chat_placeholder_sticker': 'Adesivo',
+  'chat_placeholder_unknown': 'Mensagem não suportada'
 }

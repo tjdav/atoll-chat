@@ -56,8 +56,22 @@ export default {
   'chats_preview_no_messages': 'Noch keine Nachrichten',
   'chats_preview_you_prefix': 'Du',
   'chats_preview_photo': 'Foto',
-  'chats_preview_video': 'Video',
+  'chats_preview_video': 'Videodatei',
   'chats_preview_voice': 'Sprachnachricht',
   'chats_preview_document': 'Dokument',
-  'chats_preview_sticker': 'Sticker'
+  'chats_preview_sticker': 'Aufkleber',
+
+  'chat_title_fallback': 'Unterhaltung',
+  'chat_empty_thread': 'Das ist der Anfang des Raums.',
+  'chat_status_queued': 'In Warteschlange',
+  'chat_status_sending': 'Wird gesendet…',
+  'chat_status_failed': 'Fehlgeschlagen',
+  'chat_tombstone': 'Diese Nachricht wurde gelöscht.',
+  'chat_new_messages_divider': 'Neue Nachrichten',
+  'chat_placeholder_photo': 'Foto',
+  'chat_placeholder_video': 'Videodatei',
+  'chat_placeholder_voice': 'Sprachnachricht',
+  'chat_placeholder_document': 'Dokument',
+  'chat_placeholder_sticker': 'Aufkleber',
+  'chat_placeholder_unknown': 'Nicht unterstützte Nachricht'
 }

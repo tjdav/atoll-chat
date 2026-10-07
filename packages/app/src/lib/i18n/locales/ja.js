@@ -59,5 +59,19 @@ export default {
   'chats_preview_video': '動画',
   'chats_preview_voice': '音声メッセージ',
   'chats_preview_document': 'ドキュメント',
-  'chats_preview_sticker': 'ステッカー'
+  'chats_preview_sticker': 'ステッカー',
+
+  'chat_title_fallback': 'チャット',
+  'chat_empty_thread': 'ここがルームの始まりです。',
+  'chat_status_queued': '保留中',
+  'chat_status_sending': '送信中…',
+  'chat_status_failed': '失敗',
+  'chat_tombstone': 'このメッセージは削除されました。',
+  'chat_new_messages_divider': '新着メッセージ',
+  'chat_placeholder_photo': '写真',
+  'chat_placeholder_video': '動画',
+  'chat_placeholder_voice': '音声メッセージ',
+  'chat_placeholder_document': 'ドキュメント',
+  'chat_placeholder_sticker': 'ステッカー',
+  'chat_placeholder_unknown': '未対応のメッセージ'
 }
