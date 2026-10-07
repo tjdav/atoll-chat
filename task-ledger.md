@@ -214,6 +214,11 @@
   - **Delivered:** `server/src/rooms.rs` (`preview_retention_change`), `server/tests/retention_preview.rs`. Closed single production gap and test coverage gaps by calculating `oldest_affected_at` and `newest_affected_at` across the union of affected `room_messages` and `attachments`. Added test cases for attachments-only, older/newer attachments, messages-only, whisper messages, bot messages, soft-deleted messages, commit/proposal messages, user-scoped attachments, other room attachments, retention_days edge cases (-1, 366, string, missing), non-owner, non-member, unauthenticated, Cache-Control header, un-rate-limited execution, read-only db state assertion, retention_days=0, and equal retention_days.
   - **Batch:** `messaging`
 
+- **Avatar Upload Test Coverage**: done
+  - **Migration:** None (test-only changes).
+  - **Delivered:** Step 0 report at `verification/avatar-upload-v3/report.md`, `server/tests/user_avatar.rs`. Added tests for server opacity (`test_user_avatar_upload_opaque_payload`), `profile_version` non-mutation (`test_user_avatar_upload_profile_version_non_mutation`), cross-user non-leakage (`test_user_avatar_upload_cross_user_visibility`), S3 storage backend (`test_user_avatar_upload_s3_backend`), and extended `test_user_avatar_upload_happy_path` to assert zero Sockudo events are published on upload.
+  - **Batch:** `storage` (sub-batch `user_avatar`)
+
 ## Annotations for Future Tasks
 
 None.
