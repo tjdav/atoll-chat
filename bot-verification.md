@@ -500,3 +500,17 @@
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-029b Verification Fact
+- **Wire Room Channel Subscriptions and SSE Streams (`packages/bot/src/runtime/index.js`)**:
+  - Extended `createRuntime` in `packages/bot/src/runtime/index.js` with internal room subscription registry `Map<roomId, RoomSubscription>`.
+  - Handles grant transitions on `bot.grant_updated`: mode changes reconcile room subscriptions (`member` mode opens WebSocket channel `private-room-{room_id}`, `observer` mode opens SSE stream at `/api/v1/rooms/{room_id}/observer-stream`, `write_only` mode has no subscription).
+  - `bot.revoked` removes room grant and tears down active subscription.
+  - `onRoomEvent` constructs standard `MessageEvent` or room event payloads. Message events dispatch to `handlers.message`, room events dispatch to `handlers.room`.
+  - **Spec Gap 1 (Member-Mode Message Content)**: Member-mode message events dispatch with `plaintext: null` and `attachments: []` because the bot runtime lacks MLS.
+  - **Spec Gap 2 (SSE Event Naming)**: Assumes SSE `event:` field carries the event name and `data:` field contains JSON payload.
+  - Extended `stop()` sequence: tears down all room subscriptions (closing SSE streams and unsubscribing WebSocket channels) before closing the WebSocket client.
+  - Registered `runtime-rooms` batch in `packages/bot/tests/batch-manifest.toml` and authored 31 unit tests in `packages/bot/tests/unit/runtime-rooms.test.js`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `node --test packages/bot/tests/unit/runtime-rooms.test.js` passed (31 passing, status 0).

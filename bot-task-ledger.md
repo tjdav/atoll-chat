@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 33
-- **Done:** 29
+- **Done:** 30
 - **In Progress:** 0
-- **Todo:** 4
+- **Todo:** 3
 
 ---
 
@@ -49,4 +49,6 @@ Track progress across Bot SDK implementation tasks.
 | B-026 | Stores | done | §3.5, §7.4, §9 | Author-facing `StorageStore` reserved-prefix wrapper and `RoomsStore` room list store |
 | B-027 | Webhooks | done | §3.4, §3.6, §10.1, §10.3, §14.4 | Webhook trigger server, signature verification, idempotency deduplication, and dispatch |
 | B-028 | Cron | done | §3.4, §3.6, §10.2, §10.3, §14.5 | Cron schedule trigger engine, five-field parser, nextFireTime calculation, DST/timezone handling, catch-up, state persistence, and idempotency deduplication |
-| B-029 | Integration | todo | §10.1 | Full runtime wiring and entrypoint export |
+| B-029 | Integration | done | §10.1 | Full runtime wiring and entrypoint export |
+| B-029a | Triggers Wiring | done | §10.1, §10.2, §10.3 | Wiring trigger servers (webhooks & cron) into runtime startup/shutdown lifecycle |
+| B-029b | Subscriptions Wiring | done | §3.6, §4.7, §6.1, §14.4-14.5 | Wire room channel subscriptions (WebSocket for member mode, SSE stream for observer mode) and event dispatching |
