@@ -1,5 +1,19 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-033 Verification Fact
+- **Implement `createTestCtx` and `@atoll/bot/testing` (`packages/bot/src/testing/create-test-ctx.js` & `packages/bot/src/testing/index.js`)**:
+  - The testing entry point is `packages/bot/src/testing/index.js` re-exporting `createTestCtx`. Package export condition `./testing` created by B-001 was verified intact in `package.json`.
+  - `createTestCtx` returns a `BotCtx` with `calls` tracking five capture arrays: `post`, `reply`, `sendLocal`, `fetch`, and `fetchUserUrl`.
+  - Response methods `post` and `reply` produce `MessageRef`s with per-instance monotonic IDs in `m_test_<n>` format. `sendLocal` captures arguments and resolves `undefined`.
+  - In-memory `settings` store implements the `key` or `room:{room_id}:{key}` storage-key convention from B-025 §2.
+  - In-memory `storage` store accepts any key by default and rejects `_runtime:` prefixed keys with `StorageReservedPrefixError` when `strictStorage: true` is passed.
+  - In-memory `rooms` store returns shallow copies of `roomsList` and matches `get(roomId)`.
+  - `ctx.log` is a no-op by default; tests replace `ctx.log` with a spy after construction.
+  - **Spec Gap 1 (fetch capture)**: §13.1 names only `post`, `reply`, and `sendLocal` as captured methods. `createTestCtx` adds `fetch` and `fetchUserUrl` capture arrays and a `fetchResponse` override (accepting a static `Response` or dynamic function callback).
+  - **Spec Gap 2 (settings and storage shape)**: §13.1 does not describe the in-memory settings and storage shapes. Implemented using `Map<string, unknown>` and the storage-key resolution rules from B-025 §2.
+  - **Spec Gap 3 (reserved-prefix behavior)**: §13.1 does not describe reserved-prefix rejection behavior for test stores. Implemented as opt-in via `strictStorage: true`.
+  - Registered `create-test-ctx` batch (54 unit test cases in `packages/bot/tests/unit/create-test-ctx.test.js`) in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-031 Verification Fact
 - **Reconnect Controller & Runtime Wiring (`packages/bot/src/runtime/reconnect.js` & `packages/bot/src/runtime/index.js`)**:
   - The reconnect controller lives at `packages/bot/src/runtime/reconnect.js` exporting `computeBackoffDelay` and `createReconnectController`.

@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 34
-- **Done:** 33
+- **Total Tasks:** 35
+- **Done:** 34
 - **In Progress:** 0
 - **Todo:** 1
 
@@ -17,6 +17,7 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-033 | Testing | done | §3.5, §13.1 | Implement `createTestCtx` helper, in-memory stores, and `@atoll/bot/testing` entry point |
 | B-001 | Scaffolding | done | §2 | Workspace structure and package configuration |
 | B-002 | Types | done | §3 | JSDoc type declarations for public type surface |
 | B-003 | Errors | done | §12 | Code-bearing BotError hierarchy (Amended by B-017, B-022, B-030) |
