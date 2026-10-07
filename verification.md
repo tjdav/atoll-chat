@@ -976,3 +976,17 @@
   - **Consumed-Row Pruning:** Hourly job prunes rows with `consumed_at < datetime('now', '-30 days')` or `cancelled_at < datetime('now', '-30 days')`.
   - **Event Delivery (`mls.remove_confirmed`):** Emits `{ room_id, target_user_id?, target_bot_id?, confirmed_at }` on `private-room-{room_id}` best-effort, and durable `{ room_id, target_user_id?, target_bot_id?, confirmed_at, user_seq }` on `private-user-{user_id}` channels (target user, confirming member, and bot owner).
 - **Link to report:** [verification/pending-mls-removes-bot-targets/report.md](verification/pending-mls-removes-bot-targets/report.md)
+
+## Key Transparency with Bot Keys Empirical Baseline & Bot Leaf Serialization Amendment Proposal
+- **ID:** Key Transparency with Bot Keys Empirical Baseline
+- **Date:** 2026-10-07
+- **Status:** Empirical Baseline Verified & Spec Amendment Proposed.
+- **Spec / Amendment references:** V3 Spec §5.22, §7.11, §8.9, §8.11, §12, §14.6
+- **Question asked:** What is the current ground truth for `key_transparency_log` schema, leaf serialization, signing key derivation, snapshot signing, `bot_accounts` pubkey columns, and endpoints, and what specification amendment is required for bot leaf serialization?
+- **Answer found:**
+  - **Schema State:** Current `key_transparency_log` in `server/migrations/0001_v2_schema.sql` lacks `bot_id`, `command_pubkey`, and XOR `CHECK ((user_id IS NOT NULL AND bot_id IS NULL) OR (user_id IS NULL AND bot_id IS NOT NULL))`. `user_id`, `username_token`, and `identity_pubkey` are currently `NOT NULL` in the baseline schema.
+  - **`bot_accounts` Schema:** Baseline `bot_accounts` table lacks `bot_identity_pubkey`, `bot_command_pubkey`, and `identity_pubkey`.
+  - **Leaf Serialization & Proposed Spec Amendment:** V3 Spec §7.11 defines the log table with bot columns but does not explicitly specify the byte serialization for bot leaves. Following Task 34b user leaf precedent by analogy, the proposed amendment is:
+    `serialize_bot_leaf(bot_identity_pubkey, command_pubkey, identity_pubkey) = I2OSP(len(bot_identity_pubkey), 2) || bot_identity_pubkey || I2OSP(len(command_pubkey), 2) || command_pubkey || I2OSP(len(identity_pubkey), 2) || identity_pubkey` where lengths are 16-bit big-endian unsigned integers and string bytes are UTF-8 bytes.
+  - **Invariance:** User leaf serialization, leaf hashing (`SHA-256(0x00 || leaf_bytes)`), node hashing (`SHA-256(0x01 || left || right)`), root calculation, signing input (`I2OSP(tree_size, 8) || root_hash`), signing key derivation (`HKDF-Expand(SHA-256(oprf_key_bytes), "key-transparency-signing-v1", 32)`), GDPR anonymization (`user_id -> anon_<32 hex>`), and `kt.snapshot` payload format remain unchanged.
+- **Link to report:** [verification/kt-bot-keys/report.md](verification/kt-bot-keys/report.md)
