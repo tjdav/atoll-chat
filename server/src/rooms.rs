@@ -113,7 +113,8 @@ pub struct AddMemberOutcome {
 #[derive(Debug, Clone, Serialize)]
 pub struct PendingAddView {
     pub id: String,
-    pub target_user_id: String,
+    pub target_user_id: Option<String>,
+    pub target_bot_id: Option<String>,
     pub target_client_id: String,
     pub key_package_id: String,
     pub queued_at: DateTime<Utc>,
@@ -1129,6 +1130,143 @@ pub async fn list_members(
     })
 }
 
+/// Inserts one row into `pending_mls_adds` for a target user or bot device.
+/// Enforces application-level XOR target validation (exactly one of `target_user_id`
+/// or `target_bot_id` must be provided). Selects and consumes an available key package.
+pub async fn queue_pending_mls_add(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    room_id: &str,
+    target_user_id: Option<&str>,
+    target_bot_id: Option<&str>,
+    target_client_id: &str,
+) -> Result<String, RoomError> {
+    match (target_user_id, target_bot_id) {
+        (Some(_), None) => {}
+        (None, Some(_)) => {}
+        _ => {
+            return Err(RoomError::Database(sqlx::Error::Protocol(
+                "Exactly one of target_user_id or target_bot_id must be set".into(),
+            )));
+        }
+    }
+
+    let (normal_pkg, fallback_pkg) = if let Some(user_id) = target_user_id {
+        (
+            sqlx::query_as::<_, (String, i64)>(
+                r#"
+                SELECT id, is_last_resort
+                FROM key_packages
+                WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 0
+                ORDER BY created_at ASC, id ASC
+                LIMIT 1
+                "#,
+            )
+            .bind(user_id)
+            .bind(target_client_id)
+            .fetch_optional(&mut **tx)
+            .await?,
+            sqlx::query_as::<_, (String, i64)>(
+                r#"
+                SELECT id, is_last_resort
+                FROM key_packages
+                WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 1
+                ORDER BY created_at ASC, id ASC
+                LIMIT 1
+                "#,
+            )
+            .bind(user_id)
+            .bind(target_client_id)
+            .fetch_optional(&mut **tx)
+            .await?,
+        )
+    } else {
+        let bot_id = target_bot_id.unwrap();
+        (
+            sqlx::query_as::<_, (String, i64)>(
+                r#"
+                SELECT id, is_last_resort
+                FROM key_packages
+                WHERE bot_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 0
+                ORDER BY created_at ASC, id ASC
+                LIMIT 1
+                "#,
+            )
+            .bind(bot_id)
+            .bind(target_client_id)
+            .fetch_optional(&mut **tx)
+            .await?,
+            sqlx::query_as::<_, (String, i64)>(
+                r#"
+                SELECT id, is_last_resort
+                FROM key_packages
+                WHERE bot_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 1
+                ORDER BY created_at ASC, id ASC
+                LIMIT 1
+                "#,
+            )
+            .bind(bot_id)
+            .bind(target_client_id)
+            .fetch_optional(&mut **tx)
+            .await?,
+        )
+    };
+
+    let pkg = match normal_pkg {
+        Some(p) => Some(p),
+        None => fallback_pkg,
+    };
+
+    let (kp_id, is_last_resort_i64) = pkg.ok_or_else(|| sqlx::Error::RowNotFound)?;
+
+    if is_last_resort_i64 == 0 {
+        sqlx::query(
+            "UPDATE key_packages SET consumed = 1, consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
+        )
+        .bind(&kp_id)
+        .execute(&mut **tx)
+        .await?;
+    }
+
+    let add_id = Ulid::new().to_string();
+    sqlx::query(
+        r#"
+        INSERT INTO pending_mls_adds (id, room_id, target_user_id, target_bot_id, target_client_id, key_package_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+        "#,
+    )
+    .bind(&add_id)
+    .bind(room_id)
+    .bind(target_user_id)
+    .bind(target_bot_id)
+    .bind(target_client_id)
+    .bind(&kp_id)
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(add_id)
+}
+
+/// Queues `pending_mls_adds` rows across a batch of client devices for a target identity (user or bot).
+/// Exposed for Phase 27 bot grant coordination per §8.8.5 step 6 and §8.8.6 step 5.
+pub async fn queue_pending_mls_add_batch(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+    room_id: &str,
+    target_user_id: Option<&str>,
+    target_bot_id: Option<&str>,
+    target_client_ids: &[String],
+) -> Result<Vec<String>, RoomError> {
+    let mut added_client_ids = Vec::new();
+    for client_id in target_client_ids {
+        if queue_pending_mls_add(tx, room_id, target_user_id, target_bot_id, client_id)
+            .await
+            .is_ok()
+        {
+            added_client_ids.push(client_id.clone());
+        }
+    }
+    Ok(added_client_ids)
+}
+
 pub async fn list_pending_adds(
     pool: &SqlitePool,
     room_id: &str,
@@ -1147,7 +1285,7 @@ pub async fn list_pending_adds(
 
     let rows = sqlx::query(
         r#"
-        SELECT id, target_user_id, target_client_id, key_package_id, queued_at
+        SELECT id, target_user_id, target_bot_id, target_client_id, key_package_id, queued_at
         FROM pending_mls_adds
         WHERE room_id = ? AND consumed_at IS NULL
         ORDER BY queued_at ASC, id ASC
@@ -1162,6 +1300,7 @@ pub async fn list_pending_adds(
         pending_adds.push(PendingAddView {
             id: row.get("id"),
             target_user_id: row.get("target_user_id"),
+            target_bot_id: row.get("target_bot_id"),
             target_client_id: row.get("target_client_id"),
             key_package_id: row.get("key_package_id"),
             queued_at: row.get("queued_at"),
@@ -1330,7 +1469,7 @@ pub async fn add_member(
     .execute(&mut *tx)
     .await?;
 
-    // 9. Look up target user's devices and insert pending_mls_adds
+    // 9. Look up target user's devices and queue pending_mls_adds
     let devices: Vec<(String,)> =
         sqlx::query_as("SELECT client_id FROM devices WHERE user_id = ? ORDER BY created_at ASC")
             .bind(target_user_id)
@@ -1340,73 +1479,17 @@ pub async fn add_member(
     let mut added_client_ids = Vec::new();
 
     for (client_id,) in devices {
-        // Select unconsumed non-last-resort key package
-        let normal_pkg: Option<(String, i64)> = sqlx::query_as(
-            r#"
-            SELECT id, is_last_resort
-            FROM key_packages
-            WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 0
-            ORDER BY created_at ASC, id ASC
-            LIMIT 1
-            "#,
-        )
-        .bind(target_user_id)
-        .bind(&client_id)
-        .fetch_optional(&mut *tx)
-        .await?;
-
-        let pkg = match normal_pkg {
-            Some(p) => Some(p),
-            None => {
-                // Fallback to unconsumed last-resort key package
-                sqlx::query_as(
-                    r#"
-                    SELECT id, is_last_resort
-                    FROM key_packages
-                    WHERE user_id = ? AND client_id = ? AND consumed = 0 AND is_last_resort = 1
-                    ORDER BY created_at ASC, id ASC
-                    LIMIT 1
-                    "#,
-                )
-                .bind(target_user_id)
-                .bind(&client_id)
-                .fetch_optional(&mut *tx)
-                .await?
+        match queue_pending_mls_add(&mut tx, room_id, Some(target_user_id), None, &client_id).await
+        {
+            Ok(_) => added_client_ids.push(client_id),
+            Err(e) => {
+                tracing::warn!(
+                    user_id = %target_user_id,
+                    client_id = %client_id,
+                    error = %e,
+                    "Failed to queue pending add for target device"
+                );
             }
-        };
-
-        if let Some((kp_id, is_last_resort_i64)) = pkg {
-            if is_last_resort_i64 == 0 {
-                sqlx::query(
-                    "UPDATE key_packages SET consumed = 1, consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
-                )
-                .bind(&kp_id)
-                .execute(&mut *tx)
-                .await?;
-            }
-
-            let add_id = Ulid::new().to_string();
-            sqlx::query(
-                r#"
-                INSERT INTO pending_mls_adds (id, room_id, target_user_id, target_client_id, key_package_id)
-                VALUES (?, ?, ?, ?, ?)
-                "#,
-            )
-            .bind(&add_id)
-            .bind(room_id)
-            .bind(target_user_id)
-            .bind(&client_id)
-            .bind(&kp_id)
-            .execute(&mut *tx)
-            .await?;
-
-            added_client_ids.push(client_id);
-        } else {
-            tracing::warn!(
-                user_id = %target_user_id,
-                client_id = %client_id,
-                "No unconsumed key package available for target device"
-            );
         }
     }
 

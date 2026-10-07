@@ -469,7 +469,258 @@ async fn test_mls_add_pending_event_published_with_mock() {
     let data_json: Value = serde_json::from_str(data_str).unwrap();
     assert_eq!(data_json["room_id"], room_id);
     assert_eq!(data_json["target_user_id"], user_b_id);
+    assert!(data_json["target_bot_id"].is_null());
     assert_eq!(data_json["client_ids"], json!(["client_evt_b_12345678"]));
+}
+
+#[tokio::test]
+async fn test_pending_mls_adds_xor_constraint_direct_db() {
+    let pool = common::setup_test_db().await;
+
+    // Both target_user_id AND target_bot_id set -> DB CHECK constraint failure
+    let res_both = sqlx::query(
+        "INSERT INTO pending_mls_adds (id, room_id, target_user_id, target_bot_id, target_client_id, key_package_id) VALUES ('p_both', 'r_1', 'u_1', 'b_1', 'c_1', 'kp_1')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        res_both.is_err(),
+        "Expected CHECK constraint failure when both target_user_id and target_bot_id are set"
+    );
+
+    // Neither target_user_id NOR target_bot_id set -> DB CHECK constraint failure
+    let res_neither = sqlx::query(
+        "INSERT INTO pending_mls_adds (id, room_id, target_user_id, target_bot_id, target_client_id, key_package_id) VALUES ('p_neither', 'r_1', NULL, NULL, 'c_1', 'kp_1')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        res_neither.is_err(),
+        "Expected CHECK constraint failure when neither target_user_id nor target_bot_id is set"
+    );
+}
+
+#[tokio::test]
+async fn test_key_packages_xor_constraint_direct_db() {
+    let pool = common::setup_test_db().await;
+
+    // Both user_id AND bot_id set -> DB CHECK constraint failure
+    let res_both = sqlx::query(
+        "INSERT INTO key_packages (id, user_id, bot_id, client_id, key_package) VALUES ('kp_both', 'u_1', 'b_1', 'c_1', X'1234')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        res_both.is_err(),
+        "Expected CHECK constraint failure when both user_id and bot_id are set"
+    );
+
+    // Neither user_id NOR bot_id set -> DB CHECK constraint failure
+    let res_neither = sqlx::query(
+        "INSERT INTO key_packages (id, user_id, bot_id, client_id, key_package) VALUES ('kp_neither', NULL, NULL, 'c_1', X'1234')",
+    )
+    .execute(&pool)
+    .await;
+    assert!(
+        res_neither.is_err(),
+        "Expected CHECK constraint failure when neither user_id nor bot_id is set"
+    );
+}
+
+#[tokio::test]
+async fn test_bot_target_pending_adds_and_consume_workflow() {
+    let (app, pool, _) = common::setup_test_app_with_config(true, "auto", 100).await;
+
+    // Create server invite for A
+    sqlx::query(
+        "INSERT INTO server_invites (id, code, max_uses, current_uses) VALUES ('inv_bot_a', 'INVITEBOTA12', 1, 0)",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Register User A (owner)
+    let user_a_id =
+        common::register_user(&app, "user_bot_owner", "Password123!", Some("INVITEBOTA12")).await;
+    let (status_a, login_a) = common::login_user(
+        &app,
+        "user_bot_owner",
+        "Password123!",
+        "client_owner_1_123456",
+        None,
+    )
+    .await;
+    assert_eq!(status_a, StatusCode::OK);
+    let token_a = login_a["session_token"].as_str().unwrap();
+
+    // User A creates Room 1
+    let create_room_req = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+
+    let resp = tower::ServiceExt::oneshot(app.clone(), create_room_req)
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let room_json: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let room_id = room_json["id"].as_str().unwrap();
+
+    // Create a bot account in bot_accounts table
+    let bot_id = "b_test_bot_123";
+    sqlx::query(
+        "INSERT INTO bot_accounts (id, display_name, owner_user_id) VALUES (?, 'Test Bot', ?)",
+    )
+    .bind(bot_id)
+    .bind(&user_a_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Insert an unconsumed key package for bot account
+    let kp_id = "kp_bot_1";
+    let bot_client_id = "client_bot_device_1";
+    sqlx::query(
+        "INSERT INTO key_packages (id, user_id, bot_id, client_id, key_package) VALUES (?, NULL, ?, ?, X'123456')",
+    )
+    .bind(kp_id)
+    .bind(bot_id)
+    .bind(bot_client_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Directly call server::rooms::queue_pending_mls_add_batch for bot_id inside a transaction
+    let mut tx = pool.begin().await.unwrap();
+    let added_clients = server::rooms::queue_pending_mls_add_batch(
+        &mut tx,
+        room_id,
+        None,
+        Some(bot_id),
+        &[bot_client_id.to_string()],
+    )
+    .await
+    .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(added_clients, vec![bot_client_id.to_string()]);
+
+    // Also verify mock server event publishing for bot target batch
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/apps/chat/events"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"ok": true})))
+        .mount(&mock_server)
+        .await;
+
+    let sockudo_cfg = server::SockudoConfig {
+        http_base: mock_server.uri(),
+        app_id: "chat".to_string(),
+        app_key: "test-app-key".to_string(),
+        app_secret: "test-app-secret".to_string(),
+        enable_client_events: true,
+    };
+    let publisher = server::Publisher::new(sockudo_cfg);
+    let channel = format!("private-room-{}", room_id);
+    let mls_add_bot_payload = json!({
+        "room_id": room_id,
+        "target_user_id": serde_json::Value::Null,
+        "target_bot_id": bot_id,
+        "client_ids": vec![bot_client_id],
+    });
+    publisher
+        .publish(&channel, "mls.add_pending", mls_add_bot_payload)
+        .await
+        .unwrap();
+
+    let requests = mock_server.received_requests().await.unwrap();
+    assert_eq!(requests.len(), 1);
+    let pub_body: Value = serde_json::from_slice(&requests[0].body).unwrap();
+    assert_eq!(pub_body["name"], "mls.add_pending");
+    let pub_data: Value = serde_json::from_str(pub_body["data"].as_str().unwrap()).unwrap();
+    assert_eq!(pub_data["room_id"], room_id);
+    assert!(pub_data["target_user_id"].is_null());
+    assert_eq!(pub_data["target_bot_id"], bot_id);
+    assert_eq!(pub_data["client_ids"], json!([bot_client_id]));
+
+    // GET /rooms/:id/pending-adds as User A -> response includes bot pending add
+    let list_req = Request::builder()
+        .method("GET")
+        .uri(format!("/api/v1/rooms/{}/pending-adds", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+
+    let list_resp = tower::ServiceExt::oneshot(app.clone(), list_req)
+        .await
+        .unwrap();
+    assert_eq!(list_resp.status(), StatusCode::OK);
+
+    // Assert Cache-Control: no-store header
+    let cache_control = list_resp
+        .headers()
+        .get(header::CACHE_CONTROL)
+        .unwrap()
+        .to_str()
+        .unwrap();
+    assert_eq!(cache_control, "no-store");
+
+    let list_json: Value = serde_json::from_slice(
+        &axum::body::to_bytes(list_resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+
+    let adds = list_json["pending_adds"].as_array().unwrap();
+    assert_eq!(adds.len(), 1);
+    assert_eq!(adds[0]["target_bot_id"], bot_id);
+    assert!(adds[0]["target_user_id"].is_null());
+    assert_eq!(adds[0]["target_client_id"], bot_client_id);
+    assert_eq!(adds[0]["key_package_id"], kp_id);
+
+    let add_id = adds[0]["id"].as_str().unwrap().to_string();
+
+    // Consume pending add as User A
+    let consume_req = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/api/v1/rooms/{}/pending-adds/{}/consume",
+            room_id, add_id
+        ))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+
+    let consume_resp = tower::ServiceExt::oneshot(app.clone(), consume_req)
+        .await
+        .unwrap();
+    assert_eq!(consume_resp.status(), StatusCode::OK);
+
+    // Assert Cache-Control: no-store header on consume
+    let cache_control_consume = consume_resp
+        .headers()
+        .get(header::CACHE_CONTROL)
+        .unwrap()
+        .to_str()
+        .unwrap();
+    assert_eq!(cache_control_consume, "no-store");
+
+    let consume_json: Value = serde_json::from_slice(
+        &axum::body::to_bytes(consume_resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(consume_json["id"], add_id);
+    assert!(consume_json["consumed_at"].as_str().is_some());
 }
 
 #[tokio::test]

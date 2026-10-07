@@ -408,6 +408,7 @@ pub async fn add_member(
         let mls_add_payload = json!({
             "room_id": id,
             "target_user_id": payload.user_id,
+            "target_bot_id": serde_json::Value::Null,
             "client_ids": outcome.added_client_ids,
         });
         if let Err(e) = state
