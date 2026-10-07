@@ -17,7 +17,7 @@ export default defineExtension({
   list: {
     route: 'chats',
     title: 'Chats',
-    component: 'extension-placeholder',
+    component: 'view-chats',
     actions: [],
     slots: {}
   },

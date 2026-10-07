@@ -1,0 +1,58 @@
+<template id="ui-profile">
+  <span class="profile" role="img" aria-label="{{ ariaLabel }}" data-size="{{ size }}" data-testid="profile">
+    <span class="profile__initials">{{ initials }}</span>
+  </span>
+</template>
+
+<style>
+  :host {
+    display: inline-flex;
+  }
+
+  .profile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-weight: var(--weight-semibold);
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: var(--text-sm);
+    user-select: none;
+  }
+
+  .profile[data-size="sm"] { width: 1.75rem; height: 1.75rem; font-size: var(--text-xs); }
+  .profile[data-size="md"] { width: 2.25rem; height: 2.25rem; font-size: var(--text-sm); }
+  .profile[data-size="lg"] { width: 3rem; height: 3rem; font-size: var(--text-base); }
+
+  .profile__initials {
+    line-height: 1;
+  }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  attributes: {
+    name: { type: String, default: '' },
+    size: { type: String, default: 'md' },
+    color: { type: String, default: '' },
+    src: { type: String, default: '' }
+  },
+
+  getters: {
+    initials: ({ state }) => {
+      const name = (state.name || '').trim()
+      if (!name) return '?'
+      const parts = name.split(/\s+/)
+      const first = parts[0][0] ?? ''
+      const last = parts.length > 1 ? parts[parts.length - 1][0] ?? '' : ''
+      return (first + last).toUpperCase() || '?'
+    },
+    ariaLabel: ({ state }) => state.name || 'Profile'
+  }
+})
+</script>

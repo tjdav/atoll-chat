@@ -49,5 +49,15 @@ export default {
   'app_shell_detail_label': 'Active view',
 
   'ext_placeholder_heading': 'Under construction',
-  'ext_placeholder_body': 'This surface is not yet implemented.'
+  'ext_placeholder_body': 'This surface is not yet implemented.',
+
+  'chats_empty_title': 'No chats yet',
+  'chats_empty_body': 'Create a room or join with an invite link.',
+  'chats_preview_no_messages': 'No messages yet',
+  'chats_preview_you_prefix': 'You',
+  'chats_preview_photo': 'Photo',
+  'chats_preview_video': 'Video',
+  'chats_preview_voice': 'Voice message',
+  'chats_preview_document': 'Document',
+  'chats_preview_sticker': 'Sticker'
 }

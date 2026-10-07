@@ -49,5 +49,15 @@ export default {
   'app_shell_detail_label': 'アクティブビュー',
 
   'ext_placeholder_heading': '工事中',
-  'ext_placeholder_body': 'このサーフェスはまだ実装されていません。'
+  'ext_placeholder_body': 'このサーフェスはまだ実装されていません。',
+
+  'chats_empty_title': 'チャットはまだありません',
+  'chats_empty_body': 'ルームを作成するか、招待リンクで参加してください。',
+  'chats_preview_no_messages': 'メッセージはまだありません',
+  'chats_preview_you_prefix': 'あなた',
+  'chats_preview_photo': '写真',
+  'chats_preview_video': '動画',
+  'chats_preview_voice': '音声メッセージ',
+  'chats_preview_document': 'ドキュメント',
+  'chats_preview_sticker': 'ステッカー'
 }

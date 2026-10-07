@@ -59,7 +59,8 @@ export default [
       'tests/unit/repositories-processed-events.test.js',
       'tests/unit/repositories-mls-rooms.test.js',
       'tests/unit/sync.test.js',
-      'tests/unit/sync-plugin.test.js'
+      'tests/unit/sync-plugin.test.js',
+      'tests/unit/view-chats-data.test.js'
     ]
   },
   {
@@ -75,7 +76,8 @@ export default [
       'tests/component/shell.spec.js',
       'tests/component/rail.spec.js',
       'tests/component/surface.spec.js',
-      'tests/component/ui-icon.spec.js'
+      'tests/component/ui-icon.spec.js',
+      'tests/component/conversation-list.spec.js'
     ]
   },
   {
