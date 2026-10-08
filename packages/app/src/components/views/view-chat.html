@@ -39,6 +39,13 @@
       can-copy="{{ menuCanCopy }}"
       can-edit="{{ menuCanEdit }}"
     ></message-context-menu>
+
+    <message-versions-sheet
+      ref="versionsSheet"
+      open="{{ versionsSheetOpen }}"
+      message-id="{{ versionsSheetMessageId }}"
+      history-json="{{ versionsSheetHistoryJson }}"
+    ></message-versions-sheet>
   </div>
 </template>
 
@@ -133,7 +140,10 @@ export default defineComponent({
     menuCanEdit: { type: Boolean, default: false },
     composerEditing: { type: Boolean, default: false },
     composerPrefill: { type: String, default: '' },
-    editingMessageId: { type: String, default: '' }
+    editingMessageId: { type: String, default: '' },
+    versionsSheetOpen: { type: Boolean, default: false },
+    versionsSheetMessageId: { type: String, default: '' },
+    versionsSheetHistoryJson: { type: String, default: '[]' }
   },
 
   getters: {
@@ -154,6 +164,9 @@ export default defineComponent({
       composerEditing: false,
       composerPrefill: '',
       editingMessageId: '',
+      versionsSheetOpen: false,
+      versionsSheetMessageId: '',
+      versionsSheetHistoryJson: '[]',
       ...i18n.strings([
         'chat_scroll_to_bottom',
         'chat_new_messages_divider',
@@ -167,12 +180,18 @@ export default defineComponent({
         'composer_edit_banner',
         'composer_edit_cancel_label',
         'composer_edit_save_label',
-        'bubble_edited_label'
+        'bubble_edited_label',
+        'edit_history_title',
+        'edit_history_current_label',
+        'edit_history_original_label',
+        'edit_history_close_label'
       ])
     }
   },
 
-  async client({ state, refs, router, i18n, repos, signal, globalStore }) {
+  async client({ state, refs, router, i18n, storage, repos, signal, globalStore }) {
+    const reposApi = repos ?? storage?.repos?.()
+
     const {
       safeParsePayload,
       summarizePayload,
@@ -185,6 +204,7 @@ export default defineComponent({
     const { sendMessage } = await import('../../lib/views/send-message.js')
     const { isUnsendAvailable, copyMessage, unsend, deleteForMe } = await import('../../lib/views/message-actions.js')
     const { isEditAvailable, editMessage } = await import('../../lib/views/edit-message.js')
+    const { buildHistory } = await import('../../lib/views/edit-history.js')
     const { buildTextPayload, encodePayload, encodeCiphertextStub } = await import('../../lib/composer/index.js')
 
     let currentRoomId = null
@@ -207,7 +227,11 @@ export default defineComponent({
             'composer_edit_banner',
             'composer_edit_cancel_label',
             'composer_edit_save_label',
-            'bubble_edited_label'
+            'bubble_edited_label',
+            'edit_history_title',
+            'edit_history_current_label',
+            'edit_history_original_label',
+            'edit_history_close_label'
           ])
         )
       },
@@ -232,12 +256,12 @@ export default defineComponent({
 
     let readDebounceTimer = null
     function debouncedMarkRead(roomId, lastMessageId) {
-      if (!roomId || !lastMessageId) return
+      if (!roomId || !lastMessageId || !reposApi) return
       if (readDebounceTimer) clearTimeout(readDebounceTimer)
       readDebounceTimer = setTimeout(async () => {
         try {
           const userId = globalStore?.$state?.user?.id || 'u_me'
-          await repos.readState.upsert({
+          await reposApi.readState.upsert({
             userId,
             roomId,
             lastReadMessageId: lastMessageId,
@@ -264,14 +288,15 @@ export default defineComponent({
     }
 
     async function load() {
-      const route = router.getRoute()
-      const roomId = route.params?.id || 'r_1'
+      if (!reposApi) return
+      const route = typeof router?.getRoute === 'function' ? router.getRoute() : null
+      const roomId = route?.params?.id || new URLSearchParams(window.location.search).get('id') || 'r_1'
       currentRoomId = roomId
 
       const userId = globalStore?.$state?.user?.id || 'u_me'
-      const rawMessages = await repos.messages.listInRoom(roomId, { limit: 100 })
-      const readState = await repos.readState.get(userId, roomId)
-      const usersList = await repos.users.list({ limit: 100 })
+      const rawMessages = (await reposApi.messages.listInRoom(roomId, { limit: 100 })) || []
+      const readState = await reposApi.readState.get(userId, roomId)
+      const usersList = (await reposApi.users.list({ limit: 100 })) || []
       const usersMap = new Map(usersList.map((u) => [u.user_id, u.display_name]))
 
       const messages = rawMessages.map((m) => {
@@ -301,14 +326,14 @@ export default defineComponent({
       let globalMsgCounter = 0
 
       for (const item of items) {
-        if (item.type === 'date') {
+        if (item.kind === 'date') {
           const sep = document.createElement('date-separator')
           sep.setAttribute('label', item.label)
           threadEl.appendChild(sep)
           continue
         }
 
-        const group = item.messages
+        const group = item.group?.messages || []
         for (let i = 0; i < group.length; i++) {
           if (dividerIndex !== -1 && globalMsgCounter === dividerIndex) {
             const div = document.createElement('div')
@@ -340,7 +365,7 @@ export default defineComponent({
 
           bubble.addEventListener('bubble:contextmenu', async (event) => {
             const { messageId, x, y } = event.detail
-            const dbMsg = await repos.messages.get(messageId)
+            const dbMsg = await reposApi.messages.get(messageId)
             if (!dbMsg) return
             state.menuMessageId = messageId
             state.menuX = x
@@ -349,6 +374,19 @@ export default defineComponent({
             state.menuCanCopy = !dbMsg.deleted_at
             state.menuCanEdit = isEditAvailable(dbMsg, userId)
             state.menuOpen = true
+          }, { signal })
+
+          bubble.addEventListener('bubble:show-original', async (event) => {
+            const messageId = event.detail.messageId
+            const versions = (await reposApi.messages.listVersions(messageId)) || []
+            const history = buildHistory(versions, {
+              formatTime: (ms) => formatTime(ms, { locale: state.locale || 'en' }),
+              parsePayload: safeParsePayload,
+              summarizePayload
+            })
+            state.versionsSheetMessageId = messageId
+            state.versionsSheetHistoryJson = JSON.stringify(history)
+            state.versionsSheetOpen = true
           }, { signal })
 
           threadEl.appendChild(bubble)
@@ -370,7 +408,7 @@ export default defineComponent({
         const text = event.detail?.text
         if (!text || !currentRoomId) return
         await sendMessage({
-          deps: { repos, globalStore, crypto: window.crypto },
+          deps: { repos: reposApi, globalStore, crypto: window.crypto },
           roomId: currentRoomId,
           text
         })
@@ -383,7 +421,7 @@ export default defineComponent({
         const userId = globalStore?.$state?.user?.id || 'u_me'
         if (!messageId) return
         await editMessage({
-          deps: { repos, buildTextPayload, encodePayload, encodeCiphertextStub },
+          deps: { repos: reposApi, buildTextPayload, encodePayload, encodeCiphertextStub },
           messageId,
           newText: event.detail.text,
           userId
@@ -405,7 +443,7 @@ export default defineComponent({
     const contextMenuEl = refs('contextMenu')
     if (contextMenuEl) {
       contextMenuEl.addEventListener('menu:edit', async (event) => {
-        const dbMsg = await repos.messages.get(event.detail.messageId)
+        const dbMsg = await reposApi.messages.get(event.detail.messageId)
         if (!dbMsg) return
         const payload = safeParsePayload(dbMsg.decrypted_payload)
         const summary = summarizePayload(payload)
@@ -422,7 +460,7 @@ export default defineComponent({
       contextMenuEl.addEventListener('menu:copy', async (event) => {
         await copyMessage({
           deps: {
-            repos,
+            repos: reposApi,
             clipboard: navigator.clipboard,
             parsePayload: safeParsePayload,
             summarizePayload
@@ -434,14 +472,14 @@ export default defineComponent({
 
       contextMenuEl.addEventListener('menu:unsend', async (event) => {
         const userId = globalStore?.$state?.user?.id || 'u_me'
-        await unsend({ deps: { repos }, messageId: event.detail.messageId, userId })
+        await unsend({ deps: { repos: reposApi }, messageId: event.detail.messageId, userId })
         state.menuOpen = false
         currentRoomId = null
         await load()
       }, { signal })
 
       contextMenuEl.addEventListener('menu:delete', async (event) => {
-        await deleteForMe({ deps: { repos }, messageId: event.detail.messageId })
+        await deleteForMe({ deps: { repos: reposApi }, messageId: event.detail.messageId })
         state.menuOpen = false
         currentRoomId = null
         await load()
@@ -452,14 +490,23 @@ export default defineComponent({
       }, { signal })
     }
 
-    router.subscribe(() => {
-      const route = router.getRoute()
-      const newRoomId = route.params?.id || 'r_1'
-      if (newRoomId !== currentRoomId) {
-        currentRoomId = newRoomId
-        load()
-      }
-    }, { signal })
+    const versionsSheetEl = refs('versionsSheet')
+    if (versionsSheetEl) {
+      versionsSheetEl.addEventListener('sheet:close', () => {
+        state.versionsSheetOpen = false
+      }, { signal })
+    }
+
+    if (typeof router?.subscribe === 'function') {
+      router.subscribe(() => {
+        const route = typeof router?.getRoute === 'function' ? router.getRoute() : null
+        const newRoomId = route?.params?.id || new URLSearchParams(window.location.search).get('id') || 'r_1'
+        if (newRoomId !== currentRoomId) {
+          currentRoomId = newRoomId
+          load()
+        }
+      }, { signal })
+    }
 
     window.addEventListener('test-storage-seeded', () => {
       currentRoomId = null
