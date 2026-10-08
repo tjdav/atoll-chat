@@ -1,5 +1,6 @@
 use axum::body::Body;
 use axum::http::{header, Request, StatusCode};
+use base64::Engine;
 use serde_json::{json, Value};
 use std::io::Write;
 use tempfile::NamedTempFile;
@@ -194,8 +195,7 @@ async fn test_unicast_happy_path_and_target_not_found() {
             json!({
                 "sender_client_id": "c_alice_00000001",
                 "target_client_id": "c_bob_0000000001",
-                "signal_type": "offer",
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": "dGVzdF9lbnZlbG9wZV9ieXRlcw"
             })
             .to_string(),
         ))
@@ -224,8 +224,7 @@ async fn test_unicast_happy_path_and_target_not_found() {
             json!({
                 "sender_client_id": "c_alice_00000001",
                 "target_client_id": "c_bob_0000000001",
-                "signal_type": "offer",
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": "dGVzdF9lbnZlbG9wZV9ieXRlcw"
             })
             .to_string(),
         ))
@@ -282,8 +281,7 @@ async fn test_unicast_self_delivery() {
             json!({
                 "sender_client_id": "c_alice_self0101",
                 "target_client_id": "c_alice_self0102",
-                "signal_type": "ping",
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": "dGVzdF9zZWxmX2RlbGl2ZXJ5X2VudmVsb3Bl"
             })
             .to_string(),
         ))
@@ -355,8 +353,7 @@ async fn test_broadcast_happy_path_and_alone() {
         .body(Body::from(
             json!({
                 "sender_client_id": "c_alice_bc000001",
-                "signal_type": "ice",
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": "dGVzdF9icm9hZGNhc3RfZW52ZWxvcGU"
             })
             .to_string(),
         ))
@@ -384,8 +381,7 @@ async fn test_broadcast_happy_path_and_alone() {
         .body(Body::from(
             json!({
                 "sender_client_id": "c_alice_bc000001",
-                "signal_type": "ice",
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": "dGVzdF9icm9hZGNhc3RfZW52ZWxvcGU"
             })
             .to_string(),
         ))
@@ -424,8 +420,7 @@ async fn test_validation_and_authorization() {
         .body(Body::from(
             json!({
                 "sender_client_id": "c_unowned_device",
-                "signal_type": "offer",
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": "dGVzdF9lbnZlbG9wZQ"
             })
             .to_string(),
         ))
@@ -433,7 +428,7 @@ async fn test_validation_and_authorization() {
     let resp1 = app.clone().oneshot(req1).await.unwrap();
     assert_eq!(resp1.status(), StatusCode::BAD_REQUEST);
 
-    // 2. Empty signal_type -> 400 invalid_signal_type
+    // 2. Invalid base64 envelope -> 400 invalid_envelope
     let req2 = Request::builder()
         .method("POST")
         .uri(format!(
@@ -445,17 +440,21 @@ async fn test_validation_and_authorization() {
         .body(Body::from(
             json!({
                 "sender_client_id": "c_alice_val00001",
-                "signal_type": "  ",
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": "!!!invalid_base64!!!"
             })
             .to_string(),
         ))
         .unwrap();
     let resp2 = app.clone().oneshot(req2).await.unwrap();
     assert_eq!(resp2.status(), StatusCode::BAD_REQUEST);
+    let bytes2 = axum::body::to_bytes(resp2.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let err_json2: Value = serde_json::from_slice(&bytes2).unwrap();
+    assert_eq!(err_json2["error"], "invalid_envelope");
 
-    // 3. signal_type > 128 bytes -> 400 invalid_signal_type
-    let long_type = "x".repeat(129);
+    // 3. Oversized envelope > 64 KiB -> 400 invalid_envelope
+    let oversized = "A".repeat(100_000);
     let req3 = Request::builder()
         .method("POST")
         .uri(format!(
@@ -467,35 +466,18 @@ async fn test_validation_and_authorization() {
         .body(Body::from(
             json!({
                 "sender_client_id": "c_alice_val00001",
-                "signal_type": long_type,
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": oversized
             })
             .to_string(),
         ))
         .unwrap();
     let resp3 = app.clone().oneshot(req3).await.unwrap();
     assert_eq!(resp3.status(), StatusCode::BAD_REQUEST);
-
-    // 4. Invalid base64 payload -> 400 invalid_payload
-    let req4 = Request::builder()
-        .method("POST")
-        .uri(format!(
-            "/api/v1/rooms/{}/sessions/{}/signal",
-            room_id, session_id
-        ))
-        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({
-                "sender_client_id": "c_alice_val00001",
-                "signal_type": "offer",
-                "payload": "!!!invalid_base64!!!"
-            })
-            .to_string(),
-        ))
+    let bytes3 = axum::body::to_bytes(resp3.into_body(), usize::MAX)
+        .await
         .unwrap();
-    let resp4 = app.clone().oneshot(req4).await.unwrap();
-    assert_eq!(resp4.status(), StatusCode::BAD_REQUEST);
+    let err_json3: Value = serde_json::from_slice(&bytes3).unwrap();
+    assert_eq!(err_json3["error"], "invalid_envelope");
 }
 
 #[tokio::test]
@@ -523,8 +505,7 @@ async fn test_disabled_mode_and_opacity_invariants() {
         .body(Body::from(
             json!({
                 "sender_client_id": "c_alice_dis00001",
-                "signal_type": "offer",
-                "payload": "dGVzdF9wYXlsb2Fk"
+                "envelope": "dGVzdF9lbnZlbG9wZQ"
             })
             .to_string(),
         ))
@@ -539,4 +520,47 @@ async fn test_disabled_mode_and_opacity_invariants() {
             .await
             .unwrap();
     assert_eq!(count, 0, "Signals must NEVER be written to audit logs");
+}
+
+#[tokio::test]
+async fn test_envelope_opacity_accepts_raw_bytes() {
+    let types_file = create_temp_session_types_file();
+    let (app, _pool) = setup_session_app(types_file.path().to_str().unwrap()).await;
+
+    let _u1_id = register_user(&app, "sig_opa_u1", "Password123!", None).await;
+    let (_, login_a) =
+        login_user(&app, "sig_opa_u1", "Password123!", "c_alice_opa00001", None).await;
+    let token_a = login_a["session_token"].as_str().unwrap().to_string();
+
+    let room_id = create_room(&app, &token_a).await;
+    let session_id = create_and_join_session(&app, &room_id, &token_a, "c_alice_opa00001").await;
+
+    // Send arbitrary non-JSON, non-plaintext binary bytes as envelope
+    let arbitrary_bytes = vec![0x00, 0xff, 0xfe, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde];
+    let arbitrary_envelope =
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&arbitrary_bytes);
+
+    let sig_req = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/api/v1/rooms/{}/sessions/{}/signal",
+            room_id, session_id
+        ))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "sender_client_id": "c_alice_opa00001",
+                "envelope": arbitrary_envelope
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let resp = app.clone().oneshot(sig_req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::ACCEPTED);
+    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let res_json: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(res_json["delivered_to"], 0);
 }

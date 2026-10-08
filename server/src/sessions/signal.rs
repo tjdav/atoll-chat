@@ -1,3 +1,9 @@
+//! Session Signaling Relay
+//!
+//! Enforces V3 §6.26.1 and §12 opacity invariants.
+//! The server does not decrypt, parse, validate structure, or inspect client-encrypted
+//! envelopes beyond base64url validation and enforcing a 64 KiB length cap.
+
 use crate::devices;
 use crate::rooms;
 use crate::sockudo::Publisher;
@@ -11,8 +17,7 @@ use sqlx::SqlitePool;
 pub struct SignalRequest {
     pub sender_client_id: String,
     pub target_client_id: Option<String>,
-    pub signal_type: String,
-    pub payload: String,
+    pub envelope: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -30,10 +35,8 @@ pub enum SignalError {
     RoomNotFound,
     #[error("Invalid client_id")]
     InvalidClientId,
-    #[error("Invalid signal_type")]
-    InvalidSignalType,
-    #[error("Invalid payload")]
-    InvalidPayload,
+    #[error("Invalid envelope")]
+    InvalidEnvelope,
     #[error("Not a participant")]
     NotAParticipant,
     #[error("Target not found")]
@@ -87,24 +90,20 @@ pub async fn send_session_signal(
         return Err(SignalError::RoomNotFound);
     }
 
-    // 3. Validate signal_type
-    if req.signal_type.trim().is_empty() || req.signal_type.len() > 128 {
-        return Err(SignalError::InvalidSignalType);
-    }
-
-    // 4. Validate payload: valid Base64 decoding to <= 64 KiB (65,536 bytes)
-    let decoded = decode_base64_flexible(&req.payload).map_err(|_| SignalError::InvalidPayload)?;
+    // 3. Validate envelope: valid Base64 decoding to <= 64 KiB (65,536 bytes)
+    let decoded =
+        decode_base64_flexible(&req.envelope).map_err(|_| SignalError::InvalidEnvelope)?;
     if decoded.len() > 65536 {
-        return Err(SignalError::InvalidPayload);
+        return Err(SignalError::InvalidEnvelope);
     }
 
-    // 5. Validate sender_client_id belongs to caller
+    // 4. Validate sender_client_id belongs to caller
     let dev = devices::find_by_client_id(pool, caller_id, &req.sender_client_id).await?;
     if dev.is_none() {
         return Err(SignalError::InvalidClientId);
     }
 
-    // 6. Verify caller is a current participant in the session (user_id and sender_client_id)
+    // 5. Verify caller is a current participant in the session (user_id and sender_client_id)
     if !occupancy
         .is_client_of(session_id, caller_id, &req.sender_client_id)
         .await
@@ -112,7 +111,7 @@ pub async fn send_session_signal(
         return Err(SignalError::NotAParticipant);
     }
 
-    // 7. Route signal per mode
+    // 6. Route signal per mode
     if let Some(ref target_client_id) = req.target_client_id {
         // Unicast mode
         if target_client_id.trim().is_empty() {
@@ -130,8 +129,7 @@ pub async fn send_session_signal(
             "sender_user_id": caller_id,
             "sender_client_id": req.sender_client_id,
             "target_client_id": target_client_id,
-            "signal_type": req.signal_type,
-            "payload": req.payload,
+            "envelope": req.envelope,
         });
 
         let envelope = UserEventEnvelope::new("session.signal", 0, event_payload);
@@ -160,8 +158,7 @@ pub async fn send_session_signal(
             "session_id": session_id,
             "sender_user_id": caller_id,
             "sender_client_id": req.sender_client_id,
-            "signal_type": req.signal_type,
-            "payload": req.payload,
+            "envelope": req.envelope,
         });
 
         let envelope = UserEventEnvelope::new("session.signal", 0, event_payload);

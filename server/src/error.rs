@@ -116,10 +116,7 @@ impl From<crate::sessions::SignalError> for ApiError {
             SignalError::SessionNotFound => ApiError::NotFound("session_not_found".to_string()),
             SignalError::RoomNotFound => ApiError::NotFound("room_not_found".to_string()),
             SignalError::InvalidClientId => ApiError::BadRequest("invalid_client_id".to_string()),
-            SignalError::InvalidSignalType => {
-                ApiError::BadRequest("invalid_signal_type".to_string())
-            }
-            SignalError::InvalidPayload => ApiError::BadRequest("invalid_payload".to_string()),
+            SignalError::InvalidEnvelope => ApiError::BadRequest("invalid_envelope".to_string()),
             SignalError::NotAParticipant => ApiError::Forbidden("not_a_participant".to_string()),
             SignalError::TargetNotFound => ApiError::NotFound("target_not_found".to_string()),
             SignalError::Device(e) => ApiError::from(e),
