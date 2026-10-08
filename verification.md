@@ -1092,6 +1092,22 @@
   - **Occupancy & Non-Persistence:** Occupancy is held purely in-memory (`OccupancyStore`). Never persisted to SQLite or written to logs. Debounced `session.occupancy` carries participant count only.
   - **Link to report:** [verification/sessions-v3-envelope-align/report.md](verification/sessions-v3-envelope-align/report.md)
 
+## Model Hosting V3 Alignment Verification Fact (Phase 22)
+- **ID:** Phase 22 Model Hosting V3 Alignment
+- **Date:** 2026-10-08
+- **Status:** Complete. Canonical.
+- **Spec / Task references:** V3 Spec §5.27, §8.1, §8.1.3, §8.1.4, §8.3, §9, §14.8; V2 Tasks 41a, 41b, 39b
+- **Verified Facts:**
+  - **Reconciliation Result:** Verified V3 §5.27, §8.1, §8.1.3, §8.1.4, §8.3, §9 against canonical V2 Tasks 41a, 41b, 39b facts. 100% match across all 16 items. Verification-only task.
+  - **Manifest JSON Schema:** `schema_version == 1`, `models[]` with `id`, `version`, `size_bytes`, `files[]` with `name`, `size_bytes`, `sha256`.
+  - **Voice Metadata Source:** Loaded per TTS model from `{TTS_MODELS_PATH}/{model_id}/{version}/voices.json` with fallback.
+  - **URL Structure & Serving:** `GET /models/stt/v1/:model_id/:version/:filename` and `/tts/...`. ETag is manifest's `sha256`, quoted. Single-range supported (206), multi-range returns 416.
+  - **Capabilities:** Exposes seven model fields (`model_hosting_enabled`, `model_hosting_mode`, `stt_models_base_url`, `stt_default_model`, `tts_models_base_url`, `tts_default_model`, `tts_models`). Present and non-omitted when disabled (`model_hosting_enabled: false`).
+  - **Three Modes:** `local` (serves local disk manifest/files), `external` (unregisters route, caches remote manifest 1h), `proxy` (serves local manifest, proxy fetches missing files on demand to local disk with atomic rename and SHA-256 verification).
+  - **Rate Limiting:** `RATE_MODEL_DOWNLOAD_PER_MIN` (default 30) on file-serving routes. Manifest endpoint `GET /models/manifest.json` is exempt and returns `Cache-Control: public, max-age=3600`.
+  - **CLI Subcommands:** `server models verify` and `server models fetch` conform to Task 39b.
+- **Link to report:** [verification/model-hosting-v3-align/report.md](verification/model-hosting-v3-align/report.md)
+
 ## TURN Credentials V3 Alignment and Join Wiring Verification Fact (Phase 20)
 - **ID:** Phase 20 TURN Credentials Join Wiring
 - **Date:** 2026-10-08

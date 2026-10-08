@@ -244,6 +244,8 @@
   - **Delivered:** Step 0 Empirical Report at `verification/call-signaling-user-channel/report.md`, `server/src/calls/occupancy.rs` (`CallOccupancyStore` and helpers), `server/src/calls/signal.rs`, `server/src/calls/lifecycle.rs`, `server/src/routes/calls.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/call_signaling.rs`, `server/tests/call_lifecycle.rs`, `server/tests/call_turn.rs`.
   - **Batch:** `messaging`
 
+- **Model Hosting V3 Alignment (Phase 22)**: done
+  - **Delivered:** Step 0 Empirical Verification Report at `verification/model-hosting-v3-align/report.md`, `server/tests/model_hosting.rs`, `verification.md`. Verified V3 §5.27, §8.1, §8.1.3, §8.1.4, §8.3, §9 and Tasks 41a, 41b, 39b canonical facts (100% match, verification-only).
 - **Call Join, Leave, and End Lifecycle (Phase 19)**: done
   - **Migration:** None (reused `call_sessions` table; occupancy is held purely in-memory).
   - **Delivered:** Step 0 Empirical Report at `verification/call-join-leave-end/report.md`, `server/src/calls/occupancy.rs` (`participant_count`), `server/src/calls/lifecycle.rs` (`join_call`, `leave_call`, `end_call`), `server/src/calls/mod.rs`, `server/src/routes/calls.rs`, `server/src/lib.rs`, `server/tests/call_lifecycle.rs`, `server/tests/call_signaling.rs`.
