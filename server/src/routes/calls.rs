@@ -51,7 +51,7 @@ pub async fn join_handler(
         &state.publisher,
         &state.call_occupancy,
         &state.server_hard_max,
-        state.config.calling_enabled,
+        &state.config,
         &room_id,
         &call_id,
         &auth.user_id,

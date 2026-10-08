@@ -1,6 +1,8 @@
 use crate::audit;
 use crate::calls::occupancy::CallOccupancyStore;
+use crate::calls::turn::{generate_turn_credentials, IceServer};
 use crate::calls::CallError;
+use crate::config::Config;
 use crate::devices;
 use crate::limits::{self, ServerHardMax};
 use crate::rooms;
@@ -16,7 +18,7 @@ pub struct JoinCallRequest {
 
 #[derive(Debug, Serialize)]
 pub struct JoinCallResponse {
-    pub ice_servers: Vec<serde_json::Value>,
+    pub ice_servers: Vec<IceServer>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,13 +43,13 @@ pub async fn join_call(
     publisher: &Publisher,
     call_occupancy: &CallOccupancyStore,
     server_hard_max: &ServerHardMax,
-    calling_enabled: bool,
+    config: &Config,
     room_id: &str,
     call_id: &str,
     caller_id: &str,
     req: JoinCallRequest,
 ) -> Result<JoinCallResponse, CallError> {
-    if !calling_enabled {
+    if !config.calling_enabled {
         return Err(CallError::CallingDisabled);
     }
 
@@ -156,9 +158,20 @@ pub async fn join_call(
         .await;
     }
 
-    Ok(JoinCallResponse {
-        ice_servers: vec![],
-    })
+    let ice_servers = if config.calling_enabled && !config.turn_url.trim().is_empty() {
+        match generate_turn_credentials(config) {
+            Ok(creds) => vec![IceServer {
+                urls: creds.urls,
+                username: creds.username,
+                credential: creds.credential,
+            }],
+            Err(_) => vec![],
+        }
+    } else {
+        vec![]
+    };
+
+    Ok(JoinCallResponse { ice_servers })
 }
 
 pub async fn leave_call(

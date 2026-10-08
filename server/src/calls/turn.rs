@@ -9,6 +9,13 @@ use sha1::Sha1;
 
 type HmacSha1 = Hmac<Sha1>;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct IceServer {
+    pub urls: Vec<String>,
+    pub username: String,
+    pub credential: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TurnCredentialsResponse {
     pub urls: Vec<String>,
