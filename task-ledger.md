@@ -258,6 +258,10 @@
   - **Migration:** `server/migrations/0001_v2_schema.sql` (Updated `room_sessions` schema per V3 §7.9: `position INTEGER NOT NULL DEFAULT 0`, `max_participants INTEGER`, `idx_room_sessions_room`, `idx_room_sessions_extension`).
   - **Delivered:** `verification/sessions-v3-envelope-align/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/sessions/signal.rs`, `server/src/error.rs`, `server/tests/room_session_signal.rs`. Aligned V3 §8.7.11 signal endpoint wire format (`envelope`), V3 §8.9 event payload shape, envelope opacity (64 KiB cap), metadata opacity, and in-memory occupancy invariants.
   - **Batch:** `messaging`
+- **Task — Starred Items V3 Alignment (Phase 23)**: done
+  - **Migration:** None (Case A: schema and implementation match V3 §7.2, §8.2.9, §8.9).
+  - **Delivered:** Step 0 Empirical Report at `verification/starred-items-v3-align/report.md`, expanded V3 contract tests in `server/tests/starred_items.rs`, `verification.md`. Verified V3 spec against canonical V2 Task 42 fact (100% match across all 17 items, verification-only task).
+  - **Batch:** `sync`
 
 ## Annotations for Future Tasks
 
