@@ -9,6 +9,7 @@ const definedTypes = [
   'Primitive',
   'PrimitiveInstance',
   'RecipeKind',
+  'RecipeTarget',
   'Slot',
   'Recipe',
   'Intent',
@@ -26,7 +27,10 @@ const definedTypes = [
 export default [
   ...rootConfig,
   {
-    files: ['src/**/*.js'],
+    ignores: ['!tests/**', '!**/tests/**']
+  },
+  {
+    files: ['src/**/*.js', 'tests/**/*.js'],
     rules: {
       'jsdoc/no-undefined-types': ['error', { definedTypes }]
     }
