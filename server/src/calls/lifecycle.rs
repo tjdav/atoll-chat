@@ -1,4 +1,5 @@
 use crate::audit;
+use crate::calls::occupancy::CallOccupancyStore;
 use crate::calls::CallError;
 use crate::rooms;
 use crate::sockudo::Publisher;
@@ -18,6 +19,7 @@ pub struct EndCallResponse {
 pub async fn end_call(
     pool: &SqlitePool,
     publisher: &Publisher,
+    call_occupancy: &CallOccupancyStore,
     calling_enabled: bool,
     room_id: &str,
     call_id: &str,
@@ -82,14 +84,9 @@ pub async fn end_call(
     .fetch_one(&mut *tx)
     .await?;
 
-    sqlx::query(
-        "UPDATE call_participants SET left_at = CURRENT_TIMESTAMP WHERE call_id = ? AND left_at IS NULL",
-    )
-    .bind(call_id)
-    .execute(&mut *tx)
-    .await?;
-
     tx.commit().await?;
+
+    call_occupancy.clear_call(call_id).await;
 
     // 6. Post-commit: publish call.ended room event and log audit entry
     let channel = format!("private-room-{}", room_id);

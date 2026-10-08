@@ -1,16 +1,18 @@
-use crate::audit;
-use crate::calls::CallError;
+use crate::calls::occupancy::CallOccupancyStore;
+use crate::error::ApiError;
+use crate::rate_limit::{self, RateLimitKey};
 use crate::rooms;
 use crate::sockudo::Publisher;
-use crate::sync::envelope::{publish_user_event, UserEventEnvelope};
-use chrono::{DateTime, Utc};
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 #[derive(Debug, Deserialize)]
 pub struct SignalRequest {
-    pub signal_type: String,
-    pub payload: String,
+    pub sender_client_id: String,
+    pub target_user_id: String,
+    pub target_client_id: String,
+    pub envelope: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -18,140 +20,105 @@ pub struct SignalResponse {
     pub delivered_to: usize,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn send_signal(
     pool: &SqlitePool,
     publisher: &Publisher,
+    call_occupancy: &CallOccupancyStore,
+    rate_limit_config: &crate::config::RateLimitConfig,
     calling_enabled: bool,
     room_id: &str,
     call_id: &str,
     caller_id: &str,
     req: SignalRequest,
-) -> Result<SignalResponse, CallError> {
+) -> Result<SignalResponse, ApiError> {
+    // 1. If CALLING_ENABLED=false, return 501 calling_disabled
     if !calling_enabled {
-        return Err(CallError::CallingDisabled);
+        return Err(ApiError::NotImplemented("calling_disabled".to_string()));
     }
 
-    // Verify caller is a member of the room
-    if rooms::get_room_for_user(pool, room_id, caller_id)
+    // 2. Verify caller is a member of the room
+    let member_opt = rooms::get_room_for_user(pool, room_id, caller_id)
         .await
-        .map_err(|_| CallError::RoomNotFound)?
-        .is_none()
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if member_opt.is_none() {
+        return Err(ApiError::NotFound("room_not_found".to_string()));
+    }
+
+    // 3. Verify caller is a participant in (room_id, call_id)
+    if !call_occupancy.is_participant(call_id, caller_id).await {
+        return Err(ApiError::Forbidden("not_a_participant".to_string()));
+    }
+
+    // 4. Verify sender_client_id belongs to the caller in this call
+    if !call_occupancy
+        .is_client_owner(call_id, caller_id, &req.sender_client_id)
+        .await
     {
-        return Err(CallError::RoomNotFound);
+        return Err(ApiError::Forbidden("sender_client_not_owned".to_string()));
     }
 
-    // Option A lazy creation in a transaction
-    let mut tx = pool.begin().await?;
+    // 5. Verify target_client_id is a current participant in the call
+    let target_user = match call_occupancy
+        .find_user_for_client(call_id, &req.target_client_id)
+        .await
+    {
+        Some(u) => u,
+        None => return Err(ApiError::NotFound("target_not_found".to_string())),
+    };
 
-    let existing_session: Option<(String,)> =
-        sqlx::query_as("SELECT room_id FROM call_sessions WHERE id = ?")
-            .bind(call_id)
-            .fetch_optional(&mut *tx)
-            .await?;
-
-    let mut newly_created_started_at: Option<DateTime<Utc>> = None;
-
-    if let Some((existing_room_id,)) = existing_session {
-        if existing_room_id != room_id {
-            return Err(CallError::CallIdConflict);
-        }
-    } else {
-        let (started_at,): (DateTime<Utc>,) = sqlx::query_as(
-            "INSERT INTO call_sessions (id, room_id, initiator_id, started_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) RETURNING started_at",
-        )
-        .bind(call_id)
-        .bind(room_id)
-        .bind(caller_id)
-        .fetch_one(&mut *tx)
-        .await?;
-
-        newly_created_started_at = Some(started_at);
+    // 6. Verify target_user_id matches the user found for target_client_id
+    if target_user != req.target_user_id {
+        return Err(ApiError::BadRequest("target_user_mismatch".to_string()));
     }
 
-    // Upsert participant row for caller
-    sqlx::query(
-        "INSERT INTO call_participants (call_id, user_id, joined_at, left_at)
-         VALUES (?, ?, CURRENT_TIMESTAMP, NULL)
-         ON CONFLICT(call_id, user_id) DO UPDATE SET left_at = NULL",
-    )
-    .bind(call_id)
-    .bind(caller_id)
-    .execute(&mut *tx)
-    .await?;
+    // 7. Verify envelope is valid base64url
+    let is_valid_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(&req.envelope)
+        .or_else(|_| base64::engine::general_purpose::URL_SAFE.decode(&req.envelope))
+        .is_ok();
 
-    tx.commit().await?;
+    if !is_valid_b64 {
+        return Err(ApiError::BadRequest("invalid_envelope".to_string()));
+    }
 
-    // Post-commit: if newly created, publish call.started room event and write audit log
-    if let Some(started_at) = newly_created_started_at {
-        let channel = format!("private-room-{}", room_id);
-        let event_payload = serde_json::json!({
-            "call_id": call_id,
-            "room_id": room_id,
-            "initiator_id": caller_id,
-            "started_at": started_at,
+    // 8. Enforce RATE_CALL_SIGNAL_PER_MIN per user per call
+    let rate_key = RateLimitKey::CallSignal {
+        user_id: caller_id.to_string(),
+        call_id: call_id.to_string(),
+    };
+    let decision = rate_limit::check(pool, rate_limit_config, rate_key)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".to_string(),
+            reset_at: decision.reset_at,
         });
-
-        if let Err(e) = publisher
-            .publish(&channel, "call.started", event_payload)
-            .await
-        {
-            tracing::warn!(
-                error = %e,
-                call_id = %call_id,
-                room_id = %room_id,
-                "Failed to publish call.started event"
-            );
-        }
-
-        let _ = audit::log(
-            pool,
-            Some(caller_id),
-            audit::action::CALL_START,
-            Some("call"),
-            Some(call_id),
-            Some(serde_json::json!({
-                "call_id": call_id,
-                "room_id": room_id,
-            })),
-        )
-        .await;
     }
 
-    // Query all other active participants
-    let other_participants: Vec<(String,)> = sqlx::query_as(
-        "SELECT user_id FROM call_participants WHERE call_id = ? AND user_id != ? AND left_at IS NULL",
-    )
-    .bind(call_id)
-    .bind(caller_id)
-    .fetch_all(pool)
-    .await?;
+    // 9. Publish call.signal on private-user-{target_user_id}
+    let channel = format!("private-user-{}", req.target_user_id);
+    let event_payload = serde_json::json!({
+        "call_id": call_id,
+        "sender_user_id": caller_id,
+        "sender_client_id": req.sender_client_id,
+        "target_client_id": req.target_client_id,
+        "envelope": req.envelope,
+    });
 
-    let delivered_count = other_participants.len();
-
-    // Broadcast call.signal user event to each other participant
-    let envelope = UserEventEnvelope::new(
-        "call.signal",
-        0,
-        serde_json::json!({
-            "call_id": call_id,
-            "sender_user_id": caller_id,
-            "signal_type": req.signal_type,
-            "payload": req.payload,
-        }),
-    );
-
-    for (target_user_id,) in other_participants {
-        if let Err(e) = publish_user_event(publisher, &target_user_id, &envelope).await {
-            tracing::warn!(
-                error = %e,
-                target_user_id = %target_user_id,
-                call_id = %call_id,
-                "Failed to deliver call.signal event"
-            );
-        }
+    if let Err(e) = publisher
+        .publish(&channel, "call.signal", event_payload)
+        .await
+    {
+        tracing::warn!(
+            error = %e,
+            "Failed to deliver call.signal event"
+        );
     }
 
-    Ok(SignalResponse {
-        delivered_to: delivered_count,
-    })
+    // 10. Return 200 OK with { "delivered_to": 1 }
+    Ok(SignalResponse { delivered_to: 1 })
 }

@@ -110,6 +110,7 @@ async fn setup_test_app_with_sockudo_mock() -> (axum::Router, SqlitePool, MockSe
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),

@@ -131,6 +131,7 @@ async fn setup_test_app(
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),
@@ -359,6 +360,8 @@ async fn test_turn_credentials_no_audit_or_events() {
         setup_test_app(true, "turn:turn.example.com:3478", "secret-key", 10).await;
     let (_user_id, token) = create_test_user(&app, &pool, "turn_u5", "client_turn_123456").await;
 
+    let req_count_before = mock_server.received_requests().await.unwrap().len();
+
     let audit_before: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log")
         .fetch_one(&pool)
         .await
@@ -380,10 +383,11 @@ async fn test_turn_credentials_no_audit_or_events() {
         .await
         .unwrap();
 
+    let req_count_after = mock_server.received_requests().await.unwrap().len();
+
     assert_eq!(audit_before, audit_after, "Audit log must be unchanged");
     assert_eq!(
-        mock_server.received_requests().await.unwrap().len(),
-        0,
+        req_count_before, req_count_after,
         "No Sockudo events should be published"
     );
 }

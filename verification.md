@@ -1023,3 +1023,31 @@
   - **SSRF Guard & Plaintext Non-Persistence:** 100% matches V2 Task 35 fact. Plaintext URLs and response bodies are decrypted solely in memory and never logged, audited, or persisted.
   - **Proposed Specification Amendment:** Amend V3 §8.1.2 to align with V2 Task 35 fact (Bearer Auth required, user rate limit key, X25519 ECDH Content Key mechanism, and `ephemeral_pubkey`/`nonce`/`ciphertext` envelope fields).
 - **Link to report:** [verification/link-preview-proxy-v3/report.md](verification/link-preview-proxy-v3/report.md)
+
+## Call Signaling Relay Verification Fact (Phase 18)
+- **ID:** Phase 18 Call Signaling Relay
+- **Date:** 2026-10-08
+- **Status:** Complete. Canonical. Client-facing contract.
+- **Spec sections affected:** V3 Spec §2.2, §5.6, §6.24, §7.9, §8.7.7, §8.9, §8.10, §12
+- **Verified Facts:**
+  - **In-Memory Call Occupancy Store:** `CallOccupancyStore` holds call participation purely in memory (`Arc<RwLock<HashMap<call_id, CallOccupancy>>>`). Never persisted to SQLite or disk, never written to log lines, tracing spans, or audit logs. `call_participants` table removed from `0001_v2_schema.sql`.
+  - **Signal Endpoint Contract (`POST /api/v1/rooms/:id/calls/:call_id/signal`):**
+    - Request: `{ "sender_client_id": "<client_id>", "target_user_id": "<user_id>", "target_client_id": "<client_id>", "envelope": "<base64url>" }`.
+    - Response: HTTP 200 OK `{ "delivered_to": 1 }` with `Cache-Control: no-store` header.
+    - Validation pipeline:
+      1. `CALLING_ENABLED=false` -> HTTP 501 `calling_disabled`.
+      2. Room membership check -> HTTP 404 `room_not_found`.
+      3. Caller call participation (`is_participant`) -> HTTP 403 `not_a_participant`.
+      4. Sender client ownership (`is_client_owner`) -> HTTP 403 `sender_client_not_owned`.
+      5. Target client call participation (`find_user_for_client`) -> HTTP 404 `target_not_found`.
+      6. Target user matching -> HTTP 400 `target_user_mismatch`.
+      7. Envelope base64url decoding -> HTTP 400 `invalid_envelope`.
+      8. Rate limit (`RATE_CALL_SIGNAL_PER_MIN`) -> HTTP 429 `rate_limited`.
+  - **Event Delivery Contract (`call.signal`):**
+    - Published strictly on target user channel `private-user-{target_user_id}`.
+    - Payload shape: `{ "call_id": "c_...", "sender_user_id": "u_...", "sender_client_id": "c_...", "target_client_id": "c_...", "envelope": "<base64url>" }`.
+    - Non-durable: does NOT allocate a `user_seq`.
+    - MUST NOT publish on `private-room-{room_id}` (room channel).
+  - **Rate Limiting:** Key format `call_signal:{user_id}:{call_id}:min:{boundary}` (`RATE_CALL_SIGNAL_PER_MIN`, default 120/min). Bucket is per user per call and shared across caller's devices.
+  - **No-Persistence & No-Logging Invariants:** Signal relay writes no rows to any table except the rate-limit table, writes zero audit log entries, and logs no field values, usernames, client IDs, or envelope bytes (§12 normative constraint).
+- **Link to report:** [verification/call-signaling-user-channel/report.md](verification/call-signaling-user-channel/report.md)

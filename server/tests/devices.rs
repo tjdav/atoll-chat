@@ -209,6 +209,7 @@ async fn test_04_device_limit_is_enforced() {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),

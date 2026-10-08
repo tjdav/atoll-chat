@@ -337,6 +337,7 @@ async fn main() -> anyhow::Result<()> {
         session_types,
         models,
         occupancy,
+        call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
     };
 

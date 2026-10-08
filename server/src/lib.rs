@@ -125,6 +125,7 @@ pub struct AppState {
     pub session_types: Arc<sessions::SessionTypesStore>,
     pub models: Arc<models::ModelStore>,
     pub occupancy: sessions::OccupancyStore,
+    pub call_occupancy: calls::CallOccupancyStore,
     pub extension_proxy_blocklist: Arc<extensions_proxy::blocklist::DomainBlocklistStore>,
 }
 
