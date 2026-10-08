@@ -3,6 +3,7 @@ import { parseArgs } from './args.js'
 import { loginCommand } from './login.js'
 import { logoutCommand } from './logout.js'
 import { registerCommand } from './register.js'
+import { runCommand } from './run.js'
 import { validateCommand } from './validate.js'
 
 const pkg = JSON.parse(
@@ -32,7 +33,7 @@ export class UserError extends Error {
  * @property {string} description - A one-line description for the
  *   command index.
  * @property {(args: string[], flags: Record<string, string | true>,
- *   io: { stdout: NodeJS.WritableStream, stderr: NodeJS.WritableStream, cwd?: string | undefined, env?: NodeJS.ProcessEnv | undefined, resolvers?: import('../runtime/keystore/resolvers/index.js').Resolver[] | undefined, logger?: import('../runtime/diagnostics/logger.js').Logger | undefined, fetchImpl?: typeof globalThis.fetch | undefined, commands?: Record<string, Subcommand> | undefined }) => Promise<number>} run - The command's
+ *   io: { stdout: NodeJS.WritableStream, stderr: NodeJS.WritableStream, cwd?: string | undefined, env?: NodeJS.ProcessEnv | undefined, resolvers?: import('../runtime/keystore/resolvers/index.js').Resolver[] | undefined, logger?: import('../runtime/diagnostics/logger.js').Logger | undefined, fetchImpl?: typeof globalThis.fetch | undefined, runtimeFactory?: typeof import('../runtime/index.js').createRuntime | undefined, commands?: Record<string, Subcommand> | undefined }) => Promise<number>} run - The command's
  *   implementation.
  */
 
@@ -50,7 +51,8 @@ function getBuiltinCommands () {
       validate: validateCommand,
       register: registerCommand,
       login: loginCommand,
-      logout: logoutCommand
+      logout: logoutCommand,
+      run: runCommand
     }
   }
   return builtinCommandsCache
@@ -94,6 +96,7 @@ function formatGeneralUsage (commands) {
  * @param {import('../runtime/diagnostics/logger.js').Logger} [io.logger] - Logger
  *   instance for diagnostics.
  * @param {typeof globalThis.fetch} [io.fetchImpl] - Fetch implementation.
+ * @param {typeof import('../runtime/index.js').createRuntime} [io.runtimeFactory] - Runtime factory implementation.
  * @param {Record<string, Subcommand>} [io.commands] - The subcommand
  *   table. Defaults to the built-in table. Parameterized for tests.
  * @returns {Promise<number>} The exit code: 0, 1, or 2.
