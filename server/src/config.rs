@@ -126,6 +126,7 @@ pub struct Config {
     pub server_max_edit_window_seconds: i64,
     pub edit_window_seconds: i64,
     pub max_starred_items_per_user: u32,
+    pub preferences_max_encrypted_bytes: usize,
     pub rate_limits: RateLimitConfig,
     pub cleanup_enabled: bool,
     pub cleanup_interval_minutes: u64,
@@ -457,6 +458,19 @@ impl Config {
                 max_starred_items_per_user
             );
         }
+
+        let preferences_max_encrypted_bytes: usize =
+            match env::var("PREFERENCES_MAX_ENCRYPTED_BYTES") {
+                Ok(v) => match v.trim().parse() {
+                    Ok(val) if (1024..=1_048_576).contains(&val) => val,
+                    Ok(val) => anyhow::bail!(
+                        "PREFERENCES_MAX_ENCRYPTED_BYTES must be between 1024 and 1048576 (got {})",
+                        val
+                    ),
+                    Err(_) => anyhow::bail!("Invalid PREFERENCES_MAX_ENCRYPTED_BYTES value: {}", v),
+                },
+                Err(_) => 131_072,
+            };
 
         let rate_edit_per_min = env::var("RATE_EDIT_PER_MIN")
             .ok()
@@ -1312,6 +1326,7 @@ impl Config {
             server_max_edit_window_seconds,
             edit_window_seconds,
             max_starred_items_per_user,
+            preferences_max_encrypted_bytes,
             rate_limits,
             cleanup_enabled,
             cleanup_interval_minutes,
@@ -1473,6 +1488,7 @@ impl Config {
             server_max_edit_window_seconds: 86400,
             edit_window_seconds: 900,
             max_starred_items_per_user: 10000,
+            preferences_max_encrypted_bytes: 131_072,
             cleanup_enabled: false,
             cleanup_interval_minutes: 60,
             cleanup_startup_delay_secs: 0,

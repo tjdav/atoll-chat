@@ -1135,6 +1135,18 @@
   - **Rate Limiting:** `RATE_TURN_CREDENTIALS_PER_MIN` (default 10) applies only to direct standalone calls to `POST /calls/turn-credentials`. The join endpoint call is not throttled by this limit.
 - **Link to report:** [verification/turn-credentials-join-wiring/report.md](verification/turn-credentials-join-wiring/report.md)
 
+## Generic Preferences Contract Alignment Verification Fact (Phase 24)
+- **ID:** Generic Preferences V3 Alignment
+- **Date:** 2026-10-08
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §5.28, §5.33, §6.29, §7.2, §8.1, §8.2.4, §8.2.8, §8.9, §14.2, §14.3
+- **Verified Facts:**
+  - **Schema:** Baseline migration `server/migrations/0001_v2_schema.sql` defines `user_preferences` table with `value_encrypted TEXT NOT NULL` column (renamed from `value_json`).
+  - **REST Endpoints & Wire Format:** `PATCH /users/me/preferences/:key` accepts request body `{ "value": "<base64url, unpadded>" }`. Missing or empty `value` field returns 400 `missing_field`. Non-base64url value returns 400 `invalid_value`. Decoded size exceeding `preferences_max_encrypted_bytes` returns 413 `value_too_large`. `GET /users/me/preferences/:key` returns `{ key, value, user_seq }` without `updated_at`. Server stores ciphertext string verbatim without inspection or decryption.
+  - **Config & Capabilities:** Added `PREFERENCES_MAX_ENCRYPTED_BYTES` environment variable (default 131072, validation range 1024..=1048576) exposed unconditionally as `preferences_max_encrypted_bytes` in `GET /capabilities`.
+  - **No-Op Guard:** Writing an unchanged preference value skips `user_seq` allocation, skips `updated_at` mutation, and suppresses `preference.updated` event publishing.
+  - **GDPR & Sync:** `anonymise_user` in `server/src/gdpr.rs` explicitly deletes all `user_preferences` rows for the user. `build_export` adds `preferences.json` containing `[{ key, value, user_seq, updated_at }]` ordered by `key ASC` to the export ZIP archive. `GET /users/me/sync` returns active preference rows in the `user_preferences` array.
+
 ## Task — Starred Items V3 Alignment (Phase 23)
 - **ID:** Starred Items V3 Alignment
 - **Date:** 2026-10-08

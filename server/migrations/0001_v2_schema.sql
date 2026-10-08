@@ -295,11 +295,11 @@ CREATE TABLE IF NOT EXISTS read_state (
 CREATE INDEX IF NOT EXISTS idx_read_state_seq ON read_state(user_id, user_seq);
 
 CREATE TABLE IF NOT EXISTS user_preferences (
-    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    key        TEXT NOT NULL,
-    value_json TEXT NOT NULL,
-    user_seq   INTEGER NOT NULL,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    key             TEXT NOT NULL,
+    value_encrypted TEXT NOT NULL,
+    user_seq        INTEGER NOT NULL,
+    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, key)
 );
 CREATE INDEX IF NOT EXISTS idx_user_preferences_seq ON user_preferences(user_id, user_seq);

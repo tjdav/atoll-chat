@@ -234,6 +234,17 @@ pub async fn anonymise_user(
         Err(e) => return Err(GdprError::Database(e)),
     };
 
+    // 12. Delete all user preferences for the user (§14.2)
+    match sqlx::query("DELETE FROM user_preferences WHERE user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+    {
+        Ok(_) => {}
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => {}
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
     // Commit transaction
     tx.commit().await?;
 
@@ -474,7 +485,34 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
     }
     let starred_json = json!({ "starred_items": starred_list });
 
-    // 7. Audit
+    // 7. User preferences (§14.3)
+    let pref_rows = match sqlx::query(
+        "SELECT key, value_encrypted, user_seq, updated_at FROM user_preferences WHERE user_id = ? ORDER BY key ASC",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await {
+        Ok(rows) => rows,
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => vec![],
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
+    let mut pref_list = Vec::new();
+    for row in pref_rows {
+        let p_key: String = row.get("key");
+        let p_val: String = row.get("value_encrypted");
+        let p_seq: i64 = row.get("user_seq");
+        let p_updated_at: DateTime<Utc> = row.get("updated_at");
+
+        pref_list.push(json!({
+            "key": p_key,
+            "value": p_val,
+            "user_seq": p_seq,
+            "updated_at": p_updated_at.to_rfc3339()
+        }));
+    }
+
+    // 8. Audit
     let audit_rows = sqlx::query(
         "SELECT id, action, target_type, target_id, metadata, created_at FROM audit_log WHERE actor_id = ? ORDER BY created_at ASC",
     )
@@ -581,6 +619,15 @@ Store this archive securely. It contains personal data.
             .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
         zip.write_all(
             serde_json::to_string_pretty(&starred_json)
+                .map_err(|e| GdprError::ExportFailed(e.to_string()))?
+                .as_bytes(),
+        )
+        .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+
+        zip.start_file("preferences.json", options)
+            .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+        zip.write_all(
+            serde_json::to_string_pretty(&pref_list)
                 .map_err(|e| GdprError::ExportFailed(e.to_string()))?
                 .as_bytes(),
         )

@@ -306,7 +306,7 @@ async fn test_sync_pruning_job_tombstone_active_and_idempotency() {
         .unwrap();
 
     // 2. Active row older than 90d with user_seq <= 10 (deleted_at IS NULL) -> MUST NOT BE PRUNED
-    sqlx::query("INSERT INTO user_preferences (user_id, key, value_json, user_seq, updated_at) VALUES ('u_prune', 'pref1', '{}', 2, datetime('now', '-100 days'))")
+    sqlx::query("INSERT INTO user_preferences (user_id, key, value_encrypted, user_seq, updated_at) VALUES ('u_prune', 'pref1', 'AQID', 2, datetime('now', '-100 days'))")
         .execute(&pool)
         .await
         .unwrap();

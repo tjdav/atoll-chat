@@ -87,9 +87,9 @@ pub async fn write(
         }
     };
 
-    let value = match body_obj.get("value") {
-        Some(v) => v.clone(),
-        None => {
+    let value_str = match body_obj.get("value").and_then(|v| v.as_str()) {
+        Some(v) if !v.is_empty() => v.to_string(),
+        _ => {
             return Err(ApiError::InternalWithDetails(
                 StatusCode::BAD_REQUEST,
                 "missing_field".to_string(),
@@ -101,7 +101,8 @@ pub async fn write(
     let req = WriteRequest {
         user_id: auth.user_id,
         key: key.clone(),
-        value,
+        value: value_str,
+        max_bytes: state.config.preferences_max_encrypted_bytes,
     };
 
     let row = preferences::write_preference(&state.pool, &state.publisher, req)
@@ -113,12 +114,12 @@ pub async fn write(
                 serde_json::json!({ "key": k }),
             ),
             PreferencesError::InvalidKey(_) => ApiError::BadRequest("invalid_key".to_string()),
+            PreferencesError::InvalidValue => ApiError::BadRequest("invalid_value".to_string()),
             PreferencesError::ValueTooLarge(limit, size) => ApiError::InternalWithDetails(
                 StatusCode::PAYLOAD_TOO_LARGE,
                 "value_too_large".to_string(),
                 serde_json::json!({ "limit": limit, "size": size }),
             ),
-            PreferencesError::Serialization(msg) => ApiError::BadRequest(msg),
             PreferencesError::Database(err) => ApiError::Internal(err.into()),
         })?;
 
@@ -158,7 +159,7 @@ pub async fn delete(
                     serde_json::json!({ "key": k }),
                 ),
                 PreferencesError::InvalidKey(_) => ApiError::BadRequest("invalid_key".to_string()),
-                PreferencesError::ValueTooLarge(..) | PreferencesError::Serialization(..) => {
+                PreferencesError::InvalidValue | PreferencesError::ValueTooLarge(..) => {
                     ApiError::BadRequest("invalid_request".to_string())
                 }
                 PreferencesError::Database(err) => ApiError::Internal(err.into()),

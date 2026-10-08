@@ -34,8 +34,11 @@
   - **Verified:** `0022_read_state.sql`, `POST /api/v1/users/me/read-state`
 - **Task 24b — Room Order Preference**: done
   - **Verified:** `0023_user_preferences.sql`, `PATCH /api/v1/users/me/room-order` (via preferences)
-- **Task 24c — Generic Preferences**: done
-  - **Verified:** `0023_user_preferences.sql`, `server/src/sync/preferences.rs`, `/api/v1/users/me/preferences/{key}`
+- **Task 24c — Generic Preferences (Phase 24 / V3 Spec §5.28, §5.33, §6.29, §7.2, §8.1, §8.2.8, §14)**: done
+  - **Migration:** Updated `0001_v2_schema.sql` (renamed `user_preferences.value_json` to `value_encrypted TEXT NOT NULL`).
+  - **Delivered:** Empirical Report at `verification/generic-preferences-v3-align/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/sync/preferences.rs`, `server/src/routes/preferences.rs`, `server/src/config.rs`, `server/src/routes/capabilities.rs`, `server/src/gdpr.rs`, `server/src/error.rs`, `server/tests/preferences_crud.rs`, `server/tests/preferences_sync.rs`, `server/tests/preferences_validation.rs`, `server/tests/cleanup.rs`, `server/tests/gdpr.rs`, `server/tests/sync_contract.rs`, `server/tests/migration_schema.rs`.
+  - **Contract Highlights:** Wire field renamed to `value`, base64url unpadded validation (`URL_SAFE_NO_PAD`), opaque string storage, `PREFERENCES_MAX_ENCRYPTED_BYTES` config (default 131072) exposed in `GET /capabilities`, no-op write guard (unchanged value skips `user_seq` bump and event publishing), explicit GDPR deletion in `anonymise_user`, and `preferences.json` export archive member in `build_export`.
+  - **Batch:** `sync`
 - **Task 25 — Device Name Encryption & Sync**: done
   - **Verified:** `0024_device_names.sql`, `server/src/identity/device_name.rs`, `PATCH /api/v1/users/me/devices/{id}`
 - **Phase 15a/15b/16 — Push Notification Delivery**: done

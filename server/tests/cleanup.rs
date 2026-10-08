@@ -499,7 +499,7 @@ async fn test_11_sync_pruning_job_full_coverage_and_invariants() {
         .unwrap();
 
     // 4. user_preferences active row > 90d, user_seq = 4 -> NOT PRUNED (no deleted_at column)
-    sqlx::query("INSERT INTO user_preferences (user_id, key, value_json, user_seq, updated_at) VALUES ('u_sync', 'pref1', 'enc_val', 4, datetime('now', '-100 days'))")
+    sqlx::query("INSERT INTO user_preferences (user_id, key, value_encrypted, user_seq, updated_at) VALUES ('u_sync', 'pref1', 'AQID', 4, datetime('now', '-100 days'))")
         .execute(&pool)
         .await
         .unwrap();

@@ -173,7 +173,6 @@ async fn test_target_v2_schema_structural_matches_expectation() {
         "key_transparency_log",
         "key_transparency_snapshots",
         "call_sessions",
-        "call_participants",
         "room_sessions",
         "push_subscriptions",
         "instance_config",
@@ -195,5 +194,7 @@ async fn test_target_v2_schema_structural_matches_expectation() {
     assert!(current_dump.contains("users|username_token|TEXT|1||0"));
     assert!(current_dump.contains("rooms|metadata|TEXT|0||0"));
     assert!(current_dump.contains("starred_items|user_seq|INTEGER|1||0"));
+    assert!(current_dump.contains("user_preferences|value_encrypted|TEXT|1||0"));
+    assert!(!current_dump.contains("user_preferences|value_json|"));
     assert!(current_dump.contains("room_sessions|session_type|TEXT|1||0"));
 }
