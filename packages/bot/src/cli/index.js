@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { parseArgs } from './args.js'
+import { exportKeysCommand } from './export-keys.js'
+import { importKeysCommand } from './import-keys.js'
 import { loginCommand } from './login.js'
 import { logoutCommand } from './logout.js'
 import { registerCommand } from './register.js'
@@ -33,7 +35,7 @@ export class UserError extends Error {
  * @property {string} description - A one-line description for the
  *   command index.
  * @property {(args: string[], flags: Record<string, string | true>,
- *   io: { stdout: NodeJS.WritableStream, stderr: NodeJS.WritableStream, cwd?: string | undefined, env?: NodeJS.ProcessEnv | undefined, resolvers?: import('../runtime/keystore/resolvers/index.js').Resolver[] | undefined, logger?: import('../runtime/diagnostics/logger.js').Logger | undefined, fetchImpl?: typeof globalThis.fetch | undefined, runtimeFactory?: typeof import('../runtime/index.js').createRuntime | undefined, commands?: Record<string, Subcommand> | undefined }) => Promise<number>} run - The command's
+ *   io: { stdout: NodeJS.WritableStream, stderr: NodeJS.WritableStream, stdin?: NodeJS.ReadableStream | undefined, cwd?: string | undefined, env?: NodeJS.ProcessEnv | undefined, resolvers?: import('../runtime/keystore/resolvers/index.js').Resolver[] | undefined, logger?: import('../runtime/diagnostics/logger.js').Logger | undefined, fetchImpl?: typeof globalThis.fetch | undefined, runtimeFactory?: typeof import('../runtime/index.js').createRuntime | undefined, commands?: Record<string, Subcommand> | undefined }) => Promise<number>} run - The command's
  *   implementation.
  */
 
@@ -52,7 +54,9 @@ function getBuiltinCommands () {
       register: registerCommand,
       login: loginCommand,
       logout: logoutCommand,
-      run: runCommand
+      run: runCommand,
+      'export-keys': exportKeysCommand,
+      'import-keys': importKeysCommand
     }
   }
   return builtinCommandsCache
@@ -87,6 +91,8 @@ function formatGeneralUsage (commands) {
  *   output goes.
  * @param {NodeJS.WritableStream} io.stderr - Where errors and usage
  *   go.
+ * @param {NodeJS.ReadableStream} [io.stdin] - Standard input stream for
+ *   subcommands reading stdin.
  * @param {string} [io.cwd] - The working directory for
  *   path resolution. Parameterized for tests.
  * @param {NodeJS.ProcessEnv} [io.env] - Environment variables object.

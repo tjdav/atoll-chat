@@ -1,5 +1,17 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-040 Verification Fact
+- **Portability Subcommands (`packages/bot/src/cli/export-keys.js`, `src/cli/import-keys.js`)**:
+  - The `export-keys` and `import-keys` subcommands live at `src/cli/export-keys.js` and `src/cli/import-keys.js`. Registered in `src/cli/index.js`.
+  - Both treat the keystore file as an opaque encrypted ciphertext blob. They do not decrypt, do not require `ATOL_BOT_KEYSTORE_SECRET`, and do not touch the server.
+  - `export-keys` reads the keystore, validates outer schema with `validateOuter`, and writes raw bytes to `--out <path>` (refusing overwrite unless `--force` / `-f` is passed, using file mode `0o600`) or streams raw bytes to `io.stdout` while sending diagnostic status to `io.stderr`.
+  - `import-keys` accepts a file path or `-` (stdin via `io.stdin`), validates outer schema with `validateOuter`, extracts `bot_id`, checks target keystore path (refusing overwrite unless `--force` / `-f` is passed), and writes the keystore with file mode `0o600`, printing confirmation with `bot_id` to `io.stdout`.
+  - **Spec Gap 1**: The `--out`-omitted behavior is stdout; the spec does not state a default.
+  - **Spec Gap 2**: `-` as a stdin source is an addition; the spec shows only `<path>`.
+  - **Spec Gap 3**: Validation is outer-schema only via `validateOuter`. The spec does not specify validation depth.
+  - **Spec Gap 4**: Existing-keystore handling is `--force`-gated; the spec does not specify.
+  - Registered `cli-export-keys` (18 test cases in `packages/bot/tests/unit/cli-export-keys.test.js`) and `cli-import-keys` (22 test cases in `packages/bot/tests/unit/cli-import-keys.test.js`) batches in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-037 Verification Fact
 - **Identity & Session Subcommands (`packages/bot/src/cli/register.js`, `src/cli/login.js`, `src/cli/logout.js`, `src/cli/keygen.js`)**:
   - The three subcommands live at `src/cli/register.js`, `src/cli/login.js`, and `src/cli/logout.js`. Key generation functions live at `src/cli/keygen.js`.

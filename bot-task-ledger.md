@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 37
-- **Done:** 37
+- **Total Tasks:** 38
+- **Done:** 38
 - **In Progress:** 0
 - **Todo:** 0
 
@@ -17,6 +17,7 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-040 | CLI | done | §14.1, §14.9 | Implement export-keys and import-keys CLI subcommands for passphrase-independent keystore portability |
 | B-037 | CLI | done | §14.1, §14.2, §14.9 | Implement register, login, and logout subcommands, keygen primitives, and CLI dispatcher integration |
 | B-036 | CLI Skeleton | done | §14.1, §14.2, §4.6 | CLI entry point (`src/cli.js`), dispatcher (`src/cli/index.js`), argument parser (`src/cli/args.js`), and `validate` subcommand (`src/cli/validate.js`) |
 | B-034 | Testing | done | §8.8, §13.3 | Implement the mock server double (`packages/bot/src/testing/mock-server.js`) with optional crypto validation |
