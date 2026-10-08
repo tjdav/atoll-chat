@@ -1,4 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*", "tests/**/*"]
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ],
+  "compilerOptions": {
+    "paths": {
+      "@atoll/bot": [
+        "../bot/dist/types.d.ts"
+      ]
+    }
+  }
 }

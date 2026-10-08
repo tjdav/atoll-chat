@@ -75,6 +75,8 @@ importers:
         specifier: 1.0.0-rc.5
         version: 1.0.0-rc.5(@noble/hashes@1.8.0)
 
+  packages/recipes: {}
+
 packages:
 
   '@asamuzakjp/css-color@5.1.11':

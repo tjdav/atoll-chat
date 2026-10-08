@@ -6,13 +6,19 @@
  * Typedefs declared here are globally visible to downstream JSDoc.
  */
 
-// ---- Primitives ----
+/* Primitives */
 
 /**
  * A primitive is a verified, deterministic behavior. Primitives are
  * the only executable units in the system.
  * @typedef {object} Primitive
  * @property {string} id - Stable identifier, kebab-case.
+ * @property {RecipeTarget[]} targets - Targets this primitive can
+ *   be composed into. A recipe may only use primitives that include
+ *   one of the recipe's targets.
+ * @property {string[]} capabilities - Capabilities this primitive
+ *   requires. The composer unions them into the artifact's
+ *   declaration.
  * @property {string} label - Human-readable name.
  * @property {string} description - What the primitive does, one
  *   sentence.
@@ -34,12 +40,17 @@
  *   the primitive composes.
  */
 
-// ---- Recipes ----
+/* Recipes */
 
 /**
  * The runtime category of a recipe. Determines what the bot does
  * with requests.
  * @typedef {'pure' | 'assisted' | 'operated'} RecipeKind
+ */
+
+/**
+ * The artifact a recipe produces.
+ * @typedef {'bot' | 'extension'} RecipeTarget
  */
 
 /**
@@ -63,7 +74,14 @@
  * @property {string} label - Human-readable name.
  * @property {string} description - What the recipe builds.
  * @property {RecipeKind} kind - Runtime category.
- * @property {string[]} capabilities - Capabilities the bot declares.
+ * @property {RecipeTarget[]} [targets] - Artifacts this recipe
+ *   produces. Defaults to ['bot'] when omitted.
+ * @property {string[]} capabilities - Capability ceiling. Must be a
+ *   superset of the union of every composed primitive's required
+ *   capabilities.
+ * @property {import('@atoll/bot').SettingsDecl} [settings] -
+ *   Runtime settings the operator configures after install,
+ *   separate from build-time slots.
  * @property {Slot[]} slots - Parameters the user fills in.
  * @property {Record<string, PrimitiveInstance>} handlers - Handler
  *   map. Keys are handler names from the bot SDK.
@@ -72,7 +90,7 @@
  *   support.
  */
 
-// ---- Intent and matching ----
+/* Intent and matching */
 
 /**
  * A user's build request, as submitted to the engine.
@@ -100,7 +118,7 @@
  * } MatchResult
  */
 
-// ---- Instantiation and output ----
+/* Instantiation and output */
 
 /**
  * A recipe plus filled slot values. The engine's input for
@@ -113,17 +131,20 @@
  */
 
 /**
- * The canonical bot definition. Data, not code. The primary output of
- * the compiler. bot.js is emitted from a Composition.
+ * The canonical artifact definition. Data, not code. The primary
+ * output of the composer. bot.js, or an extension module, is
+ * emitted from a Composition.
  * @typedef {object} Composition
  * @property {string} recipeId - The recipe this was composed from.
  * @property {string} recipeVersion - The exact recipe version.
+ * @property {RecipeTarget} target - The artifact this composition
+ *   produces.
  * @property {Record<string, unknown>} slots - The slot values used.
  * @property {Record<string, PrimitiveInstance>} handlers - Resolved
  *   handler map, with slot references substituted.
  * @property {PrimitiveInstance[]} [triggers] - Resolved trigger
  *   composition.
- * @property {string[]} capabilities - The capabilities the bot
+ * @property {string[]} capabilities - The capabilities the artifact
  *   declares.
  */
 
@@ -135,7 +156,7 @@
  *   emitted from.
  */
 
-// ---- Operator ----
+/* Operator */
 
 /**
  * How operators are bound to an operated recipe.
@@ -157,7 +178,7 @@
  *   'canned'.
  */
 
-// ---- Consent and telemetry ----
+/* Consent and telemetry */
 
 /**
  * The consent tier for telemetry.
