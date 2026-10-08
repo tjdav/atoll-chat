@@ -1,123 +1,115 @@
 <template id="view-chat">
-  <div class="chat" data-testid="chat">
-    <header class="chat__header">
-      <h1 class="chat__title">{{ title }}</h1>
-    </header>
-    <div class="chat__thread" ref="thread" data-testid="thread">
-      <p class="chat__empty" ref="empty" hidden="{{ emptyHidden }}">{{ chat_empty_thread }}</p>
-      <div class="chat__rows" ref="rows"></div>
-    </div>
-    <div class="chat__scroll-btn" ref="scrollBtn" hidden="{{ scrollBtnHidden }}" data-testid="scroll-to-bottom">
-      <span class="chat__scroll-chevron" aria-hidden="true">↓</span>
-    </div>
+  <div class="chat" ref="root">
+    <div class="chat__thread" ref="thread" role="log" aria-live="polite"></div>
+
+    <button
+      type="button"
+      class="chat__scroll-btn"
+      ref="scrollBtn"
+      hidden="{{ scrollBtnHidden }}"
+      aria-label="{{ chat_scroll_to_bottom }}"
+    >
+      <ui-icon name="alt-arrow-down" size="sm"></ui-icon>
+    </button>
+
     <footer class="chat__composer">
       <message-composer
-        ref="composer"
-        placeholder="{{ composer_placeholder }}"
-        attach-label="{{ composer_attach_label }}"
-        emoji-label="{{ composer_emoji_label }}"
-        readaloud-label="{{ composer_readaloud_label }}"
-        input-label="{{ composer_input_label }}"
-        send-label="{{ composer_send_label }}"
+        placeholder="{{ chat_composer_placeholder }}"
+        attach-label="{{ chat_composer_attach_label }}"
+        emoji-label="{{ chat_composer_emoji_label }}"
+        readaloud-label="{{ chat_composer_readaloud_label }}"
+        input-label="{{ chat_composer_input_label }}"
+        send-label="{{ chat_composer_send_label }}"
       ></message-composer>
     </footer>
+
+    <message-context-menu
+      ref="contextMenu"
+      open="{{ menuOpen }}"
+      x="{{ menuX }}"
+      y="{{ menuY }}"
+      message-id="{{ menuMessageId }}"
+      can-unsend="{{ menuCanUnsend }}"
+      can-copy="{{ menuCanCopy }}"
+    ></message-context-menu>
   </div>
 </template>
 
 <style>
-  :host {
-    display: block;
-    height: 100%;
-    overflow: hidden;
-  }
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
 
-  .chat {
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: 100%;
-    position: relative;
-  }
+.chat {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  box-sizing: border-box;
+  background: var(--surface-0);
+}
 
-  .chat__header {
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--border-subtle);
-    background: var(--surface-0);
-  }
+.chat__thread {
+  grid-row: 2;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  scroll-behavior: smooth;
+}
 
-  .chat__title {
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+.chat__divider {
+  display: flex;
+  align-items: center;
+  margin-block: var(--space-3);
+  gap: var(--space-2);
+}
 
-  .chat__thread {
-    overflow-y: auto;
-    padding: var(--space-4);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
+.chat__divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--status-error, #e53935);
+}
 
-  .chat__empty {
-    margin: auto;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    text-align: center;
-  }
+.chat__divider-label {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--status-error, #e53935);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wider);
+}
 
-  .chat__rows {
-    display: flex;
-    flex-direction: column;
-  }
+.chat__scroll-btn {
+  position: absolute;
+  right: var(--space-4);
+  bottom: 80px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-popover);
+}
 
-  .chat__divider {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: var(--space-3) 0;
-    color: var(--accent-text);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    position: relative;
-  }
+.chat__scroll-btn:hover {
+  background: var(--surface-3);
+}
 
-  .chat__divider::before,
-  .chat__divider::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid var(--border-subtle);
-    margin: 0 var(--space-2);
-  }
-
-  .chat__scroll-btn {
-    position: absolute;
-    right: var(--space-4);
-    bottom: 80px;
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-full);
-    background: var(--surface-3);
-    border: 1px solid var(--border-subtle);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: var(--shadow-md);
-    font-size: var(--text-base);
-    z-index: 10;
-  }
-
-  .chat__composer {
-    padding: var(--space-2);
-    border-top: 1px solid var(--border-subtle);
-    background: var(--surface-0);
-  }
+.chat__composer {
+  grid-row: 3;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+}
 </style>
 
 <script type="module">
@@ -125,80 +117,42 @@ import { defineComponent } from 'coralite'
 
 export default defineComponent({
   attributes: {
-    titleText: { type: String, default: '' },
-    scrollBtnVisible: { type: Boolean, default: false },
-    messageCount: { type: Number, default: 0 }
+    menuOpen: { type: Boolean, default: false },
+    menuX: { type: Number, default: 0 },
+    menuY: { type: Number, default: 0 },
+    menuMessageId: { type: String, default: '' },
+    menuCanUnsend: { type: Boolean, default: false },
+    menuCanCopy: { type: Boolean, default: true }
   },
 
   getters: {
-    title: ({ state }) => state.titleText || state.chat_title_fallback,
-    scrollBtnHidden: ({ state }) => !state.scrollBtnVisible,
-    emptyHidden: ({ state }) => state.messageCount > 0
+    scrollBtnHidden: ({ state }) => !state.showScrollBtn
   },
 
   server({ i18n }) {
     return {
       locale: i18n.getLocale(),
+      showScrollBtn: false,
+      menuOpen: false,
+      menuX: 0,
+      menuY: 0,
+      menuMessageId: '',
+      menuCanUnsend: false,
+      menuCanCopy: true,
       ...i18n.strings([
-        'chat_title_fallback',
-        'chat_empty_thread',
-        'chat_status_queued',
-        'chat_status_sending',
-        'chat_status_failed',
-        'chat_tombstone',
+        'chat_scroll_to_bottom',
         'chat_new_messages_divider',
-        'chat_placeholder_photo',
-        'chat_placeholder_video',
-        'chat_placeholder_voice',
-        'chat_placeholder_document',
-        'chat_placeholder_sticker',
-        'chat_placeholder_unknown',
-        'composer_placeholder',
-        'composer_attach_label',
-        'composer_emoji_label',
-        'composer_readaloud_label',
-        'composer_input_label',
-        'composer_send_label'
+        'chat_composer_placeholder',
+        'chat_composer_attach_label',
+        'chat_composer_emoji_label',
+        'chat_composer_readaloud_label',
+        'chat_composer_input_label',
+        'chat_composer_send_label'
       ])
     }
   },
 
-  client: async ({ state, refs, i18n, storage, router, signal }) => {
-    const syncLocale = (locale) => {
-      state.locale = locale
-      Object.assign(state, i18n.strings([
-        'chat_title_fallback',
-        'chat_empty_thread',
-        'chat_status_queued',
-        'chat_status_sending',
-        'chat_status_failed',
-        'chat_tombstone',
-        'chat_new_messages_divider',
-        'chat_placeholder_photo',
-        'chat_placeholder_video',
-        'chat_placeholder_voice',
-        'chat_placeholder_document',
-        'chat_placeholder_sticker',
-        'chat_placeholder_unknown',
-        'composer_placeholder',
-        'composer_attach_label',
-        'composer_emoji_label',
-        'composer_readaloud_label',
-        'composer_input_label',
-        'composer_send_label'
-      ]))
-    }
-
-    i18n.subscribeLocale((locale) => {
-      syncLocale(locale)
-      currentRoomId = null
-      load()
-    }, { signal })
-
-    if (state.locale !== i18n.getLocale()) {
-      syncLocale(i18n.getLocale())
-    }
-
+  async client({ state, refs, router, i18n, repos, signal, globalStore }) {
     const {
       safeParsePayload,
       summarizePayload,
@@ -208,255 +162,242 @@ export default defineComponent({
       formatTime
     } = await import('../../lib/views/view-chat-data.js')
 
-    const { api } = await import('../../lib/api/client.js')
-
-    try {
-      await storage.open()
-    } catch {}
-
-    const thread = refs('thread')
-    const rowsContainer = refs('rows')
-    const scrollBtn = refs('scrollBtn')
-    const composer = refs('composer')
+    const { sendMessage } = await import('../../lib/views/send-message.js')
+    const { isUnsendAvailable, copyMessage, unsend, deleteForMe } = await import('../../lib/views/message-actions.js')
 
     let currentRoomId = null
-    let messages = []
-    let readState = null
-    let repos = storage.repos()
-    let userId = ''
 
-    async function getCurrentUserId() {
-      try {
-        const me = await api.get('/users/me')
-        if (me?.id) return me.id
-      } catch {
-        // Fallback
-      }
-      return ''
+    i18n.subscribeLocale(
+      (locale) => {
+        state.locale = locale
+        Object.assign(
+          state,
+          i18n.strings([
+            'chat_scroll_to_bottom',
+            'chat_new_messages_divider',
+            'chat_composer_placeholder',
+            'chat_composer_attach_label',
+            'chat_composer_emoji_label',
+            'chat_composer_readaloud_label',
+            'chat_composer_input_label',
+            'chat_composer_send_label'
+          ])
+        )
+      },
+      { signal }
+    )
+
+    const threadEl = refs('thread')
+    const scrollBtnEl = refs('scrollBtn')
+
+    function scrollToBottom(smooth = false) {
+      if (!threadEl) return
+      threadEl.scrollTo({
+        top: threadEl.scrollHeight,
+        behavior: smooth ? 'smooth' : 'instant'
+      })
+      state.showScrollBtn = false
     }
 
-    function buildBubble({ msg, senderName, isOwn, isFirst, isLast }) {
-      const isTombstone = Boolean(msg.deleted_at)
-      const parsed = isTombstone ? null : safeParsePayload(msg.decrypted_payload)
-      const summary = summarizePayload(parsed)
-
-      let body
-      if (isTombstone) {
-        body = state.chat_tombstone
-      } else if (summary.kind === 'text') {
-        body = summary.text
-      } else {
-        body = state[summary.key] ?? state.chat_placeholder_unknown
-      }
-
-      const isPending = msg.local_status === 'pending' || msg.local_status === 'sending'
-      const isFailed = msg.local_status === 'failed'
-
-      const bubble = document.createElement('message-bubble')
-      bubble.setAttribute('message-id', msg.message_id)
-      bubble.setAttribute('sender-name', senderName ?? '')
-      bubble.setAttribute('body-text', body)
-      bubble.setAttribute('time-text', formatTime(msg.created_at))
-
-      bubble.toggleAttribute('is-own', Boolean(isOwn))
-      bubble.toggleAttribute('is-tombstone', Boolean(isTombstone))
-      bubble.toggleAttribute('is-pending', Boolean(isPending))
-      bubble.toggleAttribute('is-failed', Boolean(isFailed))
-      bubble.toggleAttribute('is-first-in-group', Boolean(isFirst))
-      bubble.toggleAttribute('is-last-in-group', Boolean(isLast))
-
-      if (msg.local_status === 'pending') {
-        bubble.setAttribute('status-text', state.chat_status_queued)
-      } else if (msg.local_status === 'sending') {
-        bubble.setAttribute('status-text', state.chat_status_sending)
-      } else if (msg.local_status === 'failed') {
-        bubble.setAttribute('status-text', state.chat_status_failed)
-      }
-
-      return bubble
+    if (scrollBtnEl) {
+      scrollBtnEl.addEventListener('click', () => scrollToBottom(true), { signal })
     }
 
-    const SCROLL_THRESHOLD = 80
-    function updateScrollBtn() {
-      if (!thread) return
-      if (messages.length === 0) {
-        state.scrollBtnVisible = false
-        return
-      }
-      const distanceFromBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight
-      state.scrollBtnVisible = distanceFromBottom > SCROLL_THRESHOLD
-    }
-
-    let readStateTimer = null
-    function markVisibleMessagesAsRead() {
-      clearTimeout(readStateTimer)
-      readStateTimer = setTimeout(async () => {
-        if (!thread || !repos || !userId || !currentRoomId) return
-        const distanceFromBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight
-        if (distanceFromBottom > SCROLL_THRESHOLD) return
-        const last = messages[messages.length - 1]
-        if (!last) return
-        if (readState?.last_read_message_id === last.message_id) return
-        await repos.readState.upsert({
-          userId,
-          roomId: currentRoomId,
-          lastReadMessageId: last.message_id,
-          lastReadAt: Date.now()
-        })
-        readState = await repos.readState.getForRoom(currentRoomId, userId)
+    let readDebounceTimer = null
+    function debouncedMarkRead(roomId, lastMessageId) {
+      if (!roomId || !lastMessageId) return
+      if (readDebounceTimer) clearTimeout(readDebounceTimer)
+      readDebounceTimer = setTimeout(async () => {
+        try {
+          const userId = globalStore?.$state?.user?.id || 'u_me'
+          await repos.readState.upsert({
+            userId,
+            roomId,
+            lastReadMessageId: lastMessageId,
+            lastReadAt: Date.now()
+          })
+        } catch (_) {}
       }, 500)
     }
 
-    if (thread) {
-      thread.addEventListener('scroll', () => {
-        updateScrollBtn()
-        markVisibleMessagesAsRead()
-      }, { signal, passive: true })
-    }
+    if (threadEl) {
+      threadEl.addEventListener('scroll', () => {
+        const distanceToBottom = threadEl.scrollHeight - threadEl.scrollTop - threadEl.clientHeight
+        state.showScrollBtn = distanceToBottom > 150
 
-    if (scrollBtn) {
-      scrollBtn.addEventListener('click', () => {
-        if (thread) {
-          thread.scrollTo({ top: thread.scrollHeight, behavior: 'smooth' })
+        if (distanceToBottom < 80 && currentRoomId) {
+          const bubbles = threadEl.querySelectorAll('message-bubble')
+          if (bubbles.length > 0) {
+            const lastBubble = bubbles[bubbles.length - 1]
+            const msgId = lastBubble.getAttribute('message-id')
+            if (msgId) debouncedMarkRead(currentRoomId, msgId)
+          }
         }
       }, { signal })
     }
 
-    if (composer) {
-      composer.addEventListener('composer:send', async (event) => {
+    async function load() {
+      const route = router.getRoute()
+      const roomId = route.params?.id || 'r_1'
+      currentRoomId = roomId
+
+      const userId = globalStore?.$state?.user?.id || 'u_me'
+      const rawMessages = await repos.messages.listInRoom(roomId, { limit: 100 })
+      const readState = await repos.readState.get(userId, roomId)
+      const usersList = await repos.users.list({ limit: 100 })
+      const usersMap = new Map(usersList.map((u) => [u.user_id, u.display_name]))
+
+      const messages = rawMessages.map((m) => {
+        const payload = safeParsePayload(m.decrypted_payload)
+        const summary = summarizePayload(payload)
+        return {
+          id: m.message_id,
+          senderId: m.sender_user_id,
+          senderName: usersMap.get(m.sender_user_id) || m.sender_user_id,
+          created_at: m.created_at,
+          text: summary.kind === 'text' ? summary.text : (summary.kind === 'tombstone' ? '' : '[Media]'),
+          isTombstone: Boolean(m.deleted_at),
+          isPending: m.local_status === 'pending',
+          isFailed: m.local_status === 'failed',
+          isOwn: m.sender_user_id === userId
+        }
+      })
+
+      const groups = groupMessages(messages)
+      const items = insertDateSeparators(groups)
+      const dividerIndex = findNewMessagesDivider(messages, readState?.last_read_message_id)
+
+      if (!threadEl) return
+      threadEl.replaceChildren()
+
+      let globalMsgCounter = 0
+
+      for (const item of items) {
+        if (item.type === 'date') {
+          const sep = document.createElement('date-separator')
+          sep.setAttribute('label', item.label)
+          threadEl.appendChild(sep)
+          continue
+        }
+
+        const group = item.messages
+        for (let i = 0; i < group.length; i++) {
+          if (dividerIndex !== -1 && globalMsgCounter === dividerIndex) {
+            const div = document.createElement('div')
+            div.className = 'chat__divider'
+            div.innerHTML = `
+              <div class="chat__divider-line"></div>
+              <span class="chat__divider-label">${state.chat_new_messages_divider}</span>
+              <div class="chat__divider-line"></div>
+            `
+            threadEl.appendChild(div)
+          }
+
+          const msg = group[i]
+          const bubble = document.createElement('message-bubble')
+          bubble.setAttribute('message-id', msg.id)
+          bubble.setAttribute('sender-name', msg.senderName)
+          bubble.setAttribute('formatted-time', formatTime(msg.created_at))
+          bubble.setAttribute('text-content', msg.text)
+
+          if (msg.isOwn) bubble.setAttribute('is-own', '')
+          if (msg.isTombstone) bubble.setAttribute('is-tombstone', '')
+          if (msg.isPending) bubble.setAttribute('is-pending', '')
+          if (msg.isFailed) bubble.setAttribute('is-failed', '')
+
+          if (i === 0) bubble.setAttribute('is-first-in-group', '')
+          if (i === group.length - 1) bubble.setAttribute('is-last-in-group', '')
+
+          bubble.addEventListener('bubble:contextmenu', async (event) => {
+            const { messageId, x, y } = event.detail
+            const dbMsg = await repos.messages.get(messageId)
+            if (!dbMsg) return
+            state.menuMessageId = messageId
+            state.menuX = x
+            state.menuY = y
+            state.menuCanUnsend = isUnsendAvailable(dbMsg, userId)
+            state.menuCanCopy = !dbMsg.deleted_at
+            state.menuOpen = true
+          }, { signal })
+
+          threadEl.appendChild(bubble)
+          globalMsgCounter++
+        }
+      }
+
+      scrollToBottom()
+
+      if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1]
+        debouncedMarkRead(roomId, lastMsg.id)
+      }
+    }
+
+    const composerEl = threadEl?.parentElement?.querySelector('message-composer')
+    if (composerEl) {
+      composerEl.addEventListener('composer:send', async (event) => {
         const text = event.detail?.text
         if (!text || !currentRoomId) return
-        const { sendMessage } = await import('../../lib/views/send-message.js')
-        const globalStore = { $state: { currentUser: { id: userId } } }
-        const result = await sendMessage({
-          deps: {
-            repos,
-            storage,
-            globalStore,
-            crypto: globalThis.crypto
-          },
+        await sendMessage({
+          deps: { repos, globalStore, crypto: window.crypto },
           roomId: currentRoomId,
           text
         })
-        if (result.skipped) return
         currentRoomId = null
         await load()
       }, { signal })
     }
 
-    async function load() {
-      const roomId = router.getSelection()
-      if (!roomId) {
+    const contextMenuEl = refs('contextMenu')
+    if (contextMenuEl) {
+      contextMenuEl.addEventListener('menu:copy', async (event) => {
+        await copyMessage({
+          deps: {
+            repos,
+            clipboard: navigator.clipboard,
+            parsePayload: safeParsePayload,
+            summarizePayload
+          },
+          messageId: event.detail.messageId
+        })
+        state.menuOpen = false
+      }, { signal })
+
+      contextMenuEl.addEventListener('menu:unsend', async (event) => {
+        const userId = globalStore?.$state?.user?.id || 'u_me'
+        await unsend({ deps: { repos }, messageId: event.detail.messageId, userId })
+        state.menuOpen = false
         currentRoomId = null
-        state.titleText = state.chat_title_fallback
-        state.messageCount = 0
-        if (rowsContainer) rowsContainer.innerHTML = ''
-        return
-      }
+        await load()
+      }, { signal })
 
-      currentRoomId = roomId
-      userId = await getCurrentUserId()
+      contextMenuEl.addEventListener('menu:delete', async (event) => {
+        await deleteForMe({ deps: { repos }, messageId: event.detail.messageId })
+        state.menuOpen = false
+        currentRoomId = null
+        await load()
+      }, { signal })
 
-      const room = await repos.rooms.get(roomId)
-      const members = await repos.roomMembers.listInRoom(roomId)
-      const others = members.map((m) => m.user_id).filter((id) => id !== userId)
-      const names = []
-      for (const id of others) {
-        const u = await repos.users.get(id)
-        names.push(u?.display_name || id)
-      }
-
-      let title = room?.name
-      if (!title) {
-        if (names.length === 1) title = names[0]
-        else if (names.length === 2) title = `${names[0]}, ${names[1]}`
-        else if (names.length > 2) title = `${names[0]}, ${names[1]} + ${names.length - 2}`
-        else title = state.chat_title_fallback
-      }
-      state.titleText = title
-
-      const PAGE = 500
-      const newestFirst = await repos.messages.listApplicationsInRoom(roomId, { limit: PAGE })
-      messages = [...newestFirst].reverse()
-      state.messageCount = messages.length
-
-      if (rowsContainer) {
-        rowsContainer.innerHTML = ''
-      }
-
-      if (messages.length === 0) {
-        updateScrollBtn()
-        return
-      }
-
-      readState = await repos.readState.getForRoom(roomId, userId)
-      const dividerIndex = findNewMessagesDivider(messages, readState?.last_read_message_id)
-
-      const groups = groupMessages(messages)
-      const items = insertDateSeparators(groups)
-
-      const senderNames = new Map()
-      for (const msg of messages) {
-        if (senderNames.has(msg.sender_user_id)) continue
-        if (msg.sender_user_id === userId) {
-          senderNames.set(msg.sender_user_id, null)
-          continue
-        }
-        const u = await repos.users.get(msg.sender_user_id)
-        senderNames.set(msg.sender_user_id, u?.display_name || msg.sender_user_id)
-      }
-
-      for (const item of items) {
-        if (item.kind === 'date') {
-          const sep = document.createElement('date-separator')
-          sep.setAttribute('label', item.label)
-          rowsContainer.appendChild(sep)
-          continue
-        }
-
-        const group = item.group
-        for (let i = group.startIndex; i <= group.endIndex; i += 1) {
-          const msg = messages[i]
-          const senderName = senderNames.get(msg.sender_user_id) ?? ''
-          const bubble = buildBubble({
-            msg,
-            senderName,
-            isOwn: msg.sender_user_id === userId,
-            isFirst: i === group.startIndex,
-            isLast: i === group.endIndex
-          })
-          rowsContainer.appendChild(bubble)
-
-          if (dividerIndex !== -1 && i === dividerIndex - 1) {
-            const divider = document.createElement('div')
-            divider.className = 'chat__divider'
-            divider.setAttribute('role', 'separator')
-            divider.textContent = state.chat_new_messages_divider
-            rowsContainer.appendChild(divider)
-          }
-        }
-      }
-
-      if (thread) {
-        thread.scrollTop = thread.scrollHeight
-      }
-
-      updateScrollBtn()
-      markVisibleMessagesAsRead()
+      contextMenuEl.addEventListener('menu:close', () => {
+        state.menuOpen = false
+      }, { signal })
     }
 
+    router.subscribe(() => {
+      const route = router.getRoute()
+      const newRoomId = route.params?.id || 'r_1'
+      if (newRoomId !== currentRoomId) {
+        currentRoomId = newRoomId
+        load()
+      }
+    }, { signal })
+
     window.addEventListener('test-storage-seeded', () => {
+      currentRoomId = null
       load()
     }, { signal })
 
     await load()
-
-    router.subscribe(() => {
-      const nextId = router.getSelection()
-      if (nextId !== currentRoomId) {
-        load()
-      }
-    }, { signal })
   }
 })
 </script>

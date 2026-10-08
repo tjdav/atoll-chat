@@ -80,5 +80,8 @@ export default {
   'composer_emoji_label': 'Emoji e adesivi',
   'composer_readaloud_label': 'Leggi ad alta voce',
   'composer_input_label': 'Input messaggio',
-  'composer_send_label': 'Invia messaggio'
+  composer_send_label: 'Invia messaggio',
+  menu_copy: 'Copia',
+  menu_delete_for_me: 'Elimina per me',
+  menu_unsend: 'Annulla invio'
 }

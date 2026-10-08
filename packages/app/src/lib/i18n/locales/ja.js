@@ -80,5 +80,8 @@ export default {
   'composer_emoji_label': '絵文字とステッカー',
   'composer_readaloud_label': '読み上げ',
   'composer_input_label': 'メッセージ入力',
-  'composer_send_label': 'メッセージを送信'
+  composer_send_label: 'メッセージを送信',
+  menu_copy: 'コピー',
+  menu_delete_for_me: '自分のみ削除',
+  menu_unsend: '送信を取り消す'
 }

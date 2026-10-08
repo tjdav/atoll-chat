@@ -1,116 +1,109 @@
 <template id="message-bubble">
-  <div class="bubble-row">
-    <ui-profile class="bubble-avatar" name="{{ senderName }}" size="sm" hidden="{{ avatarHidden }}"></ui-profile>
-    <div class="bubble">
-      <span class="bubble-sender" hidden="{{ senderNameHidden }}">{{ senderName }}</span>
-      <span class="bubble-text">{{ bodyText }}</span>
-      <span class="bubble-meta">
-        <span class="bubble-status" hidden="{{ statusHidden }}">{{ statusText }}</span>
-        <span class="bubble-time">{{ timeText }}</span>
-      </span>
+  <div class="bubble-row" ref="row" data-testid="conversation-row">
+    <div class="bubble" ref="bubble">
+      <div class="bubble__header" hidden="{{ headerHidden }}">
+        <span class="bubble__sender">{{ senderName }}</span>
+      </div>
+
+      <div class="bubble__content" ref="content">
+        <p class="bubble__text" hidden="{{ textHidden }}">{{ textContent }}</p>
+        <p class="bubble__tombstone" hidden="{{ tombstoneHidden }}">{{ deletedText }}</p>
+      </div>
+
+      <div class="bubble__footer">
+        <span class="bubble__time">{{ formattedTime }}</span>
+        <span class="bubble__status" hidden="{{ statusHidden }}">{{ statusText }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <style>
-  :host {
-    display: block;
-  }
+:host {
+  display: block;
+  margin-block: var(--space-1);
+}
 
-  :host([is-first-in-group]) {
-    margin-top: var(--space-3);
-  }
+.bubble-row {
+  display: flex;
+  width: 100%;
+}
 
-  :host([is-last-in-group]) {
-    margin-bottom: var(--space-1);
-  }
+:host([is-own]) .bubble-row {
+  justify-content: flex-end;
+}
 
-  .bubble-row {
-    display: flex;
-    align-items: flex-end;
-    gap: var(--space-2);
-    max-width: min(75%, 600px);
-  }
+.bubble {
+  max-width: 70%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
 
-  :host([is-own]) .bubble-row {
-    flex-direction: row-reverse;
-    margin-left: auto;
-  }
+:host([is-own]) .bubble {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
 
-  .bubble-avatar {
-    flex-shrink: 0;
-  }
+:host([is-tombstone]) .bubble {
+  background: var(--surface-1);
+  border: 1px dashed var(--border-subtle);
+  color: var(--text-muted);
+  font-style: italic;
+}
 
-  .bubble {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-xl);
-    background: var(--bubble-incoming);
-    color: var(--text-primary);
-    word-wrap: break-word;
-    white-space: pre-wrap;
-    min-width: 0;
-  }
+:host([is-pending]) .bubble {
+  opacity: 0.7;
+}
 
-  :host([is-own]) .bubble {
-    background: var(--bubble-outgoing);
-    color: var(--bubble-outgoing-text);
-    border-bottom-right-radius: var(--radius-sm);
-  }
+:host([is-failed]) .bubble {
+  border: 1px solid var(--status-error);
+}
 
-  :host(:not([is-own])) .bubble {
-    border-bottom-left-radius: var(--radius-sm);
-  }
+.bubble__header {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--text-secondary);
+}
 
-  :host([is-tombstone]) .bubble {
-    background: var(--surface-2);
-    color: var(--text-muted);
-    font-style: italic;
-  }
+:host([is-own]) .bubble__header {
+  display: none;
+}
 
-  :host([is-failed]) .bubble {
-    border: 1px solid var(--status-error);
-  }
+.bubble__text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
 
-  :host([is-pending]) .bubble {
-    opacity: 0.7;
-  }
+.bubble__tombstone {
+  margin: 0;
+  font-size: var(--text-sm);
+}
 
-  .bubble-sender {
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    color: var(--accent-text);
-  }
+.bubble__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
 
-  .bubble-text {
-    font-size: var(--text-base);
-    line-height: var(--leading-normal);
-  }
+:host([is-own]) .bubble__footer {
+  color: var(--text-on-accent-muted, rgba(255, 255, 255, 0.75));
+}
 
-  .bubble-meta {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-1);
-    font-size: var(--text-xs);
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
-
-  :host([is-own]) .bubble-meta {
-    color: var(--bubble-outgoing-text);
-    opacity: 0.7;
-  }
-
-  .bubble-status {
-    white-space: nowrap;
-  }
-
-  .bubble-time {
-    white-space: nowrap;
-  }
+.bubble__status {
+  font-size: var(--text-xs);
+}
 </style>
 
 <script type="module">
@@ -120,22 +113,76 @@ export default defineComponent({
   attributes: {
     messageId: { type: String, default: '' },
     senderName: { type: String, default: '' },
-    senderInitials: { type: String, default: '' },
-    bodyText: { type: String, default: '' },
-    timeText: { type: String, default: '' },
-    statusText: { type: String, default: '' },
+    formattedTime: { type: String, default: '' },
+    textContent: { type: String, default: '' },
     isOwn: { type: Boolean, default: false, reflect: true },
     isTombstone: { type: Boolean, default: false, reflect: true },
-    isFailed: { type: Boolean, default: false, reflect: true },
     isPending: { type: Boolean, default: false, reflect: true },
-    isFirstInGroup: { type: Boolean, default: false, reflect: true },
-    isLastInGroup: { type: Boolean, default: false, reflect: true }
+    isFailed: { type: Boolean, default: false, reflect: true },
+    isFirstInGroup: { type: Boolean, default: true },
+    isLastInGroup: { type: Boolean, default: true }
   },
 
   getters: {
-    avatarHidden: ({ state }) => state.isOwn || !state.isLastInGroup,
-    senderNameHidden: ({ state }) => state.isOwn || !state.isFirstInGroup,
-    statusHidden: ({ state }) => !state.statusText
+    headerHidden: ({ state }) => state.isOwn || !state.isFirstInGroup || state.isTombstone,
+    textHidden: ({ state }) => state.isTombstone,
+    tombstoneHidden: ({ state }) => !state.isTombstone,
+    statusHidden: ({ state }) => !state.isOwn || state.isTombstone,
+    deletedText: ({ state }) => state.chat_message_deleted || 'This message was deleted.',
+    statusText: ({ state }) => {
+      if (state.isFailed) return '!'
+      if (state.isPending) return '...'
+      return '✓'
+    }
+  },
+
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings(['chat_message_deleted'])
+    }
+  },
+
+  client({ state, refs, emit, i18n, signal }) {
+    i18n.subscribeLocale(
+      (locale) => {
+        state.locale = locale
+        Object.assign(state, i18n.strings(['chat_message_deleted']))
+      },
+      { signal }
+    )
+
+    const row = refs('row')
+    if (row) {
+      row.addEventListener('contextmenu', (event) => {
+        event.preventDefault()
+        emit('bubble:contextmenu', {
+          messageId: state.messageId,
+          x: event.clientX,
+          y: event.clientY
+        })
+      }, { signal })
+
+      let longPressTimer = null
+      row.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse') return
+        longPressTimer = setTimeout(() => {
+          emit('bubble:contextmenu', {
+            messageId: state.messageId,
+            x: event.clientX,
+            y: event.clientY
+          })
+        }, 500)
+      }, { signal })
+
+      const cancel = () => {
+        if (longPressTimer) clearTimeout(longPressTimer)
+        longPressTimer = null
+      }
+      row.addEventListener('pointerup', cancel, { signal })
+      row.addEventListener('pointercancel', cancel, { signal })
+      row.addEventListener('pointermove', cancel, { signal })
+    }
   }
 })
 </script>

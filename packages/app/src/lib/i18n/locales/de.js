@@ -80,5 +80,8 @@ export default {
   'composer_emoji_label': 'Emojis und Sticker',
   'composer_readaloud_label': 'Vorlesen',
   'composer_input_label': 'Nachrichteneingabe',
-  'composer_send_label': 'Nachricht senden'
+  composer_send_label: 'Nachricht senden',
+  menu_copy: 'Kopieren',
+  menu_delete_for_me: 'Für mich löschen',
+  menu_unsend: 'Senden zurückziehen'
 }

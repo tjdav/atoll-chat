@@ -80,5 +80,8 @@ export default {
   'composer_emoji_label': 'Émoticônes et autocollants',
   'composer_readaloud_label': 'Lecture à haute voix',
   'composer_input_label': 'Champ de message',
-  'composer_send_label': 'Envoyer le message'
+  composer_send_label: 'Envoyer le message',
+  menu_copy: 'Copier',
+  menu_delete_for_me: 'Supprimer pour moi',
+  menu_unsend: 'Annuler l’envoi'
 }
