@@ -263,3 +263,9 @@ name = "cli-login-logout"
 files = [
   "unit/cli-login-logout.test.js",
 ]
+
+[[batch]]
+name = "cli-run"
+files = [
+  "unit/cli-run.test.js",
+]
