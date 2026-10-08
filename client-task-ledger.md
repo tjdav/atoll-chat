@@ -13,14 +13,15 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 3 |
-| Done | 51 |
+| Pending | 2 |
+| Done | 52 |
 | Blocked | 0 |
 
 ## Client Tasks
 
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
+| C-INFRA-26 | `ui-sheet` Primitive for Modals and Bottom Sheets | done | C-INFRA-23, C-INFRA-25, C-CHAT-7 | component-smoke |
 | C-CHAT-10 | Message Editing (Composer Morph and Edit Orchestration) | done | C-CHAT-9, C-INFRA-25, C-CHAT-8, C-CHAT-7, C-INFRA-14, C-INFRA-23 | unit-smoke, component-smoke |
 | C-CHAT-10b | "Show original" Edit Chain Sheet | pending | C-CHAT-10, C-INFRA-26 | component-smoke |
 | C-V-A | Verify repo state and toolchain | done | — | — |
@@ -652,7 +653,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Registered `syncPlugin()` in `packages/app/coralite.config.js` after `storagePlugin()`.
   - Updated `packages/app/src/components/containers/messenger-boot.html` destructuring `sync` in `client()`, triggering `sync.runUserScopedSync` post-`storage.open()` when `result.user?.id` is present, and setting `data-sync-ready="true"`.
   - Created unit test suites `packages/app/tests/unit/sync.test.js` (14 cases) and `packages/app/tests/unit/sync-plugin.test.js` (8 cases) registered under `unit-smoke`.
-  - Created Playwright component test `packages/app/tests/component/sync.spec.js` (3 cases) registered under `component-auth`, and generated screenshot `packages/app/test-results/sync-boot.png`.
+  - Created Playwright component test `tests/component/sync.spec.js` (3 cases) registered under `component-auth`, and generated screenshot `packages/app/test-results/sync-boot.png`.
   - Authored plugin contract documentation at `packages/app/docs/plugins/sync.md` and updated `packages/app/docs/plugins/README.md`.
   - Scope decision: deferred `user_preferences` section application to a follow-on task to avoid inventing storage mappings before spec settlement.
 
@@ -680,6 +681,15 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Authored `packages/app/docs/plugins/authoring.md` (10 sections detailing plugin authoring and `client.config` delivery pattern).
   - Updated `packages/app/docs/plugins/README.md` and `packages/app/docs/plugins/storage.md`.
   - Recorded T4 feedback entry CF-007 in `client-coralite-feedback.md` and addendum in `client-verification.md`.
+
+- **C-INFRA-26 Deliverables & Status:**
+  - Status: `done`.
+  - Created `packages/app/src/components/primitives/ui-sheet.html` wrapped in `defineComponent` implementing modal and bottom sheet primitive with native `<dialog ref="dialog" data-testid="ui-sheet">`, reflected boolean host attributes (`open`, `variant`), getters (`headerHidden`, `closeHidden`, `dialogAriaLabel`), dialog styling (`:host([variant="center"])`, `:host([variant="bottom"])`, `::backdrop`), CSS display rule override (`.sheet:not([open]) { display: none !important; }`), and client lifecycle handlers emitting `sheet:close` on close.
+  - Extended `packages/app/tests/helpers/storage-fixture.js` with permanent test helpers `mountSheet`, `setSheetOpen`, `recordSheetEvents`, and `getLastSheetCloseEvent`.
+  - Created Playwright component test `packages/app/tests/component/ui-sheet.spec.js` (15 cases) registered under `component-smoke` in `packages/app/test-batches.js`.
+  - Generated visual verification screenshot artifacts `packages/app/test-results/ui-sheet-center.png` and `packages/app/test-results/ui-sheet-bottom.png`.
+  - Extended `packages/app/docs/components.md` with Section 10 ("Modal and sheet primitive").
+  - Updated `client-task-ledger.md` (marked C-INFRA-26 done) and `client-verification.md`.
 
 ## Component Authoring Policy
 

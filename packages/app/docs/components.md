@@ -230,7 +230,42 @@ The key list must be authored in both `server()` and `client()`. Module-scope co
 
 ---
 
-## 10. The Authoring Checklist
+## 10. Modal and sheet primitive
+
+The application provides a single shared primitive for top-layer modals and bottom sheets: `<ui-sheet>`.
+
+### Purpose
+`<ui-sheet>` encapsulates a native HTML `<dialog>` element providing accessibility, top-layer rendering, native Escape handling, native focus trapping, and optional backdrop dismissal.
+
+### Attribute Contract
+
+| Attribute | Type | Default | Reflected | Description |
+|---|---|---|---|---|
+| `open` | Boolean | `false` | Yes | Controls dialog visibility and top-layer modal state. |
+| `variant` | String | `'center'` | Yes | Layout mode: `'center'` (desktop/centered modal) or `'bottom'` (mobile bottom sheet). |
+| `title` | String | `''` | No | Header title text. |
+| `ariaLabel` | String | `''` | No | Accessible name fallback when title is omitted. |
+| `showClose` | Boolean | `true` | No | Shows or hides the header close button (`✕`). |
+| `closeLabel` | String | `'Close'` | No | Accessible label for the close button. |
+| `dismissible` | Boolean | `true` | No | Enables Escape key and backdrop click dismissal. |
+
+### Events
+
+- `sheet:close` — Emitted when the sheet is closed by any means (close button, Escape key, backdrop click, or setting `open = false`).
+
+### Usage Example
+
+```html
+<ui-sheet title="Room Settings" variant="center" open="{{ isSettingsOpen }}">
+  <div class="settings-content">
+    <p>Room configuration controls go here.</p>
+  </div>
+</ui-sheet>
+```
+
+---
+
+## 11. The Authoring Checklist
 
 Every new or modified Coralite component MUST satisfy this checklist:
 
@@ -251,7 +286,7 @@ Every new or modified Coralite component MUST satisfy this checklist:
 
 ---
 
-## 11. Failure Modes & Anti-Patterns
+## 12. Failure Modes & Anti-Patterns
 
 | Anti-Pattern | Why It Fails | Correct Pattern |
 |---|---|---|
@@ -272,7 +307,7 @@ Every new or modified Coralite component MUST satisfy this checklist:
 
 ---
 
-## 12. Enforcement
+## 13. Enforcement
 
 Compliance with this guide is enforced automatically at build and test time:
 

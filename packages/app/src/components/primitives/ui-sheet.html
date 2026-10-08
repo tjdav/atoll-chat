@@ -1,0 +1,186 @@
+<template id="ui-sheet">
+  <dialog ref="dialog" class="sheet" aria-label="{{ dialogAriaLabel }}" data-testid="ui-sheet">
+    <header class="sheet__header" hidden="{{ headerHidden }}">
+      <h2 class="sheet__title">{{ title }}</h2>
+      <button ref="close" type="button" class="sheet__close" aria-label="{{ closeLabel }}" hidden="{{ closeHidden }}">✕</button>
+    </header>
+    <div class="sheet__body">
+      <slot></slot>
+    </div>
+  </dialog>
+</template>
+
+<style>
+  :host {
+    display: contents;
+  }
+
+  .sheet:not([open]) {
+    display: none !important;
+  }
+
+  .sheet {
+    border: none;
+    padding: 0;
+    margin: 0;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-xl);
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sheet::backdrop {
+    background: rgb(0 0 0 / 0.4);
+    backdrop-filter: blur(2px);
+  }
+
+  /* Center variant (default) */
+  :host([variant="center"]) .sheet,
+  :host(:not([variant])) .sheet {
+    margin: auto;
+    max-width: min(560px, calc(100vw - 2 * var(--space-4)));
+    max-height: min(80dvh, 720px);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Bottom variant */
+  :host([variant="bottom"]) .sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 85dvh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding-bottom: var(--safe-bottom);
+  }
+
+  @media (min-width: 768px) {
+    /* On desktop, the bottom variant centers like a modal at the bottom */
+    :host([variant="bottom"]) .sheet {
+      margin: auto auto 0;
+      left: 0;
+      right: 0;
+      max-width: min(560px, 90vw);
+    }
+  }
+
+  .sheet__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+  }
+
+  .sheet__header[hidden] {
+    display: none !important;
+  }
+
+  .sheet__title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+  }
+
+  .sheet__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--text-base);
+  }
+
+  .sheet__close[hidden] {
+    display: none !important;
+  }
+
+  .sheet__close:hover {
+    background: var(--surface-3);
+  }
+
+  .sheet__body {
+    padding: var(--space-4);
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+  }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  attributes: {
+    open: { type: Boolean, default: false, reflect: true },
+    variant: { type: String, default: 'center', reflect: true },
+    title: { type: String, default: '' },
+    ariaLabel: { type: String, default: '' },
+    showClose: { type: Boolean, default: true },
+    closeLabel: { type: String, default: 'Close' },
+    dismissible: { type: Boolean, default: true }
+  },
+
+  getters: {
+    headerHidden: ({ state }) => Boolean(!state.title && !state.showClose),
+    closeHidden: ({ state }) => Boolean(!state.showClose),
+    dialogAriaLabel: ({ state }) => state.ariaLabel || state.title || null
+  },
+
+  client({ state, refs, emit, observe, signal }) {
+    const dialog = refs('dialog')
+
+    function sync() {
+      if (!dialog) return
+      if (state.open) {
+        if (!dialog.open) dialog.showModal()
+      } else {
+        if (dialog.open) dialog.close()
+      }
+    }
+
+    sync()
+    observe('open', sync)
+
+    if (dialog) {
+      dialog.addEventListener('cancel', (event) => {
+        if (!state.dismissible) {
+          event.preventDefault()
+        }
+      }, { signal })
+
+      dialog.addEventListener('close', () => {
+        if (state.open) {
+          state.open = false
+          emit('sheet:close', {})
+        }
+      }, { signal })
+
+      dialog.addEventListener('click', (event) => {
+        if (!state.dismissible) return
+        if (event.target !== dialog) return
+        dialog.close()
+      }, { signal })
+    }
+
+    const closeBtn = refs('close')
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        if (dialog) dialog.close()
+      }, { signal })
+    }
+  }
+})
+</script>

@@ -54,3 +54,69 @@ export async function seedSession(page) {
     localStorage.setItem('atoll.session.username', 'alice')
   })
 }
+
+/**
+ * Mounts a <ui-sheet> element into the DOM with specified attributes and slotted body content.
+ * @param {import('@playwright/test').Page} page
+ * @param {Record<string, string | boolean>} [attrs]
+ */
+export async function mountSheet(page, attrs = {}) {
+  await page.evaluate((attrs) => {
+    const existing = document.querySelector('#cv-sheet-test')
+    if (existing) existing.remove()
+    const sheet = document.createElement('ui-sheet')
+    for (const [k, v] of Object.entries(attrs)) {
+      if (typeof v === 'boolean') {
+        if (v) sheet.setAttribute(k, '')
+        else sheet.removeAttribute(k)
+      } else {
+        sheet.setAttribute(k, String(v))
+      }
+    }
+    sheet.id = 'cv-sheet-test'
+    const body = document.createElement('div')
+    body.setAttribute('data-testid', 'sheet-body')
+    body.textContent = 'Sheet body content'
+    sheet.appendChild(body)
+    document.body.appendChild(sheet)
+  }, attrs)
+}
+
+/**
+ * Updates the `open` attribute on the mounted test sheet.
+ * @param {import('@playwright/test').Page} page
+ * @param {boolean} open
+ */
+export async function setSheetOpen(page, open) {
+  await page.evaluate((open) => {
+    const sheet = document.querySelector('#cv-sheet-test')
+    if (!sheet) throw new Error('Sheet not mounted')
+    if (open) {
+      sheet.setAttribute('open', '')
+    } else {
+      sheet.removeAttribute('open')
+    }
+  }, open)
+}
+
+/**
+ * Installs a window event listener to record `sheet:close` events.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function recordSheetEvents(page) {
+  await page.evaluate(() => {
+    window.__cvSheetLastClose = null
+    document.addEventListener('sheet:close', () => {
+      window.__cvSheetLastClose = { at: Date.now() }
+    })
+  })
+}
+
+/**
+ * Retrieves the last recorded `sheet:close` event detail from window scope.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{ at: number } | null>}
+ */
+export async function getLastSheetCloseEvent(page) {
+  return page.evaluate(() => window.__cvSheetLastClose ?? null)
+}
