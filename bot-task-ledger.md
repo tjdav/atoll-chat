@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 36
-- **Done:** 35
+- **Total Tasks:** 37
+- **Done:** 36
 - **In Progress:** 0
 - **Todo:** 1
 
@@ -57,3 +57,4 @@ Track progress across Bot SDK implementation tasks.
 | B-030 | Pause Policy | done | §11, §12 | Implement pause-on-failure policy, consecutive failure tracking, reportPause callback, guard wrapper across dispatches, and PausedError addition |
 | B-031 | Reconnection | done | §4.7, §14.2, §14.7 | Implement WebSocket and observer SSE reconnection loop with exponential backoff and proportional jitter |
 | B-032 | Shutdown | done | §14.8 | Implement shutdown tracker, signal handlers, graceful runtime.stop({ drainMs }), and shutdown sequence orchestrator |
+| B-036 | CLI Skeleton | done | §14.1, §14.2, §4.6 | CLI entry point (`src/cli.js`), dispatcher (`src/cli/index.js`), argument parser (`src/cli/args.js`), and `validate` subcommand (`src/cli/validate.js`) |

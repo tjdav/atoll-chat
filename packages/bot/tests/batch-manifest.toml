@@ -239,3 +239,15 @@ name = "create-test-runtime"
 files = [
   "unit/create-test-runtime.test.js",
 ]
+
+[[batch]]
+name = "cli-args"
+files = [
+  "unit/cli-args.test.js",
+]
+
+[[batch]]
+name = "cli-validate"
+files = [
+  "unit/cli-validate.test.js",
+]
