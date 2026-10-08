@@ -1,0 +1,122 @@
+<template id="message-context-menu">
+  <div class="menu" role="menu" ref="menu" hidden="{{ menuHidden }}">
+    <button ref="copy" type="button" class="menu__item" role="menuitem" hidden="{{ copyHidden }}">{{ menu_copy }}</button>
+    <button ref="unsend" type="button" class="menu__item" role="menuitem" hidden="{{ unsendHidden }}">{{ menu_unsend }}</button>
+    <button ref="delete" type="button" class="menu__item menu__item--danger" role="menuitem">{{ menu_delete_for_me }}</button>
+  </div>
+</template>
+
+<style>
+:host { display: contents; }
+
+.menu {
+  position: fixed;
+  left: var(--menu-x, 0);
+  top: var(--menu-y, 0);
+  z-index: var(--z-popover);
+  min-width: 180px;
+  padding: var(--space-1);
+  background: var(--surface-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-primary);
+  font: inherit;
+  border-radius: var(--radius-sm);
+}
+
+.menu__item:hover { background: var(--surface-2); }
+
+.menu__item--danger { color: var(--status-error); }
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  attributes: {
+    open: { type: Boolean, default: false, reflect: true },
+    x: { type: Number, default: 0 },
+    y: { type: Number, default: 0 },
+    messageId: { type: String, default: '' },
+    canUnsend: { type: Boolean, default: false },
+    canCopy: { type: Boolean, default: true }
+  },
+
+  getters: {
+    menuHidden: ({ state }) => !state.open,
+    copyHidden: ({ state }) => !state.canCopy,
+    unsendHidden: ({ state }) => !state.canUnsend
+  },
+
+  style: {
+    '--menu-x': (state) => `${state.x}px`,
+    '--menu-y': (state) => `${state.y}px`
+  },
+
+  server({ i18n }) {
+    return {
+      locale: i18n.getLocale(),
+      ...i18n.strings([
+        'menu_copy',
+        'menu_delete_for_me',
+        'menu_unsend'
+      ])
+    }
+  },
+
+  client({ state, refs, emit, i18n, signal }) {
+    i18n.subscribeLocale(
+      (locale) => {
+        state.locale = locale
+        Object.assign(state, i18n.strings([
+          'menu_copy',
+          'menu_delete_for_me',
+          'menu_unsend'
+        ]))
+      },
+      { signal }
+    )
+
+    refs('copy').addEventListener('click', () => {
+      emit('menu:copy', { messageId: state.messageId })
+    }, { signal })
+
+    refs('unsend').addEventListener('click', () => {
+      emit('menu:unsend', { messageId: state.messageId })
+    }, { signal })
+
+    refs('delete').addEventListener('click', () => {
+      emit('menu:delete', { messageId: state.messageId })
+    }, { signal })
+
+    function onDocumentClick(event) {
+      if (!state.open) return
+      const menu = refs('menu')
+      if (menu && menu.contains(event.target)) return
+      emit('menu:close', {})
+    }
+    document.addEventListener('click', onDocumentClick, { signal })
+    document.addEventListener('contextmenu', onDocumentClick, { signal })
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && state.open) emit('menu:close', {})
+    }, { signal })
+  }
+})
+</script>

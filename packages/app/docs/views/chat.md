@@ -103,15 +103,45 @@ When `view-chat` receives `composer:send`, it calls `sendMessage({ deps, roomId,
 
 `encodeCiphertextStub(payload)` prefixes UTF-8 JSON bytes with `stub:`. This marker satisfies the non-NULL column constraint until the MLS CoreCrypto encryption integration replaces it with real ciphertext.
 
-## 10. Known Limitations and Deferred Features
+## 10. Message Context Menu
+
+The message context menu allows users to perform local actions on thread messages.
+
+### 10.1 Trigger Mechanics and Browser Menu Suppression
+- **Desktop**: Right-clicking anywhere within a message row (`contextmenu` event) prevents the default browser context menu (`event.preventDefault()`) and emits `bubble:contextmenu` with `{ messageId, x, y }`.
+- **Touch / Pen**: Long-pressing for 500ms without pointer cancellation emits `bubble:contextmenu` with `{ messageId, x, y }`.
+
+### 10.2 Menu Component Contract
+`<message-context-menu>` (`packages/app/src/components/composed/message-context-menu.html`) accepts attributes:
+- `open`: Boolean reflecting whether the popover menu is visible.
+- `x`, `y`: Absolute pixel coordinates for menu position (`position: fixed`).
+- `messageId`: ID of the target message.
+- `canUnsend`: Boolean indicating whether Unsend is available.
+- `canCopy`: Boolean indicating whether Copy is available (`!deleted_at`).
+
+Emitted events:
+- `menu:copy`: `{ messageId }`
+- `menu:unsend`: `{ messageId }`
+- `menu:delete`: `{ messageId }`
+- `menu:close`: `{}`
+
+Dismissal occurs on outside click (`document.addEventListener('click')`) or pressing the `Escape` key.
+
+### 10.3 Action Semantics & Unsend Predicate
+- **Copy (`copyMessage`)**: Reads the message, parses the text summary, and writes to `navigator.clipboard.writeText`.
+- **Delete for me (`deleteForMe`)**: Executes a local hard delete via `repos.messages.remove(messageId)`. The message is removed from the local view immediately.
+- **Unsend (`unsend`)**: Executes a soft delete via `repos.messages.markDeleted(messageId)`. The message bubble updates to a muted tombstone pill (\"This message was deleted.\").
+- **Unsend Availability (`isUnsendAvailable`)**: True iff the message exists, the current user is the sender (`sender_user_id === userId`), `local_status === 'sent'`, and the creation timestamp is within 24 hours (`Date.now() - created_at <= 86,400,000`).
+
+## 11. Known Limitations and Deferred Features
 
 - **MLS Encryption Deferred**: Payload is stored as plaintext JSON in `decrypted_payload` with a `stub:` marker in `ciphertext`.
 - **Outbox Send Loop Deferred**: Messages remain `localStatus: 'pending'` until the background outbox sender loop is implemented.
 - **Draft Persistence Deferred**: Text in the composer is held in component state; drafts repository persistence is a follow-on task.
 - **Stub Buttons**: The attach, emoji, and read-aloud buttons render as disabled stub controls until follow-on tasks wire their functionality.
 - **No Live WebSocket**: Thread does not subscribe to incoming socket events yet (WebSocket task).
-- **No Editing / Deletion / Reaction UI**: Context menus, message editing, deletion, and reactions are deferred.
+- **Deferred Context Menu Actions**: Edit, Show original, Reply, React, Select, and Read aloud are omitted from the menu and deferred to follow-on tasks.
 
-## 11. Inline Header Surface
+## 12. Inline Header Surface
 
 The thread component currently renders an inline header (`<header class="chat__header">`) displaying the room or participant name. Per Spec §6.7, room title rendering will eventually be owned by the shell header. The inline header is a temporary surface deviation documented for migration in a follow-on shell header task.
