@@ -88,5 +88,15 @@ export default {
   composer_edit_banner: 'Editing',
   composer_edit_cancel_label: 'Cancel edit',
   composer_edit_save_label: 'Save edit',
-  bubble_edited_label: 'Edited'
+  bubble_edited_label: 'Edited',
+  edit_history_title: 'Edit history',
+  edit_history_current_label: 'Current version',
+  edit_history_original_label: 'Original version',
+  edit_history_close_label: 'Close history',
+  menu_react_label_0: 'React with thumbs up',
+  menu_react_label_1: 'React with heart',
+  menu_react_label_2: 'React with joy',
+  menu_react_label_3: 'React with surprise',
+  menu_react_label_4: 'React with sadness',
+  menu_react_label_5: 'React with celebration'
 }

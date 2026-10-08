@@ -88,5 +88,15 @@ export default {
   composer_edit_banner: 'Editando',
   composer_edit_cancel_label: 'Cancelar edición',
   composer_edit_save_label: 'Guardar edición',
-  bubble_edited_label: 'Editado'
+  bubble_edited_label: 'Editado',
+  edit_history_title: 'Historial de ediciones',
+  edit_history_current_label: 'Versión actual',
+  edit_history_original_label: 'Versión original',
+  edit_history_close_label: 'Cerrar historial',
+  menu_react_label_0: 'Reaccionar con pulgar arriba',
+  menu_react_label_1: 'Reaccionar con corazón',
+  menu_react_label_2: 'Reaccionar con risa',
+  menu_react_label_3: 'Reaccionar con sorpresa',
+  menu_react_label_4: 'Reaccionar con tristeza',
+  menu_react_label_5: 'Reaccionar con celebración'
 }

@@ -1,0 +1,76 @@
+<template id="reaction-chip">
+  <button ref="chip" type="button" class="chip" aria-label="{{ chipLabel }}">
+    <span class="chip__emoji" aria-hidden="true">{{ reaction }}</span>
+    <span class="chip__count">{{ count }}</span>
+  </button>
+</template>
+
+<style>
+:host {
+  display: inline-flex;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+  line-height: 1.2;
+}
+
+.chip:hover {
+  background: var(--surface-3);
+}
+
+:host([is-own]) .chip {
+  background: var(--accent-primary, #3b82f6);
+  color: var(--text-on-accent, #ffffff);
+  border-color: transparent;
+}
+
+.chip__emoji {
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+.chip__count {
+  font-weight: var(--font-semibold, 600);
+}
+</style>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  attributes: {
+    reaction: { type: String, default: '' },
+    count: { type: Number, default: 0 },
+    messageId: { type: String, default: '' },
+    isOwn: { type: Boolean, default: false, reflect: true }
+  },
+
+  getters: {
+    chipLabel: ({ state }) => `${state.reaction} ${state.count}`
+  },
+
+  client({ state, refs, emit, signal }) {
+    const chipBtn = refs('chip')
+    if (chipBtn) {
+      chipBtn.addEventListener('click', (event) => {
+        event.stopPropagation()
+        emit('reaction:toggle', {
+          messageId: state.messageId,
+          reaction: state.reaction
+        })
+      }, { signal })
+    }
+  }
+})
+</script>

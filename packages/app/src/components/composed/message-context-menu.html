@@ -1,5 +1,13 @@
 <template id="message-context-menu">
   <div class="menu" role="menu" ref="menu" hidden="{{ menuHidden }}">
+    <div class="menu__reactions" ref="reactions" hidden="{{ reactionsHidden }}">
+      <button ref="emoji0" type="button" class="menu__emoji" aria-label="{{ menu_react_label_0 }}">👍</button>
+      <button ref="emoji1" type="button" class="menu__emoji" aria-label="{{ menu_react_label_1 }}">❤️</button>
+      <button ref="emoji2" type="button" class="menu__emoji" aria-label="{{ menu_react_label_2 }}">😂</button>
+      <button ref="emoji3" type="button" class="menu__emoji" aria-label="{{ menu_react_label_3 }}">😮</button>
+      <button ref="emoji4" type="button" class="menu__emoji" aria-label="{{ menu_react_label_4 }}">😢</button>
+      <button ref="emoji5" type="button" class="menu__emoji" aria-label="{{ menu_react_label_5 }}">🎉</button>
+    </div>
     <button ref="edit" type="button" class="menu__item" role="menuitem" hidden="{{ editHidden }}">{{ menu_edit }}</button>
     <button ref="copy" type="button" class="menu__item" role="menuitem" hidden="{{ copyHidden }}">{{ menu_copy }}</button>
     <button ref="unsend" type="button" class="menu__item" role="menuitem" hidden="{{ unsendHidden }}">{{ menu_unsend }}</button>
@@ -9,6 +17,8 @@
 
 <style>
 :host { display: contents; }
+
+[hidden] { display: none !important; }
 
 .menu {
   position: fixed;
@@ -26,6 +36,32 @@
   gap: 2px;
   font-size: var(--text-sm);
 }
+
+.menu__reactions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-1);
+}
+
+.menu__emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  cursor: pointer;
+  font-size: var(--text-base);
+  padding: 0;
+}
+
+.menu__emoji:hover { background: var(--surface-2); }
 
 .menu__item {
   display: flex;
@@ -57,14 +93,16 @@ export default defineComponent({
     messageId: { type: String, default: '' },
     canUnsend: { type: Boolean, default: false },
     canCopy: { type: Boolean, default: true },
-    canEdit: { type: Boolean, default: false }
+    canEdit: { type: Boolean, default: false },
+    canReact: { type: Boolean, default: false }
   },
 
   getters: {
     menuHidden: ({ state }) => !state.open,
     editHidden: ({ state }) => !state.canEdit,
     copyHidden: ({ state }) => !state.canCopy,
-    unsendHidden: ({ state }) => !state.canUnsend
+    unsendHidden: ({ state }) => !state.canUnsend,
+    reactionsHidden: ({ state }) => !state.canReact
   },
 
   style: {
@@ -79,7 +117,13 @@ export default defineComponent({
         'menu_edit',
         'menu_copy',
         'menu_delete_for_me',
-        'menu_unsend'
+        'menu_unsend',
+        'menu_react_label_0',
+        'menu_react_label_1',
+        'menu_react_label_2',
+        'menu_react_label_3',
+        'menu_react_label_4',
+        'menu_react_label_5'
       ])
     }
   },
@@ -92,11 +136,26 @@ export default defineComponent({
           'menu_edit',
           'menu_copy',
           'menu_delete_for_me',
-          'menu_unsend'
+          'menu_unsend',
+          'menu_react_label_0',
+          'menu_react_label_1',
+          'menu_react_label_2',
+          'menu_react_label_3',
+          'menu_react_label_4',
+          'menu_react_label_5'
         ]))
       },
       { signal }
     )
+
+    const emojis = ['👍', '❤️', '😂', '😮', '😢', '🎉']
+    emojis.forEach((emoji, index) => {
+      const btn = refs(`emoji${index}`)
+      if (!btn) return
+      btn.addEventListener('click', () => {
+        emit('menu:react', { messageId: state.messageId, reaction: emoji })
+      }, { signal })
+    })
 
     refs('edit').addEventListener('click', () => {
       emit('menu:edit', { messageId: state.messageId })

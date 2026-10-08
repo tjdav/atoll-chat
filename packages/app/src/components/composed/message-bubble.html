@@ -1,20 +1,23 @@
 <template id="message-bubble">
   <div class="bubble-row" ref="row" data-testid="conversation-row">
-    <div class="bubble" ref="bubble">
-      <div class="bubble__header" hidden="{{ headerHidden }}">
-        <span class="bubble__sender">{{ senderName }}</span>
-      </div>
+    <div class="bubble-stack">
+      <div class="bubble" ref="bubble">
+        <div class="bubble__header" hidden="{{ headerHidden }}">
+          <span class="bubble__sender">{{ senderName }}</span>
+        </div>
 
-      <div class="bubble__content" ref="content">
-        <p class="bubble__text" hidden="{{ textHidden }}">{{ textContent }}</p>
-        <p class="bubble__tombstone" hidden="{{ tombstoneHidden }}">{{ deletedText }}</p>
-      </div>
+        <div class="bubble__content" ref="content">
+          <p class="bubble__text" hidden="{{ textHidden }}">{{ textContent }}</p>
+          <p class="bubble__tombstone" hidden="{{ tombstoneHidden }}">{{ deletedText }}</p>
+        </div>
 
-      <div class="bubble__footer">
-        <span class="bubble__edited" hidden="{{ editedHidden }}">{{ editedLabel }}</span>
-        <span class="bubble__time">{{ formattedTime }}</span>
-        <span class="bubble__status" hidden="{{ statusHidden }}">{{ statusText }}</span>
+        <div class="bubble__footer">
+          <button ref="edited" type="button" class="bubble__edited" hidden="{{ editedHidden }}">{{ editedLabel }}</button>
+          <span class="bubble__time">{{ formattedTime }}</span>
+          <span class="bubble__status" hidden="{{ statusHidden }}">{{ statusText }}</span>
+        </div>
       </div>
+      <div class="bubble-reactions" ref="reactions" data-testid="bubble-reactions"></div>
     </div>
   </div>
 </template>
@@ -34,8 +37,19 @@
   justify-content: flex-end;
 }
 
-.bubble {
+.bubble-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
   max-width: 70%;
+}
+
+:host([is-own]) .bubble-stack {
+  align-items: flex-end;
+}
+
+.bubble {
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-lg);
   background: var(--surface-2);
@@ -64,6 +78,17 @@
 
 :host([is-failed]) .bubble {
   border: 1px solid var(--status-error);
+}
+
+.bubble-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 0 var(--space-1);
+}
+
+.bubble-reactions:empty {
+  display: none;
 }
 
 .bubble__header {
@@ -102,6 +127,15 @@
   font-style: italic;
   font-size: var(--text-xs);
   color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bubble__edited:hover {
+  text-decoration: underline;
 }
 
 :host([is-own]) .bubble__edited {
@@ -133,7 +167,8 @@ export default defineComponent({
     isEdited: { type: Boolean, default: false, reflect: true },
     editedLabel: { type: String, default: 'Edited' },
     isFirstInGroup: { type: Boolean, default: true },
-    isLastInGroup: { type: Boolean, default: true }
+    isLastInGroup: { type: Boolean, default: true },
+    reactionsJson: { type: String, default: '[]' }
   },
 
   getters: {
@@ -157,7 +192,7 @@ export default defineComponent({
     }
   },
 
-  client({ state, refs, emit, i18n, signal }) {
+  client({ state, refs, emit, i18n, observe, signal }) {
     i18n.subscribeLocale(
       (locale) => {
         state.locale = locale
@@ -165,6 +200,38 @@ export default defineComponent({
       },
       { signal }
     )
+
+    const reactionsEl = refs('reactions')
+
+    function renderReactions() {
+      if (!reactionsEl) return
+      reactionsEl.replaceChildren()
+      let items
+      try {
+        items = JSON.parse(state.reactionsJson)
+      } catch {
+        items = []
+      }
+      for (const item of items) {
+        const chip = document.createElement('reaction-chip')
+        chip.setAttribute('reaction', item.reaction)
+        chip.setAttribute('count', String(item.count))
+        chip.setAttribute('message-id', state.messageId)
+        if (item.isOwn) chip.setAttribute('is-own', '')
+        reactionsEl.appendChild(chip)
+      }
+    }
+
+    renderReactions()
+    observe('reactionsJson', renderReactions)
+
+    const editedBtn = refs('edited')
+    if (editedBtn) {
+      editedBtn.addEventListener('click', (event) => {
+        event.stopPropagation()
+        emit('bubble:show-original', { messageId: state.messageId })
+      }, { signal })
+    }
 
     const row = refs('row')
     if (row) {

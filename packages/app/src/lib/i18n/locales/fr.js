@@ -88,5 +88,15 @@ export default {
   composer_edit_banner: 'Modification',
   composer_edit_cancel_label: 'Annuler la modification',
   composer_edit_save_label: 'Enregistrer la modification',
-  bubble_edited_label: 'Modifié'
+  bubble_edited_label: 'Modifié',
+  edit_history_title: 'Historique des modifications',
+  edit_history_current_label: 'Version actuelle',
+  edit_history_original_label: 'Version originale',
+  edit_history_close_label: 'Fermer l’historique',
+  menu_react_label_0: 'Réagir avec pouce vers le haut',
+  menu_react_label_1: 'Réagir avec cœur',
+  menu_react_label_2: 'Réagir avec de la joie',
+  menu_react_label_3: 'Réagir avec surprise',
+  menu_react_label_4: 'Réagir avec de la tristesse',
+  menu_react_label_5: 'Réagir avec de la fête'
 }

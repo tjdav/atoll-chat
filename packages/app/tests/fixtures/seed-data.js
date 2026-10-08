@@ -24,13 +24,27 @@ export const SEEDS = {
     rooms: [{ roomId: 'r_1', name: 'Test Room' }],
     members: [
       { roomId: 'r_1', userId: 'u_me', role: 'owner' },
-      { roomId: 'r_1', userId: 'u_alice', role: 'member' }
+      { roomId: 'r_1', userId: 'u_alice', role: 'member' },
+      { roomId: 'r_1', userId: 'u_bob', role: 'member' }
     ],
-    users: [{ userId: 'u_alice', displayName: 'Alice' }],
+    users: [
+      { userId: 'u_alice', displayName: 'Alice' },
+      { userId: 'u_bob', displayName: 'Bob' }
+    ],
     messages: [
       // Five messages from Alice, one from the user, one tombstone.
       // Timestamps are computed at seed time so "1h ago" is stable.
-      { id: 'm_1', from: 'u_alice', text: 'Hello', offsetMs: -60 * 60 * 1000, status: 'sent' },
+      {
+        id: 'm_1',
+        from: 'u_alice',
+        text: 'Hello',
+        offsetMs: -60 * 60 * 1000,
+        status: 'sent',
+        reactions: [
+          { userId: 'u_alice', clientId: 'test-client-a', reaction: '👍' },
+          { userId: 'u_bob', clientId: 'test-client-b', reaction: '👍' }
+        ]
+      },
       { id: 'm_2', from: 'u_alice', text: 'How are you?', offsetMs: -59 * 60 * 1000, status: 'sent' },
       { id: 'm_3', from: 'u_me', text: 'Good, thanks', offsetMs: -58 * 60 * 1000, status: 'sent' },
       { id: 'm_4', from: 'u_me', text: 'Draft message', offsetMs: -57 * 60 * 1000, status: 'pending' },

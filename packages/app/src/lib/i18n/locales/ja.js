@@ -88,5 +88,15 @@ export default {
   composer_edit_banner: '編集中のメッセージ',
   composer_edit_cancel_label: '編集をキャンセル',
   composer_edit_save_label: '編集を保存',
-  bubble_edited_label: '編集済み'
+  bubble_edited_label: '編集済み',
+  edit_history_title: '編集履歴',
+  edit_history_current_label: '現在のバージョン',
+  edit_history_original_label: '元のバージョン',
+  edit_history_close_label: '履歴を閉じる',
+  menu_react_label_0: '親指を立ててリアクション',
+  menu_react_label_1: 'ハートでリアクション',
+  menu_react_label_2: '嬉しさでリアクション',
+  menu_react_label_3: '驚きでリアクション',
+  menu_react_label_4: '悲しさでリアクション',
+  menu_react_label_5: 'お祝いでリアクション'
 }

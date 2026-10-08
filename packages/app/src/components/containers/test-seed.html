@@ -50,6 +50,15 @@ export default defineComponent({
           createdAt,
           updatedAt: createdAt
         })
+        for (const r of msg.reactions ?? []) {
+          await repos.reactions.add({
+            messageId: msg.id,
+            senderUserId: r.userId,
+            senderClientId: r.clientId,
+            reaction: r.reaction,
+            createdAt
+          })
+        }
       }
       for (const rs of seed.readStates) {
         await repos.readState.upsert({
