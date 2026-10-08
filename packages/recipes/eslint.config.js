@@ -5,7 +5,23 @@ import rootConfig from '../../eslint.config.js'
  * defined types so bare-name references resolve.
  * @type {string[]}
  */
-const definedTypes = []
+const definedTypes = [
+  'Primitive',
+  'PrimitiveInstance',
+  'RecipeKind',
+  'Slot',
+  'Recipe',
+  'Intent',
+  'Candidate',
+  'MatchResult',
+  'Instantiation',
+  'Composition',
+  'BotScript',
+  'OperatorBinding',
+  'OperatorPolicy',
+  'ConsentTier',
+  'TelemetryRecord'
+]
 
 export default [
   ...rootConfig,
