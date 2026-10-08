@@ -237,6 +237,10 @@
 - **Key Transparency bot endpoints and helper**: pending
   - **Blocked:** Blocked on bot leaf serialization amendment approval by spec owner (see `verification/kt-bot-keys/report.md` §"Amendment Request").
   - **Scope:** `append_bot_leaf` helper, `GET /kt/bot/:id`, `GET /kt/bot/:id/history`, bot leaf serialization, bot anonymization helper.
+- **Link Preview Proxy V3 Alignment (Phase 17)**: blocked
+  - **Status:** Step 0 Complete — Case B Identified (Specification Error).
+  - **Delivered:** `verification/link-preview-proxy-v3/report.md`, `verification.md`, `task-ledger.md`.
+  - **Outcome:** Case B classification. V2 Task 35 fact is canonical; V3 §8.1.2 contains spec errors (RSA-OAEP, field names, public auth, per-IP rate limit). Proposed spec amendment formulated. Task blocked pending spec revision.
 
 ## Annotations for Future Tasks
 
@@ -244,8 +248,8 @@ None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 52
+- **Total Verifications/Tasks Tracked:** 53
 - **Done:** 51
-- **Pending:** 1
+- **Pending:** 2
 - **In-Progress:** 0
 - **Mismatches:** 0
