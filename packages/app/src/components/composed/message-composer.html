@@ -1,25 +1,31 @@
 <template id="message-composer">
-  <div class="composer" data-testid="composer">
-    <button ref="attach" type="button" class="composer__btn composer__btn--attach" aria-label="{{ attachLabel }}" disabled>
-      <span aria-hidden="true">+</span>
-    </button>
-    <button ref="emoji" type="button" class="composer__btn composer__btn--emoji" aria-label="{{ emojiLabel }}" disabled>
-      <span aria-hidden="true">☺</span>
-    </button>
-    <button ref="readaloud" type="button" class="composer__btn composer__btn--speak" aria-label="{{ readaloudLabel }}" disabled>
-      <span aria-hidden="true">🔊</span>
-    </button>
-    <textarea
-      ref="input"
-      class="composer__input"
-      rows="1"
-      placeholder="{{ placeholder }}"
-      disabled="{{ disabled }}"
-      aria-label="{{ inputLabel }}"
-    ></textarea>
-    <button ref="send" type="button" class="composer__btn composer__btn--send" aria-label="{{ sendLabel }}" disabled="{{ sendDisabled }}">
-      <span aria-hidden="true">{{ sendGlyph }}</span>
-    </button>
+  <div class="composer-wrapper">
+    <div class="composer-banner" hidden="{{ bannerHidden }}">
+      <span class="composer-banner__label">{{ editBannerLabel }}</span>
+      <button ref="cancel" type="button" class="composer-banner__cancel" aria-label="{{ editCancelLabel }}">✕</button>
+    </div>
+    <div class="composer" data-testid="composer">
+      <button ref="attach" type="button" class="composer__btn composer__btn--attach" aria-label="{{ attachLabel }}" disabled>
+        <span aria-hidden="true">+</span>
+      </button>
+      <button ref="emoji" type="button" class="composer__btn composer__btn--emoji" aria-label="{{ emojiLabel }}" disabled>
+        <span aria-hidden="true">☺</span>
+      </button>
+      <button ref="readaloud" type="button" class="composer__btn composer__btn--speak" aria-label="{{ readaloudLabel }}" disabled>
+        <span aria-hidden="true">🔊</span>
+      </button>
+      <textarea
+        ref="input"
+        class="composer__input"
+        rows="1"
+        placeholder="{{ placeholder }}"
+        disabled="{{ disabled }}"
+        aria-label="{{ inputLabel }}"
+      ></textarea>
+      <button ref="send" type="button" class="composer__btn composer__btn--send" aria-label="{{ sendAriaLabel }}" disabled="{{ sendDisabled }}">
+        <span aria-hidden="true">{{ sendGlyph }}</span>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -27,6 +33,36 @@
 :host {
   display: block;
   padding: var(--space-2);
+}
+
+.composer-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.composer-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.composer-banner__label {
+  font-weight: var(--weight-medium);
+}
+
+.composer-banner__cancel {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 var(--space-2);
 }
 
 .composer {
@@ -106,6 +142,11 @@ export default defineComponent({
     placeholder: { type: String, default: '' },
     disabled: { type: Boolean, default: false, reflect: true },
     hasText: { type: Boolean, default: false, reflect: true },
+    editing: { type: Boolean, default: false, reflect: true },
+    prefill: { type: String, default: '' },
+    editBannerLabel: { type: String, default: 'Editing' },
+    editCancelLabel: { type: String, default: 'Cancel edit' },
+    editSaveLabel: { type: String, default: 'Save edit' },
     attachLabel: { type: String, default: 'Attach' },
     emojiLabel: { type: String, default: 'Emoji' },
     readaloudLabel: { type: String, default: 'Read aloud' },
@@ -114,17 +155,34 @@ export default defineComponent({
   },
 
   getters: {
-    sendDisabled: ({ state }) => state.disabled || !state.hasText,
-    sendGlyph: ({ state }) => (state.hasText ? '➤' : '🎤')
+    bannerHidden: ({ state }) => !state.editing,
+    sendGlyph: ({ state }) => state.editing ? '✓' : (state.hasText ? '➤' : '🎤'),
+    sendAriaLabel: ({ state }) => state.editing ? state.editSaveLabel : state.sendLabel,
+    sendDisabled: ({ state }) => state.disabled || !state.hasText
   },
 
-  client({ state, refs, emit, signal }) {
+  client({ state, refs, emit, observe, signal }) {
     const input = refs('input')
 
     function autoGrow() {
       input.style.height = 'auto'
       input.style.height = `${input.scrollHeight}px`
     }
+
+    function applyPrefill(value) {
+      if (input.value === value) return
+      input.value = value
+      autoGrow()
+      queueMicrotask(() => {
+        state.hasText = input.value.trim().length > 0
+      })
+    }
+
+    if (state.prefill) applyPrefill(state.prefill)
+
+    observe('prefill', (newVal) => {
+      applyPrefill(newVal ?? '')
+    })
 
     input.addEventListener('input', () => {
       autoGrow()
@@ -134,10 +192,14 @@ export default defineComponent({
     function trySend() {
       const text = input.value
       if (!text.trim()) return
-      emit('composer:send', { text })
-      input.value = ''
-      state.hasText = false
-      autoGrow()
+      if (state.editing) {
+        emit('composer:edit-submit', { text })
+      } else {
+        emit('composer:send', { text })
+        input.value = ''
+        state.hasText = false
+        autoGrow()
+      }
     }
 
     input.addEventListener('keydown', (event) => {
@@ -150,6 +212,10 @@ export default defineComponent({
     }, { signal })
 
     refs('send').addEventListener('click', trySend, { signal })
+
+    refs('cancel').addEventListener('click', () => {
+      emit('composer:edit-cancel', {})
+    }, { signal })
 
     refs('attach').addEventListener('click', () => {
       emit('composer:attach', {})

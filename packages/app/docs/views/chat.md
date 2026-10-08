@@ -133,15 +133,51 @@ Dismissal occurs on outside click (`document.addEventListener('click')`) or pres
 - **Unsend (`unsend`)**: Executes a soft delete via `repos.messages.markDeleted(messageId)`. The message bubble updates to a muted tombstone pill (\"This message was deleted.\").
 - **Unsend Availability (`isUnsendAvailable`)**: True iff the message exists, the current user is the sender (`sender_user_id === userId`), `local_status === 'sent'`, and the creation timestamp is within 24 hours (`Date.now() - created_at <= 86,400,000`).
 
-## 11. Known Limitations and Deferred Features
+## 11. Message Editing
+
+Message editing allows authors to modify sent text messages within a 15-minute window.
+
+### 11.1 Trigger and Availability Predicate
+The Edit action appears on `<message-context-menu>` when `isEditAvailable(message, userId)` evaluates to true:
+- The message is owned by the current user (`sender_user_id === userId`).
+- The message has `local_status === 'sent'`.
+- The message is not soft-deleted (`deleted_at == null`).
+- The message was sent within the 15-minute window (`Date.now() - created_at <= 15 * 60 * 1000`).
+
+### 11.2 Composer Morph
+Selecting Edit morphs `<message-composer>` into edit mode:
+- Displays a top editing banner (`.composer-banner`) showing "Editing" and a cancel button (`✕`).
+- Prefills the input textarea with the existing message text summary.
+- Replaces the send glyph with a checkmark glyph (`✓`).
+- Emits `composer:edit-submit` with `{ text }` on submit, or `composer:edit-cancel` on cancel.
+
+### 11.3 Prefill Observation and Microtask Deferral
+To update both the DOM value and `hasText` state when receiving `prefill`, the composer uses `observe('prefill', ...)` with `queueMicrotask`. Deferring `state.hasText` to a microtask breaks synchronous execution and prevents reactive state mutation loops during observation.
+
+### 11.4 Edit Orchestration (`editMessage`)
+Executing an edit via `editMessage({ deps, messageId, newText, userId })` (`packages/app/src/lib/views/edit-message.js`):
+1. **Lazy Version 0**: If `message_versions` holds zero records for `messageId`, writes version 0 with the original row's `ciphertext`, `decrypted_payload`, and `editedAt = created_at`.
+2. **Next Sequence**: Reads existing versions and calculates `nextSeq = max(edit_sequence) + 1`.
+3. **Version Record**: Writes a new version record to `message_versions` with `editSequence: nextSeq` and `editedAt: now`.
+4. **Base Message Row**: Updates the base message row in `messages` with the new `ciphertext`, `decryptedPayload`, `edited_at: now`, and `updated_at: now`.
+
+### 11.5 "Edited" Indicator
+Message bubbles with `edited_at != null` render an italic "Edited" indicator in the message footer next to the timestamp.
+
+### 11.6 Deferred Editing Capabilities
+- **"Show original" sheet**: Version history browsing sheet is deferred to C-CHAT-10b (`ui-sheet` primitive).
+- **Attachment Editing**: Media message attachments cannot be modified.
+- **Wire Protocol**: Signed edits sent via WebSocket/HTTP wire protocol are deferred to the WebSocket task.
+
+## 12. Known Limitations and Deferred Features
 
 - **MLS Encryption Deferred**: Payload is stored as plaintext JSON in `decrypted_payload` with a `stub:` marker in `ciphertext`.
 - **Outbox Send Loop Deferred**: Messages remain `localStatus: 'pending'` until the background outbox sender loop is implemented.
 - **Draft Persistence Deferred**: Text in the composer is held in component state; drafts repository persistence is a follow-on task.
 - **Stub Buttons**: The attach, emoji, and read-aloud buttons render as disabled stub controls until follow-on tasks wire their functionality.
 - **No Live WebSocket**: Thread does not subscribe to incoming socket events yet (WebSocket task).
-- **Deferred Context Menu Actions**: Edit, Show original, Reply, React, Select, and Read aloud are omitted from the menu and deferred to follow-on tasks.
+- **Deferred Context Menu Actions**: Show original, Reply, React, Select, and Read aloud are omitted from the menu and deferred to follow-on tasks.
 
-## 12. Inline Header Surface
+## 13. Inline Header Surface
 
 The thread component currently renders an inline header (`<header class="chat__header">`) displaying the room or participant name. Per Spec §6.7, room title rendering will eventually be owned by the shell header. The inline header is a temporary surface deviation documented for migration in a follow-on shell header task.

@@ -66,7 +66,8 @@ export default [
       'tests/unit/view-chat-data.test.js',
       'tests/unit/composer.test.js',
       'tests/unit/send-message.test.js',
-      'tests/unit/message-actions.test.js'
+      'tests/unit/message-actions.test.js',
+      'tests/unit/edit-message.test.js'
     ]
   },
   {
@@ -86,7 +87,8 @@ export default [
       'tests/component/conversation-list.spec.js',
       'tests/component/chat-thread.spec.js',
       'tests/component/composer.spec.js',
-      'tests/component/message-context-menu.spec.js'
+      'tests/component/message-context-menu.spec.js',
+      'tests/component/message-edit.spec.js'
     ]
   },
   {

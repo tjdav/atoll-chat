@@ -1,5 +1,6 @@
 <template id="message-context-menu">
   <div class="menu" role="menu" ref="menu" hidden="{{ menuHidden }}">
+    <button ref="edit" type="button" class="menu__item" role="menuitem" hidden="{{ editHidden }}">{{ menu_edit }}</button>
     <button ref="copy" type="button" class="menu__item" role="menuitem" hidden="{{ copyHidden }}">{{ menu_copy }}</button>
     <button ref="unsend" type="button" class="menu__item" role="menuitem" hidden="{{ unsendHidden }}">{{ menu_unsend }}</button>
     <button ref="delete" type="button" class="menu__item menu__item--danger" role="menuitem">{{ menu_delete_for_me }}</button>
@@ -55,11 +56,13 @@ export default defineComponent({
     y: { type: Number, default: 0 },
     messageId: { type: String, default: '' },
     canUnsend: { type: Boolean, default: false },
-    canCopy: { type: Boolean, default: true }
+    canCopy: { type: Boolean, default: true },
+    canEdit: { type: Boolean, default: false }
   },
 
   getters: {
     menuHidden: ({ state }) => !state.open,
+    editHidden: ({ state }) => !state.canEdit,
     copyHidden: ({ state }) => !state.canCopy,
     unsendHidden: ({ state }) => !state.canUnsend
   },
@@ -73,6 +76,7 @@ export default defineComponent({
     return {
       locale: i18n.getLocale(),
       ...i18n.strings([
+        'menu_edit',
         'menu_copy',
         'menu_delete_for_me',
         'menu_unsend'
@@ -85,6 +89,7 @@ export default defineComponent({
       (locale) => {
         state.locale = locale
         Object.assign(state, i18n.strings([
+          'menu_edit',
           'menu_copy',
           'menu_delete_for_me',
           'menu_unsend'
@@ -92,6 +97,10 @@ export default defineComponent({
       },
       { signal }
     )
+
+    refs('edit').addEventListener('click', () => {
+      emit('menu:edit', { messageId: state.messageId })
+    }, { signal })
 
     refs('copy').addEventListener('click', () => {
       emit('menu:copy', { messageId: state.messageId })

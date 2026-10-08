@@ -787,6 +787,25 @@ build task runs.
 | Test Migrations | Refactored `chat-thread.spec.js` and `composer.spec.js` to use `loadWithFixture` helper |
 | Visual Verification Artifact | Captured `packages/app/test-results/chat-populated.png` rendering 6 messages, date separators, tombstone, pending message, and scroll button |
 
+### C-CHAT-10 — Message Editing (Composer Morph and Edit Orchestration)
+
+**Verified:** 2026-10-08
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Edit Availability Predicate | `isEditAvailable(message, userId, { windowMs = 900000, now })` in `packages/app/src/lib/views/edit-message.js`: returns `true` iff `sender_user_id === userId`, `local_status === 'sent'`, `deleted_at == null`, and `now - created_at <= 15 * 60 * 1000` |
+| Edit Orchestration | `editMessage({ deps, messageId, newText, userId, now })` in `packages/app/src/lib/views/edit-message.js`: reads message, checks availability, parses text payload, creates lazy version 0 if no versions exist capturing original base message row, increments edit sequence (`nextSeq = maxSeq + 1`), inserts version row into `message_versions`, and updates base row in `messages` with new ciphertext, decrypted payload, and `edited_at: now` |
+| Lazy Version 0 Invariant | `message_versions` holds version 0 representing original state. Created lazily on first edit capturing original base message row payload and `editedAt = created_at` |
+| Context Menu Integration | `<message-context-menu>` adds `canEdit` host attribute, `menu_edit` key, Edit item button, emitting `menu:edit`. `<view-chat>` calculates `menuCanEdit = isEditAvailable(dbMsg, userId)` on context menu trigger |
+| Message Bubble Indicator | `<message-bubble>` adds `isEdited` host attribute (`is-edited` reflect), `editedLabel`, and italicized "Edited" indicator pill in meta footer row when `is-edited="true"` |
+| Composer Morph Mode | `<message-composer>` supports edit mode via `editing` host attribute (`editing` reflect), `prefill`, top editing banner with cancel button, checkmark save glyph (`✓`), emitting `composer:edit-submit` with `{ text }` or `composer:edit-cancel` |
+| Rule 21 Prefill Observation | Prefill handling in `<message-composer>` uses `observe('prefill', ...)` with `queueMicrotask` to defer `state.hasText` state mutation outside synchronous observation execution, preventing reactive infinite loops |
+| Extended Locales & Parity | Extended all seven production locales (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 5 new keys (`menu_edit`, `composer_edit_banner`, `composer_edit_cancel_label`, `composer_edit_save_label`, `bubble_edited_label`) maintaining 100% key parity (81 keys total) |
+| Seed Data Extension | Extended `seed-data.js` `chatWithMessages` seed with `m_7` editable message (`from: 'u_me'`, `offsetMs: -5 * 60 * 1000`, `status: 'sent'`) |
+| Documentation | Extended `packages/app/docs/views/chat.md` with Section 11 ("Message editing") |
+| Test Coverage & Batches | Unit test `packages/app/tests/unit/edit-message.test.js` (14 cases) registered in `unit-smoke` batch; Playwright component test `packages/app/tests/component/message-edit.spec.js` registered in `component-smoke` batch |
+| Visual Verification Artifacts | Screenshots captured at `packages/app/test-results/edit-mode-active.png` and `packages/app/test-results/edit-applied.png` |
+
 ### C-INFRA-24 — Fix Migration Delivery via `client.config` & Document Plugin Config Pattern
 
 **Verified:** 2026-10-07

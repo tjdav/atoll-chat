@@ -13,14 +13,16 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 2 |
-| Done | 50 |
+| Pending | 3 |
+| Done | 51 |
 | Blocked | 0 |
 
 ## Client Tasks
 
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
+| C-CHAT-10 | Message Editing (Composer Morph and Edit Orchestration) | done | C-CHAT-9, C-INFRA-25, C-CHAT-8, C-CHAT-7, C-INFRA-14, C-INFRA-23 | unit-smoke, component-smoke |
+| C-CHAT-10b | "Show original" Edit Chain Sheet | pending | C-CHAT-10, C-INFRA-26 | component-smoke |
 | C-V-A | Verify repo state and toolchain | done | — | — |
 | C-INFRA-24 | Fix Migration Delivery via `client.config` and Document Plugin Config Pattern | done | C-V-H, C-INFRA-20, C-INFRA-8 | unit-smoke, component-smoke |
 | C-INFRA-23 | Component Data-Attribute Audit and Component Authoring Guide | done | C-CHAT-6, C-INFRA-6b, C-INFRA-6c, C-V-E, C-V-F | unit-smoke |
@@ -483,6 +485,20 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created unit test suites `packages/app/tests/unit/composer.test.js` (18 cases) and `packages/app/tests/unit/send-message.test.js` (14 cases) registered in `unit-smoke` batch in `packages/app/test-batches.js`.
   - Created Playwright component test `packages/app/tests/component/composer.spec.js` registered in `component-smoke` batch in `packages/app/test-batches.js`.
   - Generated visual verification screenshot `packages/app/test-results/composer-pending.png`.
+
+- **C-CHAT-10 Deliverables & Status:**
+  - Status: `done`.
+  - Implemented edit orchestration pure module `packages/app/src/lib/views/edit-message.js` exporting `isEditAvailable` (enforcing ownership, sent status, non-deleted status, 15-minute window) and `editMessage` (handling lazy version 0 creation in `message_versions`, sequence computation, version row insertion, and base row updates in `messages`). Recorded lazy version 0 decision as canonical fact.
+  - Updated `<message-context-menu>` component adding `canEdit` host attribute, `menu_edit` key, button item, and `menu:edit` event.
+  - Updated `<message-bubble>` component adding `isEdited` host attribute (`is-edited` reflect), `editedLabel`, and italicized "Edited" indicator pill in meta row.
+  - Updated `<message-composer>` component adding `editing` host attribute (`editing` reflect), `prefill`, top editing banner with cancel button, checkmark save glyph (`✓`), emitting `composer:edit-submit` and `composer:edit-cancel`. Recorded `observe` + `queueMicrotask` prefill handling as a documented Rule 21 deviation.
+  - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) setting `menuCanEdit` on context menu open, populating composer `prefill` and `editingMessageId` on `menu:edit`, executing `editMessage` on `composer:edit-submit`, and reloading thread.
+  - Extended all seven production locales (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 5 new keys (`menu_edit`, `composer_edit_banner`, `composer_edit_cancel_label`, `composer_edit_save_label`, `bubble_edited_label`) maintaining 100% key parity (81 keys).
+  - Extended `seed-data.js` `chatWithMessages` seed with `m_7` editable message.
+  - Extended `packages/app/docs/views/chat.md` with Section 11 ("Message editing").
+  - Created unit test suite `packages/app/tests/unit/edit-message.test.js` (14 cases) registered in `unit-smoke` batch in `test-batches.js`.
+  - Created Playwright component test suite `packages/app/tests/component/message-edit.spec.js` registered in `component-smoke` batch in `test-batches.js`.
+  - Added pending follow-on task C-CHAT-10b ("Show original" edit chain sheet).
 
 - **C-INFRA-8 Deliverables & Status:**
   - Status: `done`.
