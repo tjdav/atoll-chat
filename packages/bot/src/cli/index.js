@@ -1,5 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { parseArgs } from './args.js'
+import { loginCommand } from './login.js'
+import { logoutCommand } from './logout.js'
+import { registerCommand } from './register.js'
 import { validateCommand } from './validate.js'
 
 const pkg = JSON.parse(
@@ -29,13 +32,28 @@ export class UserError extends Error {
  * @property {string} description - A one-line description for the
  *   command index.
  * @property {(args: string[], flags: Record<string, string | true>,
- *   io: { stdout: NodeJS.WritableStream, stderr: NodeJS.WritableStream, cwd?: string | undefined, commands?: Record<string, Subcommand> | undefined }) => Promise<number>} run - The command's
+ *   io: { stdout: NodeJS.WritableStream, stderr: NodeJS.WritableStream, cwd?: string | undefined, env?: NodeJS.ProcessEnv | undefined, resolvers?: import('../runtime/keystore/resolvers/index.js').Resolver[] | undefined, logger?: import('../runtime/diagnostics/logger.js').Logger | undefined, fetchImpl?: typeof globalThis.fetch | undefined, commands?: Record<string, Subcommand> | undefined }) => Promise<number>} run - The command's
  *   implementation.
  */
 
-/** @type {Record<string, Subcommand>} */
-const BUILTIN_COMMANDS = {
-  validate: validateCommand
+/** @type {Record<string, Subcommand> | null} */
+let builtinCommandsCache = null
+
+/**
+ * Lazy initializer for builtin commands table to avoid ESM circular initialization TDZ issues.
+ *
+ * @returns {Record<string, Subcommand>} The builtin commands map.
+ */
+function getBuiltinCommands () {
+  if (!builtinCommandsCache) {
+    builtinCommandsCache = {
+      validate: validateCommand,
+      register: registerCommand,
+      login: loginCommand,
+      logout: logoutCommand
+    }
+  }
+  return builtinCommandsCache
 }
 
 /**
@@ -69,12 +87,19 @@ function formatGeneralUsage (commands) {
  *   go.
  * @param {string} [io.cwd] - The working directory for
  *   path resolution. Parameterized for tests.
+ * @param {NodeJS.ProcessEnv} [io.env] - Environment variables object.
+ *   Parameterized for tests.
+ * @param {import('../runtime/keystore/resolvers/index.js').Resolver[]} [io.resolvers] - Keystore
+ *   resolvers. Parameterized for tests.
+ * @param {import('../runtime/diagnostics/logger.js').Logger} [io.logger] - Logger
+ *   instance for diagnostics.
+ * @param {typeof globalThis.fetch} [io.fetchImpl] - Fetch implementation.
  * @param {Record<string, Subcommand>} [io.commands] - The subcommand
  *   table. Defaults to the built-in table. Parameterized for tests.
  * @returns {Promise<number>} The exit code: 0, 1, or 2.
  */
 export async function dispatch (argv, io) {
-  const commands = io.commands ?? BUILTIN_COMMANDS
+  const commands = io.commands ?? getBuiltinCommands()
   const { positional, flags } = parseArgs(argv)
   const subName = positional[0]
 

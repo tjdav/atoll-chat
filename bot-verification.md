@@ -1,5 +1,20 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-037 Verification Fact
+- **Identity & Session Subcommands (`packages/bot/src/cli/register.js`, `src/cli/login.js`, `src/cli/logout.js`, `src/cli/keygen.js`)**:
+  - The three subcommands live at `src/cli/register.js`, `src/cli/login.js`, and `src/cli/logout.js`. Key generation functions live at `src/cli/keygen.js`.
+  - `register` requires `ATOL_SERVER_URL`, `ATOL_USER_TOKEN`, and `ATOL_BOT_KEYSTORE_SECRET`. It generates two distinct Ed25519 keypairs (`bot_identity` for message signing and `identity` for MLS) and one X25519 keypair (`bot_command`), plus a 32-byte `storage_seed`.
+  - `register` POSTs to `/api/v1/bots` with `botToken: env.ATOL_USER_TOKEN` and `retry: false`, extracts `bot_id` and `bot_token` from the response, and writes the encrypted keystore containing private keys and cached `operator_session`.
+  - `register` refuses to overwrite an existing keystore unless `--force` / `-f` is passed.
+  - `login` accepts the session token via `--token` / `-t` or `ATOL_USER_TOKEN` and updates `operator_session` in the keystore without modifying key material or `bot_token`.
+  - `logout` clears `operator_session` from the keystore idempotently.
+  - The dispatcher's `io` parameter supports an optional `env` field (`io.env ?? process.env`).
+  - **Spec Gap 1**: The operator session format and source are unspecified in §14.1/§14.2. This task treats it as an opaque string supplied via `ATOL_USER_TOKEN` or `--token`.
+  - **Spec Gap 2**: Key generation is implicit at registration time in §14.9/Server §7.10. This task generates fresh keypairs automatically.
+  - **Spec Gap 3**: `POST /bots` response shape is assumed to include `bot_id` and `bot_token` at top level per Server §8.8.1.
+  - **Spec Gap 4**: Existing-keystore handling is unspecified. This task refuses overwrite without `--force`.
+  - Registered `cli-register` (26 test cases in `packages/bot/tests/unit/cli-register.test.js`) and `cli-login-logout` (17 test cases in `packages/bot/tests/unit/cli-login-logout.test.js`) batches in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-036 Verification Fact
 - **CLI Skeleton and Validate Subcommand (`packages/bot/src/cli.js`, `src/cli/index.js`, `src/cli/args.js`, `src/cli/validate.js`)**:
   - The CLI entry point is `src/cli.js`; the dispatcher lives at `src/cli/index.js`.

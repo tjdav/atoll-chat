@@ -251,3 +251,15 @@ name = "cli-validate"
 files = [
   "unit/cli-validate.test.js",
 ]
+
+[[batch]]
+name = "cli-register"
+files = [
+  "unit/cli-register.test.js",
+]
+
+[[batch]]
+name = "cli-login-logout"
+files = [
+  "unit/cli-login-logout.test.js",
+]

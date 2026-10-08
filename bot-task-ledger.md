@@ -7,9 +7,9 @@ Track progress across Bot SDK implementation tasks.
 ## Summary
 
 - **Total Tasks:** 37
-- **Done:** 36
+- **Done:** 37
 - **In Progress:** 0
-- **Todo:** 1
+- **Todo:** 0
 
 ---
 
@@ -17,6 +17,8 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-037 | CLI | done | §14.1, §14.2, §14.9 | Implement register, login, and logout subcommands, keygen primitives, and CLI dispatcher integration |
+| B-036 | CLI Skeleton | done | §14.1, §14.2, §4.6 | CLI entry point (`src/cli.js`), dispatcher (`src/cli/index.js`), argument parser (`src/cli/args.js`), and `validate` subcommand (`src/cli/validate.js`) |
 | B-034 | Testing | done | §8.8, §13.3 | Implement the mock server double (`packages/bot/src/testing/mock-server.js`) with optional crypto validation |
 | B-033 | Testing | done | §3.5, §13.1 | Implement `createTestCtx` helper, in-memory stores, and `@atoll/bot/testing` entry point |
 | B-001 | Scaffolding | done | §2 | Workspace structure and package configuration |
@@ -57,4 +59,3 @@ Track progress across Bot SDK implementation tasks.
 | B-030 | Pause Policy | done | §11, §12 | Implement pause-on-failure policy, consecutive failure tracking, reportPause callback, guard wrapper across dispatches, and PausedError addition |
 | B-031 | Reconnection | done | §4.7, §14.2, §14.7 | Implement WebSocket and observer SSE reconnection loop with exponential backoff and proportional jitter |
 | B-032 | Shutdown | done | §14.8 | Implement shutdown tracker, signal handlers, graceful runtime.stop({ drainMs }), and shutdown sequence orchestrator |
-| B-036 | CLI Skeleton | done | §14.1, §14.2, §4.6 | CLI entry point (`src/cli.js`), dispatcher (`src/cli/index.js`), argument parser (`src/cli/args.js`), and `validate` subcommand (`src/cli/validate.js`) |
