@@ -269,3 +269,15 @@ name = "cli-run"
 files = [
   "unit/cli-run.test.js",
 ]
+
+[[batch]]
+name = "cli-export-keys"
+files = [
+  "unit/cli-export-keys.test.js",
+]
+
+[[batch]]
+name = "cli-import-keys"
+files = [
+  "unit/cli-import-keys.test.js",
+]
