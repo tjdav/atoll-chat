@@ -151,12 +151,12 @@ impl From<PreferencesError> for ApiError {
                 "reserved_key".to_string(),
                 serde_json::json!({ "key": k }),
             ),
+            PreferencesError::InvalidValue => ApiError::BadRequest("invalid_value".to_string()),
             PreferencesError::ValueTooLarge(limit, size) => ApiError::InternalWithDetails(
                 StatusCode::PAYLOAD_TOO_LARGE,
                 "value_too_large".to_string(),
                 serde_json::json!({ "limit": limit, "size": size }),
             ),
-            PreferencesError::Serialization(msg) => ApiError::BadRequest(msg),
         }
     }
 }

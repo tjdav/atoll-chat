@@ -222,6 +222,15 @@ async fn test_deletion_anonymises_user_record() {
     assert_eq!(identity_pubkey, "");
     assert!(disabled_at.is_some());
     assert!(deleted_at.is_some());
+
+    // Verify user_preferences cleared for alice
+    let prefs_count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM user_preferences WHERE user_id = ?")
+            .bind(&alice_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(prefs_count.0, 0);
 }
 
 // 5. Deletion removes devices and sessions.
