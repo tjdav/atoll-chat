@@ -1079,6 +1079,19 @@
   - **No-Persistence & No-Logging Invariants (§12):** Occupancy is held strictly in-memory (`CallOccupancyStore`). No participant rows are written to SQLite, logs, tracing spans, or metrics.
 - **Link to report:** [verification/call-join-leave-end/report.md](verification/call-join-leave-end/report.md)
 
+## Sessions V3 Alignment Verification Fact (Phase 21)
+- **ID:** Phase 21 Sessions V3 Alignment
+- **Date:** 2026-10-08
+- **Status:** Complete. Canonical.
+- **Spec sections affected:** V3 Spec §2.2, §5.26, §5.26.1, §6.26, §6.26.1, §7.9, §8.7.11, §8.7.13, §8.9, §10, §12
+- **Verified Facts:**
+  - **Schema:** `room_sessions` in `0001_v2_schema.sql` updated to match V3 §7.9 (`max_participants INTEGER`, `position INTEGER NOT NULL DEFAULT 0`, `idx_room_sessions_room`, `idx_room_sessions_extension`). `session_participants` table confirmed absent.
+  - **Signal Request & Event Payload:** Request shape `{ sender_client_id, target_client_id?, envelope }` uses opaque `envelope` (unpadded base64url). `signal_type` and `payload` in the clear removed from request and `session.signal` event.
+  - **Envelope Opacity:** Server validates only base64url decoding and maximum size cap (64 KiB) without parsing or inspecting internal envelope bytes.
+  - **Metadata Opacity:** `room_sessions.metadata` is stored and validated as opaque base64url ciphertext (64 KiB cap). `metadata_version` increments on metadata change only.
+  - **Occupancy & Non-Persistence:** Occupancy is held purely in-memory (`OccupancyStore`). Never persisted to SQLite or written to logs. Debounced `session.occupancy` carries participant count only.
+  - **Link to report:** [verification/sessions-v3-envelope-align/report.md](verification/sessions-v3-envelope-align/report.md)
+
 ## TURN Credentials V3 Alignment and Join Wiring Verification Fact (Phase 20)
 - **ID:** Phase 20 TURN Credentials Join Wiring
 - **Date:** 2026-10-08

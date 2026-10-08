@@ -20,8 +20,6 @@
 - **Device Model Behavioral Contracts Verification**: done
   - **Delivered:** `verification/device-contracts-verified/report.md`
   - **Outcome:** Verified `platform` validation at `login_start`, `user_seq` transaction atomicity, event publish timing post-commit, `device.name_updated` payload shape, absence of legacy V2 code remnants, and `device_state` response contract in `GET /users/me/sync`. Identified 7 test coverage gaps logged as pending follow-up test items.
-
-
 ## Completed Tasks
 
 - **Task 21a — OPRF Blind Endpoint**: done
@@ -254,6 +252,10 @@
   - **Migration:** None (no schema changes).
   - **Delivered:** Step 0 Empirical Report at `verification/turn-credentials-join-wiring/report.md`, `server/src/calls/turn.rs` (`IceServer` struct), `server/src/calls/mod.rs`, `server/src/calls/lifecycle.rs` (`join_call` populates `ice_servers`), `server/src/routes/calls.rs`, `server/tests/call_turn.rs` (added 5 join integration tests).
   - **Batch:** `messaging`
+- **Task 40-V3 / Phase 21 — Sessions V3 Alignment (Envelope, Types, Occupancy)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Updated `room_sessions` schema per V3 §7.9: `position INTEGER NOT NULL DEFAULT 0`, `max_participants INTEGER`, `idx_room_sessions_room`, `idx_room_sessions_extension`).
+  - **Delivered:** `verification/sessions-v3-envelope-align/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/sessions/signal.rs`, `server/src/error.rs`, `server/tests/room_session_signal.rs`. Aligned V3 §8.7.11 signal endpoint wire format (`envelope`), V3 §8.9 event payload shape, envelope opacity (64 KiB cap), metadata opacity, and in-memory occupancy invariants.
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 
@@ -262,7 +264,7 @@ None.
 ## Summary
 - **Project Status:** In Progress
 - **Total Verifications/Tasks Tracked:** 54
-- **Done:** 52
-- **Pending:** 2
+- **Done:** 53
+- **Pending:** 1
 - **In-Progress:** 0
 - **Mismatches:** 0

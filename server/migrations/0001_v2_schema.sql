@@ -372,15 +372,16 @@ CREATE TABLE IF NOT EXISTS room_sessions (
     room_id          TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     extension_id     TEXT NOT NULL,
     session_type     TEXT NOT NULL,
+    created_by       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     metadata         TEXT,
     metadata_version INTEGER NOT NULL DEFAULT 1,
-    position         INTEGER NOT NULL,
-    created_by       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    position         INTEGER NOT NULL DEFAULT 0,
+    max_participants INTEGER,
     created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_room_sessions_room_pos ON room_sessions(room_id, position ASC);
-CREATE INDEX IF NOT EXISTS idx_room_sessions_created_by ON room_sessions(created_by);
+CREATE INDEX IF NOT EXISTS idx_room_sessions_room ON room_sessions(room_id, position);
+CREATE INDEX IF NOT EXISTS idx_room_sessions_extension ON room_sessions(room_id, extension_id, session_type);
 
 -- Push Subscriptions
 CREATE TABLE IF NOT EXISTS push_subscriptions (
