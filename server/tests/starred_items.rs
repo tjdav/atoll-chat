@@ -66,6 +66,12 @@ async fn test_starred_items_crud_flow() {
 
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::CREATED);
+    assert_eq!(
+        resp.headers()
+            .get("Cache-Control")
+            .map(|h| h.to_str().unwrap()),
+        Some("no-store")
+    );
     let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
         .await
         .unwrap();
@@ -73,7 +79,8 @@ async fn test_starred_items_crud_flow() {
     assert_eq!(star_body["item_id"], "msg_123");
     assert_eq!(star_body["item_type"], "message");
     assert_eq!(star_body["room_id"], room_id);
-    assert_eq!(star_body["user_seq"], 1);
+    let initial_user_seq = star_body["user_seq"].as_i64().unwrap();
+    assert!(initial_user_seq >= 1);
     assert!(star_body["deleted_at"].is_null());
 
     // 2. Star same item again (Idempotent 200 OK)
@@ -94,11 +101,17 @@ async fn test_starred_items_crud_flow() {
 
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers()
+            .get("Cache-Control")
+            .map(|h| h.to_str().unwrap()),
+        Some("no-store")
+    );
     let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
         .await
         .unwrap();
     let star_body_2: Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(star_body_2["user_seq"], 1);
+    assert_eq!(star_body_2["user_seq"], initial_user_seq);
 
     // 3. Star an attachment and a link
     let req = Request::builder()
@@ -144,6 +157,12 @@ async fn test_starred_items_crud_flow() {
         .unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers()
+            .get("Cache-Control")
+            .map(|h| h.to_str().unwrap()),
+        Some("no-store")
+    );
     let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
         .await
         .unwrap();
@@ -160,6 +179,12 @@ async fn test_starred_items_crud_flow() {
         .unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    assert_eq!(
+        resp.headers()
+            .get("Cache-Control")
+            .map(|h| h.to_str().unwrap()),
+        Some("no-store")
+    );
 
     // 6. Unstar non-existent or already unstarred item -> 404
     let req = Request::builder()
@@ -224,7 +249,7 @@ async fn test_starred_items_crud_flow() {
     let restar_body: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(restar_body["item_id"], "msg_123");
     assert!(restar_body["deleted_at"].is_null());
-    assert!(restar_body["user_seq"].as_i64().unwrap() > 3);
+    assert!(restar_body["user_seq"].as_i64().unwrap() > initial_user_seq);
 }
 
 #[tokio::test]

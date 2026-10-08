@@ -1134,3 +1134,19 @@
   - **Credential Generation Engine:** Shared `generate_turn_credentials(&config)` helper constructs username format `<expiry>:<opaque>` (with 16 random base64url bytes and no `user_id` leakage) and `credential` (`Base64(HMAC-SHA1(turn_shared_secret, username))`).
   - **Rate Limiting:** `RATE_TURN_CREDENTIALS_PER_MIN` (default 10) applies only to direct standalone calls to `POST /calls/turn-credentials`. The join endpoint call is not throttled by this limit.
 - **Link to report:** [verification/turn-credentials-join-wiring/report.md](verification/turn-credentials-join-wiring/report.md)
+
+## Task — Starred Items V3 Alignment (Phase 23)
+- **ID:** Starred Items V3 Alignment
+- **Date:** 2026-10-08
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §4.2, §5.6, §6.28, §7.2, §8.2.4, §8.2.9, §8.9, §14.2, §14.3; V2 Task 42
+- **Question asked:** What is the current ground truth for starred items schema, endpoint shapes, event shapes, rate limits, limits, sync integration, GDPR handling, and cleanup, and does it align with V3?
+- **Answer found:**
+  - **Reconciliation Result:** Verified V3 spec against canonical V2 Task 42 fact. 100% match across all 17 checklist items. Verification-only task.
+  - **Relational Schema:** `starred_items` table in `0001_v2_schema.sql` with composite PK `(user_id, item_id, item_type)`, FKs `users(id)` and `rooms(id)` `ON DELETE CASCADE`, `user_seq`, `starred_at`, and nullable `deleted_at`.
+  - **POST /users/me/starred-items:** Requires room membership (404 `room_not_found` for non-members), validates `item_type` (`attachment`, `message`, `link`), idempotent 200 OK for active star without bumping `user_seq`, 201 Created for fresh star or re-star (allocates `user_seq`). Post-commit publishes `starred_item.added` (`{ "item_id": "...", "item_type": "...", "room_id": "...", "user_seq": N }`) to `private-user-{user_id}`. Includes `Cache-Control: no-store`.
+  - **DELETE /users/me/starred-items/:item_id?item_type=:** Sets `deleted_at = now`, allocates `user_seq`, returns 204 No Content. Post-commit publishes `starred_item.removed` (`{ "item_id": "...", "item_type": "...", "user_seq": N }` - note: strictly omits `room_id`) to `private-user-{user_id}`. Includes `Cache-Control: no-store`.
+  - **GET /users/me/starred-items:** Supports `type`, `room_id`, `limit`, `cursor`, `include_deleted`. Ordered by `starred_at DESC, item_id ASC, item_type ASC`. Cursor is base64url JSON with `user_id` validation. Includes `Cache-Control: no-store`.
+  - **Limits & Rate Limit:** Hard max 100,000, default 10,000. Counts active stars (`deleted_at IS NULL`). Breach returns 409 `starred_items_limit_reached`. Rate limit reuses `RateLimitKey::Edit` (`RATE_EDIT_PER_MIN`, default 30/min).
+  - **Sync & GDPR & Pruning:** Sync response includes `starred_items` with tombstones when `since_seq` is set; `max_seq` reflects highest `user_seq`. GDPR deletion removes user rows; data export includes `starred_items.json`. Tombstones pruned after retention period by `SyncPruningJob`.
+- **Link to report:** [verification/starred-items-v3-align/report.md](verification/starred-items-v3-align/report.md)
