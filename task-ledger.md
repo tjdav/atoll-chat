@@ -246,14 +246,19 @@
   - **Delivered:** Step 0 Empirical Report at `verification/call-signaling-user-channel/report.md`, `server/src/calls/occupancy.rs` (`CallOccupancyStore` and helpers), `server/src/calls/signal.rs`, `server/src/calls/lifecycle.rs`, `server/src/routes/calls.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/call_signaling.rs`, `server/tests/call_lifecycle.rs`, `server/tests/call_turn.rs`.
   - **Batch:** `messaging`
 
+- **Call Join, Leave, and End Lifecycle (Phase 19)**: done
+  - **Migration:** None (reused `call_sessions` table; occupancy is held purely in-memory).
+  - **Delivered:** Step 0 Empirical Report at `verification/call-join-leave-end/report.md`, `server/src/calls/occupancy.rs` (`participant_count`), `server/src/calls/lifecycle.rs` (`join_call`, `leave_call`, `end_call`), `server/src/calls/mod.rs`, `server/src/routes/calls.rs`, `server/src/lib.rs`, `server/tests/call_lifecycle.rs`, `server/tests/call_signaling.rs`.
+  - **Batch:** `messaging`
+
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 53
-- **Done:** 51
+- **Total Verifications/Tasks Tracked:** 54
+- **Done:** 52
 - **Pending:** 2
 - **In-Progress:** 0
 - **Mismatches:** 0

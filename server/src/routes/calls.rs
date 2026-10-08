@@ -1,14 +1,15 @@
 use crate::auth::AuthUser;
 use crate::calls::{
-    end_call, generate_turn_credentials, send_signal, EndCallResponse, SignalRequest,
-    SignalResponse, TurnCredentialsResponse,
+    end_call, generate_turn_credentials, join_call, leave_call, send_signal, EndCallResponse,
+    JoinCallRequest, JoinCallResponse, LeaveCallRequest, SignalRequest, SignalResponse,
+    TurnCredentialsResponse,
 };
 use crate::error::ApiError;
 use crate::rate_limit::{check, RateLimitKey};
 use crate::AppState;
 use axum::{
     extract::{Path, State},
-    http::{header, HeaderMap, HeaderValue},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
     Json,
 };
 
@@ -37,6 +38,54 @@ pub async fn turn_credentials_handler(
 
     let creds = generate_turn_credentials(&state.config)?;
     Ok(Json(creds))
+}
+
+pub async fn join_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((room_id, call_id)): Path<(String, String)>,
+    Json(req): Json<JoinCallRequest>,
+) -> Result<(HeaderMap, Json<JoinCallResponse>), ApiError> {
+    let res = join_call(
+        &state.pool,
+        &state.publisher,
+        &state.call_occupancy,
+        &state.server_hard_max,
+        state.config.calling_enabled,
+        &room_id,
+        &call_id,
+        &auth.user_id,
+        req,
+    )
+    .await?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((headers, Json(res)))
+}
+
+pub async fn leave_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((room_id, call_id)): Path<(String, String)>,
+    Json(req): Json<LeaveCallRequest>,
+) -> Result<(HeaderMap, StatusCode), ApiError> {
+    leave_call(
+        &state.pool,
+        &state.call_occupancy,
+        state.config.calling_enabled,
+        &room_id,
+        &call_id,
+        &auth.user_id,
+        req,
+    )
+    .await?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((headers, StatusCode::NO_CONTENT))
 }
 
 pub async fn signal_handler(
@@ -68,7 +117,7 @@ pub async fn end_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Path((room_id, call_id)): Path<(String, String)>,
-) -> Result<Json<EndCallResponse>, ApiError> {
+) -> Result<(HeaderMap, Json<EndCallResponse>), ApiError> {
     let res = end_call(
         &state.pool,
         &state.publisher,
@@ -80,5 +129,8 @@ pub async fn end_handler(
     )
     .await?;
 
-    Ok(Json(res))
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((headers, Json(res)))
 }
