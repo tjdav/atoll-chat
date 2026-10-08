@@ -88,7 +88,8 @@ export default [
       'tests/component/chat-thread.spec.js',
       'tests/component/composer.spec.js',
       'tests/component/message-context-menu.spec.js',
-      'tests/component/message-edit.spec.js'
+      'tests/component/message-edit.spec.js',
+      'tests/component/ui-sheet.spec.js'
     ]
   },
   {

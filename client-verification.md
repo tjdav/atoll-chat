@@ -821,3 +821,20 @@ build task runs.
 | Documentation Updates | Updated `packages/app/docs/plugins/storage.md` and `packages/app/docs/plugins/README.md` |
 | Coralite Feedback Entry | Recorded CF-007 (Tier 4 documentation gap for LLM reference omission of `client.config` in plugin example) |
 | Verification Commands | `pnpm check-batches`, `pnpm test:batch unit-smoke`, `pnpm test:batch component-smoke`, `pnpm --filter @atoll/app build`, `pnpm check:migration-bundle`, `pnpm extensions:vocab` exit zero |
+
+### C-INFRA-26 — `ui-sheet` Modal and Bottom Sheet Primitive Architecture
+
+**Verified:** 2026-10-08
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Component Location & Wrapper | `packages/app/src/components/primitives/ui-sheet.html` wrapped in `defineComponent` |
+| Native Dialog Top Layer | Uses native HTML `<dialog ref="dialog" data-testid="ui-sheet">` providing focus trapping, native top-layer rendering, backdrop styling (`::backdrop`), and native Escape handling |
+| Attribute Contract | `open` (boolean, default false, reflected), `variant` (string, default 'center', reflected), `title` (string, default ''), `ariaLabel` (string, default ''), `showClose` (boolean, default true), `closeLabel` (string, default 'Close'), `dismissible` (boolean, default true) |
+| Getters & ARIA | `headerHidden: (!title && !showClose)`, `closeHidden: (!showClose)`, `dialogAriaLabel: (ariaLabel || title || null)`. Null aria-label removes generic attribute per Component Authoring Guide |
+| Dismissal & Event Emitting | Emits `sheet:close` event on dismissal. Backdrop click listener compares `event.target === dialog` to distinguish backdrop clicks from slotted content clicks. `cancel` listener prevents default when `dismissible: false` to block Escape dismissal |
+| CSS Layout & Closed Rule | CSS enforces `.sheet:not([open]) { display: none !important; }` so closed state overrides default `display: flex` rule. Supports `:host([variant="center"])` and `:host([variant="bottom"])` with responsive 768px desktop centering |
+| Fixture Helpers | Extended `packages/app/tests/helpers/storage-fixture.js` with permanent test helpers `mountSheet`, `setSheetOpen`, `recordSheetEvents`, and `getLastSheetCloseEvent` |
+| Component Tests | `packages/app/tests/component/ui-sheet.spec.js` (15 test cases) registered under `component-smoke` batch in `packages/app/test-batches.js` |
+| Visual Verification Artifacts | Screenshots captured at `packages/app/test-results/ui-sheet-center.png` (1440x900 desktop modal) and `packages/app/test-results/ui-sheet-bottom.png` (390x844 mobile bottom sheet) |
+| Documentation Path | Section 10 ("Modal and sheet primitive") added to `packages/app/docs/components.md` |
