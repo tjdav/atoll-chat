@@ -250,6 +250,10 @@
   - **Migration:** None (reused `call_sessions` table; occupancy is held purely in-memory).
   - **Delivered:** Step 0 Empirical Report at `verification/call-join-leave-end/report.md`, `server/src/calls/occupancy.rs` (`participant_count`), `server/src/calls/lifecycle.rs` (`join_call`, `leave_call`, `end_call`), `server/src/calls/mod.rs`, `server/src/routes/calls.rs`, `server/src/lib.rs`, `server/tests/call_lifecycle.rs`, `server/tests/call_signaling.rs`.
   - **Batch:** `messaging`
+- **TURN Credentials V3 Alignment & Join Wiring (Phase 20)**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** Step 0 Empirical Report at `verification/turn-credentials-join-wiring/report.md`, `server/src/calls/turn.rs` (`IceServer` struct), `server/src/calls/mod.rs`, `server/src/calls/lifecycle.rs` (`join_call` populates `ice_servers`), `server/src/routes/calls.rs`, `server/tests/call_turn.rs` (added 5 join integration tests).
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 

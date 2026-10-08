@@ -1078,3 +1078,30 @@
     - Idempotency: Re-ending an already-ended call returns HTTP 200 OK with existing session state without re-writing `ended_at`, re-publishing `call.ended`, or re-writing audit logs.
   - **No-Persistence & No-Logging Invariants (§12):** Occupancy is held strictly in-memory (`CallOccupancyStore`). No participant rows are written to SQLite, logs, tracing spans, or metrics.
 - **Link to report:** [verification/call-join-leave-end/report.md](verification/call-join-leave-end/report.md)
+
+## TURN Credentials V3 Alignment and Join Wiring Verification Fact (Phase 20)
+- **ID:** Phase 20 TURN Credentials Join Wiring
+- **Date:** 2026-10-08
+- **Status:** Complete. Canonical. Client-facing contract.
+- **Spec sections affected:** V3 Spec §5.6, §5.24, §6.24, §8.7.3, §8.7.5
+- **Verified Facts:**
+  - **Case Classification (Case C - Reconciled):** Standalone `POST /calls/turn-credentials` returns `{ "urls": [...], "username": "...", "credential": "...", "ttl": 600 }` matching V2 Task 37 canonical fact. V3 §8.7.3's `"url"` singular example is recognized as a truncated example for a single URL; returning the full `urls` array preserves multi-URL TURN support.
+  - **Call Join `ice_servers` Wiring (`POST /api/v1/rooms/:id/calls/:call_id/join`):**
+    - When `TURN_URL` is configured and `CALLING_ENABLED=true`, join response populates `ice_servers`:
+      ```json
+      {
+        "ice_servers": [
+          {
+            "urls": ["turn:turn.example.com:3478", "turns:turn.example.com:5349"],
+            "username": "1735689600:AbCdEfGhIjKlMnOp",
+            "credential": "dGVzdC1jcmVkZW50aWFs=="
+          }
+        ]
+      }
+      ```
+    - When `TURN_URL` is empty or `CALLING_ENABLED=false`, join response returns `ice_servers: []`.
+    - Element shape carries `urls` (array), `username`, and `credential`. `ttl` is omitted per §8.7.5.
+    - Fresh credentials generated per join. No caching.
+  - **Credential Generation Engine:** Shared `generate_turn_credentials(&config)` helper constructs username format `<expiry>:<opaque>` (with 16 random base64url bytes and no `user_id` leakage) and `credential` (`Base64(HMAC-SHA1(turn_shared_secret, username))`).
+  - **Rate Limiting:** `RATE_TURN_CREDENTIALS_PER_MIN` (default 10) applies only to direct standalone calls to `POST /calls/turn-credentials`. The join endpoint call is not throttled by this limit.
+- **Link to report:** [verification/turn-credentials-join-wiring/report.md](verification/turn-credentials-join-wiring/report.md)

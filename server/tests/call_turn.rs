@@ -141,6 +141,22 @@ async fn setup_test_app(
     (app, pool, mock_server)
 }
 
+async fn create_room(app: &Router, token: &str) -> String {
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/v1/rooms")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({}).to_string()))
+        .unwrap();
+    let resp = app.clone().oneshot(req).await.unwrap();
+    let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: Value = serde_json::from_slice(&body).unwrap();
+    json["id"].as_str().unwrap().to_string()
+}
+
 async fn create_test_user(
     app: &Router,
     pool: &SqlitePool,
@@ -390,4 +406,231 @@ async fn test_turn_credentials_no_audit_or_events() {
         req_count_before, req_count_after,
         "No Sockudo events should be published"
     );
+}
+
+#[tokio::test]
+async fn test_join_call_turn_credentials_wired() {
+    let (app, pool, _mock) = setup_test_app(
+        true,
+        "turn:turn.example.com:3478,turns:turn.example.com:5349",
+        "secret-key",
+        10,
+    )
+    .await;
+    let (_user_id, token) =
+        create_test_user(&app, &pool, "turn_join_u1", "client_turn_join_101").await;
+    let room_id = create_room(&app, &token).await;
+    let call_id = format!("c_turn_{}", ulid::Ulid::new());
+
+    let req = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/calls/{}/join", room_id, call_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "client_id": "client_turn_join_101" }).to_string(),
+        ))
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Verify Cache-Control header
+    let cache_control = resp.headers().get(header::CACHE_CONTROL).unwrap();
+    assert_eq!(cache_control, "no-store");
+
+    let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let body: Value = serde_json::from_slice(&body_bytes).unwrap();
+
+    let ice_servers = body["ice_servers"].as_array().expect("ice_servers array");
+    assert_eq!(ice_servers.len(), 1);
+
+    let server_obj = &ice_servers[0];
+    let urls = server_obj["urls"].as_array().expect("urls array");
+    assert_eq!(urls.len(), 2);
+    assert_eq!(urls[0].as_str().unwrap(), "turn:turn.example.com:3478");
+    assert_eq!(urls[1].as_str().unwrap(), "turns:turn.example.com:5349");
+
+    let username = server_obj["username"].as_str().expect("username string");
+    let credential = server_obj["credential"]
+        .as_str()
+        .expect("credential string");
+
+    // ttl should NOT be in the join response ICE server object per §8.7.5
+    assert!(server_obj.get("ttl").is_none());
+
+    // Validate username format: <expiry>:<opaque>
+    let parts: Vec<&str> = username.split(':').collect();
+    assert_eq!(parts.len(), 2, "username must have <expiry>:<opaque>");
+    let expiry_ts: i64 = parts[0].parse().expect("expiry timestamp integer");
+    let now = Utc::now().timestamp();
+    assert!(
+        expiry_ts >= now + 595 && expiry_ts <= now + 605,
+        "expiry_ts {} expected near {}",
+        expiry_ts,
+        now + 600
+    );
+
+    // Validate credential HMAC-SHA1 signature and length (20 bytes decoded)
+    let cred_bytes = STANDARD
+        .decode(credential)
+        .expect("valid base64 credential");
+    assert_eq!(cred_bytes.len(), 20, "HMAC-SHA1 produces 20 bytes");
+
+    let mut mac = HmacSha1::new_from_slice(b"secret-key").unwrap();
+    mac.update(username.as_bytes());
+    let expected_mac = STANDARD.encode(mac.finalize().into_bytes());
+    assert_eq!(credential, expected_mac);
+}
+
+#[tokio::test]
+async fn test_join_call_fresh_credentials_no_caching() {
+    let (app, pool, _mock) =
+        setup_test_app(true, "turn:turn.example.com:3478", "secret-key", 10).await;
+    let (_user_id, token) =
+        create_test_user(&app, &pool, "turn_join_u2", "client_turn_join_102").await;
+    let room_id = create_room(&app, &token).await;
+
+    let call_id1 = format!("c_turn_fresh_1_{}", ulid::Ulid::new());
+    let call_id2 = format!("c_turn_fresh_2_{}", ulid::Ulid::new());
+
+    let req1 = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/calls/{}/join", room_id, call_id1))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "client_id": "client_turn_join_102" }).to_string(),
+        ))
+        .unwrap();
+
+    let resp1 = app.clone().oneshot(req1).await.unwrap();
+    let body1: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp1.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let username1 = body1["ice_servers"][0]["username"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let req2 = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/calls/{}/join", room_id, call_id2))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "client_id": "client_turn_join_102" }).to_string(),
+        ))
+        .unwrap();
+
+    let resp2 = app.oneshot(req2).await.unwrap();
+    let body2: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp2.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let username2 = body2["ice_servers"][0]["username"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    assert_ne!(
+        username1, username2,
+        "Consecutive joins must generate distinct usernames (fresh random opaque)"
+    );
+}
+
+#[tokio::test]
+async fn test_join_call_turn_unset_returns_empty_ice_servers() {
+    let (app, pool, _mock) = setup_test_app(true, "", "", 10).await;
+    let (_user_id, token) =
+        create_test_user(&app, &pool, "turn_join_u3", "client_turn_join_103").await;
+    let room_id = create_room(&app, &token).await;
+    let call_id = format!("c_turn_unset_{}", ulid::Ulid::new());
+
+    let req = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/calls/{}/join", room_id, call_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "client_id": "client_turn_join_103" }).to_string(),
+        ))
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = serde_json::from_slice(
+        &axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let ice_servers = body["ice_servers"].as_array().expect("ice_servers array");
+    assert_eq!(
+        ice_servers.len(),
+        0,
+        "Unset TURN_URL should return empty ice_servers array"
+    );
+}
+
+#[tokio::test]
+async fn test_join_call_calling_disabled_returns_501() {
+    let (app, pool, _mock) =
+        setup_test_app(false, "turn:turn.example.com:3478", "secret-key", 10).await;
+    let (_user_id, token) =
+        create_test_user(&app, &pool, "turn_join_u4", "client_turn_join_104").await;
+    let room_id = create_room(&app, &token).await;
+    let call_id = format!("c_turn_dis_{}", ulid::Ulid::new());
+
+    let req = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/calls/{}/join", room_id, call_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "client_id": "client_turn_join_104" }).to_string(),
+        ))
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
+}
+
+#[tokio::test]
+async fn test_join_call_not_rate_limited_by_turn_credentials_limit() {
+    // RATE_TURN_CREDENTIALS_PER_MIN is 10, but join requests should not be throttled by it
+    let (app, pool, _mock) =
+        setup_test_app(true, "turn:turn.example.com:3478", "secret-key", 10).await;
+    let (_user_id, token) =
+        create_test_user(&app, &pool, "turn_join_u5", "client_turn_join_105").await;
+    let room_id = create_room(&app, &token).await;
+
+    for i in 0..20 {
+        let call_id = format!("c_turn_rl_{}_{}", i, ulid::Ulid::new());
+        let req = Request::builder()
+            .method("POST")
+            .uri(format!("/api/v1/rooms/{}/calls/{}/join", room_id, call_id))
+            .header(header::AUTHORIZATION, format!("Bearer {}", token))
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(
+                json!({ "client_id": "client_turn_join_105" }).to_string(),
+            ))
+            .unwrap();
+
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(
+            resp.status(),
+            StatusCode::OK,
+            "Join iteration {} should succeed without rate limiting",
+            i
+        );
+    }
 }

@@ -88,4 +88,4 @@ pub use lifecycle::{
 };
 pub use occupancy::{CallOccupancy, CallOccupancyStore, ParticipantEntry};
 pub use signal::{send_signal, SignalRequest, SignalResponse};
-pub use turn::{generate_turn_credentials, TurnCredentialsResponse};
+pub use turn::{generate_turn_credentials, IceServer, TurnCredentialsResponse};
