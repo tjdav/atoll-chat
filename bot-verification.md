@@ -1,5 +1,17 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-036 Verification Fact
+- **CLI Skeleton and Validate Subcommand (`packages/bot/src/cli.js`, `src/cli/index.js`, `src/cli/args.js`, `src/cli/validate.js`)**:
+  - The CLI entry point is `src/cli.js`; the dispatcher lives at `src/cli/index.js`.
+  - `dispatch(argv, io)` takes injectable `stdout`, `stderr`, `cwd`, and `commands`. It returns an exit code: 0 success, 1 user error, 2 internal error. Never calls `process.exit`.
+  - The argument parser (`src/cli/args.js`) supports long flags (`--name`, `--name value`, `--name=value`), short boolean flags (`-n`), and the `--` terminator. Short flags never take a value.
+  - The subcommand interface is `{ usage, description, run }`.
+  - The `validate` subcommand re-validates the imported config via `defineBot`, so a file that exports a plain object still gets validated.
+  - **Spec Gap 1**: The `--version` output format is not specified. This task prints `<name> <version>` from `package.json` (for example `@atoll/bot 1.0.0`).
+  - **Spec Gap 2**: `validate` success and failure output format is not specified in §14.1. This task prints `OK: <id> (<label>)` on success and the `ValidationError` message on failure.
+  - **Spec Gap 3**: `validate` re-runs `defineBot` on the imported config to guarantee validation regardless of how the file is written.
+  - Registered `cli-args` (15 unit tests in `packages/bot/tests/unit/cli-args.test.js`) and `cli-validate` (25 unit tests in `packages/bot/tests/unit/cli-validate.test.js`) batches in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-034 Verification Fact
 - **Mock Server Implementation (`packages/bot/src/testing/mock-server.js`)**:
   - The mock server double lives at `packages/bot/src/testing/mock-server.js` exporting factory `createMockServer`.
