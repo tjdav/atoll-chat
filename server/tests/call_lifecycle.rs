@@ -5,6 +5,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::Router;
 use common::{login_user, register_user};
 use serde_json::{json, Value};
+use server::calls::CallOccupancyStore;
 use sqlx::SqlitePool;
 use std::path::Path;
 use std::sync::Arc;
@@ -12,7 +13,9 @@ use tower::ServiceExt;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-async fn setup_test_app(calling_enabled: bool) -> (Router, SqlitePool, MockServer) {
+async fn setup_test_app(
+    calling_enabled: bool,
+) -> (Router, SqlitePool, MockServer, CallOccupancyStore) {
     let mock_server = MockServer::start().await;
 
     Mock::given(method("POST"))
@@ -85,6 +88,7 @@ async fn setup_test_app(calling_enabled: bool) -> (Router, SqlitePool, MockServe
     let session_types = Arc::new(server::sessions::SessionTypesStore::new(
         session_types_state,
     ));
+    let call_occupancy = CallOccupancyStore::new();
 
     let state = server::AppState {
         pool: pool.clone(),
@@ -110,13 +114,14 @@ async fn setup_test_app(calling_enabled: bool) -> (Router, SqlitePool, MockServe
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        call_occupancy: call_occupancy.clone(),
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),
     };
 
     let app = server::build_app(state);
-    (app, pool, mock_server)
+    (app, pool, mock_server, call_occupancy)
 }
 
 async fn create_test_user(
@@ -186,145 +191,33 @@ async fn add_room_member(app: &Router, owner_token: &str, room_id: &str, user_id
     assert_eq!(resp.status(), StatusCode::CREATED);
 }
 
-#[tokio::test]
-async fn test_lazy_creation_publishes_call_started_and_audit_once() {
-    let (app, pool, mock_sockudo) = setup_test_app(true).await;
-    let (alice_id, alice_token) =
-        create_test_user(&app, &pool, "alice_lc", "client_alice_123456").await;
-    let room_id = create_room(&app, &alice_token).await;
-
-    let call_id = ulid::Ulid::new().to_string();
-
-    // Signal 1 -> triggers lazy creation, call.started event, call.start audit
-    let req1 = Request::builder()
-        .method("POST")
-        .uri(format!(
-            "/api/v1/rooms/{}/calls/{}/signal",
-            room_id, call_id
-        ))
-        .header(header::AUTHORIZATION, format!("Bearer {}", alice_token))
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({
-                "signal_type": "offer",
-                "payload": "ZmFrZS1zZHA="
-            })
-            .to_string(),
-        ))
-        .unwrap();
-
-    let resp1 = app.clone().oneshot(req1).await.unwrap();
-    assert_eq!(resp1.status(), StatusCode::ACCEPTED);
-
-    // Verify call.started event was published to room channel
-    let requests = mock_sockudo.received_requests().await.unwrap();
-    let start_event_req = requests
-        .iter()
-        .find(|r| {
-            let body_json: Value = serde_json::from_slice(&r.body).unwrap_or_default();
-            body_json["name"] == "call.started"
-        })
-        .expect("call.started event should be published");
-
-    let body_json: Value = serde_json::from_slice(&start_event_req.body).unwrap();
-    assert_eq!(body_json["name"], "call.started");
-    assert_eq!(
-        body_json["channels"].as_array().unwrap()[0],
-        format!("private-room-{}", room_id)
-    );
-
-    let data_str = body_json["data"].as_str().unwrap();
-    let data_json: Value = serde_json::from_str(data_str).unwrap();
-    assert_eq!(data_json["call_id"], call_id);
-    assert_eq!(data_json["room_id"], room_id);
-    assert_eq!(data_json["initiator_id"], alice_id);
-    assert!(data_json.get("started_at").is_some());
-    assert!(data_json.get("signal_type").is_none());
-    assert!(data_json.get("payload").is_none());
-
-    // Verify call.start audit entry
-    let audit_entry: Option<(String, Option<String>)> = sqlx::query_as(
-        "SELECT action, metadata FROM audit_log WHERE action = 'call.start' AND target_id = ?",
+// Helper to seed a call session row directly in DB (simulating Phase 19 join)
+async fn seed_call_session(pool: &SqlitePool, call_id: &str, room_id: &str, initiator_id: &str) {
+    sqlx::query(
+        "INSERT INTO call_sessions (id, room_id, initiator_id, started_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
     )
-    .bind(&call_id)
-    .fetch_optional(&pool)
+    .bind(call_id)
+    .bind(room_id)
+    .bind(initiator_id)
+    .execute(pool)
     .await
     .unwrap();
-
-    let (act, meta_opt) = audit_entry.expect("call.start audit log entry should exist");
-    assert_eq!(act, "call.start");
-    let meta: Value = serde_json::from_str(&meta_opt.unwrap()).unwrap();
-    assert_eq!(meta["call_id"], call_id);
-    assert_eq!(meta["room_id"], room_id);
-    assert!(meta.get("signal_type").is_none());
-    assert!(meta.get("payload").is_none());
-
-    let req_count_before = mock_sockudo.received_requests().await.unwrap().len();
-
-    // Signal 2 -> does NOT re-publish call.started or re-write call.start audit
-    let req2 = Request::builder()
-        .method("POST")
-        .uri(format!(
-            "/api/v1/rooms/{}/calls/{}/signal",
-            room_id, call_id
-        ))
-        .header(header::AUTHORIZATION, format!("Bearer {}", alice_token))
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({
-                "signal_type": "candidate",
-                "payload": "Y2FuZGlkYXRl"
-            })
-            .to_string(),
-        ))
-        .unwrap();
-
-    let resp2 = app.clone().oneshot(req2).await.unwrap();
-    assert_eq!(resp2.status(), StatusCode::ACCEPTED);
-
-    // Verify no new call.started event
-    let req_count_after = mock_sockudo.received_requests().await.unwrap().len();
-    assert_eq!(req_count_before, req_count_after);
-
-    // Verify audit log count remains 1
-    let audit_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM audit_log WHERE action = 'call.start' AND target_id = ?",
-    )
-    .bind(&call_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert_eq!(audit_count, 1);
 }
 
 #[tokio::test]
 async fn test_end_call_initiator_happy_path_and_idempotency() {
-    let (app, pool, mock_sockudo) = setup_test_app(true).await;
+    let (app, pool, mock_sockudo, call_occupancy) = setup_test_app(true).await;
     let (alice_id, alice_token) =
         create_test_user(&app, &pool, "alice_end", "client_alice_123456").await;
     let room_id = create_room(&app, &alice_token).await;
 
     let call_id = ulid::Ulid::new().to_string();
 
-    // Signal first
-    let req_sig = Request::builder()
-        .method("POST")
-        .uri(format!(
-            "/api/v1/rooms/{}/calls/{}/signal",
-            room_id, call_id
-        ))
-        .header(header::AUTHORIZATION, format!("Bearer {}", alice_token))
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({
-                "signal_type": "offer",
-                "payload": "ZmFrZS1zZHA="
-            })
-            .to_string(),
-        ))
-        .unwrap();
-    let resp_sig = app.clone().oneshot(req_sig).await.unwrap();
-    assert_eq!(resp_sig.status(), StatusCode::ACCEPTED);
+    // Seed call session and occupancy
+    seed_call_session(&pool, &call_id, &room_id, &alice_id).await;
+    call_occupancy
+        .add_client(&call_id, &alice_id, "client_alice_123456")
+        .await;
 
     // End call
     let req_end = Request::builder()
@@ -357,14 +250,8 @@ async fn test_end_call_initiator_happy_path_and_idempotency() {
             .unwrap();
     assert!(ended_at.is_some());
 
-    let (left_at,): (Option<String>,) =
-        sqlx::query_as("SELECT left_at FROM call_participants WHERE call_id = ? AND user_id = ?")
-            .bind(&call_id)
-            .bind(&alice_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    assert!(left_at.is_some());
+    // Verify occupancy cleared
+    assert!(!call_occupancy.is_participant(&call_id, &alice_id).await);
 
     // Verify call.ended room event published
     let requests = mock_sockudo.received_requests().await.unwrap();
@@ -434,10 +321,10 @@ async fn test_end_call_initiator_happy_path_and_idempotency() {
 
 #[tokio::test]
 async fn test_end_call_room_owner_can_end() {
-    let (app, pool, _mock) = setup_test_app(true).await;
+    let (app, pool, _mock, call_occupancy) = setup_test_app(true).await;
     let (_alice_id, alice_token) =
         create_test_user(&app, &pool, "alice_own", "client_alice_123456").await;
-    let (bob_id, bob_token) =
+    let (bob_id, _bob_token) =
         create_test_user(&app, &pool, "bob_own", "client_bob_123456789").await;
 
     let room_id = create_room(&app, &alice_token).await;
@@ -445,25 +332,10 @@ async fn test_end_call_room_owner_can_end() {
 
     let call_id = ulid::Ulid::new().to_string();
 
-    // Bob (non-owner member) initiates call via signal
-    let req_sig = Request::builder()
-        .method("POST")
-        .uri(format!(
-            "/api/v1/rooms/{}/calls/{}/signal",
-            room_id, call_id
-        ))
-        .header(header::AUTHORIZATION, format!("Bearer {}", bob_token))
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({
-                "signal_type": "offer",
-                "payload": "ZmFrZS1zZHA="
-            })
-            .to_string(),
-        ))
-        .unwrap();
-    let resp_sig = app.clone().oneshot(req_sig).await.unwrap();
-    assert_eq!(resp_sig.status(), StatusCode::ACCEPTED);
+    seed_call_session(&pool, &call_id, &room_id, &bob_id).await;
+    call_occupancy
+        .add_client(&call_id, &bob_id, "client_bob_123456789")
+        .await;
 
     // Alice (room owner) ends Bob's call -> succeeds
     let req_end = Request::builder()
@@ -479,10 +351,10 @@ async fn test_end_call_room_owner_can_end() {
 
 #[tokio::test]
 async fn test_end_call_non_initiator_non_owner_returns_forbidden() {
-    let (app, pool, _mock) = setup_test_app(true).await;
+    let (app, pool, _mock, call_occupancy) = setup_test_app(true).await;
     let (_alice_id, alice_token) =
         create_test_user(&app, &pool, "alice_perm", "client_alice_123456").await;
-    let (bob_id, bob_token) =
+    let (bob_id, _bob_token) =
         create_test_user(&app, &pool, "bob_perm", "client_bob_123456789").await;
     let (charlie_id, charlie_token) =
         create_test_user(&app, &pool, "charlie_perm", "client_charlie_12345").await;
@@ -493,25 +365,10 @@ async fn test_end_call_non_initiator_non_owner_returns_forbidden() {
 
     let call_id = ulid::Ulid::new().to_string();
 
-    // Bob initiates call
-    let req_sig = Request::builder()
-        .method("POST")
-        .uri(format!(
-            "/api/v1/rooms/{}/calls/{}/signal",
-            room_id, call_id
-        ))
-        .header(header::AUTHORIZATION, format!("Bearer {}", bob_token))
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({
-                "signal_type": "offer",
-                "payload": "ZmFrZS1zZHA="
-            })
-            .to_string(),
-        ))
-        .unwrap();
-    let resp_sig = app.clone().oneshot(req_sig).await.unwrap();
-    assert_eq!(resp_sig.status(), StatusCode::ACCEPTED);
+    seed_call_session(&pool, &call_id, &room_id, &bob_id).await;
+    call_occupancy
+        .add_client(&call_id, &bob_id, "client_bob_123456789")
+        .await;
 
     // Charlie (non-initiator, non-owner member) attempts to end call -> 403 Forbidden
     let req_end = Request::builder()
@@ -527,8 +384,8 @@ async fn test_end_call_non_initiator_non_owner_returns_forbidden() {
 
 #[tokio::test]
 async fn test_end_call_non_member_returns_room_not_found() {
-    let (app, pool, _mock) = setup_test_app(true).await;
-    let (_alice_id, alice_token) =
+    let (app, pool, _mock, call_occupancy) = setup_test_app(true).await;
+    let (alice_id, alice_token) =
         create_test_user(&app, &pool, "alice_nm", "client_alice_123456").await;
     let (_bob_id, bob_token) =
         create_test_user(&app, &pool, "bob_nm", "client_bob_123456789").await;
@@ -537,25 +394,10 @@ async fn test_end_call_non_member_returns_room_not_found() {
 
     let call_id = ulid::Ulid::new().to_string();
 
-    // Alice initiates call
-    let req_sig = Request::builder()
-        .method("POST")
-        .uri(format!(
-            "/api/v1/rooms/{}/calls/{}/signal",
-            room_id, call_id
-        ))
-        .header(header::AUTHORIZATION, format!("Bearer {}", alice_token))
-        .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(
-            json!({
-                "signal_type": "offer",
-                "payload": "ZmFrZS1zZHA="
-            })
-            .to_string(),
-        ))
-        .unwrap();
-    let resp_sig = app.clone().oneshot(req_sig).await.unwrap();
-    assert_eq!(resp_sig.status(), StatusCode::ACCEPTED);
+    seed_call_session(&pool, &call_id, &room_id, &alice_id).await;
+    call_occupancy
+        .add_client(&call_id, &alice_id, "client_alice_123456")
+        .await;
 
     // Bob (not a member of room) attempts to end call -> 404 room_not_found
     let req_end = Request::builder()
@@ -571,7 +413,7 @@ async fn test_end_call_non_member_returns_room_not_found() {
 
 #[tokio::test]
 async fn test_end_call_unknown_call_id_returns_call_not_found() {
-    let (app, pool, _mock) = setup_test_app(true).await;
+    let (app, pool, _mock, _call_occupancy) = setup_test_app(true).await;
     let (_alice_id, alice_token) =
         create_test_user(&app, &pool, "alice_unk", "client_alice_123456").await;
     let room_id = create_room(&app, &alice_token).await;
@@ -592,7 +434,7 @@ async fn test_end_call_unknown_call_id_returns_call_not_found() {
 
 #[tokio::test]
 async fn test_end_call_unauthenticated_returns_401() {
-    let (app, pool, _mock) = setup_test_app(true).await;
+    let (app, pool, _mock, _call_occupancy) = setup_test_app(true).await;
     let (_alice_id, alice_token) =
         create_test_user(&app, &pool, "alice_unauth", "client_alice_123456").await;
     let room_id = create_room(&app, &alice_token).await;
@@ -609,7 +451,7 @@ async fn test_end_call_unauthenticated_returns_401() {
 
 #[tokio::test]
 async fn test_end_call_calling_disabled() {
-    let (app, pool, _mock) = setup_test_app(false).await;
+    let (app, pool, _mock, _call_occupancy) = setup_test_app(false).await;
     let (_alice_id, alice_token) =
         create_test_user(&app, &pool, "alice_dis_end", "client_alice_123456").await;
     let room_id = create_room(&app, &alice_token).await;

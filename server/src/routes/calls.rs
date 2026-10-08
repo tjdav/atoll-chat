@@ -8,7 +8,7 @@ use crate::rate_limit::{check, RateLimitKey};
 use crate::AppState;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, HeaderMap, HeaderValue},
     Json,
 };
 
@@ -44,10 +44,12 @@ pub async fn signal_handler(
     auth: AuthUser,
     Path((room_id, call_id)): Path<(String, String)>,
     Json(req): Json<SignalRequest>,
-) -> Result<(StatusCode, Json<SignalResponse>), ApiError> {
+) -> Result<(HeaderMap, Json<SignalResponse>), ApiError> {
     let res = send_signal(
         &state.pool,
         &state.publisher,
+        &state.call_occupancy,
+        &state.config.rate_limits,
         state.config.calling_enabled,
         &room_id,
         &call_id,
@@ -56,7 +58,10 @@ pub async fn signal_handler(
     )
     .await?;
 
-    Ok((StatusCode::ACCEPTED, Json(res)))
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+
+    Ok((headers, Json(res)))
 }
 
 pub async fn end_handler(
@@ -67,6 +72,7 @@ pub async fn end_handler(
     let res = end_call(
         &state.pool,
         &state.publisher,
+        &state.call_occupancy,
         state.config.calling_enabled,
         &room_id,
         &call_id,

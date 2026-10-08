@@ -241,6 +241,10 @@
   - **Status:** Step 0 Complete — Case B Identified (Specification Error).
   - **Delivered:** `verification/link-preview-proxy-v3/report.md`, `verification.md`, `task-ledger.md`.
   - **Outcome:** Case B classification. V2 Task 35 fact is canonical; V3 §8.1.2 contains spec errors (RSA-OAEP, field names, public auth, per-IP rate limit). Proposed spec amendment formulated. Task blocked pending spec revision.
+- **Call Signaling Relay (Phase 18)**: done
+  - **Migration:** Updated `0001_v2_schema.sql` (removed `call_participants` table; occupancy is held purely in-memory).
+  - **Delivered:** Step 0 Empirical Report at `verification/call-signaling-user-channel/report.md`, `server/src/calls/occupancy.rs` (`CallOccupancyStore` and helpers), `server/src/calls/signal.rs`, `server/src/calls/lifecycle.rs`, `server/src/routes/calls.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/call_signaling.rs`, `server/tests/call_lifecycle.rs`, `server/tests/call_turn.rs`.
+  - **Batch:** `messaging`
 
 ## Annotations for Future Tasks
 

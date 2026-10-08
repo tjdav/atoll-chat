@@ -227,6 +227,7 @@ where
         session_types,
         models,
         occupancy: server::sessions::OccupancyStore::new(),
+        call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
     };
 
@@ -415,6 +416,7 @@ pub async fn setup_test_app_with_config(
         session_types,
         models,
         occupancy: server::sessions::OccupancyStore::new(),
+        call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
     };
 
