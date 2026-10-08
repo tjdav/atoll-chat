@@ -770,6 +770,23 @@ build task runs.
 | Framework Mechanism | Coralite provides `client.config` on `definePlugin` objects to serialize static build-time options and deliver them to client context resolvers as `pluginContext.config` |
 | Correction (recorded in C-INFRA-24) | C-V-H's observation that `options` is undefined inside `client.context` is correct. Its conclusion that "no mechanism exists" for passing build-time data to the client is wrong. Coralite provides `client.config` for this purpose. The storage plugin's bug is that it read `options.migrations` directly instead of storing the migrations in `client.config` and reading `pluginContext.config`. The recommended fix in the C-V-H report (a generator script and a generated module) is superseded by the `client.config` fix. |
 
+### C-INFRA-25 — Playwright Fixture Infrastructure and WASM CSP Resolution
+
+**Verified:** 2026-10-08
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Production WASM CSP Resolution | Added `'wasm-unsafe-eval'` under `script-src` in `packages/app/coralite.config.js`. Permits Emscripten/SQLite-WASM WebAssembly module compilation without granting general JavaScript `'unsafe-eval'` |
+| Built HTML Meta CSP | Verified `dist/index.html` contains `<meta http-equiv="Content-Security-Policy" content="... script-src 'self' 'wasm-unsafe-eval' ...">` |
+| Shared Seed Definitions | `packages/app/tests/fixtures/seed-data.js` exporting `SEEDS` (`empty`, `chatEmpty`, `chatWithMessages`) with relative `offsetMs` timestamps |
+| Test Seed Component | `packages/app/src/components/containers/test-seed.html` wrapped in `defineComponent`. Writes seed rows via `storage.repos()` and signals completion via `data-fixture-ready="<seed>"` or `data-fixture-error="<err>"` on `document.documentElement` (`<html>`) |
+| Shell Fixture Mount | `packages/app/src/components/shell/messenger-shell.html` checks `location.search` for `?fixture=<name>` and appends `<test-seed seed="...">` dynamically |
+| Playwright Test Helper | `packages/app/tests/helpers/storage-fixture.js` exporting `loadWithFixture(page, { seed, path })`, `stubAuth(page)`, and `seedSession(page)` |
+| Playwright Global Setup | `packages/app/tests/helpers/global-setup.js` registered as `globalSetup` in `playwright.config.js` to ensure Chromium browser binaries are installed |
+| Normative Test Authoring Guide | Created `packages/app/tests/README.md` covering unit vs component runner models, fixture pattern contract, CSP requirements, cache discipline, and forbidden patterns (`window.__seedTestStorage__` removed completely) |
+| Test Migrations | Refactored `chat-thread.spec.js` and `composer.spec.js` to use `loadWithFixture` helper |
+| Visual Verification Artifact | Captured `packages/app/test-results/chat-populated.png` rendering 6 messages, date separators, tombstone, pending message, and scroll button |
+
 ### C-INFRA-24 — Fix Migration Delivery via `client.config` & Document Plugin Config Pattern
 
 **Verified:** 2026-10-07

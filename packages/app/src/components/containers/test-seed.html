@@ -1,0 +1,69 @@
+<template id="test-seed">
+  <div hidden aria-hidden="true"></div>
+</template>
+
+<script type="module">
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  attributes: {
+    seed: { type: String, default: 'empty' }
+  },
+
+  client: async ({ state, storage }) => {
+    const { SEEDS } = await import('../../../tests/fixtures/seed-data.js')
+    const seed = SEEDS[state.seed]
+    if (!seed) {
+      document.documentElement.setAttribute('data-fixture-error', state.seed)
+      return
+    }
+
+    try {
+      await storage.open()
+      const repos = storage.repos()
+      const now = Date.now()
+
+      for (const user of seed.users) {
+        await repos.users.upsert({ userId: user.userId, displayName: user.displayName })
+      }
+      for (const room of seed.rooms) {
+        await repos.rooms.upsert({ roomId: room.roomId, name: room.name ?? null })
+      }
+      for (const m of seed.members) {
+        await repos.roomMembers.addMember({ roomId: m.roomId, userId: m.userId, role: m.role })
+      }
+      for (const msg of seed.messages) {
+        const createdAt = now + msg.offsetMs
+        const payload = { type: 'text', text: msg.text }
+        await repos.messages.upsert({
+          messageId: msg.id,
+          roomId: 'r_1', // seeds currently single-room; extend later
+          senderUserId: msg.from,
+          senderClientId: 'test-client',
+          epoch: 1,
+          seq: 1,
+          contentType: 'application',
+          ciphertext: new Uint8Array(),
+          decryptedPayload: JSON.stringify(payload),
+          localStatus: msg.status,
+          deletedAt: msg.deleted ? createdAt : null,
+          createdAt,
+          updatedAt: createdAt
+        })
+      }
+      for (const rs of seed.readStates) {
+        await repos.readState.upsert({
+          userId: rs.userId,
+          roomId: rs.roomId,
+          lastReadMessageId: rs.lastReadMessageId,
+          lastReadAt: now
+        })
+      }
+
+      document.documentElement.setAttribute('data-fixture-ready', state.seed)
+    } catch (err) {
+      document.documentElement.setAttribute('data-fixture-error', String(err.message))
+    }
+  }
+})
+</script>

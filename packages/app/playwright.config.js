@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 const PORT = process.env.PLAYWRIGHT_PORT ?? 3000
 
 export default defineConfig({
+  globalSetup: './tests/helpers/global-setup.js',
   testDir: './tests',
   testMatch: ['component/**/*.spec.js', 'e2e/**/*.spec.js'],
   fullyParallel: false,

@@ -13,8 +13,8 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 0 |
-| Done | 48 |
+| Pending | 2 |
+| Done | 49 |
 | Blocked | 0 |
 
 ## Client Tasks
@@ -59,6 +59,7 @@ or modify the server's ledger.
 | C-AUTH-2 | OPRF Blinding Client & API Client | done | C-INFRA-2, C-V-C | unit-smoke |
 | C-AUTH-3a | OPAQUE Login Flow and Session Storage | done | C-AUTH-1, C-AUTH-2, C-V-D | unit-smoke, component-smoke |
 | C-AUTH-3b | OPAQUE Registration Flow & Display Name Encryption | done | C-AUTH-3a, C-INFRA-4 | unit-smoke |
+| C-INFRA-25 | Establish Playwright Fixture Infrastructure and Resolve WASM CSP | done | C-INFRA-9, C-CHAT-8, C-INFRA-23, C-CHAT-7 | component-smoke |
 | C-AUTH-3b2 | Register Form Wiring & ALTCHA Integration | pending | C-AUTH-3b, C-AUTH-1 | component-smoke |
 | C-AUTH-3b3 | Recovery Code Display & Confirmation Screen | pending | C-AUTH-3b2 | component-smoke |
 | C-AUTH-4 | Session Persistence & Boot Sequence | done | C-AUTH-3a, C-INFRA-3 | unit-smoke, component-auth |
