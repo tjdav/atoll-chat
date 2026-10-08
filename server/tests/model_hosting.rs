@@ -467,3 +467,71 @@ async fn test_rate_limiting_downloads() {
     assert_eq!(resp_exceed.status(), StatusCode::TOO_MANY_REQUESTS);
     assert!(resp_exceed.headers().contains_key(header::RETRY_AFTER));
 }
+
+#[tokio::test]
+async fn test_manifest_endpoint_rate_limit_exempt_and_cache_control() {
+    let (stt_dir, tts_dir) = create_temp_model_dirs();
+    write_stt_manifest(stt_dir.path(), r#"{"schema_version": 1, "models": []}"#);
+    write_tts_manifest(tts_dir.path(), r#"{"schema_version": 1, "models": []}"#);
+
+    let (app, _, _) = setup_test_app_with_custom_config(|cfg| {
+        cfg.model_hosting_enabled = true;
+        cfg.stt_models_path = stt_dir.path().to_path_buf();
+        cfg.tts_models_path = tts_dir.path().to_path_buf();
+        cfg.rate_limits.rate_model_download_per_min = 1;
+    })
+    .await;
+
+    // Verify manifest endpoint returns max-age=3600 and is exempt from rate limit
+    for _ in 0..5 {
+        let req = Request::builder()
+            .method("GET")
+            .uri("/models/manifest.json")
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        assert_eq!(
+            resp.headers().get(header::CACHE_CONTROL).unwrap(),
+            "public, max-age=3600"
+        );
+    }
+}
+
+#[tokio::test]
+async fn test_disabled_model_hosting_capabilities_values() {
+    let (stt_dir, tts_dir) = create_temp_model_dirs();
+
+    let (app, _, _) = setup_test_app_with_custom_config(|cfg| {
+        cfg.model_hosting_enabled = false;
+        cfg.stt_models_path = stt_dir.path().to_path_buf();
+        cfg.tts_models_path = tts_dir.path().to_path_buf();
+    })
+    .await;
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/v1/capabilities")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let cap: Value = serde_json::from_slice(&bytes).unwrap();
+
+    assert_eq!(cap["model_hosting_enabled"], false);
+    assert_eq!(cap["model_hosting_mode"], "local");
+    assert_eq!(
+        cap["stt_models_base_url"],
+        "http://localhost:8080/models/stt/v1/"
+    );
+    assert_eq!(
+        cap["tts_models_base_url"],
+        "http://localhost:8080/models/tts/v1/"
+    );
+    assert_eq!(cap["tts_models"], json!([]));
+}
