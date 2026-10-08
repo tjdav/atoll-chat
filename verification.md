@@ -1004,3 +1004,22 @@
   - **`username_token` Exclusion Invariant:** `username_token` is stored in the database log but is strictly omitted from the `GET /kt/user/:id` JSON response keys per §12 and §14.6 to prevent enumeration.
   - **`GET /api/v1/kt/snapshot` Endpoint:** Requires Bearer auth (`AuthUser`). Returns strictly `{ "tree_size": <int>, "root_hash": "<base64url>", "created_at": "..." }`. Both `signature` and `id` are omitted per §8.11.3. Returns `Cache-Control: no-store`. Returns 404 if disabled or no snapshot exists.
   - **Inclusion Proof Verification:** The $O(\log N)$ inclusion proof in `GET /kt/user/:id` verifies against `tree_head.root_hash` and `tree_head.tree_size` using `verify_inclusion_proof`.
+
+## Link Preview Proxy V3 Alignment Audit
+- **ID:** Link Preview Proxy V3 Alignment Audit
+- **Date:** 2026-10-08
+- **Status:** Step 0 Complete. Case B Identified (Specification Error).
+- **Spec / Amendment references:** V3 Spec §2.3, §5.6, §5.23, §6.25, §8.1.2, §12, §14.6
+- **Question asked:** What is the ground truth for link preview proxy path, auth, request/response shapes, Content Key mechanism, capability fields, SSRF guard rules, HTML handling, config, rate limiting, and plaintext non-persistence, and how does it compare against V3 §8.1.2?
+- **Answer found:**
+  - **Classification:** **Case B** — V2 Task 35 fact is canonical and V3 §8.1.2 contains specification errors.
+  - **RSA-OAEP Impossibility:** V3 §8.1.2 states `wrapped_content_key: <base64, RSA-OAEP>`. The server has no RSA keypair (all server keys are X25519/Ed25519) and advertises no RSA public key in `GET /capabilities` (§8.1) or anywhere else.
+  - **Key Agreement & KDF:** The server implements Ephemeral-Static X25519 ECDH between client's 32-byte ephemeral public key and server's 32-byte static secret key (`LINK_PREVIEW_PROXY_KEY_PATH`), using HKDF-SHA256 with `info = b"link-preview-content-key-v1"` to derive a 32-byte Content Key, and AES-256-GCM encryption with 12-byte random nonce.
+  - **Capabilities Public Key:** `GET /capabilities` advertises `extension_proxy_key` (Base64 string of X25519 public key) when link preview proxy or extension proxy is enabled (`link_preview_proxy_key` was removed in Task 39a). Extension Proxy (§8.1.5, Phase 26) reuses this exact X25519 public key.
+  - **Auth & Rate Limiting:** Endpoint requires Bearer Auth session token (`AuthUser`). Rate limit `RATE_LINK_PREVIEW_PER_MIN` (default 10) is enforced per user using key `link_preview:{user_id}:min:{boundary}` per V3 §5.6. V3 §8.1.2's claim of "Auth: None. Rate limit: per IP" is a spec error.
+  - **Canonical Wire Format (V2 Task 35):**
+    - Request: `{ "ephemeral_pubkey": "<base64_32B>", "nonce": "<base64_12B>", "ciphertext": "<base64>" }`
+    - Response: `{ "nonce": "<base64_12B>", "ciphertext": "<base64>" }`
+  - **SSRF Guard & Plaintext Non-Persistence:** 100% matches V2 Task 35 fact. Plaintext URLs and response bodies are decrypted solely in memory and never logged, audited, or persisted.
+  - **Proposed Specification Amendment:** Amend V3 §8.1.2 to align with V2 Task 35 fact (Bearer Auth required, user rate limit key, X25519 ECDH Content Key mechanism, and `ephemeral_pubkey`/`nonce`/`ciphertext` envelope fields).
+- **Link to report:** [verification/link-preview-proxy-v3/report.md](verification/link-preview-proxy-v3/report.md)
