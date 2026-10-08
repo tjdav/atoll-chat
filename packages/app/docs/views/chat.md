@@ -14,6 +14,7 @@ The view reads asynchronously from five domain repositories via `ctx.storage.rep
 - **`roomMembers`**: Fetches room membership lists via `repos.roomMembers.listInRoom(roomId)`.
 - **`users`**: Resolves member display names via `repos.users.get(userId)`.
 - **`messages`**: Fetches application messages ordered newest-first via `repos.messages.listApplicationsInRoom(roomId, { limit: 500 })` and reverses them for chronological display.
+- **`reactions`**: Fetches room reactions via `repos.reactions.listForRoom(roomId)` and executes toggles via `toggleReaction`.
 - **`readState`**: Fetches and updates the user's read position via `repos.readState.getForRoom(roomId, userId)` and `repos.readState.upsert(...)`.
 
 ## 3. Assembly Logic
@@ -40,6 +41,7 @@ Individual messages render as `<message-bubble>` instances with state communicat
 - **Meta Row**: Displays short timestamp and local status indicators ('Queued', 'Sending…', 'Failed').
 - **Tombstones**: Soft-deleted messages (`deleted_at != null`) render with italic muted styling (`isTombstone: true`) and body text "This message was deleted."
 - **Pending/Failed States**: Unconfirmed outgoing messages display opacity (`isPending: true`) or error border (`isFailed: true`).
+- **Reactions Container**: `<div class="bubble-reactions" ref="reactions">` displays below the bubble. Styled with `:empty { display: none; }` to collapse cleanly when no reactions exist.
 
 ## 5. Message Grouping Rules
 
@@ -118,8 +120,10 @@ The message context menu allows users to perform local actions on thread message
 - `messageId`: ID of the target message.
 - `canUnsend`: Boolean indicating whether Unsend is available.
 - `canCopy`: Boolean indicating whether Copy is available (`!deleted_at`).
+- `canReact`: Boolean indicating whether Reactions are available (`!deleted_at`).
 
 Emitted events:
+- `menu:react`: `{ messageId, reaction }`
 - `menu:copy`: `{ messageId }`
 - `menu:unsend`: `{ messageId }`
 - `menu:delete`: `{ messageId }`
@@ -130,7 +134,7 @@ Dismissal occurs on outside click (`document.addEventListener('click')`) or pres
 ### 10.3 Action Semantics & Unsend Predicate
 - **Copy (`copyMessage`)**: Reads the message, parses the text summary, and writes to `navigator.clipboard.writeText`.
 - **Delete for me (`deleteForMe`)**: Executes a local hard delete via `repos.messages.remove(messageId)`. The message is removed from the local view immediately.
-- **Unsend (`unsend`)**: Executes a soft delete via `repos.messages.markDeleted(messageId)`. The message bubble updates to a muted tombstone pill (\"This message was deleted.\").
+- **Unsend (`unsend`)**: Executes a soft delete via `repos.messages.markDeleted(messageId)`. The message bubble updates to a muted tombstone pill ("This message was deleted.").
 - **Unsend Availability (`isUnsendAvailable`)**: True iff the message exists, the current user is the sender (`sender_user_id === userId`), `local_status === 'sent'`, and the creation timestamp is within 24 hours (`Date.now() - created_at <= 86,400,000`).
 
 ## 11. Message Editing
@@ -164,20 +168,44 @@ Executing an edit via `editMessage({ deps, messageId, newText, userId })` (`pack
 ### 11.5 "Edited" Indicator
 Message bubbles with `edited_at != null` render an italic "Edited" indicator in the message footer next to the timestamp.
 
-### 11.6 Deferred Editing Capabilities
-- **"Show original" sheet**: Version history browsing sheet is deferred to C-CHAT-10b (`ui-sheet` primitive).
-- **Attachment Editing**: Media message attachments cannot be modified.
-- **Wire Protocol**: Signed edits sent via WebSocket/HTTP wire protocol are deferred to the WebSocket task.
+## 12. Reactions and Reaction Chips
 
-## 12. Known Limitations and Deferred Features
+Reactions allow users to react to messages with a default set of six emoji.
+
+### 12.1 Default Emoji Set
+`DEFAULT_EMOJI` in `packages/app/src/lib/views/reactions.js` is a frozen array of six emoji: `['👍', '❤️', '😂', '😮', '😢', '🎉']`.
+
+### 12.2 Reaction Picker in Context Menu
+The context menu displays the horizontal emoji row at the top above action items when `canReact` is true (`!deleted_at`). Tombstoned messages hide the emoji picker row. Clicking an emoji button emits `menu:react` with `{ messageId, reaction }`.
+
+### 12.3 Reaction Chip Component (`reaction-chip`)
+`<reaction-chip>` (`packages/app/src/components/composed/reaction-chip.html`) renders an emoji and aggregated user count. Attributes:
+- `reaction`: Emoji character string.
+- `count`: Number of distinct users who reacted with this emoji.
+- `messageId`: Target message ID.
+- `isOwn`: Boolean reflecting whether the current user reacted with this emoji (`is-own` host attribute).
+
+Clicking a chip emits `reaction:toggle` with `{ messageId, reaction }`.
+
+### 12.4 Toggle Orchestration (`toggleReaction`)
+`toggleReaction({ repos, messageId, userId, clientId, reaction })`:
+- Reads `repos.reactions.hasReacted(messageId, userId, reaction)`.
+- If true: removes the user's active reaction row via `repos.reactions.remove(...)` and returns `{ reacted: false }`.
+- If false: adds a new reaction row via `repos.reactions.add(...)` with `clientId` from `storage.meta.get('client_id')` and returns `{ reacted: true }`.
+
+### 12.5 Aggregation and Deduplication
+The view aggregates reactions per message deduplicated per user (`COUNT(DISTINCT sender_user_id)`). Multi-device reactions from the same user count once.
+
+## 13. Known Limitations and Deferred Features
 
 - **MLS Encryption Deferred**: Payload is stored as plaintext JSON in `decrypted_payload` with a `stub:` marker in `ciphertext`.
 - **Outbox Send Loop Deferred**: Messages remain `localStatus: 'pending'` until the background outbox sender loop is implemented.
 - **Draft Persistence Deferred**: Text in the composer is held in component state; drafts repository persistence is a follow-on task.
 - **Stub Buttons**: The attach, emoji, and read-aloud buttons render as disabled stub controls until follow-on tasks wire their functionality.
 - **No Live WebSocket**: Thread does not subscribe to incoming socket events yet (WebSocket task).
-- **Deferred Context Menu Actions**: Show original, Reply, React, Select, and Read aloud are omitted from the menu and deferred to follow-on tasks.
+- **Deferred Emoji Picker**: Full `emoji-picker-element` integration for non-default emoji is deferred.
+- **Deferred Wire Protocol**: Reaction updates sent via WebSocket/HTTP wire protocol are deferred to the WebSocket task.
 
-## 13. Inline Header Surface
+## 14. Inline Header Surface
 
 The thread component currently renders an inline header (`<header class="chat__header">`) displaying the room or participant name. Per Spec §6.7, room title rendering will eventually be owned by the shell header. The inline header is a temporary surface deviation documented for migration in a follow-on shell header task.

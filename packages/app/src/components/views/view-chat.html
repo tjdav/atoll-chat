@@ -38,6 +38,7 @@
       can-unsend="{{ menuCanUnsend }}"
       can-copy="{{ menuCanCopy }}"
       can-edit="{{ menuCanEdit }}"
+      can-react="{{ menuCanReact }}"
     ></message-context-menu>
 
     <message-versions-sheet
@@ -138,6 +139,7 @@ export default defineComponent({
     menuCanUnsend: { type: Boolean, default: false },
     menuCanCopy: { type: Boolean, default: true },
     menuCanEdit: { type: Boolean, default: false },
+    menuCanReact: { type: Boolean, default: true },
     composerEditing: { type: Boolean, default: false },
     composerPrefill: { type: String, default: '' },
     editingMessageId: { type: String, default: '' },
@@ -161,6 +163,7 @@ export default defineComponent({
       menuCanUnsend: false,
       menuCanCopy: true,
       menuCanEdit: false,
+      menuCanReact: true,
       composerEditing: false,
       composerPrefill: '',
       editingMessageId: '',
@@ -184,7 +187,13 @@ export default defineComponent({
         'edit_history_title',
         'edit_history_current_label',
         'edit_history_original_label',
-        'edit_history_close_label'
+        'edit_history_close_label',
+        'menu_react_label_0',
+        'menu_react_label_1',
+        'menu_react_label_2',
+        'menu_react_label_3',
+        'menu_react_label_4',
+        'menu_react_label_5'
       ])
     }
   },
@@ -205,9 +214,11 @@ export default defineComponent({
     const { isUnsendAvailable, copyMessage, unsend, deleteForMe } = await import('../../lib/views/message-actions.js')
     const { isEditAvailable, editMessage } = await import('../../lib/views/edit-message.js')
     const { buildHistory } = await import('../../lib/views/edit-history.js')
+    const { toggleReaction, isReactionAllowed } = await import('../../lib/views/reactions.js')
     const { buildTextPayload, encodePayload, encodeCiphertextStub } = await import('../../lib/composer/index.js')
 
     let currentRoomId = null
+    let clientId = (await storage?.meta?.get('client_id')) || 'c_me'
 
     i18n.subscribeLocale(
       (locale) => {
@@ -231,7 +242,13 @@ export default defineComponent({
             'edit_history_title',
             'edit_history_current_label',
             'edit_history_original_label',
-            'edit_history_close_label'
+            'edit_history_close_label',
+            'menu_react_label_0',
+            'menu_react_label_1',
+            'menu_react_label_2',
+            'menu_react_label_3',
+            'menu_react_label_4',
+            'menu_react_label_5'
           ])
         )
       },
@@ -285,6 +302,14 @@ export default defineComponent({
           }
         }
       }, { signal })
+
+      threadEl.addEventListener('reaction:toggle', async (event) => {
+        const { messageId, reaction } = event.detail
+        const userId = globalStore?.$state?.user?.id || 'u_me'
+        await toggleReaction({ repos: reposApi, messageId, userId, clientId, reaction })
+        currentRoomId = null
+        await load()
+      }, { signal })
     }
 
     async function load() {
@@ -298,6 +323,15 @@ export default defineComponent({
       const readState = await reposApi.readState.get(userId, roomId)
       const usersList = (await reposApi.users.list({ limit: 100 })) || []
       const usersMap = new Map(usersList.map((u) => [u.user_id, u.display_name]))
+      const roomReactions = (await reposApi.reactions.listForRoom(roomId)) || []
+
+      const reactionsByMessage = new Map()
+      for (const r of roomReactions) {
+        if (r.deleted_at) continue
+        const bucket = reactionsByMessage.get(r.message_id) ?? []
+        bucket.push(r)
+        reactionsByMessage.set(r.message_id, bucket)
+      }
 
       const messages = rawMessages.map((m) => {
         const payload = safeParsePayload(m.decrypted_payload)
@@ -363,6 +397,25 @@ export default defineComponent({
           if (i === 0) bubble.setAttribute('is-first-in-group', '')
           if (i === group.length - 1) bubble.setAttribute('is-last-in-group', '')
 
+          const messageReactions = reactionsByMessage.get(msg.id) ?? []
+          const userReactions = new Set()
+          for (const r of messageReactions) {
+            if (r.sender_user_id === userId) userReactions.add(r.reaction)
+          }
+          const aggregateMap = new Map()
+          const seenUserPerReaction = new Set()
+          for (const r of messageReactions) {
+            const key = `${r.reaction}:${r.sender_user_id}`
+            if (seenUserPerReaction.has(key)) continue
+            seenUserPerReaction.add(key)
+            aggregateMap.set(r.reaction, (aggregateMap.get(r.reaction) ?? 0) + 1)
+          }
+          const chips = []
+          for (const [reaction, count] of aggregateMap) {
+            chips.push({ reaction, count, isOwn: userReactions.has(reaction) })
+          }
+          bubble.setAttribute('reactions-json', JSON.stringify(chips))
+
           bubble.addEventListener('bubble:contextmenu', async (event) => {
             const { messageId, x, y } = event.detail
             const dbMsg = await reposApi.messages.get(messageId)
@@ -373,6 +426,7 @@ export default defineComponent({
             state.menuCanUnsend = isUnsendAvailable(dbMsg, userId)
             state.menuCanCopy = !dbMsg.deleted_at
             state.menuCanEdit = isEditAvailable(dbMsg, userId)
+            state.menuCanReact = isReactionAllowed(dbMsg)
             state.menuOpen = true
           }, { signal })
 
@@ -442,6 +496,15 @@ export default defineComponent({
 
     const contextMenuEl = refs('contextMenu')
     if (contextMenuEl) {
+      contextMenuEl.addEventListener('menu:react', async (event) => {
+        const { messageId, reaction } = event.detail
+        const userId = globalStore?.$state?.user?.id || 'u_me'
+        await toggleReaction({ repos: reposApi, messageId, userId, clientId, reaction })
+        state.menuOpen = false
+        currentRoomId = null
+        await load()
+      }, { signal })
+
       contextMenuEl.addEventListener('menu:edit', async (event) => {
         const dbMsg = await reposApi.messages.get(event.detail.messageId)
         if (!dbMsg) return

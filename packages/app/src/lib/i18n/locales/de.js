@@ -88,5 +88,15 @@ export default {
   composer_edit_banner: 'Bearbeiten',
   composer_edit_cancel_label: 'Bearbeitung abbrechen',
   composer_edit_save_label: 'Bearbeitung speichern',
-  bubble_edited_label: 'Bearbeitet'
+  bubble_edited_label: 'Bearbeitet',
+  edit_history_title: 'Bearbeitungsverlauf',
+  edit_history_current_label: 'Aktuelle Version',
+  edit_history_original_label: 'Ursprüngliche Version',
+  edit_history_close_label: 'Verlauf schließen',
+  menu_react_label_0: 'Mit Daumen hoch reagieren',
+  menu_react_label_1: 'Mit Herz reagieren',
+  menu_react_label_2: 'Mit Lachen reagieren',
+  menu_react_label_3: 'Mit Überraschung reagieren',
+  menu_react_label_4: 'Mit Traurigkeit reagieren',
+  menu_react_label_5: 'Mit Feier reagieren'
 }
