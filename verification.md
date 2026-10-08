@@ -1051,3 +1051,30 @@
   - **Rate Limiting:** Key format `call_signal:{user_id}:{call_id}:min:{boundary}` (`RATE_CALL_SIGNAL_PER_MIN`, default 120/min). Bucket is per user per call and shared across caller's devices.
   - **No-Persistence & No-Logging Invariants:** Signal relay writes no rows to any table except the rate-limit table, writes zero audit log entries, and logs no field values, usernames, client IDs, or envelope bytes (§12 normative constraint).
 - **Link to report:** [verification/call-signaling-user-channel/report.md](verification/call-signaling-user-channel/report.md)
+
+## Call Join, Leave, and End Lifecycle Verification Fact (Phase 19)
+- **ID:** Phase 19 Call Join, Leave, and End Lifecycle
+- **Date:** 2026-10-08
+- **Status:** Complete. Canonical. Client-facing contract.
+- **Spec sections affected:** V3 Spec §2.2, §6.24, §7.9, §8.7.5, §8.7.6, §8.7.8, §8.9, §12, §14.8
+- **Verified Facts:**
+  - **Join Endpoint (`POST /api/v1/rooms/:id/calls/:call_id/join`):**
+    - Request: `{ "client_id": "<client_id>" }`.
+    - Validates `CALLING_ENABLED` (HTTP 501 `calling_disabled` if false), room membership (HTTP 404 `room_not_found` if not member), `client_id` ownership (HTTP 403 `client_not_owned` if not owned).
+    - Session handling: Transactionally creates `call_sessions` row on first join (`initiator_id = caller`, `started_at = CURRENT_TIMESTAMP`, `ended_at = NULL`). Re-joining an ended call returns HTTP 409 `call_ended`.
+    - Occupancy & Cap Enforcement: Adds client to `CallOccupancyStore`. Evaluates effective `call_max_participants` limit (`limits::get_limits`). If participant count exceeds limit, removes just-added client and returns HTTP 409 `call_full`.
+    - Events & Audit: On first join only, publishes best-effort `call.started` (`{ "call_id": "c_...", "room_id": "r_...", "initiator_id": "u_...", "started_at": "..." }`) on `private-room-{room_id}` and writes `call.start` audit entry. Re-joins emit no events or audit rows.
+    - Response: HTTP 200 OK `{ "ice_servers": [] }` with `Cache-Control: no-store` header.
+  - **Leave Endpoint (`POST /api/v1/rooms/:id/calls/:call_id/leave`):**
+    - Request: `{ "client_id": "<client_id>" }`.
+    - Validates `CALLING_ENABLED`, room membership, and caller device ownership of `client_id`.
+    - Removes specified client from `CallOccupancyStore`. Clears call from store if participant count becomes 0 (does not set `ended_at`).
+    - Response: HTTP 204 No Content with `Cache-Control: no-store` header.
+  - **End Endpoint (`POST /api/v1/rooms/:id/calls/:call_id/end`):**
+    - Validates `CALLING_ENABLED` and room membership.
+    - Authorization: Requires caller to be call initiator (`call_sessions.initiator_id`) or room owner (`rooms.owner_id`). Non-initiator, non-owner members receive HTTP 403 `forbidden`.
+    - Updates `call_sessions.ended_at = CURRENT_TIMESTAMP` and clears call occupancy store.
+    - Events & Audit: On first end, calculates `duration_seconds = (ended_at - started_at).num_seconds()` and publishes best-effort `call.ended` (`{ "call_id": "c_...", "room_id": "r_...", "ended_at": "...", "duration_seconds": <int> }`) on `private-room-{room_id}` and writes `call.end` audit entry.
+    - Idempotency: Re-ending an already-ended call returns HTTP 200 OK with existing session state without re-writing `ended_at`, re-publishing `call.ended`, or re-writing audit logs.
+  - **No-Persistence & No-Logging Invariants (§12):** Occupancy is held strictly in-memory (`CallOccupancyStore`). No participant rows are written to SQLite, logs, tracing spans, or metrics.
+- **Link to report:** [verification/call-join-leave-end/report.md](verification/call-join-leave-end/report.md)

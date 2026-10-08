@@ -453,6 +453,14 @@ pub fn build_app(state: AppState) -> Router {
             post(routes::calls::turn_credentials_handler),
         )
         .route(
+            "/rooms/{id}/calls/{call_id}/join",
+            post(routes::calls::join_handler),
+        )
+        .route(
+            "/rooms/{id}/calls/{call_id}/leave",
+            post(routes::calls::leave_handler),
+        )
+        .route(
             "/rooms/{id}/calls/{call_id}/signal",
             post(routes::calls::signal_handler),
         )

@@ -123,6 +123,15 @@ impl CallOccupancyStore {
         result
     }
 
+    pub async fn participant_count(&self, call_id: &str) -> usize {
+        let map = self.inner.read().await;
+        if let Some(call) = map.get(call_id) {
+            call.participants.len()
+        } else {
+            0
+        }
+    }
+
     pub async fn clear_call(&self, call_id: &str) {
         let mut map = self.inner.write().await;
         map.remove(call_id);
