@@ -118,6 +118,14 @@ export default defineComponent({
     window.addEventListener('app:ready', () => {
       state.ready = true
     }, { signal })
+
+    const params = new URLSearchParams(location.search)
+    const seed = params.get('fixture')
+    if (seed) {
+      const el = document.createElement('test-seed')
+      el.setAttribute('seed', seed)
+      document.body.appendChild(el)
+    }
   }
 })
 </script>

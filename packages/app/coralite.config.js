@@ -54,7 +54,14 @@ export default defineConfig({
     hashAlgorithm: 'sha256',
     injectMeta: true,
     externalScripts: false,
-    externalStyles: false
+    externalStyles: false,
+    directives: {
+      'default-src': ["'self'"],
+      'script-src': ["'self'", "'wasm-unsafe-eval'"],
+      'style-src': ["'self'", "'unsafe-inline'"],
+      'worker-src': ["'self'", 'blob:'],
+      'connect-src': ["'self'"]
+    }
   },
   plugins: [
     extensionPlugin({ extensions }),

@@ -123,20 +123,32 @@ Each Playwright batch is subject to the strict 60-second budget enforced by `scr
   ```
 - The `pnpm test:batch component-*` command does not clear these automatically. It is the test author's responsibility.
 
+## Test Authoring Guide
+
+Detailed test authoring rules, the fixture pattern specification, CSP requirements, and normative guidelines are documented in [`tests/README.md`](tests/README.md).
+
+## Content Security Policy (WASM)
+
+`@sqlite.org/sqlite-wasm` requires `'wasm-unsafe-eval'` under `script-src` in `coralite.config.js`. This permits WebAssembly compilation in both production browser runtime and Playwright component test suites without compromising CSP isolation.
+
 ## Seeding state in Playwright tests
 
-- `page.addInitScript()` runs on every navigation, including redirects. A test that seeds a session token and then verifies it was cleared after a 401 redirect will see the token re-seeded on the redirect target.
-- Seed state via `page.evaluate()` on an initial route before navigating to the target page. This pattern persists only the initial state and lets the application's cleanup logic run unobstructed.
-- Example:
+- Use the shared fixture helper (`loadWithFixture` from `tests/helpers/storage-fixture.js`) for storage-backed view component tests:
 
   ```javascript
-  await page.goto('/index.html')
-  await page.evaluate(() => {
-    localStorage.setItem('atoll.session.token', 'valid-token')
-    localStorage.setItem('atoll.session.username', 'alice')
+  import { test, expect } from '@playwright/test'
+  import { stubAuth, seedSession, loadWithFixture } from '../helpers/storage-fixture.js'
+
+  test('renders thread', async ({ page }) => {
+    await stubAuth(page)
+    await seedSession(page)
+    await loadWithFixture(page, { seed: 'chatWithMessages', path: '/app.html?rail=core.chat&detail=chat&id=r_1' })
+    await expect(page.locator('message-bubble')).toHaveCount(6)
   })
-  await page.goto('/app.html')
   ```
+
+- `page.addInitScript()` runs on every navigation, including redirects. A test that seeds a session token and then verifies it was cleared after a 401 redirect will see the token re-seeded on the redirect target.
+- Seed state via `page.evaluate()` on an initial route before navigating to the target page (handled automatically by `seedSession(page)`). This pattern persists only the initial state and lets the application's cleanup logic run unobstructed.
 
 ## CSS Bundle Verification
 

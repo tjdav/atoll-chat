@@ -96,6 +96,33 @@ await ctx.storage.meta.set('last_user_seq', 1042)
 const seq = await ctx.storage.meta.get('last_user_seq') // 1042
 ```
 
+## Content Security Policy
+
+`@sqlite.org/sqlite-wasm` uses Emscripten's runtime, which relies on dynamic code compilation (`new Function` / `eval`) during WebAssembly module instantiation in browser environments. Modern browsers strictly enforce Content Security Policy (CSP) directives and require `'wasm-unsafe-eval'` in `script-src` to permit compilation and execution of WebAssembly bytecode.
+
+This requirement applies to both production runtime builds and Playwright component test harnesses. Without `'wasm-unsafe-eval'`, WebAssembly compilation fails at runtime with a `CSP EvalError`.
+
+The standard CSP directive in `coralite.config.js` configures:
+
+```javascript
+csp: {
+  enabled: true,
+  hashAlgorithm: 'sha256',
+  injectMeta: true,
+  externalScripts: false,
+  externalStyles: false,
+  directives: {
+    'default-src': ["'self'"],
+    'script-src': ["'self'", "'wasm-unsafe-eval'"],
+    'style-src': ["'self'", "'unsafe-inline'"],
+    'worker-src': ["'self'", 'blob:'],
+    'connect-src': ["'self'"]
+  }
+}
+```
+
+The `'wasm-unsafe-eval'` source is specifically designed for WebAssembly execution without granting general JavaScript string-to-code evaluation (`'unsafe-eval'`).
+
 ## Backends & Environment Selection
 
 The backend resolver `resolveBackend({ prefer })` selects the active backend:
