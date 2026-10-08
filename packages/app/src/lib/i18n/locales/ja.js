@@ -83,5 +83,10 @@ export default {
   composer_send_label: 'メッセージを送信',
   menu_copy: 'コピー',
   menu_delete_for_me: '自分のみ削除',
-  menu_unsend: '送信を取り消す'
+  menu_unsend: '送信を取り消す',
+  menu_edit: '編集',
+  composer_edit_banner: '編集中のメッセージ',
+  composer_edit_cancel_label: '編集をキャンセル',
+  composer_edit_save_label: '編集を保存',
+  bubble_edited_label: '編集済み'
 }

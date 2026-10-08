@@ -11,6 +11,7 @@
       </div>
 
       <div class="bubble__footer">
+        <span class="bubble__edited" hidden="{{ editedHidden }}">{{ editedLabel }}</span>
         <span class="bubble__time">{{ formattedTime }}</span>
         <span class="bubble__status" hidden="{{ statusHidden }}">{{ statusText }}</span>
       </div>
@@ -97,6 +98,16 @@
   color: var(--text-muted);
 }
 
+.bubble__edited {
+  font-style: italic;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+:host([is-own]) .bubble__edited {
+  color: var(--text-on-accent-muted, rgba(255, 255, 255, 0.75));
+}
+
 :host([is-own]) .bubble__footer {
   color: var(--text-on-accent-muted, rgba(255, 255, 255, 0.75));
 }
@@ -119,6 +130,8 @@ export default defineComponent({
     isTombstone: { type: Boolean, default: false, reflect: true },
     isPending: { type: Boolean, default: false, reflect: true },
     isFailed: { type: Boolean, default: false, reflect: true },
+    isEdited: { type: Boolean, default: false, reflect: true },
+    editedLabel: { type: String, default: 'Edited' },
     isFirstInGroup: { type: Boolean, default: true },
     isLastInGroup: { type: Boolean, default: true }
   },
@@ -128,6 +141,7 @@ export default defineComponent({
     textHidden: ({ state }) => state.isTombstone,
     tombstoneHidden: ({ state }) => !state.isTombstone,
     statusHidden: ({ state }) => !state.isOwn || state.isTombstone,
+    editedHidden: ({ state }) => !state.isEdited,
     deletedText: ({ state }) => state.chat_message_deleted || 'This message was deleted.',
     statusText: ({ state }) => {
       if (state.isFailed) return '!'

@@ -14,12 +14,18 @@
 
     <footer class="chat__composer">
       <message-composer
+        ref="composer"
         placeholder="{{ chat_composer_placeholder }}"
         attach-label="{{ chat_composer_attach_label }}"
         emoji-label="{{ chat_composer_emoji_label }}"
         readaloud-label="{{ chat_composer_readaloud_label }}"
         input-label="{{ chat_composer_input_label }}"
         send-label="{{ chat_composer_send_label }}"
+        editing="{{ composerEditing }}"
+        prefill="{{ composerPrefill }}"
+        edit-banner-label="{{ composer_edit_banner }}"
+        edit-cancel-label="{{ composer_edit_cancel_label }}"
+        edit-save-label="{{ composer_edit_save_label }}"
       ></message-composer>
     </footer>
 
@@ -31,6 +37,7 @@
       message-id="{{ menuMessageId }}"
       can-unsend="{{ menuCanUnsend }}"
       can-copy="{{ menuCanCopy }}"
+      can-edit="{{ menuCanEdit }}"
     ></message-context-menu>
   </div>
 </template>
@@ -122,7 +129,11 @@ export default defineComponent({
     menuY: { type: Number, default: 0 },
     menuMessageId: { type: String, default: '' },
     menuCanUnsend: { type: Boolean, default: false },
-    menuCanCopy: { type: Boolean, default: true }
+    menuCanCopy: { type: Boolean, default: true },
+    menuCanEdit: { type: Boolean, default: false },
+    composerEditing: { type: Boolean, default: false },
+    composerPrefill: { type: String, default: '' },
+    editingMessageId: { type: String, default: '' }
   },
 
   getters: {
@@ -139,6 +150,10 @@ export default defineComponent({
       menuMessageId: '',
       menuCanUnsend: false,
       menuCanCopy: true,
+      menuCanEdit: false,
+      composerEditing: false,
+      composerPrefill: '',
+      editingMessageId: '',
       ...i18n.strings([
         'chat_scroll_to_bottom',
         'chat_new_messages_divider',
@@ -147,7 +162,12 @@ export default defineComponent({
         'chat_composer_emoji_label',
         'chat_composer_readaloud_label',
         'chat_composer_input_label',
-        'chat_composer_send_label'
+        'chat_composer_send_label',
+        'menu_edit',
+        'composer_edit_banner',
+        'composer_edit_cancel_label',
+        'composer_edit_save_label',
+        'bubble_edited_label'
       ])
     }
   },
@@ -164,6 +184,8 @@ export default defineComponent({
 
     const { sendMessage } = await import('../../lib/views/send-message.js')
     const { isUnsendAvailable, copyMessage, unsend, deleteForMe } = await import('../../lib/views/message-actions.js')
+    const { isEditAvailable, editMessage } = await import('../../lib/views/edit-message.js')
+    const { buildTextPayload, encodePayload, encodeCiphertextStub } = await import('../../lib/composer/index.js')
 
     let currentRoomId = null
 
@@ -180,7 +202,12 @@ export default defineComponent({
             'chat_composer_emoji_label',
             'chat_composer_readaloud_label',
             'chat_composer_input_label',
-            'chat_composer_send_label'
+            'chat_composer_send_label',
+            'menu_edit',
+            'composer_edit_banner',
+            'composer_edit_cancel_label',
+            'composer_edit_save_label',
+            'bubble_edited_label'
           ])
         )
       },
@@ -255,6 +282,7 @@ export default defineComponent({
           senderId: m.sender_user_id,
           senderName: usersMap.get(m.sender_user_id) || m.sender_user_id,
           created_at: m.created_at,
+          edited_at: m.edited_at,
           text: summary.kind === 'text' ? summary.text : (summary.kind === 'tombstone' ? '' : '[Media]'),
           isTombstone: Boolean(m.deleted_at),
           isPending: m.local_status === 'pending',
@@ -299,6 +327,8 @@ export default defineComponent({
           bubble.setAttribute('sender-name', msg.senderName)
           bubble.setAttribute('formatted-time', formatTime(msg.created_at))
           bubble.setAttribute('text-content', msg.text)
+          bubble.setAttribute('is-edited', String(Boolean(msg.edited_at)))
+          bubble.setAttribute('edited-label', state.bubble_edited_label || 'Edited')
 
           if (msg.isOwn) bubble.setAttribute('is-own', '')
           if (msg.isTombstone) bubble.setAttribute('is-tombstone', '')
@@ -317,6 +347,7 @@ export default defineComponent({
             state.menuY = y
             state.menuCanUnsend = isUnsendAvailable(dbMsg, userId)
             state.menuCanCopy = !dbMsg.deleted_at
+            state.menuCanEdit = isEditAvailable(dbMsg, userId)
             state.menuOpen = true
           }, { signal })
 
@@ -333,7 +364,7 @@ export default defineComponent({
       }
     }
 
-    const composerEl = threadEl?.parentElement?.querySelector('message-composer')
+    const composerEl = refs('composer') || threadEl?.parentElement?.querySelector('message-composer')
     if (composerEl) {
       composerEl.addEventListener('composer:send', async (event) => {
         const text = event.detail?.text
@@ -346,10 +377,48 @@ export default defineComponent({
         currentRoomId = null
         await load()
       }, { signal })
+
+      composerEl.addEventListener('composer:edit-submit', async (event) => {
+        const messageId = state.editingMessageId
+        const userId = globalStore?.$state?.user?.id || 'u_me'
+        if (!messageId) return
+        await editMessage({
+          deps: { repos, buildTextPayload, encodePayload, encodeCiphertextStub },
+          messageId,
+          newText: event.detail.text,
+          userId
+        })
+        state.composerEditing = false
+        state.composerPrefill = ''
+        state.editingMessageId = ''
+        currentRoomId = null
+        await load()
+      }, { signal })
+
+      composerEl.addEventListener('composer:edit-cancel', () => {
+        state.composerEditing = false
+        state.composerPrefill = ''
+        state.editingMessageId = ''
+      }, { signal })
     }
 
     const contextMenuEl = refs('contextMenu')
     if (contextMenuEl) {
+      contextMenuEl.addEventListener('menu:edit', async (event) => {
+        const dbMsg = await repos.messages.get(event.detail.messageId)
+        if (!dbMsg) return
+        const payload = safeParsePayload(dbMsg.decrypted_payload)
+        const summary = summarizePayload(payload)
+        if (summary.kind !== 'text') {
+          state.menuOpen = false
+          return
+        }
+        state.editingMessageId = event.detail.messageId
+        state.composerPrefill = summary.text
+        state.composerEditing = true
+        state.menuOpen = false
+      }, { signal })
+
       contextMenuEl.addEventListener('menu:copy', async (event) => {
         await copyMessage({
           deps: {

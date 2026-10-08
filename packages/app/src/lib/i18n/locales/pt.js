@@ -83,5 +83,10 @@ export default {
   composer_send_label: 'Enviar mensagem',
   menu_copy: 'Copiar',
   menu_delete_for_me: 'Apagar para mim',
-  menu_unsend: 'Cancelar envio'
+  menu_unsend: 'Cancelar envio',
+  menu_edit: 'Editar',
+  composer_edit_banner: 'A editar',
+  composer_edit_cancel_label: 'Cancelar edição',
+  composer_edit_save_label: 'Guardar edição',
+  bubble_edited_label: 'Editado'
 }

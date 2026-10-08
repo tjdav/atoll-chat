@@ -35,7 +35,8 @@ export const SEEDS = {
       { id: 'm_3', from: 'u_me', text: 'Good, thanks', offsetMs: -58 * 60 * 1000, status: 'sent' },
       { id: 'm_4', from: 'u_me', text: 'Draft message', offsetMs: -57 * 60 * 1000, status: 'pending' },
       { id: 'm_5', from: 'u_alice', text: 'Bye', offsetMs: -56 * 60 * 1000, status: 'sent', deleted: true },
-      { id: 'm_6', from: 'u_me', text: 'Old', offsetMs: -25 * 60 * 60 * 1000, status: 'sent' }
+      { id: 'm_6', from: 'u_me', text: 'Old', offsetMs: -25 * 60 * 60 * 1000, status: 'sent' },
+      { id: 'm_7', from: 'u_me', text: 'Editable message', offsetMs: -5 * 60 * 1000, status: 'sent' }
     ],
     readStates: [
       // Mark m_1 and m_2 as read for u_me

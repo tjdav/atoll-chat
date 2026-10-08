@@ -83,5 +83,10 @@ export default {
   composer_send_label: 'Nachricht senden',
   menu_copy: 'Kopieren',
   menu_delete_for_me: 'Für mich löschen',
-  menu_unsend: 'Senden zurückziehen'
+  menu_unsend: 'Senden zurückziehen',
+  menu_edit: 'Bearbeiten',
+  composer_edit_banner: 'Bearbeiten',
+  composer_edit_cancel_label: 'Bearbeitung abbrechen',
+  composer_edit_save_label: 'Bearbeitung speichern',
+  bubble_edited_label: 'Bearbeitet'
 }
