@@ -1,0 +1,43 @@
+{
+  "name": "@atoll/recipes",
+  "version": "0.0.0",
+  "description": "The bot recipe engine. Turns intent into a running bot by composing verified primitives.",
+  "type": "module",
+  "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "main": "./src/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "atoll-recipes": "./src/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./src/server/index.js"
+    }
+  },
+  "files": [
+    "src",
+    "dist",
+    "recipes",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "test:canary": "tsc --noEmit",
+    "test:unit": "node --test tests/unit/",
+    "test:integration": "node --test tests/integration/",
+    "test": "pnpm test:canary && pnpm test:unit && pnpm test:integration",
+    "lint": "eslint src tests",
+    "validate": "pnpm lint && pnpm test && pnpm build"
+  },
+  "devDependencies": {}
+}
