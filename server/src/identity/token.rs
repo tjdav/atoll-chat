@@ -94,10 +94,10 @@ mod tests {
             Err(TokenError::InvalidToken)
         );
 
-        // Non-64-byte payload (e.g. padded or wrong length)
-        let wrong_bytes_token = "A".repeat(86);
+        // Wrong length token
+        let wrong_len_token = "A".repeat(85);
         assert_eq!(
-            sender_ref_from_username_token(&wrong_bytes_token),
+            sender_ref_from_username_token(&wrong_len_token),
             Err(TokenError::InvalidToken)
         );
     }

@@ -17,6 +17,7 @@ pub mod models;
 pub mod oprf;
 pub mod pending_removes;
 pub mod preferences;
+pub mod publisher_keys;
 pub mod push_subscriptions;
 pub mod reactions;
 pub mod read_state;
