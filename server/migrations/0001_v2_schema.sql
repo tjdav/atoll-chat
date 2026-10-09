@@ -149,6 +149,15 @@ CREATE TABLE IF NOT EXISTS room_epochs (
     updated_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS room_publisher_keys (
+    room_id              TEXT PRIMARY KEY REFERENCES rooms(id) ON DELETE CASCADE,
+    epoch                INTEGER NOT NULL,
+    publisher_public_key BLOB NOT NULL,
+    signer_user_id       TEXT NOT NULL REFERENCES users(id),
+    signature            BLOB NOT NULL,
+    published_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Messaging & Reactions
 CREATE TABLE IF NOT EXISTS room_messages (
     id               TEXT PRIMARY KEY,

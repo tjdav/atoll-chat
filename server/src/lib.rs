@@ -41,6 +41,7 @@ pub mod rooms;
 pub mod routes;
 pub mod session;
 pub mod sessions;
+pub mod signing;
 pub mod sockudo;
 pub mod starred;
 pub mod storage;
@@ -444,6 +445,11 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/bots/{bot_id}",
             patch(routes::room_bots::patch_room_bot).delete(routes::room_bots::delete_room_bot),
+        )
+        .route(
+            "/rooms/{id}/publisher-key",
+            get(routes::publisher_keys::get_publisher_key)
+                .post(routes::publisher_keys::publish_publisher_key),
         )
         .route(
             "/rooms/{id}/messages/{message_id}/reactions",
