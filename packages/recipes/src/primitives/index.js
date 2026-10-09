@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { postResponse } from './post-response.js'
+
 /**
  * The primitive registry. Keyed by target, then by primitive id.
  * Only the 'bot' target is populated in v1. The 'extension' key
@@ -8,7 +10,9 @@
  * @type {Record<RecipeTarget, Record<string, Primitive>>}
  */
 export const primitives = {
-  bot: {},
+  bot: {
+    [postResponse.id]: postResponse
+  },
   extension: {}
 }
 
