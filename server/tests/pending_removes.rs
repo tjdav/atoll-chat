@@ -388,7 +388,7 @@ async fn test_pending_removes_xor_check() {
         .await
         .unwrap();
 
-    sqlx::query("INSERT INTO bot_accounts (id, display_name, owner_user_id) VALUES ('b_xor', 'Bot XOR', 'u_xor')")
+    sqlx::query("INSERT INTO bot_accounts (id, display_name, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES ('b_xor', 'Bot XOR', 'u_xor', 'pk_id', 'pk_cmd', 'pk_mls')")
         .execute(&pool)
         .await
         .unwrap();
@@ -424,7 +424,7 @@ async fn test_queue_pending_mls_remove_batch() {
         .unwrap();
 
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, owner_user_id) VALUES ('b_q', 'Bot Q', 'u_q')",
+        "INSERT INTO bot_accounts (id, display_name, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES ('b_q', 'Bot Q', 'u_q', 'pk_id', 'pk_cmd', 'pk_mls')",
     )
     .execute(&mut *tx)
     .await
@@ -497,7 +497,7 @@ async fn test_pending_removes_stale_timeout_job() {
         .await
         .unwrap();
 
-    sqlx::query("INSERT INTO bot_accounts (id, display_name, owner_user_id) VALUES ('b_stale', 'Bot Stale', ?)")
+    sqlx::query("INSERT INTO bot_accounts (id, display_name, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES ('b_stale', 'Bot Stale', ?, 'pk_id', 'pk_cmd', 'pk_mls')")
         .bind(&user_owner)
         .execute(&pool)
         .await

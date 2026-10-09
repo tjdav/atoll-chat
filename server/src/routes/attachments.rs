@@ -426,7 +426,7 @@ pub async fn upload_avatar(
     Ok((StatusCode::CREATED, res_headers, Json(view)))
 }
 
-async fn get_effective_user_file_size_limit(
+pub(crate) async fn get_effective_user_file_size_limit(
     pool: &SqlitePool,
     user_id: &str,
     config: &Config,
@@ -448,7 +448,7 @@ async fn get_effective_user_file_size_limit(
     Ok(effective as u64)
 }
 
-async fn parse_multipart_strict_single_file(
+pub(crate) async fn parse_multipart_strict_single_file(
     room_id: Option<&str>,
     uploader_id: &str,
     mut multipart: Multipart,

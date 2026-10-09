@@ -17,6 +17,7 @@ help:
 	@echo "  make test-push         Push subscriptions, Web Push, VAPID, delivery, APNs, FCM"
 	@echo "  make test-sync         User-scoped sync foundation, sequence allocation, sync endpoint, channel auth"
 	@echo "  make test-link-preview Link preview proxy, Content Key encryption, SSRF guard, size limits, and rate limiting"
+	@echo "  make test-bots         Bot account CRUD, tokens, declared scopes, room grants, and avatar"
 	@echo "  make test-all          Run all batches sequentially"
 	@echo "  make check-batches     Verify no orphan test files"
 	@echo ""
@@ -67,8 +68,12 @@ test-sync:
 test-link-preview:
 	$(CARGO) test --test extension_proxy --test link_preview
 
+.PHONY: test-bots
+test-bots:
+	$(CARGO) test --test bots --test room_bots
+
 .PHONY: test-all
-test-all: check-batches test-identity test-auth test-messaging test-storage test-oprf test-operations test-transport test-sockudo test-push test-sync test-link-preview
+test-all: check-batches test-identity test-auth test-messaging test-storage test-oprf test-operations test-transport test-sockudo test-push test-sync test-link-preview test-bots
 	@echo ""
 	@echo "All batches passed."
 

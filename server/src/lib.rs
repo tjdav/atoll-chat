@@ -3,6 +3,7 @@ pub mod attachments;
 pub mod audit;
 pub mod auth;
 pub mod backup;
+pub mod bots;
 pub mod calls;
 pub mod cleanup;
 pub mod cli;
@@ -127,6 +128,7 @@ pub struct AppState {
     pub occupancy: sessions::OccupancyStore,
     pub call_occupancy: calls::CallOccupancyStore,
     pub extension_proxy_blocklist: Arc<extensions_proxy::blocklist::DomainBlocklistStore>,
+    pub bot_connection_state: bots::BotConnectionState,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -418,6 +420,30 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/messages/{message_id}",
             patch(routes::room_messages::edit).delete(routes::room_messages::delete_message),
+        )
+        .route("/bots", post(routes::bots::create_bot))
+        .route(
+            "/bots/{id}",
+            get(routes::bots::get_bot)
+                .patch(routes::bots::patch_bot)
+                .delete(routes::bots::delete_bot),
+        )
+        .route("/bots/{id}/tokens", post(routes::bots::create_token))
+        .route(
+            "/bots/{id}/tokens/{token_id}",
+            delete(routes::bots::delete_token),
+        )
+        .route(
+            "/bots/{id}/avatar",
+            post(routes::bots::upload_bot_avatar).delete(routes::bots::delete_bot_avatar),
+        )
+        .route(
+            "/rooms/{id}/bots",
+            get(routes::room_bots::list_room_bots).post(routes::room_bots::grant_bot),
+        )
+        .route(
+            "/rooms/{id}/bots/{bot_id}",
+            patch(routes::room_bots::patch_room_bot).delete(routes::room_bots::delete_room_bot),
         )
         .route(
             "/rooms/{id}/messages/{message_id}/reactions",

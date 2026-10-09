@@ -101,6 +101,7 @@ async fn test_end_to_end_backup_and_restore() {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        bot_connection_state: server::bots::BotConnectionState::new(),
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
