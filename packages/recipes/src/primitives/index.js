@@ -5,6 +5,7 @@ import { sendLocal } from './send-local.js'
 import { watchPattern } from './watch-pattern.js'
 import { keyedStore } from './keyed-store.js'
 import { exposeCommand } from './expose-command.js'
+import { scheduleTask } from './schedule-task.js'
 import { webhookReceive } from './webhook-receive.js'
 
 /**
@@ -21,6 +22,7 @@ export const primitives = {
     [watchPattern.id]: watchPattern,
     [keyedStore.id]: keyedStore,
     [exposeCommand.id]: exposeCommand,
+    [scheduleTask.id]: scheduleTask,
     [webhookReceive.id]: webhookReceive
   },
   extension: {}
