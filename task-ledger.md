@@ -266,14 +266,20 @@
   - **Delivered:** Step 0 Empirical Report at `verification/starred-items-v3-align/report.md`, expanded V3 contract tests in `server/tests/starred_items.rs`, `verification.md`. Verified V3 spec against canonical V2 Task 42 fact (100% match across all 17 items, verification-only task).
   - **Batch:** `sync`
 
+- **Task — Room Order Dedicated Table (Phase 25)**: done
+  - **Migration:** Added `user_room_order` table to `server/migrations/0001_v2_schema.sql` per §7.2 with index `idx_user_room_order_seq`.
+  - **Delivered:** Step 0 Empirical Report at `verification/room-order-table/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/sync/room_order.rs`, `server/src/sync/mod.rs`, `server/src/routes/room_order.rs`, `server/src/routes/mod.rs`, `server/src/lib.rs`, `server/src/routes/sync.rs`, `server/src/sync/query.rs`, `server/src/gdpr.rs`, `server/tests/room_order.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Contract Highlights:** Implemented `user_room_order` dedicated table per §7.2, `PATCH /users/me/room-order` handler per §8.2.6, `room_order.sync` event publishing per §8.9 (`{ "room_ids": [...], "user_seq": N }`), duplicate and non-member room validation (HTTP 400 `invalid_room_ids` / HTTP 403 `not_a_member`), `rooms_per_user` length cap enforcement (HTTP 400 `too_many_rooms`), no-op guard (unchanged list skips `user_seq` allocation and event emission), top-level `room_order` sync response field integration in `GET /users/me/sync`, GDPR deletion in `anonymise_user`, and `room_order.json` ZIP export member in `build_export`.
+  - **Batch:** `sync`
+
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 54
-- **Done:** 53
+- **Total Verifications/Tasks Tracked:** 55
+- **Done:** 54
 - **Pending:** 1
 - **In-Progress:** 0
 - **Mismatches:** 0

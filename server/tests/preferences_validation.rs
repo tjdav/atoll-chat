@@ -154,28 +154,32 @@ async fn test_preference_value_size_and_missing_field() {
     assert_eq!(res["error"], "missing_field");
     assert_eq!(res["details"]["field"], "value");
 
-    // 2. Exactly 64 KB value serialized
-    // "a..." with quotes is serialized size. "a" * (65536 - 2) = 65534 chars -> + 2 quotes = 65536 bytes.
-    let exact_64k_str = "a".repeat(65_534);
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+
+    // 2. Exactly max allowed encrypted bytes (default 131,072 bytes decoded)
+    let exact_bytes = vec![0u8; 131_072];
+    let exact_b64 = URL_SAFE_NO_PAD.encode(&exact_bytes);
     let req = Request::builder()
         .method("PATCH")
         .uri("/api/v1/users/me/preferences/exact-size")
         .header(header::AUTHORIZATION, format!("Bearer {token}"))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "value": exact_64k_str }).to_string()))
+        .body(Body::from(json!({ "value": exact_b64 }).to_string()))
         .unwrap();
 
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 
-    // 3. 64 KB + 1 byte value
-    let too_large_str = "a".repeat(65_535); // 65535 chars + 2 quotes = 65537 bytes
+    // 3. Exceeds max allowed encrypted bytes (131,073 bytes decoded)
+    let too_large_bytes = vec![0u8; 131_073];
+    let too_large_b64 = URL_SAFE_NO_PAD.encode(&too_large_bytes);
     let req = Request::builder()
         .method("PATCH")
         .uri("/api/v1/users/me/preferences/large-size")
         .header(header::AUTHORIZATION, format!("Bearer {token}"))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "value": too_large_str }).to_string()))
+        .body(Body::from(json!({ "value": too_large_b64 }).to_string()))
         .unwrap();
 
     let resp = app.clone().oneshot(req).await.unwrap();
@@ -186,6 +190,6 @@ async fn test_preference_value_size_and_missing_field() {
         .unwrap();
     let res: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(res["error"], "value_too_large");
-    assert_eq!(res["details"]["limit"], 65536);
-    assert_eq!(res["details"]["size"], 65537);
+    assert_eq!(res["details"]["limit"], 131072);
+    assert_eq!(res["details"]["size"], 131073);
 }

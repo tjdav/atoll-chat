@@ -155,7 +155,7 @@ async fn test_read_state_write_endpoints() {
     )
     .await;
 
-    // 1. Write creates a row & returns user_seq = 1
+    // 1. Write creates a row & returns user_seq = 2
     let req = Request::builder()
         .method("POST")
         .uri("/api/v1/users/me/read-state")
@@ -187,10 +187,10 @@ async fn test_read_state_write_endpoints() {
     let body: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(body["room_id"], room_a_id);
     assert_eq!(body["last_read_message_id"], msg_a1_id);
-    assert_eq!(body["user_seq"], 1);
+    assert_eq!(body["user_seq"], 2);
     assert!(body["deleted_at"].is_null());
 
-    // 2. Second write advances user_seq to 2
+    // 2. Second write advances user_seq to 3
     let req = Request::builder()
         .method("POST")
         .uri("/api/v1/users/me/read-state")
@@ -211,7 +211,7 @@ async fn test_read_state_write_endpoints() {
         .await
         .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(body["user_seq"], 2);
+    assert_eq!(body["user_seq"], 3);
 
     // 3. Write with last_read_message_id: null succeeds
     let req = Request::builder()
@@ -348,7 +348,7 @@ async fn test_read_state_write_endpoints() {
         .await
         .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(body["user_seq"], 1);
+    assert_eq!(body["user_seq"], 2);
 
     // 9. Resurrecting deleted_at
     sqlx::query(

@@ -41,6 +41,7 @@ pub async fn get_sync(
             sync::SyncError::Serialization(msg) => ApiError::Internal(anyhow::anyhow!(msg)),
             sync::SyncError::ReadState(err) => ApiError::Internal(err.into()),
             sync::SyncError::Preferences(err) => ApiError::Internal(err.into()),
+            sync::SyncError::RoomOrder(err) => ApiError::Internal(err.into()),
         })?;
 
     let mut headers = HeaderMap::new();

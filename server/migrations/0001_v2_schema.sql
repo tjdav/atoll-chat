@@ -304,6 +304,16 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 CREATE INDEX IF NOT EXISTS idx_user_preferences_seq ON user_preferences(user_id, user_seq);
 
+CREATE TABLE IF NOT EXISTS user_room_order (
+    user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    room_id     TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    position    INTEGER NOT NULL,
+    user_seq    INTEGER NOT NULL,
+    updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, room_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_room_order_seq ON user_room_order(user_id, user_seq);
+
 CREATE TABLE IF NOT EXISTS starred_items (
     user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     item_id    TEXT NOT NULL,

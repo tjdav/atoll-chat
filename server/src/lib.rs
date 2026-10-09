@@ -321,6 +321,10 @@ pub fn build_app(state: AppState) -> Router {
         .route("/users/me/devices", get(routes::devices::list))
         .route("/users/me/read-state", post(routes::read_state::write))
         .route(
+            "/users/me/room-order",
+            patch(routes::room_order::patch_room_order),
+        )
+        .route(
             "/users/me/preferences/{key}",
             get(routes::preferences::get)
                 .patch(routes::preferences::write)

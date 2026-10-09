@@ -1162,3 +1162,23 @@
   - **Limits & Rate Limit:** Hard max 100,000, default 10,000. Counts active stars (`deleted_at IS NULL`). Breach returns 409 `starred_items_limit_reached`. Rate limit reuses `RateLimitKey::Edit` (`RATE_EDIT_PER_MIN`, default 30/min).
   - **Sync & GDPR & Pruning:** Sync response includes `starred_items` with tombstones when `since_seq` is set; `max_seq` reflects highest `user_seq`. GDPR deletion removes user rows; data export includes `starred_items.json`. Tombstones pruned after retention period by `SyncPruningJob`.
 - **Link to report:** [verification/starred-items-v3-align/report.md](verification/starred-items-v3-align/report.md)
+
+## Task — Room Order Dedicated Table (Phase 25)
+- **ID:** Room Order Dedicated Table
+- **Date:** 2026-10-08
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §5.28, §6.29, §7.2, §8.2.4, §8.2.6, §8.9, §14.2, §14.3
+- **Question asked:** What is the ground truth for room order table schema, endpoint shapes, event shapes, no-op guard, size limits, room membership validation, sync response integration, preferences reserved key enforcement, and GDPR handling?
+- **Answer found:**
+  - **Schema:** `user_room_order` table in `server/migrations/0001_v2_schema.sql` (`user_id`, `room_id`, `position`, `user_seq`, `updated_at`, PK `(user_id, room_id)`). Index `idx_user_room_order_seq` on `(user_id, user_seq)`.
+  - **PATCH /users/me/room-order:** Requires auth. Request `{ "room_ids": ["r1", "r2"] }`.
+  - **Validation:**
+    - `room_ids` must be an array of strings. Duplicate `room_id`s reject with 400 `invalid_room_ids`.
+    - Every `room_id` must be a room the caller is an active member of (`room_members`). Non-member room IDs reject with 403 `not_a_member`.
+    - Array length must not exceed effective `rooms_per_user` limit. Exceeding limit rejects with 400 `too_many_rooms`.
+    - Empty array `{ "room_ids": [] }` is valid; clears room order for user.
+  - **No-Op Guard & Write Path:** If `room_ids` is byte-for-byte identical to current stored room order array in exact order: skip write, do not allocate `user_seq`, do not publish `room_order.sync`, return 200 OK. Otherwise: allocate `user_seq` in transaction, delete existing `user_room_order` rows, insert new rows with `position = index`, commit, publish `room_order.sync` (`{ "room_ids": [...], "user_seq": N }`) on `private-user-{user_id}`.
+  - **Sync Integration:** `GET /users/me/sync` returns `room_order: { "room_ids": [...], "user_seq": N }` or `null`.
+  - **GDPR & Pruning:** Account deletion removes `user_room_order` rows. Data export includes `room_order.json`. Sync pruning skips `user_room_order` because it has no `deleted_at` column (physical replacement).
+  - **Preferences Reserved Key:** `PATCH /users/me/preferences/room_order` returns 400 `reserved_key`.
+- **Link to report:** [verification/room-order-table/report.md](verification/room-order-table/report.md)
