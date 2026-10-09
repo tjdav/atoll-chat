@@ -42,6 +42,7 @@ export default [
       'tests/unit/storage-plugin.test.js',
       'tests/unit/storage-plugin-config.test.js',
       'tests/unit/state.test.js',
+      'tests/unit/state-plugin.test.js',
       'tests/unit/repositories-users.test.js',
       'tests/unit/repositories-rooms.test.js',
       'tests/unit/repositories-room-members.test.js',
@@ -95,7 +96,8 @@ export default [
       'tests/component/message-versions-sheet.spec.js',
       'tests/component/ui-sheet.spec.js',
       'tests/component/reactions.spec.js',
-      'tests/component/floating-positioning.spec.js'
+      'tests/component/floating-positioning.spec.js',
+      'tests/component/state-plugin.spec.js'
     ]
   },
   {
