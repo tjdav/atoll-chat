@@ -14,6 +14,11 @@ class FakeWebSocket {
   /** @type {FakeWebSocket[]} */
   static instances = []
 
+  static CONNECTING = 0
+  static OPEN = 1
+  static CLOSING = 2
+  static CLOSED = 3
+
   constructor (url) {
     this.url = url
     /** @type {any[]} */
@@ -64,13 +69,18 @@ class FakeWebSocket {
   }
 }
 
+/** @type {any} */
+const WSImpl = FakeWebSocket
+
 function makeConfig (url, tmpDir) {
-  return {
+  /** @type {any} */
+  const cfg = {
     serverUrl: url,
     botToken: 'session-token',
     handlerTimeoutMs: 5000,
     keystorePath: path.join(tmpDir, 'test-keystore')
   }
+  return cfg
 }
 
 function makeKeystoreData () {
@@ -275,7 +285,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -295,7 +305,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -315,7 +325,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -336,7 +346,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -361,7 +371,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot, calls } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -382,7 +392,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise1 = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -406,7 +416,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         await assert.rejects(() => runtime.start())
       } finally {
@@ -423,7 +433,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -447,7 +457,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot, calls } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -470,7 +480,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot, calls } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -492,7 +502,7 @@ describe('Bot Runtime Unit Tests', () => {
       const { bot } = makeBot()
       const config = makeConfig('http://127.0.0.1:9999', tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
       await runtime.stop()
     })
@@ -506,7 +516,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -538,7 +548,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -573,7 +583,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -608,7 +618,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot, calls, getGrantUpdatedArgs } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -645,7 +655,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -681,7 +691,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -719,7 +729,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -751,7 +761,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -786,7 +796,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -820,7 +830,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -844,7 +854,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -877,7 +887,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -901,7 +911,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -926,7 +936,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -950,7 +960,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -974,7 +984,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -998,7 +1008,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -1044,7 +1054,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -1074,7 +1084,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -1099,7 +1109,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
@@ -1131,7 +1141,7 @@ describe('Bot Runtime Unit Tests', () => {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
         await new Promise((r) => setTimeout(r, 10))
