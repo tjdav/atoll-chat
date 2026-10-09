@@ -98,5 +98,9 @@ export default {
   menu_react_label_2: '嬉しさでリアクション',
   menu_react_label_3: '驚きでリアクション',
   menu_react_label_4: '悲しさでリアクション',
-  menu_react_label_5: 'お祝いでリアクション'
+  menu_react_label_5: 'お祝いでリアクション',
+  menu_reply: '返信',
+  reply_preview_close_label: '返信をキャンセル',
+  reply_snippet_deleted: 'メッセージは削除されました',
+  reply_snippet_attachment: '添付ファイル'
 }
