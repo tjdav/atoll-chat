@@ -9,6 +9,7 @@ import { scheduleTask } from './schedule-task.js'
 import { webhookReceive } from './webhook-receive.js'
 import { httpFetch } from './http-fetch.js'
 import { settingsRead } from './settings-read.js'
+import { settingsWrite } from './settings-write.js'
 
 /**
  * The primitive registry. Keyed by target, then by primitive id.
@@ -27,7 +28,8 @@ export const primitives = {
     [scheduleTask.id]: scheduleTask,
     [webhookReceive.id]: webhookReceive,
     [httpFetch.id]: httpFetch,
-    [settingsRead.id]: settingsRead
+    [settingsRead.id]: settingsRead,
+    [settingsWrite.id]: settingsWrite
   },
   extension: {}
 }
