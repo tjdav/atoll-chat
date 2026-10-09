@@ -8,7 +8,6 @@
       <button ref="emoji4" type="button" class="menu__emoji" aria-label="{{ menu_react_label_4 }}">😢</button>
       <button ref="emoji5" type="button" class="menu__emoji" aria-label="{{ menu_react_label_5 }}">🎉</button>
     </div>
-    <button ref="reply" type="button" class="menu__item" role="menuitem" hidden="{{ replyHidden }}">{{ menu_reply }}</button>
     <button ref="edit" type="button" class="menu__item" role="menuitem" hidden="{{ editHidden }}">{{ menu_edit }}</button>
     <button ref="copy" type="button" class="menu__item" role="menuitem" hidden="{{ copyHidden }}">{{ menu_copy }}</button>
     <button ref="unsend" type="button" class="menu__item" role="menuitem" hidden="{{ unsendHidden }}">{{ menu_unsend }}</button>
@@ -92,7 +91,6 @@ export default defineComponent({
     x: { type: Number, default: 0 },
     y: { type: Number, default: 0 },
     messageId: { type: String, default: '' },
-    canReply: { type: Boolean, default: true },
     canUnsend: { type: Boolean, default: false },
     canCopy: { type: Boolean, default: true },
     canEdit: { type: Boolean, default: false },
@@ -101,7 +99,6 @@ export default defineComponent({
 
   getters: {
     menuHidden: ({ state }) => !state.open,
-    replyHidden: ({ state }) => !state.canReply,
     editHidden: ({ state }) => !state.canEdit,
     copyHidden: ({ state }) => !state.canCopy,
     unsendHidden: ({ state }) => !state.canUnsend,
@@ -117,7 +114,6 @@ export default defineComponent({
     return {
       locale: i18n.getLocale(),
       ...i18n.strings([
-        'menu_reply',
         'menu_edit',
         'menu_copy',
         'menu_delete_for_me',
@@ -133,24 +129,24 @@ export default defineComponent({
   },
 
   client({ state, refs, emit, i18n, signal }) {
-    const updateLocale = (locale) => {
-      state.locale = locale
-      Object.assign(state, i18n.strings([
-        'menu_reply',
-        'menu_edit',
-        'menu_copy',
-        'menu_delete_for_me',
-        'menu_unsend',
-        'menu_react_label_0',
-        'menu_react_label_1',
-        'menu_react_label_2',
-        'menu_react_label_3',
-        'menu_react_label_4',
-        'menu_react_label_5'
-      ]))
-    }
-    updateLocale(i18n.getLocale())
-    i18n.subscribeLocale(updateLocale, { signal })
+    i18n.subscribeLocale(
+      (locale) => {
+        state.locale = locale
+        Object.assign(state, i18n.strings([
+          'menu_edit',
+          'menu_copy',
+          'menu_delete_for_me',
+          'menu_unsend',
+          'menu_react_label_0',
+          'menu_react_label_1',
+          'menu_react_label_2',
+          'menu_react_label_3',
+          'menu_react_label_4',
+          'menu_react_label_5'
+        ]))
+      },
+      { signal }
+    )
 
     const emojis = ['👍', '❤️', '😂', '😮', '😢', '🎉']
     emojis.forEach((emoji, index) => {
@@ -160,10 +156,6 @@ export default defineComponent({
         emit('menu:react', { messageId: state.messageId, reaction: emoji })
       }, { signal })
     })
-
-    refs('reply').addEventListener('click', () => {
-      emit('menu:reply', { messageId: state.messageId })
-    }, { signal })
 
     refs('edit').addEventListener('click', () => {
       emit('menu:edit', { messageId: state.messageId })

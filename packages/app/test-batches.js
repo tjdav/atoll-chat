@@ -47,7 +47,6 @@ export default [
       'tests/unit/repositories-room-members.test.js',
       'tests/unit/repositories-room-order.test.js',
       'tests/unit/repositories-messages.test.js',
-    'tests/unit/reply.test.js',
       'tests/unit/repositories-attachments.test.js',
       'tests/unit/repositories-reactions.test.js',
       'tests/unit/repositories-read-state.test.js',
@@ -107,7 +106,6 @@ export default [
       'tests/component/register-form.spec.js',
       'tests/component/messenger-boot.spec.js',
       'tests/component/auth-recovery.spec.js',
-    'tests/component/message-reply.spec.js',
       'tests/component/sync.spec.js'
     ]
   },

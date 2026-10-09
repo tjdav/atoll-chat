@@ -98,9 +98,5 @@ export default {
   menu_react_label_2: 'Réagir avec de la joie',
   menu_react_label_3: 'Réagir avec surprise',
   menu_react_label_4: 'Réagir avec de la tristesse',
-  menu_react_label_5: 'Réagir avec de la fête',
-  menu_reply: 'Répondre',
-  reply_preview_close_label: 'Annuler la réponse',
-  reply_snippet_deleted: 'Message supprimé',
-  reply_snippet_attachment: 'Pièce jointe'
+  menu_react_label_5: 'Réagir avec de la fête'
 }

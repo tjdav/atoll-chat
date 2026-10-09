@@ -165,13 +165,6 @@ test('sendMessage decryptedPayload is valid JSON string', async () => {
   assert.deepEqual(parsed, { type: 'text', text: 'hello' })
 })
 
-test('sendMessage with replyTo passes replyTo to messages.upsert', async () => {
-  const { deps, calls } = makeDeps()
-  await sendMessage({ deps, roomId: 'r_1', text: 'hello', replyTo: 'm_parent' })
-  assert.equal(calls.messagesUpsert.length, 1)
-  assert.equal(calls.messagesUpsert[0].replyTo, 'm_parent')
-})
-
 test('sendMessage error in messages.upsert propagates and halts flow', async () => {
   const { deps, calls } = makeDeps()
   deps.repos.messages.upsert = async () => {

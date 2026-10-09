@@ -13,13 +13,6 @@
     </button>
 
     <footer class="chat__composer">
-      <message-reply-preview
-        ref="replyPreview"
-        sender-name="{{ replyPreviewSender }}"
-        snippet="{{ replyPreviewSnippet }}"
-        close-label="{{ reply_preview_close_label }}"
-        hidden="{{ replyPreviewHidden }}"
-      ></message-reply-preview>
       <message-composer
         ref="composer"
         placeholder="{{ chat_composer_placeholder }}"
@@ -42,7 +35,6 @@
       x="{{ menuX }}"
       y="{{ menuY }}"
       message-id="{{ menuMessageId }}"
-      can-reply="{{ menuCanReply }}"
       can-unsend="{{ menuCanUnsend }}"
       can-copy="{{ menuCanCopy }}"
       can-edit="{{ menuCanEdit }}"
@@ -144,7 +136,6 @@ export default defineComponent({
     menuX: { type: Number, default: 0 },
     menuY: { type: Number, default: 0 },
     menuMessageId: { type: String, default: '' },
-    menuCanReply: { type: Boolean, default: true },
     menuCanUnsend: { type: Boolean, default: false },
     menuCanCopy: { type: Boolean, default: true },
     menuCanEdit: { type: Boolean, default: false },
@@ -154,16 +145,11 @@ export default defineComponent({
     editingMessageId: { type: String, default: '' },
     versionsSheetOpen: { type: Boolean, default: false },
     versionsSheetMessageId: { type: String, default: '' },
-    versionsSheetHistoryJson: { type: String, default: '[]' },
-    replyPreviewVisible: { type: Boolean, default: false },
-    replyPreviewSender: { type: String, default: '' },
-    replyPreviewSnippet: { type: String, default: '' },
-    replyToMessageId: { type: String, default: '' }
+    versionsSheetHistoryJson: { type: String, default: '[]' }
   },
 
   getters: {
-    scrollBtnHidden: ({ state }) => !state.showScrollBtn,
-    replyPreviewHidden: ({ state }) => !state.replyPreviewVisible
+    scrollBtnHidden: ({ state }) => !state.showScrollBtn
   },
 
   server({ i18n }) {
@@ -174,7 +160,6 @@ export default defineComponent({
       menuX: 0,
       menuY: 0,
       menuMessageId: '',
-      menuCanReply: true,
       menuCanUnsend: false,
       menuCanCopy: true,
       menuCanEdit: false,
@@ -185,10 +170,6 @@ export default defineComponent({
       versionsSheetOpen: false,
       versionsSheetMessageId: '',
       versionsSheetHistoryJson: '[]',
-      replyPreviewVisible: false,
-      replyPreviewSender: '',
-      replyPreviewSnippet: '',
-      replyToMessageId: '',
       ...i18n.strings([
         'chat_scroll_to_bottom',
         'chat_new_messages_divider',
@@ -198,7 +179,6 @@ export default defineComponent({
         'chat_composer_readaloud_label',
         'chat_composer_input_label',
         'chat_composer_send_label',
-        'menu_reply',
         'menu_edit',
         'composer_edit_banner',
         'composer_edit_cancel_label',
@@ -213,11 +193,7 @@ export default defineComponent({
         'menu_react_label_2',
         'menu_react_label_3',
         'menu_react_label_4',
-        'menu_react_label_5',
-        'reply_preview_close_label',
-        'reply_snippet_deleted',
-        'reply_snippet_attachment',
-        'chats_preview_you_prefix'
+        'menu_react_label_5'
       ])
     }
   },
@@ -239,50 +215,45 @@ export default defineComponent({
     const { isEditAvailable, editMessage } = await import('../../lib/views/edit-message.js')
     const { buildHistory } = await import('../../lib/views/edit-history.js')
     const { toggleReaction, isReactionAllowed } = await import('../../lib/views/reactions.js')
-    const { buildReplyContext, isReplyAllowed, truncateQuote } = await import('../../lib/views/reply.js')
     const { buildTextPayload, encodePayload, encodeCiphertextStub } = await import('../../lib/composer/index.js')
 
     let currentRoomId = null
     let clientId = (await storage?.meta?.get('client_id')) || 'c_me'
 
-    const updateLocale = (locale) => {
-      state.locale = locale
-      Object.assign(
-        state,
-        i18n.strings([
-          'chat_scroll_to_bottom',
-          'chat_new_messages_divider',
-          'chat_composer_placeholder',
-          'chat_composer_attach_label',
-          'chat_composer_emoji_label',
-          'chat_composer_readaloud_label',
-          'chat_composer_input_label',
-          'chat_composer_send_label',
-          'menu_reply',
-          'menu_edit',
-          'composer_edit_banner',
-          'composer_edit_cancel_label',
-          'composer_edit_save_label',
-          'bubble_edited_label',
-          'edit_history_title',
-          'edit_history_current_label',
-          'edit_history_original_label',
-          'edit_history_close_label',
-          'menu_react_label_0',
-          'menu_react_label_1',
-          'menu_react_label_2',
-          'menu_react_label_3',
-          'menu_react_label_4',
-          'menu_react_label_5',
-          'reply_preview_close_label',
-          'reply_snippet_deleted',
-          'reply_snippet_attachment',
-          'chats_preview_you_prefix'
-        ])
-      )
-    }
-    updateLocale(i18n.getLocale())
-    i18n.subscribeLocale(updateLocale, { signal })
+    i18n.subscribeLocale(
+      (locale) => {
+        state.locale = locale
+        Object.assign(
+          state,
+          i18n.strings([
+            'chat_scroll_to_bottom',
+            'chat_new_messages_divider',
+            'chat_composer_placeholder',
+            'chat_composer_attach_label',
+            'chat_composer_emoji_label',
+            'chat_composer_readaloud_label',
+            'chat_composer_input_label',
+            'chat_composer_send_label',
+            'menu_edit',
+            'composer_edit_banner',
+            'composer_edit_cancel_label',
+            'composer_edit_save_label',
+            'bubble_edited_label',
+            'edit_history_title',
+            'edit_history_current_label',
+            'edit_history_original_label',
+            'edit_history_close_label',
+            'menu_react_label_0',
+            'menu_react_label_1',
+            'menu_react_label_2',
+            'menu_react_label_3',
+            'menu_react_label_4',
+            'menu_react_label_5'
+          ])
+        )
+      },
+      { signal }
+    )
 
     const threadEl = refs('thread')
     const scrollBtnEl = refs('scrollBtn')
@@ -349,7 +320,6 @@ export default defineComponent({
 
       const userId = globalStore?.$state?.user?.id || 'u_me'
       const rawMessages = (await reposApi.messages.listInRoom(roomId, { limit: 100 })) || []
-      const chronological = rawMessages.slice().reverse()
       const readState = await reposApi.readState.get(userId, roomId)
       const usersList = (await reposApi.users.list({ limit: 100 })) || []
       const usersMap = new Map(usersList.map((u) => [u.user_id, u.display_name]))
@@ -363,7 +333,7 @@ export default defineComponent({
         reactionsByMessage.set(r.message_id, bucket)
       }
 
-      const messages = chronological.map((m) => {
+      const messages = rawMessages.map((m) => {
         const payload = safeParsePayload(m.decrypted_payload)
         const summary = summarizePayload(payload)
         return {
@@ -446,24 +416,6 @@ export default defineComponent({
           }
           bubble.setAttribute('reactions-json', JSON.stringify(chips))
 
-          const rawMsg = rawMessages.find((rm) => rm.message_id === msg.id)
-          if (rawMsg?.reply_to) {
-            const parent = await reposApi.messages.get(rawMsg.reply_to)
-            if (parent) {
-              const parentSummary = summarizePayload(safeParsePayload(parent.decrypted_payload))
-              const parentSenderUser = await reposApi.users.get(parent.sender_user_id)
-              const parentSender = parentSenderUser?.display_name || (parent.sender_user_id === userId ? (state.chats_preview_you_prefix || 'You') : parent.sender_user_id)
-              bubble.setAttribute('has-reply', 'true')
-              bubble.setAttribute('reply-to-sender', parentSender)
-              bubble.setAttribute(
-                'reply-to-snippet',
-                parent.deleted_at
-                  ? (state.reply_snippet_deleted || 'Message deleted')
-                  : (parentSummary.kind === 'text' ? truncateQuote(parentSummary.text) : (state.reply_snippet_attachment || 'Attachment'))
-              )
-            }
-          }
-
           bubble.addEventListener('bubble:contextmenu', async (event) => {
             const { messageId, x, y } = event.detail
             const dbMsg = await reposApi.messages.get(messageId)
@@ -471,7 +423,6 @@ export default defineComponent({
             state.menuMessageId = messageId
             state.menuX = x
             state.menuY = y
-            state.menuCanReply = isReplyAllowed(dbMsg)
             state.menuCanUnsend = isUnsendAvailable(dbMsg, userId)
             state.menuCanCopy = !dbMsg.deleted_at
             state.menuCanEdit = isEditAvailable(dbMsg, userId)
@@ -505,32 +456,16 @@ export default defineComponent({
       }
     }
 
-    const replyPreviewEl = refs('replyPreview')
-    if (replyPreviewEl) {
-      replyPreviewEl.addEventListener('reply-preview:dismiss', () => {
-        state.replyPreviewVisible = false
-        state.replyPreviewSender = ''
-        state.replyPreviewSnippet = ''
-        state.replyToMessageId = ''
-      }, { signal })
-    }
-
     const composerEl = refs('composer') || threadEl?.parentElement?.querySelector('message-composer')
     if (composerEl) {
       composerEl.addEventListener('composer:send', async (event) => {
         const text = event.detail?.text
         if (!text || !currentRoomId) return
-        const replyTo = state.replyPreviewVisible ? state.replyToMessageId : null
         await sendMessage({
-          deps: { repos: reposApi, storage, globalStore, crypto: window.crypto },
+          deps: { repos: reposApi, globalStore, crypto: window.crypto },
           roomId: currentRoomId,
-          text,
-          replyTo
+          text
         })
-        state.replyPreviewVisible = false
-        state.replyPreviewSender = ''
-        state.replyPreviewSnippet = ''
-        state.replyToMessageId = ''
         currentRoomId = null
         await load()
       }, { signal })
@@ -561,27 +496,6 @@ export default defineComponent({
 
     const contextMenuEl = refs('contextMenu')
     if (contextMenuEl) {
-      contextMenuEl.addEventListener('menu:reply', async (event) => {
-        const context = await buildReplyContext({
-          repos: reposApi,
-          parentMessageId: event.detail.messageId,
-          summarizePayload,
-          parsePayload: safeParsePayload
-        })
-        if (!context) {
-          state.menuOpen = false
-          return
-        }
-        const senderUser = await reposApi.users.get(context.senderUserId)
-        state.replyPreviewSender = senderUser?.display_name || context.senderUserId
-        state.replyPreviewSnippet = context.isDeleted
-          ? (state.reply_snippet_deleted || 'Message deleted')
-          : (context.snippet || state.reply_snippet_attachment || 'Attachment')
-        state.replyToMessageId = context.messageId
-        state.replyPreviewVisible = true
-        state.menuOpen = false
-      }, { signal })
-
       contextMenuEl.addEventListener('menu:react', async (event) => {
         const { messageId, reaction } = event.detail
         const userId = globalStore?.$state?.user?.id || 'u_me'

@@ -20,13 +20,13 @@ import {
  * @param {string} options.text Raw message input text
  * @returns {Promise<{ skipped: boolean, reason?: string, messageId?: string, message?: object }>}
  */
-export async function sendMessage({ deps, roomId, text, replyTo = null }) {
+export async function sendMessage({ deps, roomId, text }) {
   const payload = buildTextPayload(text)
   if (!payload) {
     return { skipped: true, reason: 'empty' }
   }
 
-  const userId = deps.globalStore?.$state?.user?.id ?? deps.globalStore?.$state?.currentUser?.id ?? (deps.globalStore ? null : 'u_me')
+  const userId = deps.globalStore?.$state?.currentUser?.id
   if (!userId) {
     return { skipped: true, reason: 'no-user' }
   }
@@ -55,7 +55,7 @@ export async function sendMessage({ deps, roomId, text, replyTo = null }) {
     contentType: 'application',
     ciphertext,
     decryptedPayload,
-    replyTo,
+    replyTo: null,
     editedAt: null,
     deletedAt: null,
     expiresAt: null,

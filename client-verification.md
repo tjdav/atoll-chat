@@ -822,25 +822,6 @@ build task runs.
 | Coralite Feedback Entry | Recorded CF-007 (Tier 4 documentation gap for LLM reference omission of `client.config` in plugin example) |
 | Verification Commands | `pnpm check-batches`, `pnpm test:batch unit-smoke`, `pnpm test:batch component-smoke`, `pnpm --filter @atoll/app build`, `pnpm check:migration-bundle`, `pnpm extensions:vocab` exit zero |
 
-### C-CHAT-12 — Reply / Quote Flow Architecture
-
-**Verified:** 2026-10-08
-
-| Fact / Mechanism | Signature & Behavior |
-|---|---|
-| Pure Orchestration Module | `packages/app/src/lib/views/reply.js` exporting JSDoc-annotated pure functions `truncateQuote`, `buildReplyContext`, `isReplyAllowed`, and `formatReplyPreviewLabel` |
-| Quote Truncation Rules | `truncateQuote(text, { maxLength = 120 })`: returns empty string for empty/null inputs; text unchanged if length <= maxLength; cuts at previous whitespace boundary if present before maxLength and appends `…`; cuts at maxLength if no whitespace exists |
-| Reply Availability Predicate | `isReplyAllowed(message)` returns true for any non-null message object. Tombstone messages can be replied to |
-| Preview Bar Component | `<message-reply-preview>` (`packages/app/src/components/composed/message-reply-preview.html`) wrapped in `defineComponent`, accepting `senderName`, `snippet`, `closeLabel`, emitting `reply-preview:dismiss` on close button click |
-| Context Menu Integration | `<message-context-menu>` adds `canReply` attribute, `menu_reply` key, Reply item button (positioned above Edit), emitting `menu:reply` with `{ messageId }` |
-| Message Bubble Inline Quote | `<message-bubble>` renders `.bubble-quote` above sender name when `hasReply: true` (`has-reply` reflected host attribute). Displays `replyToSender` and `replyToSnippet` with an accent-colored border stripe on left edge |
-| Message Row Persistence | `sendMessage({ deps, roomId, text, replyTo })` in `packages/app/src/lib/views/send-message.js` persists `replyTo` parameter into the local message row (`reply_to` column) |
-| Detail Surface Integration | `<view-chat>` mounts `<message-reply-preview>` in `<footer class="chat__composer">` above `<message-composer>`, wires `menu:reply`, `reply-preview:dismiss`, passes `replyTo` to `sendMessage`, and resolves parent quotes from `repos.messages.get(msg.reply_to)` during thread render loop |
-| Tombstone Quote Rendering | Replying to a soft-deleted message resolves quote snippet to `state.reply_snippet_deleted` ("Message deleted") |
-| Localization & Key Parity | Extended all seven production locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with four new keys (`menu_reply`, `reply_preview_close_label`, `reply_snippet_deleted`, `reply_snippet_attachment`) maintaining 100% key parity (89 keys) |
-| Documentation Path | Section 13 ("Reply / Quote Flow") added to `packages/app/docs/views/chat.md` |
-| Test Suites & Screenshots | `packages/app/tests/unit/reply.test.js` (10 cases) and `packages/app/tests/unit/send-message.test.js` (15 cases) in `unit-smoke`; `packages/app/tests/component/message-reply.spec.js` (11 cases) in `component-smoke`; visual verification artifacts `packages/app/test-results/reply-preview-active.png` and `packages/app/test-results/reply-quote-rendered.png` |
-
 ### C-INFRA-26 — `ui-sheet` Modal and Bottom Sheet Primitive Architecture
 
 **Verified:** 2026-10-08

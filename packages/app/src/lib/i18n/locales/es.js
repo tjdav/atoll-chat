@@ -98,9 +98,5 @@ export default {
   menu_react_label_2: 'Reaccionar con risa',
   menu_react_label_3: 'Reaccionar con sorpresa',
   menu_react_label_4: 'Reaccionar con tristeza',
-  menu_react_label_5: 'Reaccionar con celebración',
-  menu_reply: 'Responder',
-  reply_preview_close_label: 'Cancelar respuesta',
-  reply_snippet_deleted: 'Mensaje eliminado',
-  reply_snippet_attachment: 'Archivo adjunto'
+  menu_react_label_5: 'Reaccionar con celebración'
 }
