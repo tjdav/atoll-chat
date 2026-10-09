@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 43
-- **Done:** 43
+- **Total Tasks:** 44
+- **Done:** 44
 - **In Progress:** 0
 - **Todo:** 0
 
@@ -19,7 +19,8 @@ Track progress across Bot SDK implementation tasks.
 |---|---|---|---|---|
 | B-045 | Documentation | done | §1, §3, §4, §5, §6, §7, §13, §14 | Author the SDK README (`packages/bot/README.md`) and runnable example bot (`examples/echo-bot/`) |
 | B-044 | Testing | done | §13, §13.2, §13.3 | Implement the end-to-end smoke test suite (`smoke.test.js`) and fixture bot (`echo-bot.js`) exercising 26 scenarios |
-| B-043 | Diagnostics | done | §4.5, §14.6, §14.12 | Implement diagnostics capture, retention pruning, and diagnostic file writer (`diag-file-writer.js`, `capture.js`) |
+| B-043a | Diagnostics | done | §4, §14.12 | Fix diagnostics capture ordering in the runtime boot sequence |
+| B-043 | Diagnostics | done | §4.5, §14.6, §14.12 | Implement diagnostics capture, retention pruning, and diagnostic file writer (`diag-file-writer.js`, `capture.js`). Completion contingent on B-043a. B-043's runtime wiring introduced a boot-order bug (diagnostics capture constructed before storage opened). The bug was latent and surfaced at B-046's Step 0. |
 | B-042 | CLI | done | §14.1, §14.2, §14.9 | Implement `sandbox connect`, `sandbox run`, and `sandbox reset` commands and `sandbox` dispatcher |
 | B-041 | CLI | done | §14.1, §14.6 | Implement `dev`, `inspect`, and `tail` developer subcommands and shared `diag-file.js` reader |
 | B-040 | CLI | done | §14.1, §14.9 | Implement export-keys and import-keys CLI subcommands for passphrase-independent keystore portability |

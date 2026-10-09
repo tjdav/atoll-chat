@@ -808,52 +808,6 @@ export function createRuntime ({
     shutdownTracker = createShutdownTracker(effectiveLogger)
     lifecycleController = new AbortController()
 
-    const diagPath = `${config.keystorePath}.diag.jsonl`
-    diagFileWriter = createDiagFileWriter({ path: diagPath, logger: effectiveLogger })
-    await diagFileWriter.truncate()
-
-    /**
-     * Constructs a snapshot of current runtime state for diagnostics.
-     *
-     * @returns {object}
-     */
-    function snapshotState () {
-      return {
-        grants: Array.from(grants.entries()).map(([roomId, g]) => ({
-          roomId,
-          mode: g.mode,
-          scopes: g.scopes
-        })),
-        publisher_keys: [],
-        settings_keys: settingsStore ? settingsStore.keys() : [],
-        storage_keys: storageStore ? storageStore.keys() : [],
-        in_flight: shutdownTracker ? shutdownTracker.inFlightCount() : 0,
-        paused: pausePolicy ? pausePolicy.isPaused() : false,
-        bot_id: botId
-      }
-    }
-
-    const storageForCapture = storage
-    if (!storageForCapture) {
-      throw new Error('storage instance missing')
-    }
-
-    capture = createDiagnosticsCapture({
-      storage: storageForCapture,
-      diagFile: diagFileWriter,
-      logger: effectiveLogger,
-      snapshotState,
-      botId
-    })
-
-    const stateAtISO = new Date().toISOString()
-    const stateData = snapshotState()
-    await diagFileWriter.append({
-      type: 'state',
-      at: stateAtISO,
-      data: stateData
-    })
-
     const apiHttp = createHttpClient({
       serverUrl: `${config.serverUrl ?? ''}/api/v1`,
       botToken: keystoreData?.bot_token ?? '',
@@ -921,6 +875,52 @@ export function createRuntime ({
     idempotency = new IdempotencyStore({
       storage,
       logger
+    })
+
+    const diagPath = `${config.keystorePath}.diag.jsonl`
+    diagFileWriter = createDiagFileWriter({ path: diagPath, logger: effectiveLogger })
+    await diagFileWriter.truncate()
+
+    /**
+     * Constructs a snapshot of current runtime state for diagnostics.
+     *
+     * @returns {object}
+     */
+    function snapshotState () {
+      return {
+        grants: Array.from(grants.entries()).map(([roomId, g]) => ({
+          roomId,
+          mode: g.mode,
+          scopes: g.scopes
+        })),
+        publisher_keys: [],
+        settings_keys: settingsStore ? settingsStore.keys() : [],
+        storage_keys: storageStore ? storageStore.keys() : [],
+        in_flight: shutdownTracker ? shutdownTracker.inFlightCount() : 0,
+        paused: pausePolicy ? pausePolicy.isPaused() : false,
+        bot_id: botId
+      }
+    }
+
+    const storageForCapture = storage
+    if (!storageForCapture) {
+      throw new Error('storage instance missing')
+    }
+
+    capture = createDiagnosticsCapture({
+      storage: storageForCapture,
+      diagFile: diagFileWriter,
+      logger: effectiveLogger,
+      snapshotState,
+      botId
+    })
+
+    const stateAtISO = new Date().toISOString()
+    const stateData = snapshotState()
+    await diagFileWriter.append({
+      type: 'state',
+      at: stateAtISO,
+      data: stateData
     })
 
     // Publisher key cache

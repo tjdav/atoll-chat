@@ -1,5 +1,12 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-043a Verification Fact
+- **Fix diagnostics capture ordering in the runtime boot sequence (`packages/bot/src/runtime/index.js` & `packages/bot/tests/unit/runtime.test.js`)**:
+  - The diagnostics capture must be constructed after `storage.open()` and after the diagnostic file writer is available.
+  - The runtime's boot order: `validate → logger → http clients → capabilities → bot metadata → open storage → idempotency → diag file writer → capture → wrap logger → state line → stores → response methods → command handler → ws → connect → triggers → install → prune`.
+  - The bug and its detection: B-043's tests exercised the capture module in isolation and passed; the runtime tests failed with `storage instance missing`. Detection required running the full test suite (`pnpm --filter @atoll/bot test`).
+  - **Process note**: B-043's close should have included running the full test suite. When a task's constraints say "Pass `pnpm --filter @atoll/bot test`," that command must be run, not just the new batch. Future tasks should treat this as non-negotiable.
+
 ## Task B-045 Verification Fact
 - **Documentation and Example Bot (`packages/bot/README.md`, `examples/echo-bot/`)**:
   - The README lives at `packages/bot/README.md` and is included in the published npm package via the `files` array in `packages/bot/package.json`.
