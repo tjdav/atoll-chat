@@ -196,7 +196,25 @@ Clicking a chip emits `reaction:toggle` with `{ messageId, reaction }`.
 ### 12.5 Aggregation and Deduplication
 The view aggregates reactions per message deduplicated per user (`COUNT(DISTINCT sender_user_id)`). Multi-device reactions from the same user count once.
 
-## 13. Known Limitations and Deferred Features
+## 13. Reply / Quote Flow
+
+The reply / quote flow allows users to reply to any message in the thread.
+
+### 13.1 Context Menu Trigger
+Selecting Reply on `<message-context-menu>` triggers reply mode. Tombstone messages can be replied to (`isReplyAllowed(message)` returns true for any non-null message object).
+
+### 13.2 Preview Bar (`<message-reply-preview>`)
+When replying, `<message-reply-preview>` renders directly above the composer inside `<footer class="chat__composer">`. It displays the sender's display name and a truncated snippet of the parent message (cut at word boundary or 120 chars max via `truncateQuote`). Clicking the preview close button (`✕`) emits `reply-preview:dismiss` and clears the active reply state.
+
+### 13.3 Quote Rendering in Sent Bubble
+When sending a message with an active reply context, `sendMessage({ deps, roomId, text, replyTo })` persists `replyTo` in the local message row (`reply_to` column).
+During thread rendering:
+- `view-chat` looks up the parent message from `repos.messages.get(msg.reply_to)`.
+- Resolves the parent's sender display name and snippet text (or "Message deleted" for tombstones).
+- Sets `has-reply="true"`, `reply-to-sender`, and `reply-to-snippet` attributes on `<message-bubble>`.
+- `<message-bubble>` renders an inline `.bubble-quote` block at the top of the bubble with an accent-colored border stripe on its left edge.
+
+## 14. Known Limitations and Deferred Features
 
 - **MLS Encryption Deferred**: Payload is stored as plaintext JSON in `decrypted_payload` with a `stub:` marker in `ciphertext`.
 - **Outbox Send Loop Deferred**: Messages remain `localStatus: 'pending'` until the background outbox sender loop is implemented.

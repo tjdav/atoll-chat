@@ -13,17 +13,18 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 2 |
-| Done | 52 |
+| Pending | 1 |
+| Done | 53 |
 | Blocked | 0 |
 
 ## Client Tasks
 
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
+| C-CHAT-12 | Reply / Quote Flow | done | C-CHAT-9, C-CHAT-10, C-CHAT-11, C-CHAT-8, C-INFRA-25, C-INFRA-14 | unit-smoke, component-smoke |
 | C-INFRA-26 | `ui-sheet` Primitive for Modals and Bottom Sheets | done | C-INFRA-23, C-INFRA-25, C-CHAT-7 | component-smoke |
 | C-CHAT-10 | Message Editing (Composer Morph and Edit Orchestration) | done | C-CHAT-9, C-INFRA-25, C-CHAT-8, C-CHAT-7, C-INFRA-14, C-INFRA-23 | unit-smoke, component-smoke |
-| C-CHAT-10b | "Show original" Edit Chain Sheet | pending | C-CHAT-10, C-INFRA-26 | component-smoke |
+| C-CHAT-10b | "Show original" Edit Chain Sheet | done | C-CHAT-10, C-INFRA-26 | component-smoke |
 | C-V-A | Verify repo state and toolchain | done | — | — |
 | C-INFRA-24 | Fix Migration Delivery via `client.config` and Document Plugin Config Pattern | done | C-V-H, C-INFRA-20, C-INFRA-8 | unit-smoke, component-smoke |
 | C-INFRA-23 | Component Data-Attribute Audit and Component Authoring Guide | done | C-CHAT-6, C-INFRA-6b, C-INFRA-6c, C-V-E, C-V-F | unit-smoke |
@@ -500,6 +501,20 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created unit test suite `packages/app/tests/unit/edit-message.test.js` (14 cases) registered in `unit-smoke` batch in `test-batches.js`.
   - Created Playwright component test suite `packages/app/tests/component/message-edit.spec.js` registered in `component-smoke` batch in `test-batches.js`.
   - Added pending follow-on task C-CHAT-10b ("Show original" edit chain sheet).
+
+- **C-CHAT-12 Deliverables & Status:**
+  - Status: `done`.
+  - Created pure helper module `packages/app/src/lib/views/reply.js` exporting `truncateQuote`, `buildReplyContext`, `isReplyAllowed`, and `formatReplyPreviewLabel`.
+  - Created preview bar component `<message-reply-preview>` (`packages/app/src/components/composed/message-reply-preview.html`) wrapped in `defineComponent`, emitting `reply-preview:dismiss`.
+  - Extended `<message-context-menu>` component with `canReply` attribute, `menu_reply` string, `replyHidden` getter, and `menu:reply` listener.
+  - Extended `<message-bubble>` component adding `.bubble-quote` container, `hasReply`, `replyToSender`, and `replyToSnippet` attributes.
+  - Extended `sendMessage({ deps, roomId, text, replyTo })` in `packages/app/src/lib/views/send-message.js` persisting `replyTo` in the message row (`reply_to` column).
+  - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) mounting `<message-reply-preview>` in `<footer class="chat__composer">`, wiring context menu Reply item, preview dismiss listener, `sendMessage` with `replyTo`, and parent quote resolution during thread render loop.
+  - Extended all seven production locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with four new keys (`menu_reply`, `reply_preview_close_label`, `reply_snippet_deleted`, `reply_snippet_attachment`) maintaining 100% key parity (89 keys).
+  - Extended `packages/app/docs/views/chat.md` with Section 13 ("Reply / Quote Flow").
+  - Created unit test suite `packages/app/tests/unit/reply.test.js` (10 cases) and extended `packages/app/tests/unit/send-message.test.js` (15 cases) registered in `unit-smoke` batch in `test-batches.js`.
+  - Created Playwright component test suite `packages/app/tests/component/message-reply.spec.js` (11 cases) registered in `component-smoke` batch in `test-batches.js`.
+  - Generated visual verification artifacts `packages/app/test-results/reply-preview-active.png` and `packages/app/test-results/reply-quote-rendered.png`.
 
 - **C-INFRA-8 Deliverables & Status:**
   - Status: `done`.

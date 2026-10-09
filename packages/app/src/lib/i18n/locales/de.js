@@ -98,5 +98,9 @@ export default {
   menu_react_label_2: 'Mit Lachen reagieren',
   menu_react_label_3: 'Mit Überraschung reagieren',
   menu_react_label_4: 'Mit Traurigkeit reagieren',
-  menu_react_label_5: 'Mit Feier reagieren'
+  menu_react_label_5: 'Mit Feier reagieren',
+  menu_reply: 'Antworten',
+  reply_preview_close_label: 'Antwort abbrechen',
+  reply_snippet_deleted: 'Nachricht gelöscht',
+  reply_snippet_attachment: 'Anhang'
 }

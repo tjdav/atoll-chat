@@ -2,6 +2,11 @@
   <div class="bubble-row" ref="row" data-testid="conversation-row">
     <div class="bubble-stack">
       <div class="bubble" ref="bubble">
+        <div class="bubble-quote" hidden="{{ quoteHidden }}">
+          <span class="bubble-quote__sender">{{ replyToSender }}</span>
+          <span class="bubble-quote__snippet">{{ replyToSnippet }}</span>
+        </div>
+
         <div class="bubble__header" hidden="{{ headerHidden }}">
           <span class="bubble__sender">{{ senderName }}</span>
         </div>
@@ -91,6 +96,45 @@
   display: none;
 }
 
+.bubble-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-1) var(--space-2);
+  margin-bottom: var(--space-1);
+  border-left: 3px solid var(--accent-fill, var(--accent-primary));
+  background: color-mix(in oklab, var(--surface-0) 20%, transparent);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.bubble-quote__sender {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--accent-text, var(--accent-primary));
+}
+
+.bubble-quote__snippet {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:host([is-own]) .bubble-quote {
+  background: color-mix(in oklab, var(--text-on-accent, #ffffff) 15%, transparent);
+}
+
+:host([is-own]) .bubble-quote__sender {
+  color: var(--text-on-accent, #ffffff);
+}
+
+:host([is-own]) .bubble-quote__snippet {
+  color: var(--text-on-accent, #ffffff);
+  opacity: 0.8;
+}
+
 .bubble__header {
   font-size: var(--text-xs);
   font-weight: var(--font-semibold);
@@ -168,10 +212,14 @@ export default defineComponent({
     editedLabel: { type: String, default: 'Edited' },
     isFirstInGroup: { type: Boolean, default: true },
     isLastInGroup: { type: Boolean, default: true },
-    reactionsJson: { type: String, default: '[]' }
+    reactionsJson: { type: String, default: '[]' },
+    replyToSender: { type: String, default: '' },
+    replyToSnippet: { type: String, default: '' },
+    hasReply: { type: Boolean, default: false, reflect: true }
   },
 
   getters: {
+    quoteHidden: ({ state }) => !state.hasReply,
     headerHidden: ({ state }) => state.isOwn || !state.isFirstInGroup || state.isTombstone,
     textHidden: ({ state }) => state.isTombstone,
     tombstoneHidden: ({ state }) => !state.isTombstone,
