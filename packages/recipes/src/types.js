@@ -24,9 +24,9 @@
  *   sentence.
  * @property {object} configSchema - JSON schema for the primitive's
  *   configuration.
- * @property {(config: object, ctx: object) => unknown} create -
- *   Factory that returns the handler or handlers the primitive
- *   produces.
+ * @property {(config: Record<string, unknown>) => unknown} create -
+ *   Factory that takes the primitive's config and returns the
+ *   handler or handlers it produces.
  */
 
 /**
