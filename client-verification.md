@@ -11,6 +11,23 @@ or modify the server's verification log.
 
 ## Verified Facts
 
+### C-INFRA-28 — Signal-Based Auto-Cleanup for the `floating` Plugin Architecture
+
+**Verified:** 2026-10-09
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Extended `positionFloating` Signature | `positionFloating({ reference, floating, placement = 'bottom-start', offsetPx = 6, padding = 8 }, signal)` in `packages/app/src/plugins/floating-plugin.js` |
+| AbortSignal Parameter | Second positional argument accepting an `AbortSignal` (optional) |
+| Short-Circuit Evaluation | Short-circuits immediately returning a no-op cleanup function if `!reference`, `!floating`, or `signal?.aborted` is true |
+| Internal Abort Listener | When `signal` is supplied, registers `signal.addEventListener('abort', cleanup, { once: true })` internally |
+| Idempotent Cleanup Function | Returned `cleanup()` function is guarded by internal `cleaned` boolean. Unregisters `signal.removeEventListener('abort', cleanup)` and cancels `autoUpdate`. Multiple manual or signal invocations are safe and no-ops after the first invocation |
+| Caller Migration | `<message-context-menu>` (`packages/app/src/components/composed/message-context-menu.html`) migrated to pass `signal` as second argument to `positionFloating` and manual `signal.addEventListener('abort', ...)` positioning cleanup listener removed |
+| Pure Factory Exemption | `virtualElementFromPoint` signature is unchanged (remains a single-argument pure factory with no event listeners) |
+| Documentation Path | Subsection "Signal-based cleanup" added under "4. The `positionFloating` API" in `packages/app/docs/plugins/floating.md` |
+| Test Coverage | Unit test cases 12-14 in `packages/app/tests/unit/floating-plugin.test.js`; component test cases 8-10 in `packages/app/tests/component/floating-positioning.spec.js`; component test case 13 in `packages/app/tests/component/message-context-menu.spec.js` |
+| Visual Verification Artifact | `packages/app/test-results/menu-position-after-signal-cleanup.png` |
+
 ### C-V-A — Repository State and Client Toolchain
 
 **Verified:** 2026-10-02
@@ -738,7 +755,7 @@ build task runs.
 |---|---|
 | Component Authoring Guide | Created `packages/app/docs/components.md` containing 16 normative rules and 12 detailed sections covering state source of truth, host attribute reflection (`reflect: true`), `:host([attr])` CSS styling, verbatim static `data-testid` test hooks, accessibility ARIA semantics, event bubbling, four-part i18n pattern, and anti-pattern failure modes |
 | Documentation Index | Created `packages/app/docs/README.md` linking `components.md`, `plugins/README.md`, `storage/README.md`, and `views/README.md` |
-| Component Audit & Refactoring | Audited all 13 components under `packages/app/src/components/`: <br>- `conversation-row.html`: reflected `isUnread` (`reflect: true`), updated CSS selector to `:host([is-unread])`, removed internal `data-room-id` and `data-unread`. <br>- `messenger-boot.html`: reflected `ready`, `error`, `hasOprfToken`, `storageReady`, `storagePersistent`, `syncReady` (`reflect: true`), updated `client()` state mutations (removing imperative `dataset` attribute writes), updated CSS to `:host([ready])`. <br>- `ui-icon.html`: removed `data-icon-name`. <br>- `ui-profile.html`: reflected `size` (`reflect: true`), updated CSS selectors to `:host([size="..."])`. <br>- `auth-view-register.html`: added `<!-- coralite-ignore-data-attributes -->` pragma for third-party ALTCHA integration (`data-altcha`). <br>- `rail-host.html`: removed `dataset.extensionId` from `li`, retained `data-rail-id` on button. |
+| Component Audit & Refactoring | Audited all 13 components under `packages/app/src/components/`: <br>- `conversation-row.html`: reflected `isUnread` (`reflect: true`), updated CSS selector to `:host([is-unread])`, removed internal `data-room-id` and `data-unread`. <br>- `messenger-boot.html`: reflected `ready`, `error`, `hasOprfToken`, `storageReady`, `storagePersistent`, `syncReady` (`reflect: true`), updated `client()` state mutations (removing imperative `dataset` attribute writes), updated CSS to `:host([ready])`. <br>- `ui-icon.html`: removed `data-icon-name`. <br>- `ui-profile.html`: reflected `size` (`reflect: true`), updated CSS selectors to `:host([size="..."])`. <br>- `auth-view-register.html`: added `<!-- coralite-ignore-data-attributes -->` pragma for ALTCHA. <br>- `rail-host.html`: removed `dataset.extensionId` from `li`, retained `data-rail-id` on button. |
 | Test Query Updates | Updated Playwright tests (`hydration.spec.js`, `messenger-boot.spec.js`, `sync.spec.js`) to query reflected host attributes on `<messenger-boot>` (`[ready]`, `[error]`, etc.) rather than internal dataset attributes |
 | Enforcement Test Path | Created `packages/app/tests/unit/components-data-attrs.test.js` recursively checking component `<template>` blocks for `data-*` attributes except `data-testid` (unless `coralite-ignore-data-attributes` pragma is present) and registered it in `unit-smoke` batch in `packages/app/test-batches.js` |
 

@@ -35,18 +35,45 @@ export default (options = {}) => {
         } = await import('@floating-ui/dom')
 
         /**
-         * Positions a floating element relative to a reference element or virtual element.
+         * Positions a floating element relative to a reference element and
+         * wires teardown to an optional AbortSignal.
          *
-         * @param {object} params - Positioning parameters.
-         * @param {Element|object} params.reference - Reference DOM element or virtual element.
-         * @param {HTMLElement} params.floating - Floating DOM element to position.
-         * @param {string} [params.placement='bottom-start'] - Preferred placement.
-         * @param {number} [params.offsetPx=6] - Offset from reference element in pixels.
-         * @param {number} [params.padding=8] - Minimum padding from boundary edges in pixels.
-         * @returns {Function} Cleanup function to stop autoUpdate.
+         * @param {Object} args
+         * @param {HTMLElement | { getBoundingClientRect: () => DOMRect }} args.reference
+         * @param {HTMLElement} args.floating
+         * @param {string} [args.placement='bottom-start']
+         * @param {number} [args.offsetPx=6]
+         * @param {number} [args.padding=8]
+         * @param {AbortSignal} [signal] Optional. If provided, cleanup is invoked
+         *   automatically when the signal aborts. If the signal is already aborted,
+         *   the function returns a no-op without setting up positioning.
+         * @returns {() => void} An idempotent cleanup function. Invoking it more
+         *   than once is safe and has no effect after the first call.
          */
-        function positionFloating({ reference, floating, placement = 'bottom-start', offsetPx = 6, padding = 8 }) {
+        function positionFloating({
+          reference,
+          floating,
+          placement = 'bottom-start',
+          offsetPx = 6,
+          padding = 8
+        }, signal) {
           if (!reference || !floating) return () => {}
+          if (signal?.aborted) return () => {}
+
+          let autoUpdateCleanup = null
+          let cleaned = false
+
+          function cleanup() {
+            if (cleaned) return
+            cleaned = true
+            if (autoUpdateCleanup) {
+              autoUpdateCleanup()
+              autoUpdateCleanup = null
+            }
+            if (signal) {
+              signal.removeEventListener('abort', cleanup)
+            }
+          }
 
           function update() {
             computePosition(reference, floating, {
@@ -64,7 +91,13 @@ export default (options = {}) => {
           }
 
           update()
-          return autoUpdate(reference, floating, update)
+          autoUpdateCleanup = autoUpdate(reference, floating, update)
+
+          if (signal) {
+            signal.addEventListener('abort', cleanup, { once: true })
+          }
+
+          return cleanup
         }
 
         /**

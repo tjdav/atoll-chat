@@ -145,15 +145,11 @@ export default defineComponent({
         placement: 'bottom-start',
         offsetPx: 6,
         padding: 8
-      })
+      }, signal)
     }
 
     observe('open', () => {
       applyPosition()
-    })
-
-    signal.addEventListener('abort', () => {
-      if (cleanup) cleanup()
     })
 
     const updateLocale = (locale) => {

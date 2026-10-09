@@ -149,4 +149,24 @@ test.describe('Message Context Menu', () => {
 
     await page.screenshot({ path: 'test-results/context-menu-open.png' })
   })
+
+  test('13. Menu can be reopened after closing and still positions correctly', async ({ page }) => {
+    const bubble1 = page.locator('message-bubble[message-id="m_1"]')
+    await bubble1.dispatchEvent('contextmenu', { clientX: 200, clientY: 200 })
+
+    const menu = page.locator('[role="menu"]')
+    await expect(menu).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
+
+    const bubble3 = page.locator('message-bubble[message-id="m_3"]')
+    await bubble3.dispatchEvent('contextmenu', { clientX: 300, clientY: 400 })
+
+    await expect(menu).toBeVisible()
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[role="menu"]')
+      return Boolean(el && el.style.left && el.style.top)
+    })
+  })
 })

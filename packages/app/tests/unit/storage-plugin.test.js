@@ -22,7 +22,7 @@ test('2. storagePlugin has server.context and client.context functions', () => {
 
 test('3. client.context returns keys directly without wrapper', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
-  const clientContextResolver = await plugin.client.context({})
+  const clientContextResolver = await plugin.client.context({ config: { migrations: sampleMigrations } })
   const ctx = clientContextResolver({})
 
   assert.equal(typeof ctx.open, 'function')
@@ -57,7 +57,7 @@ test('4. server.context returns direct key shape', () => {
 
 test('5. client.context uses singleton guard across calls', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
-  const pluginCtx = {}
+  const pluginCtx = { config: { migrations: sampleMigrations } }
   const resolver = await plugin.client.context(pluginCtx)
   const ctx1 = resolver({})
   const ctx2 = resolver({})
@@ -94,14 +94,14 @@ test('8. server context meta.get returns undefined', async () => {
 
 test('9. client.context exposes repos as a function', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
-  const clientContextResolver = await plugin.client.context({})
+  const clientContextResolver = await plugin.client.context({ config: { migrations: sampleMigrations } })
   const ctx = clientContextResolver({})
   assert.equal(typeof ctx.repos, 'function')
 })
 
 test('10. repos() returns an object with all eighteen repositories', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
-  const clientContextResolver = await plugin.client.context({})
+  const clientContextResolver = await plugin.client.context({ config: { migrations: sampleMigrations } })
   const ctx = clientContextResolver({})
   const repos = ctx.repos()
 
@@ -134,14 +134,14 @@ test('10. repos() returns an object with all eighteen repositories', async () =>
 
 test('11. repos() returns the same object on consecutive calls (memoization)', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
-  const clientContextResolver = await plugin.client.context({})
+  const clientContextResolver = await plugin.client.context({ config: { migrations: sampleMigrations } })
   const ctx = clientContextResolver({})
   assert.strictEqual(ctx.repos(), ctx.repos())
 })
 
 test('12. two calls to client.context with same pluginContext return same repos instance', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
-  const pluginCtx = {}
+  const pluginCtx = { config: { migrations: sampleMigrations } }
   const resolver1 = await plugin.client.context(pluginCtx)
   const resolver2 = await plugin.client.context(pluginCtx)
 
@@ -153,7 +153,7 @@ test('12. two calls to client.context with same pluginContext return same repos 
 
 test('13. repository methods match expected convention shape', async () => {
   const plugin = storagePlugin({ migrations: sampleMigrations })
-  const clientContextResolver = await plugin.client.context({})
+  const clientContextResolver = await plugin.client.context({ config: { migrations: sampleMigrations } })
   const ctx = clientContextResolver({})
   const repos = ctx.repos()
 

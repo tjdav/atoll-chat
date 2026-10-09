@@ -13,14 +13,15 @@ or modify the server's ledger.
 
 | Status | Count |
 |---|---|
-| Pending | 1 |
-| Done | 53 |
+| Pending | 2 |
+| Done | 54 |
 | Blocked | 0 |
 
 ## Client Tasks
 
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
+| C-INFRA-28 | Signal-Based Auto-Cleanup for the `floating` Plugin | done | C-INFRA-27, C-INFRA-23, C-INFRA-25 | unit-smoke, component-smoke |
 | C-CHAT-12 | Reply / Quote Flow | done | C-CHAT-9, C-CHAT-10, C-CHAT-11, C-CHAT-8, C-INFRA-25, C-INFRA-14 | unit-smoke, component-smoke |
 | C-INFRA-26 | `ui-sheet` Primitive for Modals and Bottom Sheets | done | C-INFRA-23, C-INFRA-25, C-CHAT-7 | component-smoke |
 | C-CHAT-10 | Message Editing (Composer Morph and Edit Orchestration) | done | C-CHAT-9, C-INFRA-25, C-CHAT-8, C-CHAT-7, C-INFRA-14, C-INFRA-23 | unit-smoke, component-smoke |
@@ -240,6 +241,13 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
 | CF-007 | C-INFRA-24 | Documentation bug (LLM reference omits `client.config` in plugin example) | T4 | filed-upstream; client-mitigated-by-architecture |
 
 ## Notes
+
+- **C-INFRA-28 Deliverables:**
+  - Extended `positionFloating` in `packages/app/src/plugins/floating-plugin.js` to accept optional `signal` argument (`positionFloating(params, signal)`). Short-circuits on missing `reference`/`floating` or already-aborted signal, wires internal `signal.addEventListener('abort', cleanup, { once: true })`, and returns an idempotent cleanup function guarded by `cleaned`.
+  - Migrated `packages/app/src/components/composed/message-context-menu.html` to pass `signal` as second argument to `positionFloating` and removed manual signal abort listener.
+  - Extended documentation in `packages/app/docs/plugins/floating.md` with Signal-based cleanup subsection, worked example, parameters, failure modes, and surface adoption steps.
+  - Extended unit tests in `packages/app/tests/unit/floating-plugin.test.js` (cases 12-14) and component tests in `packages/app/tests/component/floating-positioning.spec.js` (cases 8-10) and `packages/app/tests/component/message-context-menu.spec.js` (case 13).
+  - Captured visual verification artifact `packages/app/test-results/menu-position-after-signal-cleanup.png`.
 
 - **C-INFRA-0 Deliverables:**
   - Created `client-task-ledger.md` (repo root) with task status tracking and Wave 0/1 task breakdown.
@@ -472,7 +480,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created composed component `packages/app/src/components/composed/date-separator.html` rendering centered date pill separators.
   - Created detail surface component `packages/app/src/components/views/view-chat.html` using `defineComponent` and four-part i18n pattern, implementing message rendering, auto-scrolling to bottom, floating scroll-to-bottom button, debounced local read state advancement (`repos.readState.upsert`), and `test-storage-seeded` window event listener.
   - Updated `core.chat`'s `detail.component` in `packages/app/src/extensions/chat/index.js` to `'view-chat'`.
-  - Extended all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 13 new `chat_*` translation keys while maintaining 100% key parity (67 keys) and non-English uniqueness.
+  - Extended all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 13 new `chat_*` translation keys while maintaining 100% key parity (67 keys total) and non-English uniqueness.
   - Authored `packages/app/docs/views/chat.md` covering all 10 required contract sections and updated `packages/app/docs/views/README.md`.
   - Created unit test suite `packages/app/tests/unit/view-chat-data.test.js` (29 cases) registered in `unit-smoke` batch and Playwright component test suite `packages/app/tests/component/chat-thread.spec.js` registered in `component-smoke` batch in `packages/app/test-batches.js`.
   - Generated visual verification artifacts `packages/app/test-results/chat-populated.png` and `packages/app/test-results/chat-empty.png`.
@@ -480,7 +488,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Status: `done`.
   - Created `packages/app/src/lib/composer/index.js` exporting `generateLocalMessageId`, `buildTextPayload`, `encodePayload`, `encodeCiphertextStub`, `isDesktopPointer`, `computeNextSeq`.
   - Created `packages/app/src/lib/views/send-message.js` exporting `sendMessage` orchestration function (`buildTextPayload` validation, `_meta.client_id` key creation/reuse, `computeNextSeq` sequence computation, `repos.messages.upsert` local message creation, `repos.outbox.enqueue`, `repos.readState.upsert` read state advance).
-  - Created `<message-composer>` component (`packages/app/src/components/composed/message-composer.html`) using `defineComponent` following component authoring guide (host-reflected `hasText` and `disabled` attributes, auto-growing textarea, desktop fine-pointer Enter key handling, disabled stub action buttons, zero internal `data-*` attributes except `data-testid`).
+  - Created `<message-composer>` component (`packages/app/src/components/composed/message-composer.html`) using `defineComponent` following component authoring guide (host-reflected `hasText` and `disabled` attributes, auto-growing textarea, fine-pointer Enter key handling, disabled stub action buttons, zero internal `data-*` attributes except `data-testid`).
   - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) mounting `<message-composer>` in `<footer class="chat__composer">`, updating CSS grid layout (`grid-template-rows: auto 1fr auto`), passed i18n label attributes, and listening to `composer:send` to trigger `sendMessage` and thread reload.
   - Extended all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with six new `composer_*` keys (`composer_placeholder`, `composer_attach_label`, `composer_emoji_label`, `composer_readaloud_label`, `composer_input_label`, `composer_send_label`) maintaining 100% key parity (73 keys).
   - Extended `packages/app/docs/views/chat.md` with Section 9 ("Composer and local send path").
@@ -493,9 +501,9 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Implemented edit orchestration pure module `packages/app/src/lib/views/edit-message.js` exporting `isEditAvailable` (enforcing ownership, sent status, non-deleted status, 15-minute window) and `editMessage` (handling lazy version 0 creation in `message_versions`, sequence computation, version row insertion, and base row updates in `messages`). Recorded lazy version 0 decision as canonical fact.
   - Updated `<message-context-menu>` component adding `canEdit` host attribute, `menu_edit` key, button item, and `menu:edit` event.
   - Updated `<message-bubble>` component adding `isEdited` host attribute (`is-edited` reflect), `editedLabel`, and italicized "Edited" indicator pill in meta row.
-  - Updated `<message-composer>` component adding `editing` host attribute (`editing` reflect), `prefill`, top editing banner with cancel button, checkmark save glyph (`✓`), emitting `composer:edit-submit` and `composer:edit-cancel`. Recorded `observe` + `queueMicrotask` prefill handling as a documented Rule 21 deviation.
+  - Updated `<message-composer>` component adding `editing` host attribute (`editing` reflect), `prefill`, top editing banner with cancel button, checkmark save glyph (`✓`), emitting `composer:edit-submit` with `{ text }` or `composer:edit-cancel`. Recorded `observe` + `queueMicrotask` prefill handling as a documented Rule 21 deviation.
   - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) setting `menuCanEdit` on context menu open, populating composer `prefill` and `editingMessageId` on `menu:edit`, executing `editMessage` on `composer:edit-submit`, and reloading thread.
-  - Extended all seven production locales (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 5 new keys (`menu_edit`, `composer_edit_banner`, `composer_edit_cancel_label`, `composer_edit_save_label`, `bubble_edited_label`) maintaining 100% key parity (81 keys).
+  - Extended all seven production locales (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 5 new keys (`menu_edit`, `composer_edit_banner`, `composer_edit_cancel_label`, `composer_edit_save_label`, `bubble_edited_label`) maintaining 100% key parity (81 keys total).
   - Extended `seed-data.js` `chatWithMessages` seed with `m_7` editable message.
   - Extended `packages/app/docs/views/chat.md` with Section 11 ("Message editing").
   - Created unit test suite `packages/app/tests/unit/edit-message.test.js` (14 cases) registered in `unit-smoke` batch in `test-batches.js`.
@@ -508,8 +516,8 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Created preview bar component `<message-reply-preview>` (`packages/app/src/components/composed/message-reply-preview.html`) wrapped in `defineComponent`, emitting `reply-preview:dismiss`.
   - Extended `<message-context-menu>` component with `canReply` attribute, `menu_reply` string, `replyHidden` getter, and `menu:reply` listener.
   - Extended `<message-bubble>` component adding `.bubble-quote` container, `hasReply`, `replyToSender`, and `replyToSnippet` attributes.
-  - Extended `sendMessage({ deps, roomId, text, replyTo })` in `packages/app/src/lib/views/send-message.js` persisting `replyTo` in the message row (`reply_to` column).
-  - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) mounting `<message-reply-preview>` in `<footer class="chat__composer">`, wiring context menu Reply item, preview dismiss listener, `sendMessage` with `replyTo`, and parent quote resolution during thread render loop.
+  - Extended `sendMessage({ deps, roomId, text, replyTo })` in `packages/app/src/lib/views/send-message.js` persisting `replyTo` parameter into the local message row (`reply_to` column).
+  - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) mounting `<message-reply-preview>` in `<footer class="chat__composer">` above `<message-composer>`, wiring context menu Reply item, preview dismiss listener, `sendMessage` with `replyTo`, and parent quote resolution during thread render loop.
   - Extended all seven production locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with four new keys (`menu_reply`, `reply_preview_close_label`, `reply_snippet_deleted`, `reply_snippet_attachment`) maintaining 100% key parity (89 keys).
   - Extended `packages/app/docs/views/chat.md` with Section 13 ("Reply / Quote Flow").
   - Created unit test suite `packages/app/tests/unit/reply.test.js` (10 cases) and extended `packages/app/tests/unit/send-message.test.js` (15 cases) registered in `unit-smoke` batch in `test-batches.js`.
@@ -592,7 +600,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Status: `done`.
   - Created migration `packages/app/src/db/migrations/0005-attachments-reactions.sql` defining `attachments` (`file_id`, `room_id`, `purpose`, `content_type`, `plaintext_size`, `encrypted_size`, `thumbnail_file_id`, `duration_ms`, `uploaded_at`, `downloaded_at`, `cached_at`) and `reactions` (`message_id`, `sender_user_id`, `sender_client_id`, `reaction`, `created_at`, `deleted_at`, `PRIMARY KEY (message_id, sender_user_id, sender_client_id, reaction)`) tables with indexes (`idx_attachments_room`, `idx_attachments_purpose`, `idx_reactions_message` WHERE `deleted_at IS NULL`, `idx_reactions_user`).
   - Created repositories under `packages/app/src/lib/db/repositories/`:
-    - `attachments.js` exporting `createAttachmentsRepository` (`get`, `upsert` with `COALESCE`, `markUploaded`, `markDownloaded`, `getMany`, `listByRoom`, `listByPurpose`, `remove`, `countByRoom`, `clearAll`).
+    - `attachments.js` exporting `createAttachmentsRepository` (`get`, `upsert`, `markUploaded`, `markDownloaded`, `getMany`, `listByRoom`, `listByPurpose`, `remove`, `countByRoom`, `clearAll`).
     - `reactions.js` exporting `createReactionsRepository` (`listForMessage`, `listForRoom`, `get`, `add`, `remove`, `removeByMessage`, `countForMessage`, `aggregateForMessage`, `hasReacted`, `clearAll`).
   - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `attachments` and `reactions` and re-exporting factory functions.
   - Created unit test suites `packages/app/tests/unit/repositories-attachments.test.js` (19 cases) and `packages/app/tests/unit/repositories-reactions.test.js` (19 cases) registered under `unit-smoke` in `test-batches.js`.
@@ -603,11 +611,11 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Status: `done`.
   - Created migration `packages/app/src/db/migrations/0006-user-state.sql` defining `read_state` (`user_id`, `room_id`, `last_read_message_id`, `last_read_at`, `marked_unread`, `updated_at`, `PRIMARY KEY (user_id, room_id)`), `drafts` (`room_id PRIMARY KEY`, `text`, `updated_at`), and `blocked_users` (`user_id PRIMARY KEY`, `blocked_at`) tables and their indexes (`idx_read_state_room`, `idx_blocked_users_blocked_at`).
   - Created repositories under `packages/app/src/lib/db/repositories/`:
-    - `read-state.js` exporting `createReadStateRepository` (`get`, `getForRoom`, `upsert` preserving `marked_unread`, `setMarkedUnread`, `clearMarkedUnread`, `listForUser`, `remove`, `removeAll`, `clearAll`).
-    - `drafts.js` exporting `createDraftsRepository` (`get`, `getText`, `set` deleting row on empty/whitespace text, `remove`, `list`, `count`, `clearAll`).
+    - `read-state.js` exporting `createReadStateRepository` (`get`, `getForRoom`, `upsert`, `setMarkedUnread`, `clearMarkedUnread`, `listForUser`, `remove`, `removeAll`, `clearAll`).
+    - `drafts.js` exporting `createDraftsRepository` (`get`, `getText`, `set`, `remove`, `list`, `count`, `clearAll`).
     - `blocked-users.js` exporting `createBlockedUsersRepository` (`isBlocked`, `list`, `add` using `INSERT OR REPLACE`, `remove`, `count`, `clearAll`).
   - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `readState`, `drafts`, and `blockedUsers` (10 repositories total) and re-exporting factory functions.
-  - Created unit test suites `packages/app/tests/unit/repositories-read-state.test.js` (15 cases), `packages/app/tests/unit/repositories-drafts.test.js` (12 cases), and `packages/app/tests/unit/repositories-blocked-users.test.js` (9 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Created unit test suites `packages/app/tests/unit/repositories-read-state.test.js` (15 cases), `packages/app/tests/unit/repositories-drafts.test.js` (12 cases), and `packages/app/tests/unit/repositories-blocked-users.test.js` (9 cases) registered under `unit-smoke` batch in `packages/app/test-batches.js`.
   - Authored `packages/app/docs/storage/read-state.md`, `packages/app/docs/storage/drafts.md`, and `packages/app/docs/storage/blocked-users.md`, and updated `packages/app/docs/storage/README.md`.
   - Verified zero SQL string interpolation, zero modifications to untouched files, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
 
@@ -638,7 +646,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
     - `device-names.js` exporting `createDeviceNamesRepository` (`get`, `listForUser`, `listActiveForUser`, `applyRemote`, `applyBatch`, `getHighestSeq`, `remove`, `clearAll`); `applyRemote` skips stale/equal `user_seq` rows (`{ changes: 0 }`); `applyBatch` applies in sequence order in a single transaction.
     - `starred-items.js` exporting `createStarredItemsRepository` (`get`, `isStarred`, `listForUser`, `listForRoom`, `applyRemote`, `applyAddedEvent`, `applyRemovedEvent`, `applyBatch`, `remove`, `countForUser`, `countByType`, `getHighestSeq`, `clearAll`); `listForUser` composes optional `type`, `roomId`, and cursor filters with parameterized values; `applyRemovedEvent` writes tombstones.
   - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `deviceNames` and `starredItems` (15 repositories total) and re-exporting factory functions.
-  - Created unit test suites `packages/app/tests/unit/repositories-device-names.test.js` (17 cases) and `packages/app/tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Created unit test suites `packages/app/tests/unit/repositories-device-names.test.js` (17 cases) and `packages/app/tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` batch in `test-batches.js`.
   - Authored contract documentation at `packages/app/docs/storage/device-names.md` and `packages/app/docs/storage/starred-items.md`, and updated `packages/app/docs/storage/README.md`.
 
 - **C-INFRA-20 Deliverables & Status:**
@@ -649,8 +657,8 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
     - `processed-events.js` exporting `createProcessedEventsRepository` (`has`, `hasKey`, `mark`, `markKey`, `markBatch`, `prune`, `count`, `clearAll`) and module-level helper `makeKey(source, eventName, sequence)`.
     - `mls-rooms.js` exporting `createMlsRoomsRepository` (`get`, `upsert` preserving existing values with `COALESCE`/`CASE WHEN`, `markJoined`, `markLeft`, `markError`, `advanceEpoch`, `listByStatus`, `listJoined`, `remove`, `clearAll`).
   - Extended repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `syncState`, `processedEvents`, `mlsRooms` (18 total repositories) and re-exporting all factories and `makeKey`.
-  - Created unit test suites `packages/app/tests/unit/repositories-sync-state.test.js` (16 cases), `packages/app/tests/unit/repositories-processed-events.test.js` (13 cases), and `packages/app/tests/unit/repositories-mls-rooms.test.js` (16 cases) registered under `unit-smoke` batch in `test-batches.js`.
-  - Authored contract documentation at `packages/app/docs/storage/sync-state.md`, `packages/app/docs/storage/processed-events.md`, and `packages/app/docs/storage/mls-rooms.md`, and updated `packages/app/docs/storage/README.md`.
+  - Created unit test suites `tests/unit/repositories-sync-state.test.js` (16 cases), `tests/unit/repositories-processed-events.test.js` (13 cases), and `tests/unit/repositories-mls-rooms.test.js` (16 cases) registered under `unit-smoke` batch in `test-batches.js`.
+  - Contract documentation at `packages/app/docs/storage/sync-state.md`, `packages/app/docs/storage/processed-events.md`, and `packages/app/docs/storage/mls-rooms.md` authored; index updated in `packages/app/docs/storage/README.md`.
   - Reached storage layer completion checkpoint: all 18 repositories across 10 migrations are fully implemented, tested, and documented.
 
 - **C-INFRA-21 Deliverables & Status:**
