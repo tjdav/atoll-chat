@@ -44,5 +44,6 @@ Each plugin that ships with the client has a usage guide in this directory.
 | `router` | [router.md](./router.md) | In-page routing: query-param parsing, navigation, and change subscriptions. |
 | `storage` | [storage.md](./storage.md) | SQLite persistence, backend abstraction, migration runner, and `meta` helpers. |
 | `sync` | [sync.md](./sync.md) | User-scoped sync via `GET /users/me/sync`. |
+| `floating` | [floating.md](./floating.md) | Floating UI positioning for popovers, context menus, and tooltips. |
 
 New plugin tasks add their guide here in the same commit that lands the plugin.
