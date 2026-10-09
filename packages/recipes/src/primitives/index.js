@@ -5,6 +5,7 @@ import { sendLocal } from './send-local.js'
 import { watchPattern } from './watch-pattern.js'
 import { keyedStore } from './keyed-store.js'
 import { exposeCommand } from './expose-command.js'
+import { webhookReceive } from './webhook-receive.js'
 
 /**
  * The primitive registry. Keyed by target, then by primitive id.
@@ -19,7 +20,8 @@ export const primitives = {
     [sendLocal.id]: sendLocal,
     [watchPattern.id]: watchPattern,
     [keyedStore.id]: keyedStore,
-    [exposeCommand.id]: exposeCommand
+    [exposeCommand.id]: exposeCommand,
+    [webhookReceive.id]: webhookReceive
   },
   extension: {}
 }
