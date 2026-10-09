@@ -11,6 +11,7 @@ import {
  * @property {(key: string, opts?: { room?: string }) => Promise<void>} delete - Throws SettingsWriteFailedError.
  * @property {(key: string, cb: (value: unknown) => void, opts?: { room?: string }) => () => void} subscribe - Registers a subscriber callback.
  * @property {() => Promise<void>} refresh - Refetches settings.
+ * @property {() => string[]} keys - Returns cached setting keys.
  * @property {() => void} stop - Stops the store.
  */
 
@@ -421,12 +422,22 @@ export function createSettingsStore ({
     }
   }
 
+  /**
+   * Returns an array of setting keys currently cached in memory (without values).
+   *
+   * @returns {string[]} Setting keys.
+   */
+  function keys () {
+    return Array.from(values.keys())
+  }
+
   return {
     get,
     subscribe,
     set,
     delete: del,
     refresh,
+    keys,
     stop
   }
 }

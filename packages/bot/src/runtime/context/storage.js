@@ -30,6 +30,15 @@ function validateKey (key) {
  *
  * Reads are direct delegations. There is no cache.
  *
+ * @typedef {object} StorageStore
+ * @property {(key: string) => Promise<unknown>} get
+ * @property {(key: string, value: unknown) => Promise<void>} set
+ * @property {(key: string) => Promise<void>} delete
+ * @property {() => Promise<void>} clear
+ * @property {() => string[]} keys
+ */
+
+/**
  * @param {object} deps - Dependencies.
  * @param {import('../storage/index.js').Storage} deps.storage - The
  *   underlying storage backend. Must be open.
@@ -78,6 +87,15 @@ export function createStorageStore ({ storage }) {
      */
     async clear () {
       return storage.clear()
+    },
+
+    /**
+     * Returns a snapshot of current keys.
+     *
+     * @returns {string[]} Key names.
+     */
+    keys () {
+      return storage.keys()
     }
   }
 }
