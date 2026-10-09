@@ -532,3 +532,20 @@ CREATE TABLE IF NOT EXISTS room_bot_scopes (
         REFERENCES room_bots(room_id, bot_id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_room_bot_scopes_lookup ON room_bot_scopes(scope, room_id);
+
+CREATE TABLE IF NOT EXISTS bot_settings (
+    bot_id                 TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    key                    TEXT NOT NULL,
+    is_secret              INTEGER NOT NULL CHECK(is_secret IN (0, 1)),
+    value_encrypted_client TEXT,
+    value_encrypted_bot    TEXT NOT NULL,
+    user_seq               INTEGER NOT NULL,
+    updated_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (bot_id, key),
+    CHECK (
+        (is_secret = 1 AND value_encrypted_client IS NULL)
+        OR
+        (is_secret = 0 AND value_encrypted_client IS NOT NULL)
+    )
+);
+CREATE INDEX IF NOT EXISTS idx_bot_settings_seq ON bot_settings(user_seq);

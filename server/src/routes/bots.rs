@@ -532,6 +532,99 @@ pub async fn delete_bot(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
+/// GET /bots/me/settings — bot reads its own settings (§8.8.10)
+pub async fn get_bot_settings_me(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+    let bot_ctx = match caller {
+        CallerIdentity::Bot(ctx) => ctx,
+        CallerIdentity::User(_) => return Err(ApiError::Forbidden("forbidden".to_string())),
+    };
+
+    let settings =
+        crate::bots::settings::get_bot_settings_for_bot(&state.pool, &bot_ctx.bot_id).await?;
+
+    let mut res = Json(json!({ "settings": settings })).into_response();
+    res.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(res)
+}
+
+/// GET /users/me/bots/:bot_id/settings — operator reads a bot's settings (§8.8.11)
+pub async fn get_bot_settings_owner(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(bot_id): Path<String>,
+) -> Result<Response, ApiError> {
+    crate::bots::settings::verify_bot_owner(&state.pool, &bot_id, &auth_user.user_id).await?;
+
+    let settings = crate::bots::settings::get_bot_settings_for_owner(&state.pool, &bot_id).await?;
+
+    let mut res = Json(json!({ "settings": settings })).into_response();
+    res.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(res)
+}
+
+/// PATCH /users/me/bots/:bot_id/settings/:key — operator writes a bot setting (§8.8.11)
+pub async fn patch_bot_setting_owner(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path((bot_id, key)): Path<(String, String)>,
+    Json(req): Json<crate::bots::settings::PatchBotSettingRequest>,
+) -> Result<Response, ApiError> {
+    crate::bots::settings::verify_bot_owner(&state.pool, &bot_id, &auth_user.user_id).await?;
+
+    let view = crate::bots::settings::write_bot_setting(
+        &state.pool,
+        &state.publisher,
+        &auth_user.user_id,
+        &bot_id,
+        &key,
+        req,
+        state.config.preferences_max_encrypted_bytes,
+    )
+    .await?;
+
+    let mut res = Json(view).into_response();
+    res.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(res)
+}
+
+/// DELETE /users/me/bots/:bot_id/settings/:key — operator deletes a bot setting (§8.8.11)
+pub async fn delete_bot_setting_owner(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path((bot_id, key)): Path<(String, String)>,
+) -> Result<Response, ApiError> {
+    crate::bots::settings::verify_bot_owner(&state.pool, &bot_id, &auth_user.user_id).await?;
+
+    crate::bots::settings::delete_bot_setting(
+        &state.pool,
+        &state.publisher,
+        &auth_user.user_id,
+        &bot_id,
+        &key,
+    )
+    .await?;
+
+    let mut res = StatusCode::NO_CONTENT.into_response();
+    res.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(res)
+}
+
 pub async fn upload_bot_avatar(
     State(state): State<AppState>,
     headers: HeaderMap,

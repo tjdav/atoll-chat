@@ -282,14 +282,20 @@
   - **Contract Highlights:** Implemented `user_room_order` dedicated table per §7.2, `PATCH /users/me/room-order` handler per §8.2.6, `room_order.sync` event publishing per §8.9 (`{ "room_ids": [...], "user_seq": N }`), duplicate and non-member room validation (HTTP 400 `invalid_room_ids` / HTTP 403 `not_a_member`), `rooms_per_user` length cap enforcement (HTTP 400 `too_many_rooms`), no-op guard (unchanged list skips `user_seq` allocation and event emission), top-level `room_order` sync response field integration in `GET /users/me/sync`, GDPR deletion in `anonymise_user`, and `room_order.json` ZIP export member in `build_export`.
   - **Batch:** `sync`
 
+- **Bot Settings Encryption (Phase 30)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Add `bot_settings` table and `idx_bot_settings_seq` index per §7.10).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-settings-encryption/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/bots/settings.rs`, `server/src/routes/bots.rs`, `server/src/routes/mod.rs`, `server/src/lib.rs`, `server/src/sync/query.rs`, `server/tests/bot_settings.rs`, `server/tests/batch-manifest.toml`, `verification.md`.
+  - **Contract Highlights:** Case A verified (`value_encrypted_bot` embeds 32-byte `ephemeral_pubkey`), `bot_settings` table with XOR CHECK `(is_secret = 1 AND value_encrypted_client IS NULL) OR (is_secret = 0 AND value_encrypted_client IS NOT NULL)`, `GET /bots/me/settings` for bot token auth, `GET /users/me/bots/:bot_id/settings`, `PATCH /users/me/bots/:bot_id/settings/:key`, and `DELETE /users/me/bots/:bot_id/settings/:key` for bot owner session auth, operator `user_seq` allocation, durable event publishing (`bot_settings.updated` on user channel, `bot.settings_updated` on bot channel), no-op guard, operator sync integration in `GET /users/me/sync`, value and key opacity, `Cache-Control: no-store` on all endpoint responses, and 18 integration tests in `server/tests/bot_settings.rs` passing under `bots` batch.
+  - **Batch:** `bots`
+
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 55
-- **Done:** 55
+- **Total Verifications/Tasks Tracked:** 56
+- **Done:** 56
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

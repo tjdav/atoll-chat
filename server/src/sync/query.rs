@@ -18,7 +18,7 @@ use crate::sync::{
     SyncError,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 
 pub struct SyncQuery {
     pub user_id: String,
@@ -88,8 +88,31 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         _ => None,
     };
 
-    // bot_settings is populated by Phase 30; empty array in foundation phase.
-    let bot_settings = Vec::new();
+    let bot_settings_rows = sqlx::query(
+        r#"
+        SELECT bs.bot_id, bs.key, bs.is_secret, bs.value_encrypted_client, bs.user_seq
+        FROM bot_settings bs
+        JOIN bot_accounts ba ON ba.id = bs.bot_id
+        WHERE ba.owner_user_id = ? AND (? = 0 OR bs.user_seq > ?)
+        ORDER BY bs.user_seq ASC
+        "#,
+    )
+    .bind(&query.user_id)
+    .bind(query.since_seq)
+    .bind(query.since_seq)
+    .fetch_all(pool)
+    .await?;
+
+    let bot_settings: Vec<BotSettingSyncRow> = bot_settings_rows
+        .into_iter()
+        .map(|r| BotSettingSyncRow {
+            bot_id: r.get("bot_id"),
+            key: r.get("key"),
+            is_secret: r.get::<i64, _>("is_secret") == 1,
+            value_encrypted_client: r.get("value_encrypted_client"),
+            user_seq: r.get("user_seq"),
+        })
+        .collect();
 
     let highest_allocated: Option<i64> =
         sqlx::query_scalar("SELECT next_seq - 1 FROM user_seq WHERE user_id = ?")
@@ -151,6 +174,8 @@ async fn is_full_resync_required(
             SELECT MIN(user_seq) AS min_s FROM device_names WHERE user_id = ?
             UNION ALL
             SELECT MIN(user_seq) AS min_s FROM starred_items WHERE user_id = ?
+            UNION ALL
+            SELECT MIN(bs.user_seq) AS min_s FROM bot_settings bs JOIN bot_accounts ba ON ba.id = bs.bot_id WHERE ba.owner_user_id = ?
         ) WHERE min_s IS NOT NULL
         "#,
     )
@@ -186,6 +211,8 @@ async fn is_full_resync_required(
             SELECT updated_at AS ts FROM device_names WHERE user_id = ? AND user_seq <= ?
             UNION ALL
             SELECT starred_at AS ts FROM starred_items WHERE user_id = ? AND user_seq <= ?
+            UNION ALL
+            SELECT bs.updated_at AS ts FROM bot_settings bs JOIN bot_accounts ba ON ba.id = bs.bot_id WHERE ba.owner_user_id = ? AND bs.user_seq <= ?
         )
         WHERE ts < datetime('now', ?)
         LIMIT 1

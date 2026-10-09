@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod connection;
 pub mod scopes;
+pub mod settings;
 
 pub use auth::{validate_bot_token, BotAuthCtx, CallerIdentity};
 pub use connection::BotConnectionState;
