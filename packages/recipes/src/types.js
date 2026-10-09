@@ -48,6 +48,11 @@
  * @typedef {((ctx: unknown, input: unknown) => Promise<unknown>) | ((ctx: unknown, input: unknown) => unknown)} Handler
  */
 
+/**
+ * The mode of a keyed-store operation.
+ * @typedef {'set' | 'get'} StoreMode
+ */
+
 /* Recipes */
 
 /**

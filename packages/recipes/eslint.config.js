@@ -9,6 +9,7 @@ const definedTypes = [
   'Primitive',
   'PrimitiveInstance',
   'Handler',
+  'StoreMode',
   'RecipeKind',
   'RecipeTarget',
   'Slot',
