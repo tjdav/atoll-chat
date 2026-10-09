@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /*
- * Canary: PrimitiveInstance nesting is accepted. The Primitive type
- * requires targets and capabilities. Type-check only.
+ * Canary: the composition contract. PrimitiveInstance nesting is
+ * accepted. Primitive.create accepts config and children, and
+ * returns a Handler. Type-check only.
  */
 
 /** @type {Primitive} */
@@ -12,7 +13,12 @@ const watchPattern = {
   label: 'Watch Pattern',
   description: 'Watch message events for a pattern.',
   configSchema: {},
-  create: () => {
+  create: (config, children) => {
+    return async (ctx, input) => {
+      for (const child of (children ?? [])) {
+        await child(ctx, input)
+      }
+    }
   }
 }
 
@@ -24,7 +30,7 @@ const renderCard = {
   label: 'Render Card',
   description: 'Render a card in the extension.',
   configSchema: {},
-  create: () => {
+  create: () => () => {
   }
 }
 
@@ -32,20 +38,22 @@ const renderCard = {
 const watchWithChild = {
   id: 'watch-for-items',
   primitive: 'watch-pattern',
-  config: {
-    pattern: 'url',
-    source: 'message.new'
-  },
+  config: { pattern: 'url' },
   children: [
     {
       id: 'store-item',
       primitive: 'keyed-store',
-      config: {
-        key: 'item:{match}',
-        value: { url: '{match}' }
-      }
+      config: { key: 'item:{match}' }
     }
   ]
+}
+
+/** @type {Handler} */
+const identityHandler = (ctx, input) => input
+
+/** @type {Handler} */
+const asyncHandler = async (ctx, input) => {
+  return input
 }
 
 /** @type {PrimitiveInstance} */
@@ -70,7 +78,7 @@ const noTargets = {
   description: 'x',
   capabilities: [],
   configSchema: {},
-  create: () => {
+  create: () => () => {
   }
 }
 
@@ -82,8 +90,31 @@ const noCapabilities = {
   description: 'x',
   targets: ['bot'],
   configSchema: {},
-  create: () => {
+  create: () => () => {
   }
 }
 
-export { watchPattern, renderCard, watchWithChild, missingId, missingPrimitive, noTargets, noCapabilities }
+/** @type {Primitive} */
+const wrongCreate = {
+  id: 'x',
+  targets: ['bot'],
+  capabilities: [],
+  label: 'x',
+  description: 'x',
+  configSchema: {},
+  // @ts-expect-error — create must accept children as its second parameter
+  create: (_config) => 'not a handler'
+}
+
+export {
+  watchPattern,
+  renderCard,
+  watchWithChild,
+  identityHandler,
+  asyncHandler,
+  missingId,
+  missingPrimitive,
+  noTargets,
+  noCapabilities,
+  wrongCreate
+}

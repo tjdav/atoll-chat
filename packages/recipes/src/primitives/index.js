@@ -2,6 +2,7 @@
 
 import { postResponse } from './post-response.js'
 import { sendLocal } from './send-local.js'
+import { watchPattern } from './watch-pattern.js'
 
 /**
  * The primitive registry. Keyed by target, then by primitive id.
@@ -13,7 +14,8 @@ import { sendLocal } from './send-local.js'
 export const primitives = {
   bot: {
     [postResponse.id]: postResponse,
-    [sendLocal.id]: sendLocal
+    [sendLocal.id]: sendLocal,
+    [watchPattern.id]: watchPattern
   },
   extension: {}
 }

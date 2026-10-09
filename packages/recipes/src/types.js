@@ -24,9 +24,9 @@
  *   sentence.
  * @property {object} configSchema - JSON schema for the primitive's
  *   configuration.
- * @property {(config: Record<string, unknown>) => unknown} create -
- *   Factory that takes the primitive's config and returns the
- *   handler or handlers it produces.
+ * @property {(config: Record<string, unknown>, children?: Handler[]) => Handler} create -
+ *   Factory that takes the primitive's config and the resolved
+ *   child handlers, and returns the primitive's handler.
  */
 
 /**
@@ -38,6 +38,14 @@
  *   "{slotName}".
  * @property {PrimitiveInstance[]} [children] - Nested instances, when
  *   the primitive composes.
+ */
+
+/**
+ * A handler is the runtime function a primitive produces. It
+ * receives the bot's context and an input value, and returns an
+ * output value or nothing. The composer wires handlers together by
+ * passing a parent's output to a child's input.
+ * @typedef {((ctx: unknown, input: unknown) => Promise<unknown>) | ((ctx: unknown, input: unknown) => unknown)} Handler
  */
 
 /* Recipes */

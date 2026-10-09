@@ -8,6 +8,7 @@ import rootConfig from '../../eslint.config.js'
 const definedTypes = [
   'Primitive',
   'PrimitiveInstance',
+  'Handler',
   'RecipeKind',
   'RecipeTarget',
   'Slot',
