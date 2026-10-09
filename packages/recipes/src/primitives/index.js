@@ -10,6 +10,7 @@ import { webhookReceive } from './webhook-receive.js'
 import { httpFetch } from './http-fetch.js'
 import { settingsRead } from './settings-read.js'
 import { settingsWrite } from './settings-write.js'
+import { transform } from './transform.js'
 
 /**
  * The primitive registry. Keyed by target, then by primitive id.
@@ -29,7 +30,8 @@ export const primitives = {
     [webhookReceive.id]: webhookReceive,
     [httpFetch.id]: httpFetch,
     [settingsRead.id]: settingsRead,
-    [settingsWrite.id]: settingsWrite
+    [settingsWrite.id]: settingsWrite,
+    [transform.id]: transform
   },
   extension: {}
 }
