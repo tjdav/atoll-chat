@@ -1,5 +1,17 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-044 Verification Fact
+- **End-to-End Smoke Test (`packages/bot/tests/integration/smoke.test.js` & `packages/bot/tests/integration/fixtures/echo-bot.js`)**:
+  - The end-to-end smoke test lives at `tests/integration/smoke.test.js`. Its fixture bot lives at `tests/integration/fixtures/echo-bot.js`.
+  - The smoke test composes a real bot (`com.example.echo`), `createTestRuntime` (B-035), and the mock server double (B-034).
+  - Exercises 26 integration scenarios: lifecycle, command dispatch (happy path, result encryption to invoker, missing args, unknown command, handler error), message events (member and observer modes, null plaintext), room events, grant updates and tear down on revoke, webhooks, schedules (direct and time advance), context response methods (`post`, `reply`, `fetch`, `sendLocal`), settings, storage round-trip, room list, log replacement, sequential multiple events, outbound queue, and clean shutdown calling `uninstall`.
+  - The test suite uses `{ concurrency: 1 }` on the top-level `describe` block because the fixture's exported `calls` object is a shared module singleton.
+  - The suite does not install signal handlers and does not start a real WebSocket (`createTestRuntime` drives events via `inject`, `dispatchWebhook`, and `fireSchedule`).
+  - **Spec Gap 1**: §13 does not name an end-to-end test; this task introduces one as the acceptance criterion for SDK test runtime composition.
+  - **Spec Gap 2**: The smoke test uses `inject`/`dispatchWebhook`/`fireSchedule` instead of a real WebSocket; this matches §13.2's design.
+  - **Spec Gap 3**: Shutdown verification uses handler-call counts and a dedicated scenario; the spec does not describe how to verify `uninstall` ran.
+  - Registered `integration-smoke` batch in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-043 Verification Fact
 - **Diagnostics Capture and Retention (`packages/bot/src/runtime/diagnostics/capture.js`, `src/runtime/diagnostics/diag-file-writer.js`, `src/runtime/index.js`)**:
   - `createDiagFileWriter` appends JSON lines to `<keystorePath>.diag.jsonl` with file mode `0o600`, internal queue serialization, write failure throttling (1 warn per minute), `truncate()`, `close()`, and `pendingCount()`.

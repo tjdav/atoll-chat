@@ -311,3 +311,9 @@ name = "diagnostics-capture"
 files = [
   "unit/diagnostics-capture.test.js",
 ]
+
+[[batch]]
+name = "integration-smoke"
+files = [
+  "integration/smoke.test.js",
+]
