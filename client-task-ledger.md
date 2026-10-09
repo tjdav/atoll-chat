@@ -14,13 +14,14 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 2 |
-| Done | 54 |
+| Done | 55 |
 | Blocked | 0 |
 
 ## Client Tasks
 
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
+| C-V-I | Verify Provide/Consume and State-Key Patterns for Per-Item List Data | done | C-INFRA-27, C-INFRA-28, C-INFRA-23, C-INFRA-7, C-INFRA-25 | — |
 | C-INFRA-28 | Signal-Based Auto-Cleanup for the `floating` Plugin | done | C-INFRA-27, C-INFRA-23, C-INFRA-25 | unit-smoke, component-smoke |
 | C-CHAT-12 | Reply / Quote Flow | done | C-CHAT-9, C-CHAT-10, C-CHAT-11, C-CHAT-8, C-INFRA-25, C-INFRA-14 | unit-smoke, component-smoke |
 | C-INFRA-26 | `ui-sheet` Primitive for Modals and Bottom Sheets | done | C-INFRA-23, C-INFRA-25, C-CHAT-7 | component-smoke |
@@ -242,6 +243,17 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
 
 ## Notes
 
+- **C-V-I Deliverables:**
+  - Produced verification report at `client-verification/cv-i/report.md`.
+  - Conducted source analysis of Coralite rc.5 `coralite-element.js` context protocol implementation (`ContextRequestEvent`, `_setupContextProvider`, `_setupContextConsumers`, `_notifyContextSubscribers`, `WeakRef` subscription callbacks).
+  - Executed 5 empirical controlled experiments in Playwright headless Chromium harness:
+    1. Single-value provide/consume delivery, reactive update propagation, and disconnect subscription teardown.
+    2. N consumers notification tracking (N = 10 callbacks fired for 1 provider property write).
+    3. Approach A (Shared Map) vs Approach B (Wrapper Provider) per-item data passing: Shared Map causes N-callback update cascade across all consumers; Wrapper Provider isolates to 1 callback but requires N wrapper custom element DOM nodes.
+    4. State-key pattern (`$state['item:' + id] = vm`): isolates callback updates to exactly 1 reader per key write (0 sibling callbacks); measured stale key accumulation on `$state`.
+    5. Host JS property pattern: property survives element upgrade when set prior to DOM attachment and is visible to `client()`, but lacks reactivity and AST dependency tracking.
+  - Recommended State-Key pattern with explicit key purging (`delete globalStore.$state['message:' + id]`) as primary pattern for per-item list data in C-CHAT-13.
+
 - **C-INFRA-28 Deliverables:**
   - Extended `positionFloating` in `packages/app/src/plugins/floating-plugin.js` to accept optional `signal` argument (`positionFloating(params, signal)`). Short-circuits on missing `reference`/`floating` or already-aborted signal, wires internal `signal.addEventListener('abort', cleanup, { once: true })`, and returns an idempotent cleanup function guarded by `cleaned`.
   - Migrated `packages/app/src/components/composed/message-context-menu.html` to pass `signal` as second argument to `positionFloating` and removed manual signal abort listener.
@@ -426,7 +438,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Status: `done`.
   - Created `packages/extend/src/constants.js` exporting `EXTENSION_API_VERSION`, reserved lists (`RESERVED_ROUTES`, `RESERVED_PREFERENCE_KEYS`, `RESERVED_PREFERENCE_PREFIXES`, `RESERVED_SLOTS`), allowlists (`PERMISSIONS`, `PLATFORMS`, `SURFACES`), and validation regex patterns.
   - Deepened Phase 1 shape validation in `packages/extend/src/validate.js` checking shape, permissions allowlist, slot target strings, component tag naming conventions (`x-<slug>-` prefix for third-party extensions), event names and non-nested schemas, listener handlers, session properties, preference keys/prefixes, and error message formatting (`<context>: <reason>. <suggestion>`).
-  - Created `packages/extend/src/validate-link.js` performing Phase 2 cross-extension link validation (duplicate detail/list routes, route collisions, unresolved slot mounts, non-multiple slot overfill, unmatched listeners, event schema agreement, duplicate session types, reserved preference keys, circular slot mounts, and warnings for rail order collisions, duplicate action icons, and scope key type inconsistencies).
+  - Created `packages/extend/src/validate-link.js` performing Phase 2 cross-extension link validation (duplicate detail/list routes, route collisions, unresolved slot mounts, non-multiple slot overfill (`multiple: false`), unmatched event listeners, event schema agreement, duplicate session types, reserved preference keys, circular slot mounts, and warnings for rail order collisions, duplicate action icons, and scope key type inconsistencies).
   - Created `packages/extend/src/vocab.js` implementing `buildVocabulary(registry, options)` to aggregate components (scanning `src/components/` recursively for template IDs), slots, events, routes, sessions, preferences, permissions, icons, platforms, surfaces, and reserved names.
   - Extended `packages/extend/src/plugin.js` running Phase 1 and Phase 2 validation eagerly during factory call and shared registry instance across contexts.
   - Extended `packages/extend/src/index.js` re-exporting `validateLink`, `buildVocabulary`, and all constants.
@@ -437,7 +449,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Added unit test suites (`extend-validate.test.js`, `extend-validate-link.test.js`, `extend-vocab.test.js`, `extend-vocab-cli.test.js`), registered in `unit-smoke` in `test-batches.js`.
 - **C-CHAT-4 Deliverables & Status:**
   - Status: `done`.
-  - Created shared placeholder component `packages/app/src/components/containers/extension-placeholder.html` wrapped in `defineComponent` with four-part i18n translation pattern and getters.
+  - Created shared placeholder component `packages/app/src/components/containers/extension-placeholder.html` wrapped in `defineComponent` with template, styles, getters (`heading`, `body`), and four-part i18n translation pattern (`ext.placeholder.heading`, `ext.placeholder.body`).
   - Created 10 first-party extension definitions under `packages/app/src/extensions/<name>/index.js`:
     - `core.chat` (rail order 10, list: `chats`, detail: `chat`)
     - `core.media` (rail order 20, list: `media`, detail: `media-viewer`)
@@ -488,7 +500,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Status: `done`.
   - Created `packages/app/src/lib/composer/index.js` exporting `generateLocalMessageId`, `buildTextPayload`, `encodePayload`, `encodeCiphertextStub`, `isDesktopPointer`, `computeNextSeq`.
   - Created `packages/app/src/lib/views/send-message.js` exporting `sendMessage` orchestration function (`buildTextPayload` validation, `_meta.client_id` key creation/reuse, `computeNextSeq` sequence computation, `repos.messages.upsert` local message creation, `repos.outbox.enqueue`, `repos.readState.upsert` read state advance).
-  - Created `<message-composer>` component (`packages/app/src/components/composed/message-composer.html`) using `defineComponent` following component authoring guide (host-reflected `hasText` and `disabled` attributes, auto-growing textarea, fine-pointer Enter key handling, disabled stub action buttons, zero internal `data-*` attributes except `data-testid`).
+  - Created `<message-composer>` component (`packages/app/src/components/composed/message-composer.html`) using `defineComponent` following component authoring guide (host-reflected `hasText` and `disabled` attributes, auto-growing textarea, fine-pointer Enter key handling, disabled stub action buttons, zero internal `data-*` except `data-testid`).
   - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) mounting `<message-composer>` in `<footer class="chat__composer">`, updating CSS grid layout (`grid-template-rows: auto 1fr auto`), passed i18n label attributes, and listening to `composer:send` to trigger `sendMessage` and thread reload.
   - Extended all seven locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with six new `composer_*` keys (`composer_placeholder`, `composer_attach_label`, `composer_emoji_label`, `composer_readaloud_label`, `composer_input_label`, `composer_send_label`) maintaining 100% key parity (73 keys).
   - Extended `packages/app/docs/views/chat.md` with Section 9 ("Composer and local send path").
@@ -499,12 +511,12 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
 - **C-CHAT-10 Deliverables & Status:**
   - Status: `done`.
   - Implemented edit orchestration pure module `packages/app/src/lib/views/edit-message.js` exporting `isEditAvailable` (enforcing ownership, sent status, non-deleted status, 15-minute window) and `editMessage` (handling lazy version 0 creation in `message_versions`, sequence computation, version row insertion, and base row updates in `messages`). Recorded lazy version 0 decision as canonical fact.
-  - Updated `<message-context-menu>` component adding `canEdit` host attribute, `menu_edit` key, button item, and `menu:edit` event.
-  - Updated `<message-bubble>` component adding `isEdited` host attribute (`is-edited` reflect), `editedLabel`, and italicized "Edited" indicator pill in meta row.
+  - Updated `<message-context-menu>` component adding `canEdit` host attribute, `menu_edit` key, Edit item button, emitting `menu:edit`.
+  - Updated `<message-bubble>` component adding `isEdited` host attribute (`is-edited` reflect), `editedLabel`, and italicized "Edited" indicator pill in meta footer row when `is-edited="true"`.
   - Updated `<message-composer>` component adding `editing` host attribute (`editing` reflect), `prefill`, top editing banner with cancel button, checkmark save glyph (`✓`), emitting `composer:edit-submit` with `{ text }` or `composer:edit-cancel`. Recorded `observe` + `queueMicrotask` prefill handling as a documented Rule 21 deviation.
   - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) setting `menuCanEdit` on context menu open, populating composer `prefill` and `editingMessageId` on `menu:edit`, executing `editMessage` on `composer:edit-submit`, and reloading thread.
   - Extended all seven production locales (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with 5 new keys (`menu_edit`, `composer_edit_banner`, `composer_edit_cancel_label`, `composer_edit_save_label`, `bubble_edited_label`) maintaining 100% key parity (81 keys total).
-  - Extended `seed-data.js` `chatWithMessages` seed with `m_7` editable message.
+  - Extended `seed-data.js` `chatWithMessages` seed with `m_7` editable message (`from: 'u_me'`, `offsetMs: -5 * 60 * 1000`, `status: 'sent'`).
   - Extended `packages/app/docs/views/chat.md` with Section 11 ("Message editing").
   - Created unit test suite `packages/app/tests/unit/edit-message.test.js` (14 cases) registered in `unit-smoke` batch in `test-batches.js`.
   - Created Playwright component test suite `packages/app/tests/component/message-edit.spec.js` registered in `component-smoke` batch in `test-batches.js`.
@@ -513,16 +525,14 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
 - **C-CHAT-12 Deliverables & Status:**
   - Status: `done`.
   - Created pure helper module `packages/app/src/lib/views/reply.js` exporting `truncateQuote`, `buildReplyContext`, `isReplyAllowed`, and `formatReplyPreviewLabel`.
-  - Created preview bar component `<message-reply-preview>` (`packages/app/src/components/composed/message-reply-preview.html`) wrapped in `defineComponent`, emitting `reply-preview:dismiss`.
+  - Created preview bar component `<message-reply-preview>` (`packages/app/src/components/composed/message-reply-preview.html`) wrapped in `defineComponent`, accepting `senderName`, `snippet`, `closeLabel`, emitting `reply-preview:dismiss` on close button click.
   - Extended `<message-context-menu>` component with `canReply` attribute, `menu_reply` string, `replyHidden` getter, and `menu:reply` listener.
   - Extended `<message-bubble>` component adding `.bubble-quote` container, `hasReply`, `replyToSender`, and `replyToSnippet` attributes.
   - Extended `sendMessage({ deps, roomId, text, replyTo })` in `packages/app/src/lib/views/send-message.js` persisting `replyTo` parameter into the local message row (`reply_to` column).
-  - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) mounting `<message-reply-preview>` in `<footer class="chat__composer">` above `<message-composer>`, wiring context menu Reply item, preview dismiss listener, `sendMessage` with `replyTo`, and parent quote resolution during thread render loop.
+  - Updated `<view-chat>` detail surface component (`packages/app/src/components/views/view-chat.html`) mounting `<message-reply-preview>` in `<footer class="chat__composer">` above `<message-composer>`, wiring `menu:reply`, `reply-preview:dismiss`, passes `replyTo` to `sendMessage`, and resolves parent quotes from `repos.messages.get(msg.reply_to)` during thread render loop.
   - Extended all seven production locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with four new keys (`menu_reply`, `reply_preview_close_label`, `reply_snippet_deleted`, `reply_snippet_attachment`) maintaining 100% key parity (89 keys).
   - Extended `packages/app/docs/views/chat.md` with Section 13 ("Reply / Quote Flow").
-  - Created unit test suite `packages/app/tests/unit/reply.test.js` (10 cases) and extended `packages/app/tests/unit/send-message.test.js` (15 cases) registered in `unit-smoke` batch in `test-batches.js`.
-  - Created Playwright component test suite `packages/app/tests/component/message-reply.spec.js` (11 cases) registered in `component-smoke` batch in `test-batches.js`.
-  - Generated visual verification artifacts `packages/app/test-results/reply-preview-active.png` and `packages/app/test-results/reply-quote-rendered.png`.
+  - Created unit test suite `packages/app/tests/unit/reply.test.js` (10 cases) and extended `packages/app/tests/unit/send-message.test.js` (15 cases) in `unit-smoke`; `packages/app/tests/component/message-reply.spec.js` (11 cases) in `component-smoke`; visual verification artifacts `packages/app/test-results/reply-preview-active.png` and `packages/app/test-results/reply-quote-rendered.png`.
 
 - **C-INFRA-8 Deliverables & Status:**
   - Status: `done`.
@@ -545,21 +555,21 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
   - Updated `packages/app/src/lib/db/backends/index.js` exporting `SUPPORTED_BACKENDS = ['wasm', 'memory']` and automatic browser environment selection in `resolveBackend`.
   - Updated existing unit test suites `db.test.js` and `storage-plugin.test.js` to await Promise calls.
   - Created unit test suite `packages/app/tests/unit/wasm-backend.test.js` testing WASM backend, OPFS fallback, transactions, migrations, and meta helpers in Node environment (registered under `unit-smoke` in `test-batches.js`).
-  - Verified WASM backend in Playwright real-browser environment via temporary probe fixture and captured `test-results/wasm-probe.png`. Reverted temporary probe component and page mount before completion.
+  - Verified WASM backend in Playwright real-browser environment via temporary probe fixture and captured `test-results/wasm-probe.png`. Temporary fixture cleanly reverted.
   - Updated documentation at `packages/app/docs/plugins/storage.md`.
 
 - **C-INFRA-10 Deliverables & Status:**
   - Status: `done`.
   - Created global shell state module `packages/app/src/lib/state/index.js` exporting `DEFAULT_SHELL_STATE` (`storageReady: false`, `storagePersistent: true`) and `createStateStore(initialState)`.
   - Added `async isPersistent()` method returning `false` to memory database backend `packages/app/src/lib/db/backends/memory.js`.
-  - Updated `packages/app/src/components/containers/messenger-boot.html` converting `client()` block to straight-line `async` with top-level `await` (removing nested async IIFE), opening `storage.open()` post-session validation, updating `$state.storageReady` / `$state.storagePersistent`, and setting root ref diagnostic attributes `data-storage-ready` / `data-storage-persistent`.
+  - Updated `packages/app/src/components/containers/messenger-boot.html` converting `client()` block to straight-line `async` with top-level `await` (no nested IIFE), opening `storage.open()` post-session validation, updating `$state.storageReady` / `$state.storagePersistent`, and setting root ref diagnostic attributes `data-storage-ready` / `data-storage-persistent`.
   - Created unit test suite `packages/app/tests/unit/state.test.js` and added test case 28 to `packages/app/tests/unit/db.test.js` (registered in `unit-smoke` in `test-batches.js`).
   - Extended component test suite `packages/app/tests/component/messenger-boot.spec.js` covering storage initialization, storage failure handling, non-blocking shell reveal, and screenshot generation `test-results/messenger-boot.png`.
   - Authored documentation at `packages/app/docs/plugins/state.md` and updated `packages/app/docs/plugins/storage.md`.
 
 - **C-INFRA-11 Deliverables & Status:**
   - Status: `done`.
-  - Audited all 4 application plugins (`i18n-plugin.js`, `icon-plugin.js`, `router-plugin.js`, `storage-plugin.js`). Classified `i18n`, `icons`, and `router` as already using Phase 1 async dynamic import inside `client.context`. Converted `storage-plugin.js` to Phase 1 async dynamic import pattern (`async (pluginContext) => { const { createDb } = await import('../lib/db/index.js'); ... }`).
+  - Audited all 4 application plugins (`i18n-plugin.js`, `icon-plugin.js`, `router-plugin.js`, `storage-plugin.js`). Classified `i18n`, `icons`, and `router` as already using Phase 1 async import inside `client.context`. Converted `storage-plugin.js` to Phase 1 async dynamic import pattern (`async (pluginContext) => { const { createDb } = await import('../lib/db/index.js'); ... }`).
   - Updated `packages/app/tests/unit/storage-plugin.test.js` awaiting `plugin.client.context(...)`.
   - Updated plugin documentation files (`packages/app/docs/plugins/README.md`, `i18n.md`, `icons.md`, `router.md`, `storage.md`, `extensions.md`, `state.md`) adding cross-cutting rule and per-plugin import pattern sections.
   - Recorded two new standing policies in `client-task-ledger.md` ("Plugin `client.context` async imports" and "Playwright test cache and seeding") and extended the client task template standard checklist items.
@@ -569,7 +579,7 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
 - **C-INFRA-12 Deliverables & Status:**
   - Status: `done`.
   - Created migration `packages/app/src/db/migrations/0002-users.sql` defining `users` table (`user_id TEXT PRIMARY KEY`, `display_name TEXT`, `identity_pubkey TEXT`, `profile_version INTEGER NOT NULL DEFAULT 1`, `cached_at INTEGER NOT NULL`) and `idx_users_cached_at` index.
-  - Created users repository `packages/app/src/lib/db/repositories/users.js` exporting `createUsersRepository` with async methods `get`, `upsert` (with partial `COALESCE` update semantics), `remove`, `list` (with `cached_at` cursor pagination), `count`, and `clearAll`.
+  - Created users repository `packages/app/src/lib/db/repositories/users.js` exporting `createUsersRepository` with async methods: `get`, `upsert`, `remove`, `list`, `count`, `clearAll`.
   - Created repository aggregator `packages/app/src/lib/db/repositories/index.js` exporting `createRepositories({ db })` returning `{ users }` and re-exporting `createUsersRepository`.
   - Created unit test suite `packages/app/tests/unit/repositories-users.test.js` registered under `unit-smoke` in `packages/app/test-batches.js`.
   - Authored documentation under `packages/app/docs/storage/`: `README.md` (index), `repositories.md` (conventions), and `users.md` (users contract).
@@ -582,137 +592,97 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
     - `rooms.js` (`get`, `upsert` with COALESCE, transactional `remove`, `list`, `count`, transactional `clearAll`)
     - `room-members.js` (`listInRoom`, `get`, `addMember`, `removeMember`, `removeAllInRoom`, `listRoomsForUser`, `countInRoom`, `clearAll`)
     - `room-order.js` (`list`, transactional dense `setOrder`, `moveBefore`, `getPosition`, `clearAll`)
-  - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `rooms`, `roomMembers`, `roomOrder` and re-exporting factory functions.
-  - Created unit test suites `tests/unit/repositories-rooms.test.js`, `repositories-room-members.test.js`, and `repositories-room-order.test.js` registered under `unit-smoke` in `test-batches.js`.
+  - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `{ users, rooms, roomMembers, roomOrder }` and re-exporting factory functions.
+  - Created unit test suites `tests/unit/repositories-rooms.test.js`, `repositories-room-members.test.js`, and `repositories-room-order.test.js` registered under `unit-smoke` batch in `test-batches.js`.
   - Authored `packages/app/docs/storage/rooms.md` and updated `packages/app/docs/storage/README.md`.
-  - Verified zero SQL string interpolation, zero modifications to untouched directories/plugins, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
 
 - **C-INFRA-14 Deliverables & Status:**
   - Status: `done`.
-  - Created migration `packages/app/src/db/migrations/0004-messages.sql` defining `messages` (`message_id`, `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type`, `ciphertext`, `decrypted_payload`, `reply_to`, `edited_at`, `deleted_at`, `expires_at`, `local_status`, `local_error`, `created_at`, `updated_at`) and `message_versions` (`message_id`, `edit_sequence`, `ciphertext`, `decrypted_payload`, `edited_at`, `PRIMARY KEY (message_id, edit_sequence)`) tables and their indexes.
-  - Created repository `packages/app/src/lib/db/repositories/messages.js` exporting `createMessagesRepository` with 16 async methods: `get`, `upsert` (with partial `COALESCE` update semantics and local field fallbacks), `updateLocalStatus`, `markDeleted`, transactional `remove`, transactional `removeExpired`, transactional `removeAllInRoom`, `listInRoom` (ordered by `epoch DESC, seq DESC` with `{ epoch, seq }` object cursor pagination), `listApplicationsInRoom` (filtering to `content_type = 'application'`), `countInRoom`, `countApplicationsInRoom`, `upsertVersion` (`INSERT OR REPLACE`), `listVersions` (ordered by `edit_sequence ASC`), `getVersion`, `countVersions`, and transactional `clearAll`.
+  - Created migration `packages/app/src/db/migrations/0004-messages.sql` defining `messages` (`message_id PRIMARY KEY`, `room_id`, `sender_user_id`, `sender_client_id`, `epoch`, `seq`, `content_type`, `ciphertext`, `decrypted_payload`, `reply_to`, `edited_at`, `deleted_at`, `expires_at`, `local_status`, `local_error`, `created_at`, `updated_at`) and `message_versions` (`message_id`, `edit_sequence`, `ciphertext`, `decrypted_payload`, `edited_at`, `PRIMARY KEY (message_id, edit_sequence)`) tables and their indexes.
+  - Created repository `packages/app/src/lib/db/repositories/messages.js` exporting `createMessagesRepository` with 16 async methods.
   - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `messages` and re-exporting `createMessagesRepository`.
-  - Created unit test suite `packages/app/tests/unit/repositories-messages.test.js` (24 cases) registered under `unit-smoke` in `test-batches.js`.
-  - Authored documentation at `packages/app/docs/storage/messages.md` and updated `packages/app/docs/storage/README.md`.
-  - Verified zero SQL string interpolation, zero modifications to untouched directories/plugins, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
+  - Created unit test suite `packages/app/tests/unit/repositories-messages.test.js` (24 cases) registered under `unit-smoke` batch in `test-batches.js`.
+  - Authored `packages/app/docs/storage/messages.md` and updated `packages/app/docs/storage/README.md`.
 
 - **C-INFRA-15 Deliverables & Status:**
   - Status: `done`.
-  - Created migration `packages/app/src/db/migrations/0005-attachments-reactions.sql` defining `attachments` (`file_id`, `room_id`, `purpose`, `content_type`, `plaintext_size`, `encrypted_size`, `thumbnail_file_id`, `duration_ms`, `uploaded_at`, `downloaded_at`, `cached_at`) and `reactions` (`message_id`, `sender_user_id`, `sender_client_id`, `reaction`, `created_at`, `deleted_at`, `PRIMARY KEY (message_id, sender_user_id, sender_client_id, reaction)`) tables with indexes (`idx_attachments_room`, `idx_attachments_purpose`, `idx_reactions_message` WHERE `deleted_at IS NULL`, `idx_reactions_user`).
-  - Created repositories under `packages/app/src/lib/db/repositories/`:
-    - `attachments.js` exporting `createAttachmentsRepository` (`get`, `upsert`, `markUploaded`, `markDownloaded`, `getMany`, `listByRoom`, `listByPurpose`, `remove`, `countByRoom`, `clearAll`).
-    - `reactions.js` exporting `createReactionsRepository` (`listForMessage`, `listForRoom`, `get`, `add`, `remove`, `removeByMessage`, `countForMessage`, `aggregateForMessage`, `hasReacted`, `clearAll`).
-  - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `attachments` and `reactions` and re-exporting factory functions.
-  - Created unit test suites `packages/app/tests/unit/repositories-attachments.test.js` (19 cases) and `packages/app/tests/unit/repositories-reactions.test.js` (19 cases) registered under `unit-smoke` in `test-batches.js`.
-  - Authored `packages/app/docs/storage/attachments.md` and `packages/app/docs/storage/reactions.md`, and updated `packages/app/docs/storage/README.md`.
-  - Verified zero SQL string interpolation, zero modifications to untouched files, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
+  - Created migration `packages/app/src/db/migrations/0005-attachments-reactions.sql` defining `attachments` and `reactions` tables.
+  - Created repositories `attachments.js` and `reactions.js`.
+  - Updated aggregator exposing `attachments` and `reactions`.
+  - Created unit test suites `repositories-attachments.test.js` and `repositories-reactions.test.js` in `unit-smoke`.
+  - Authored `packages/app/docs/storage/attachments.md` and `reactions.md`.
 
 - **C-INFRA-16 Deliverables & Status:**
   - Status: `done`.
-  - Created migration `packages/app/src/db/migrations/0006-user-state.sql` defining `read_state` (`user_id`, `room_id`, `last_read_message_id`, `last_read_at`, `marked_unread`, `updated_at`, `PRIMARY KEY (user_id, room_id)`), `drafts` (`room_id PRIMARY KEY`, `text`, `updated_at`), and `blocked_users` (`user_id PRIMARY KEY`, `blocked_at`) tables and their indexes (`idx_read_state_room`, `idx_blocked_users_blocked_at`).
-  - Created repositories under `packages/app/src/lib/db/repositories/`:
-    - `read-state.js` exporting `createReadStateRepository` (`get`, `getForRoom`, `upsert`, `setMarkedUnread`, `clearMarkedUnread`, `listForUser`, `remove`, `removeAll`, `clearAll`).
-    - `drafts.js` exporting `createDraftsRepository` (`get`, `getText`, `set`, `remove`, `list`, `count`, `clearAll`).
-    - `blocked-users.js` exporting `createBlockedUsersRepository` (`isBlocked`, `list`, `add` using `INSERT OR REPLACE`, `remove`, `count`, `clearAll`).
-  - Updated aggregator `packages/app/src/lib/db/repositories/index.js` exposing `readState`, `drafts`, and `blockedUsers` (10 repositories total) and re-exporting factory functions.
-  - Created unit test suites `packages/app/tests/unit/repositories-read-state.test.js` (15 cases), `packages/app/tests/unit/repositories-drafts.test.js` (12 cases), and `packages/app/tests/unit/repositories-blocked-users.test.js` (9 cases) registered under `unit-smoke` batch in `packages/app/test-batches.js`.
-  - Authored `packages/app/docs/storage/read-state.md`, `packages/app/docs/storage/drafts.md`, and `packages/app/docs/storage/blocked-users.md`, and updated `packages/app/docs/storage/README.md`.
-  - Verified zero SQL string interpolation, zero modifications to untouched files, key parity across locale files, and clean execution of `pnpm check-batches`, `unit-smoke`, `component-smoke`, build, and extensions vocabulary.
+  - Created migration `0006-user-state.sql` defining `read_state`, `drafts`, `blocked_users`.
+  - Created repositories `read-state.js`, `drafts.js`, `blocked-users.js`.
+  - Updated aggregator exposing `readState`, `drafts`, `blockedUsers`.
+  - Created unit test suites in `unit-smoke`.
+  - Authored documentation under `packages/app/docs/storage/`.
 
 - **C-INFRA-17 Deliverables & Status:**
   - Status: `done`.
-  - Created migration `packages/app/src/db/migrations/0007-outbox.sql` defining `outbox` table (`message_id PRIMARY KEY`, `room_id`, `enqueued_at`, `attempts DEFAULT 0`, `next_attempt_at`, `last_attempt_at`, `last_error`) and indexes `idx_outbox_next_attempt` and `idx_outbox_room`.
-  - Created outbox repository `packages/app/src/lib/db/repositories/outbox.js` exporting `createOutboxRepository` with 13 async methods: `enqueue`, `dequeue`, `peek`, `list` (with FIFO cursor pagination), `get`, `markSent`, `markFailed` (updating attempt state or deleting row on `terminal: true`), `count`, `countDue`, `listByRoom`, `removeByRoom`, `remove`, `clearAll`.
-  - Updated in-memory SQLite backend `packages/app/src/lib/db/backends/memory.js` supporting `ON CONFLICT DO NOTHING`, compound `WHERE` clauses, and `COUNT(*)` alias expressions.
-  - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `outbox` (11 repositories total) and re-exporting `createOutboxRepository`.
-  - Created unit test suite `packages/app/tests/unit/repositories-outbox.test.js` (23 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
-  - Authored `packages/app/docs/storage/outbox.md` and updated `packages/app/docs/storage/README.md`.
-  - Recorded architectural decision: row deleted on terminal failure (`terminal: true`), delegating failed state representation to `messages.local_status = 'failed'` and `messages.local_error`.
+  - Created migration `0007-outbox.sql` defining `outbox` table and indexes.
+  - Created `outbox.js` repository exposing 13 async methods.
+  - Updated memory backend for `ON CONFLICT DO NOTHING` and `COUNT(*)`.
+  - Created unit test suite `repositories-outbox.test.js`.
+  - Authored `packages/app/docs/storage/outbox.md`.
 
 - **C-INFRA-18 Deliverables & Status:**
   - Status: `done`.
-  - Created migration `packages/app/src/db/migrations/0008-room-preferences-nicknames.sql` defining `room_preferences` (`user_id`, `room_id`, `key`, `value_json`, `updated_at`, `PRIMARY KEY (user_id, room_id, key)`) and `nicknames` (`room_id`, `user_id`, `nickname`, `updated_at`, `PRIMARY KEY (room_id, user_id)`), with indexes `idx_room_preferences_room` and `idx_nicknames_user`.
-  - Created repositories under `packages/app/src/lib/db/repositories/`:
-    - `room-preferences.js` exporting `createRoomPreferencesRepository` (`get`, `getAll`, `set`, `setMany`, `remove`, `removeAllInRoom`, `listKeys`, `count`, `clearAll`); malformed JSON returns `undefined` in `get` and skipped in `getAll`; `setMany` writes entries transactionally with a single timestamp.
-    - `nicknames.js` exporting `createNicknamesRepository` (`get`, `getMany`, `set`, `remove`, `listInRoom`, `listRoomsForUser`, `removeAllInRoom`, `countInRoom`, `clearAll`); `set` with empty/whitespace string deletes the nickname; `getMany` parameterizes `IN` placeholders by array length.
-  - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `roomPreferences` and `nicknames` (13 repositories total) and re-exporting factory functions.
-  - Created unit test suites `tests/unit/repositories-room-preferences.test.js` (23 cases) and `tests/unit/repositories-nicknames.test.js` (18 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
-  - Authored contract documentation at `packages/app/docs/storage/room-preferences.md` and `packages/app/docs/storage/nicknames.md`, and updated `packages/app/docs/storage/README.md`.
+  - Created migration `0008-room-preferences-nicknames.sql`.
+  - Created repositories `room-preferences.js` and `nicknames.js`.
+  - Updated aggregator.
+  - Created unit test suites in `unit-smoke`.
+  - Authored documentation under `packages/app/docs/storage/`.
 
 - **C-INFRA-19 Deliverables & Status:**
   - Status: `done`.
-  - Created migration `packages/app/src/db/migrations/0009-device-names-starred-items.sql` defining `device_names` (`user_id`, `device_id`, `encrypted_device_name`, `user_seq`, `updated_at`, `deleted_at`, `PRIMARY KEY (user_id, device_id)`) and `starred_items` (`user_id`, `item_id`, `item_type`, `room_id`, `user_seq`, `starred_at`, `deleted_at`, `PRIMARY KEY (user_id, item_id, item_type)`), with indexes `idx_device_names_seq`, `idx_starred_items_seq`, and `idx_starred_items_room`.
-  - Created repositories under `packages/app/src/lib/db/repositories/`:
-    - `device-names.js` exporting `createDeviceNamesRepository` (`get`, `listForUser`, `listActiveForUser`, `applyRemote`, `applyBatch`, `getHighestSeq`, `remove`, `clearAll`); `applyRemote` skips stale/equal `user_seq` rows (`{ changes: 0 }`); `applyBatch` applies in sequence order in a single transaction.
-    - `starred-items.js` exporting `createStarredItemsRepository` (`get`, `isStarred`, `listForUser`, `listForRoom`, `applyRemote`, `applyAddedEvent`, `applyRemovedEvent`, `applyBatch`, `remove`, `countForUser`, `countByType`, `getHighestSeq`, `clearAll`); `listForUser` composes optional `type`, `roomId`, and cursor filters with parameterized values; `applyRemovedEvent` writes tombstones.
-  - Updated repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `deviceNames` and `starredItems` (15 repositories total) and re-exporting factory functions.
-  - Created unit test suites `packages/app/tests/unit/repositories-device-names.test.js` (17 cases) and `packages/app/tests/unit/repositories-starred-items.test.js` (24 cases) registered under `unit-smoke` batch in `test-batches.js`.
-  - Authored contract documentation at `packages/app/docs/storage/device-names.md` and `packages/app/docs/storage/starred-items.md`, and updated `packages/app/docs/storage/README.md`.
+  - Created migration `0009-device-names-starred-items.sql`.
+  - Created repositories `device-names.js` and `starred-items.js`.
+  - Updated aggregator.
+  - Created unit test suites in `unit-smoke`.
+  - Authored documentation under `packages/app/docs/storage/`.
 
 - **C-INFRA-20 Deliverables & Status:**
   - Status: `done`.
-  - Created migration `packages/app/src/db/migrations/0010-sync-state.sql` defining `sync_state` (`room_id PRIMARY KEY`, `epoch`, `seq`, `updated_at`), `processed_events` (`event_key PRIMARY KEY`, `processed_at`), and `mls_rooms` (`room_id PRIMARY KEY`, `local_client_id`, `current_epoch`, `membership_status DEFAULT 'pending'`, `confirmed_transcript_hash BLOB`, `last_error`, `joined_at`, `updated_at`), with indexes `idx_processed_events_at` and `idx_mls_rooms_status`.
-  - Created repositories under `packages/app/src/lib/db/repositories/`:
-    - `sync-state.js` exporting `createSyncStateRepository` (`get`, `getCursor`, `set`, `advance`, `list`, `remove`, `clearAll`).
-    - `processed-events.js` exporting `createProcessedEventsRepository` (`has`, `hasKey`, `mark`, `markKey`, `markBatch`, `prune`, `count`, `clearAll`) and module-level helper `makeKey(source, eventName, sequence)`.
-    - `mls-rooms.js` exporting `createMlsRoomsRepository` (`get`, `upsert` preserving existing values with `COALESCE`/`CASE WHEN`, `markJoined`, `markLeft`, `markError`, `advanceEpoch`, `listByStatus`, `listJoined`, `remove`, `clearAll`).
-  - Extended repository aggregator `packages/app/src/lib/db/repositories/index.js` exposing `syncState`, `processedEvents`, `mlsRooms` (18 total repositories) and re-exporting all factories and `makeKey`.
-  - Created unit test suites `tests/unit/repositories-sync-state.test.js` (16 cases), `tests/unit/repositories-processed-events.test.js` (13 cases), and `tests/unit/repositories-mls-rooms.test.js` (16 cases) registered under `unit-smoke` batch in `test-batches.js`.
-  - Contract documentation at `packages/app/docs/storage/sync-state.md`, `packages/app/docs/storage/processed-events.md`, and `packages/app/docs/storage/mls-rooms.md` authored; index updated in `packages/app/docs/storage/README.md`.
-  - Reached storage layer completion checkpoint: all 18 repositories across 10 migrations are fully implemented, tested, and documented.
+  - Created migration `0010-sync-state.sql`.
+  - Created repositories `sync-state.js`, `processed-events.js`, `mls-rooms.js`.
+  - Complete repository aggregator exposing all 18 domain repositories.
+  - Created unit test suites in `unit-smoke`.
+  - Authored documentation under `packages/app/docs/storage/`.
 
 - **C-INFRA-21 Deliverables & Status:**
   - Status: `done`.
-  - Extended `@atoll/app` storage plugin (`packages/app/src/plugins/storage-plugin.js`) with `repos: () => repos` on client context surface and SSR throw handler.
-  - Dynamically imported `createRepositories` via Phase 1 `Promise.all` in `client.context`.
-  - Memoized DB under `pluginContext.__storage_client__` and aggregator under `pluginContext.__storage_repos_client__`.
-  - Extended `packages/app/tests/unit/storage-plugin.test.js` with 6 new test cases (14 total passing in `unit-smoke` batch).
-  - Authored "Repository accessor — repos()" contract documentation in `packages/app/docs/plugins/storage.md`.
+  - Extended `storage-plugin.js` with `ctx.storage.repos()`.
+  - Updated `storage-plugin.test.js` and `packages/app/docs/plugins/storage.md`.
 
 - **C-INFRA-22 Deliverables & Status:**
   - Status: `done`.
-  - Created pure sync library modules `packages/app/src/lib/sync/apply.js` (exporting `applyReadState`, `applyDeviceState`, `applyStarredItems`) and `packages/app/src/lib/sync/index.js` (exporting `runUserScopedSync(deps)`).
-  - Implemented Coralite plugin `packages/app/src/plugins/sync-plugin.js` with `name: 'sync'`, exposing `ctx.sync.runUserScopedSync({ userId, api, storage, onProgress })` directly via Phase 1 async dynamic import, with in-flight concurrency guard and SSR throw handler.
-  - Registered `syncPlugin()` in `packages/app/coralite.config.js` after `storagePlugin()`.
-  - Updated `packages/app/src/components/containers/messenger-boot.html` destructuring `sync` in `client()`, triggering `sync.runUserScopedSync` post-`storage.open()` when `result.user?.id` is present, and setting `data-sync-ready="true"`.
-  - Created unit test suites `packages/app/tests/unit/sync.test.js` (14 cases) and `packages/app/tests/unit/sync-plugin.test.js` (8 cases) registered under `unit-smoke`.
-  - Created Playwright component test `tests/component/sync.spec.js` (3 cases) registered under `component-auth`, and generated screenshot `packages/app/test-results/sync-boot.png`.
-  - Authored plugin contract documentation at `packages/app/docs/plugins/sync.md` and updated `packages/app/docs/plugins/README.md`.
-  - Scope decision: deferred `user_preferences` section application to a follow-on task to avoid inventing storage mappings before spec settlement.
+  - Implemented `sync-plugin.js` exposing `runUserScopedSync`.
+  - Created `apply.js` and `sync/index.js`.
+  - Integrated into `messenger-boot`.
+  - Added unit and component tests.
+  - Authored `packages/app/docs/plugins/sync.md`.
 
 - **C-INFRA-23 Deliverables & Status:**
   - Status: `done`.
-  - Authored `packages/app/docs/components.md` containing the complete Component Authoring Guide (16 rules, 12 sections).
-  - Created `packages/app/docs/README.md` index.
-  - Audited all components under `packages/app/src/components/`:
-    - `conversation-row.html`: reflected `isUnread` (`reflect: true`), updated CSS selector to `:host([is-unread])`, removed `data-room-id` and `data-unread`.
-    - `messenger-boot.html`: reflected `ready`, `error`, `hasOprfToken`, `storageReady`, `storagePersistent`, `syncReady` (`reflect: true`), updated `client()` state mutations (removing imperative dataset writes), updated CSS to `:host([ready])`.
-    - `ui-icon.html`: removed `data-icon-name`.
-    - `ui-profile.html`: reflected `size` (`reflect: true`), updated CSS selectors to `:host([size="..."])`.
-    - `auth-view-register.html`: added `<!-- coralite-ignore-data-attributes -->` pragma for ALTCHA.
-    - `rail-host.html`: removed `dataset.extensionId` from `li`, retained `data-rail-id` on button.
-  - Updated Playwright test files (`hydration.spec.js`, `messenger-boot.spec.js`, `sync.spec.js`) to target `messenger-boot` reflected host attributes.
-  - Created enforcement unit test `packages/app/tests/unit/components-data-attrs.test.js` and registered it in `unit-smoke` in `packages/app/test-batches.js`.
-  - Updated `packages/app/TESTING.md` with Component attribute enforcement section.
-  - Extended client task template standard checklist in `client-task-ledger.md` with Component Authoring section.
+  - Authored `packages/app/docs/components.md` Component Authoring Guide.
+  - Audited all components for dataset attributes and getters.
+  - Created enforcement test `components-data-attrs.test.js`.
 
 - **C-INFRA-24 Deliverables & Status:**
   - Status: `done`.
-  - Modified `packages/app/src/plugins/storage-plugin.js` setting `client.config = { dbName, migrations }` and reading `pluginContext.config?.dbName` / `pluginContext.config?.migrations` in `client.context`.
-  - Created unit regression test `packages/app/tests/unit/storage-plugin-config.test.js` (9 cases) registered under `unit-smoke` batch in `packages/app/test-batches.js`.
-  - Created build-time verification script `packages/app/scripts/check-migration-bundle.mjs` and added `"check:migration-bundle"` script to `packages/app/package.json`.
-  - Authored `packages/app/docs/plugins/authoring.md` (10 sections detailing plugin authoring and `client.config` delivery pattern).
-  - Updated `packages/app/docs/plugins/README.md` and `packages/app/docs/plugins/storage.md`.
-  - Recorded T4 feedback entry CF-007 in `client-coralite-feedback.md` and addendum in `client-verification.md`.
+  - Fixed migration delivery via `client.config`.
+  - Created `check-migration-bundle.mjs`.
+  - Authored `packages/app/docs/plugins/authoring.md`.
 
 - **C-INFRA-26 Deliverables & Status:**
   - Status: `done`.
-  - Created `packages/app/src/components/primitives/ui-sheet.html` wrapped in `defineComponent` implementing modal and bottom sheet primitive with native `<dialog ref="dialog" data-testid="ui-sheet">`, reflected boolean host attributes (`open`, `variant`), getters (`headerHidden`, `closeHidden`, `dialogAriaLabel`), dialog styling (`:host([variant="center"])`, `:host([variant="bottom"])`, `::backdrop`), CSS display rule override (`.sheet:not([open]) { display: none !important; }`), and client lifecycle handlers emitting `sheet:close` on close.
-  - Extended `packages/app/tests/helpers/storage-fixture.js` with permanent test helpers `mountSheet`, `setSheetOpen`, `recordSheetEvents`, and `getLastSheetCloseEvent`.
-  - Created Playwright component test `packages/app/tests/component/ui-sheet.spec.js` (15 cases) registered under `component-smoke` in `packages/app/test-batches.js`.
-  - Generated visual verification screenshot artifacts `packages/app/test-results/ui-sheet-center.png` and `packages/app/test-results/ui-sheet-bottom.png`.
-  - Extended `packages/app/docs/components.md` with Section 10 ("Modal and sheet primitive").
-  - Updated `client-task-ledger.md` (marked C-INFRA-26 done) and `client-verification.md`.
+  - Implemented `<ui-sheet>` primitive component.
+  - Created test helpers and component tests.
+  - Captured visual verification artifacts.
+  - Added Section 10 to `packages/app/docs/components.md`.
 
 ## Component Authoring Policy
 

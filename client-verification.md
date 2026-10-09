@@ -11,6 +11,22 @@ or modify the server's verification log.
 
 ## Verified Facts
 
+### C-V-I — Provide/Consume vs. State-Key Patterns for Per-Item List Data Architecture
+
+**Verified:** 2026-10-09
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Coralite rc.5 Context Protocol | Implemented via W3C Context Protocol event (`"context-request"`, `bubbles: true`, `composed: true`). `provide` handles event, evaluates provider function passing `{ state, root, refs, slots, signal }`, tracks state property dependencies (`_collectingDependencies`), and registers WeakRef callbacks for `subscribe: true`. `consume` accepts array shorthand `['key']`, object mapping `{ prop: 'key' }`, or defaults |
+| Single Provider Notification Behavior | Single provider holds `Set` of subscriber records in `_contextSubscriptions.get(key)`. Mutating provider state synchronously calls `_notifyContextSubscribers(key)` iterating through all subscriber callbacks in registration order |
+| Provide/Consume Per-Item Data Passing | **Shared Map (`{ [id]: vm }`):** Single map write triggers provider `_notifyContextSubscribers`, causing **N consumer callbacks** and N state updates across all list items when 1 item mutates. <br>**Wrapper Provider (`<item-provider>`):** Isolates to **1 consumer callback**, but requires **N wrapper custom element DOM nodes**, adding component registration and DOM tree depth |
+| State-Key Pattern (`$state['item:' + id] = vm`) | Writing `$state['item:' + id] = vm` notifies **exactly 1 subscriber** registered for key `'item:' + id`. Callbacks across the other N-1 siblings = **0** |
+| State Key Stale Persistence | Keys set on `$state` persist indefinitely on the state object unless explicitly removed via `delete $state[key]`. Purging stale keys on message unmount/purge is required |
+| Coralite Element Signal Disconnect | Plain DOM `element.remove()` does not automatically abort Coralite's `this._abortController.signal`. Explicit subscriber cleanup on `disconnectedCallback()` or manual unsubscription is required |
+| Host JS Property Pattern | Setting `el.vm = ...` before DOM attachment is visible to `client({ root })`, but plain JS properties bypass Coralite's AST dependency analyzer and reactive setters (non-reactive) |
+| Recommended Pattern for C-CHAT-13 | **State-Key Pattern with Explicit Key Purging**: `view-chat` populates `$state['message:' + id] = vm`; `<message-bubble>` subscribes to its specific key; `view-chat` purges stale keys via `delete globalStore.$state['message:' + id]` |
+| Report Location | `client-verification/cv-i/report.md` |
+
 ### C-INFRA-28 — Signal-Based Auto-Cleanup for the `floating` Plugin Architecture
 
 **Verified:** 2026-10-09
@@ -385,7 +401,7 @@ build task runs.
 |---|---|
 | SDK Constants Export (`constants.js`) | Exports `EXTENSION_API_VERSION`, `RESERVED_ROUTES` (`['index', '404']`), `RESERVED_PREFERENCE_KEYS` (`['room_order']`), `RESERVED_PREFERENCE_PREFIXES` (`['_system:']`), `RESERVED_SLOTS` (`[]`), `PERMISSIONS` (`['network', 'storage']`), `PLATFORMS` (`['mobile', 'tablet', 'desktop']`), `SURFACES` (`['panel', 'overlay']`), and regex patterns (`PREFERENCE_KEY_PATTERN`, `EVENT_NAME_PATTERN`, `ROUTE_PATTERN`, `ID_PATTERN`, `API_VERSION_PATTERN`, `COMPONENT_TAG_PATTERN`, `SCHEMA_TYPE_PATTERN`) |
 | Phase 1 Deep Shape Validation (`validate.js`) | Checks detailed shapes for `permissions`, `slots`, `emits`, `publicEvents`, `listens`, `sessions`, `preferences`, `assets`, `locales`, component tag naming (`x-<slug>-` prefix for third-party extensions), reserved routes, and reserved slots. Error messages formatted as `<context>: <reason>. <suggestion>` |
-| Phase 2 Cross-Extension Link Validation (`validate-link.js`) | `validateLink(registry)` verifies cross-extension constraints: duplicate detail/list routes, route collisions, unresolved slot mounts, non-multiple slot overfill (`multiple: false`), unmatched event listeners, event schema agreement, duplicate session types, reserved preference key declarations, circular slot mounts, and warnings for rail order collisions, duplicate action icons, and scope key type inconsistencies |
+| Phase 2 Cross-Extension Link Validation (`validate-link.js`) | `validateLink(registry)` verifies cross-extension constraints: duplicate detail/list routes, route collisions, unresolved slot mounts, non-multiple slot overfill (`multiple: false`), unmatched event listeners, event schema agreement, duplicate session types, reserved preference keys, circular slot mounts, and warnings for rail order collisions, duplicate action icons, and scope key type inconsistencies |
 | Vocabulary Aggregation (`vocab.js`) | `buildVocabulary(registry, options)` aggregates `components` (scanned recursively from `options.componentsDir` for `<template id="...">`), `slots`, `events`, `routes`, `sessions`, `preferences`, `permissions`, `icons`, `platforms`, `surfaces`, and `reserved` names |
 | Plugin Eager Validation (`plugin.js`) | `extensionPlugin({ extensions })` runs Phase 1 and Phase 2 validation eagerly during factory call and shares single registry instance across server and client context resolvers |
 | Aggregator Location | `packages/app/src/extensions/index.js` exporting `extensions = []` |
@@ -849,10 +865,10 @@ build task runs.
 | Quote Truncation Rules | `truncateQuote(text, { maxLength = 120 })`: returns empty string for empty/null inputs; text unchanged if length <= maxLength; cuts at previous whitespace boundary if present before maxLength and appends `…`; cuts at maxLength if no whitespace exists |
 | Reply Availability Predicate | `isReplyAllowed(message)` returns true for any non-null message object. Tombstone messages can be replied to |
 | Preview Bar Component | `<message-reply-preview>` (`packages/app/src/components/composed/message-reply-preview.html`) wrapped in `defineComponent`, accepting `senderName`, `snippet`, `closeLabel`, emitting `reply-preview:dismiss` on close button click |
-| Context Menu Integration | `<message-context-menu>` adds `canReply` attribute, `menu_reply` key, Reply item button (positioned above Edit), emitting `menu:reply` with `{ messageId }` |
+| Context Menu Integration | `<message-context-menu>` adds `canReply` attribute, `menu_reply` string, `replyHidden` getter, and `menu:reply` listener |
 | Message Bubble Inline Quote | `<message-bubble>` renders `.bubble-quote` above sender name when `hasReply: true` (`has-reply` reflected host attribute). Displays `replyToSender` and `replyToSnippet` with an accent-colored border stripe on left edge |
 | Message Row Persistence | `sendMessage({ deps, roomId, text, replyTo })` in `packages/app/src/lib/views/send-message.js` persists `replyTo` parameter into the local message row (`reply_to` column) |
-| Detail Surface Integration | `<view-chat>` mounts `<message-reply-preview>` in `<footer class="chat__composer">` above `<message-composer>`, wires `menu:reply`, `reply-preview:dismiss`, passes `replyTo` to `sendMessage`, and resolves parent quotes from `repos.messages.get(msg.reply_to)` during thread render loop |
+| Detail Surface Integration | `<view-chat>` mounts `<message-reply-preview>` in `<footer class="chat__composer">` above `<message-composer>`, wiring `menu:reply`, `reply-preview:dismiss`, passes `replyTo` to `sendMessage`, and resolves parent quotes from `repos.messages.get(msg.reply_to)` during thread render loop |
 | Tombstone Quote Rendering | Replying to a soft-deleted message resolves quote snippet to `state.reply_snippet_deleted` ("Message deleted") |
 | Localization & Key Parity | Extended all seven production locale files (`en`, `fr`, `de`, `ja`, `pt`, `it`, `es`) with four new keys (`menu_reply`, `reply_preview_close_label`, `reply_snippet_deleted`, `reply_snippet_attachment`) maintaining 100% key parity (89 keys) |
 | Documentation Path | Section 13 ("Reply / Quote Flow") added to `packages/app/docs/views/chat.md` |
