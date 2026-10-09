@@ -98,8 +98,8 @@ async fn test_sync_endpoint_validation_and_response() {
     assert_eq!(body["device_state"], json!([]));
     assert_eq!(body["starred_items"], json!([]));
 
-    // 4. max_seq equals since_seq when no rows
-    assert_eq!(body["max_seq"], 0);
+    // 4. max_seq reflects device creation user_seq
+    assert_eq!(body["max_seq"], 1);
 
     // 5. full_resync_required is false
     assert_eq!(body["full_resync_required"], false);

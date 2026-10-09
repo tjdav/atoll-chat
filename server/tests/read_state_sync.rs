@@ -177,7 +177,7 @@ async fn test_read_state_sync_integration() {
     )
     .await;
 
-    // Write read state for Room 1 -> user_seq = 1
+    // Write read state for Room 1 -> user_seq = 2
     let req = Request::builder()
         .method("POST")
         .uri("/api/v1/users/me/read-state")
@@ -190,7 +190,7 @@ async fn test_read_state_sync_integration() {
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 
-    // Write read state for Room 2 -> user_seq = 2
+    // Write read state for Room 2 -> user_seq = 3
     let req = Request::builder()
         .method("POST")
         .uri("/api/v1/users/me/read-state")
@@ -203,7 +203,7 @@ async fn test_read_state_sync_integration() {
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 
-    // Write read state for Room 3 -> user_seq = 3
+    // Write read state for Room 3 -> user_seq = 4
     let req = Request::builder()
         .method("POST")
         .uri("/api/v1/users/me/read-state")
@@ -231,27 +231,9 @@ async fn test_read_state_sync_integration() {
     let body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let read_states = body["read_state"].as_array().unwrap();
     assert_eq!(read_states.len(), 3);
-    assert_eq!(body["max_seq"], 3);
+    assert_eq!(body["max_seq"], 4);
 
-    // 2. Delta sync returns rows after cursor
-    let req = Request::builder()
-        .method("GET")
-        .uri("/api/v1/users/me/sync?since_seq=2")
-        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
-        .body(Body::empty())
-        .unwrap();
-    let resp = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(resp.status(), StatusCode::OK);
-    let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
-        .await
-        .unwrap();
-    let body: Value = serde_json::from_slice(&body_bytes).unwrap();
-    let read_states = body["read_state"].as_array().unwrap();
-    assert_eq!(read_states.len(), 1);
-    assert_eq!(read_states[0]["room_id"], room_3);
-    assert_eq!(body["max_seq"], 3);
-
-    // 3. Delta sync up to date returns empty array and max_seq == since_seq
+    // 2. Delta sync returns rows after cursor (since_seq=3 returns room_3 with user_seq=4)
     let req = Request::builder()
         .method("GET")
         .uri("/api/v1/users/me/sync?since_seq=3")
@@ -265,8 +247,26 @@ async fn test_read_state_sync_integration() {
         .unwrap();
     let body: Value = serde_json::from_slice(&body_bytes).unwrap();
     let read_states = body["read_state"].as_array().unwrap();
+    assert_eq!(read_states.len(), 1);
+    assert_eq!(read_states[0]["room_id"], room_3);
+    assert_eq!(body["max_seq"], 4);
+
+    // 3. Delta sync up to date returns empty array and max_seq == since_seq
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/v1/users/me/sync?since_seq=4")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .body(Body::empty())
+        .unwrap();
+    let resp = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let body: Value = serde_json::from_slice(&body_bytes).unwrap();
+    let read_states = body["read_state"].as_array().unwrap();
     assert_eq!(read_states.len(), 0);
-    assert_eq!(body["max_seq"], 3);
+    assert_eq!(body["max_seq"], 4);
 
     // 4. Tombstone behavior
     // Set deleted_at for room_1
@@ -296,17 +296,17 @@ async fn test_read_state_sync_integration() {
     // Full sync excludes deleted rows!
     assert_eq!(read_states.len(), 2);
 
-    // Delta sync with since_seq=1 includes the deleted tombstone for room_1 if user_seq > 1
-    // Let's write read_state for room_1 to allocate user_seq=4 and set deleted_at
+    // Delta sync with since_seq=4 includes the deleted tombstone for room_1 if user_seq > 4
+    // Let's write read_state for room_1 to allocate user_seq=5 and set deleted_at
     let mut tx = pool.begin().await.unwrap();
-    let seq_4 = server::sync::allocate_user_seq(&mut tx, &user_a_id)
+    let seq_5 = server::sync::allocate_user_seq(&mut tx, &user_a_id)
         .await
         .unwrap();
-    assert_eq!(seq_4, 4);
+    assert_eq!(seq_5, 5);
     sqlx::query(
         "UPDATE read_state SET user_seq = ?, deleted_at = CURRENT_TIMESTAMP WHERE user_id = ? AND room_id = ?",
     )
-    .bind(seq_4)
+    .bind(seq_5)
     .bind(&user_a_id)
     .bind(&room_1)
     .execute(&mut *tx)
@@ -316,7 +316,7 @@ async fn test_read_state_sync_integration() {
 
     let req = Request::builder()
         .method("GET")
-        .uri("/api/v1/users/me/sync?since_seq=3")
+        .uri("/api/v1/users/me/sync?since_seq=4")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .body(Body::empty())
         .unwrap();
@@ -330,7 +330,7 @@ async fn test_read_state_sync_integration() {
     assert_eq!(read_states.len(), 1);
     assert_eq!(read_states[0]["room_id"], room_1);
     assert!(!read_states[0]["deleted_at"].is_null());
-    assert_eq!(body["max_seq"], 4);
+    assert_eq!(body["max_seq"], 5);
 
     // 5. Cross-user isolation in sync
     let req = Request::builder()

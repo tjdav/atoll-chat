@@ -49,7 +49,7 @@ async fn test_device_name_write_and_update() {
     let res: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(res["device_id"], device_id_a);
     assert_eq!(res["encrypted_device_name"], name1_b64);
-    assert_eq!(res["user_seq"], 1);
+    assert_eq!(res["user_seq"], 2);
 
     // 2. Second write advances user_seq
     let req = Request::builder()
@@ -70,7 +70,7 @@ async fn test_device_name_write_and_update() {
         .unwrap();
     let res: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(res["encrypted_device_name"], name2_b64);
-    assert_eq!(res["user_seq"], 2);
+    assert_eq!(res["user_seq"], 3);
 
     // 3. Missing field returns 400 missing_field
     let req = Request::builder()

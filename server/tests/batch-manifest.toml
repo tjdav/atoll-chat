@@ -177,6 +177,7 @@ files = [
     "preferences_validation",
     "read_state_sync",
     "read_state_write",
+    "room_order",
     "starred_items",
     "sync_channel_auth",
     "sync_contract",

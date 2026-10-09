@@ -14,7 +14,8 @@
 use crate::starred::StarredItemRow;
 use crate::sync::{
     device_names::{self, DeviceStateRow},
-    preferences, read_state, starred, PreferenceRow, ReadStateRow, SyncError,
+    preferences, read_state, room_order, starred, PreferenceRow, ReadStateRow, RoomOrderSyncState,
+    SyncError,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
@@ -41,6 +42,7 @@ pub struct SyncResponse {
     pub device_state: Vec<DeviceStateRow>,
     pub starred_items: Vec<StarredItemRow>,
     pub bot_settings: Vec<BotSettingSyncRow>,
+    pub room_order: Option<RoomOrderSyncState>,
     pub max_seq: i64,
     pub full_resync_required: bool,
 }
@@ -80,6 +82,12 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         starred::list_starred_items_since(pool, &query.user_id, query.since_seq).await?
     };
 
+    let current_room_order = room_order::get_room_order(pool, &query.user_id).await?;
+    let room_order = match current_room_order {
+        Some(ro) if query.since_seq == 0 || ro.user_seq > query.since_seq => Some(ro),
+        _ => None,
+    };
+
     // bot_settings is populated by Phase 30; empty array in foundation phase.
     let bot_settings = Vec::new();
 
@@ -106,6 +114,7 @@ pub async fn execute_sync(pool: &SqlitePool, query: SyncQuery) -> Result<SyncRes
         device_state,
         starred_items,
         bot_settings,
+        room_order,
         max_seq,
         full_resync_required,
     })
@@ -137,12 +146,15 @@ async fn is_full_resync_required(
             UNION ALL
             SELECT MIN(user_seq) AS min_s FROM user_preferences WHERE user_id = ?
             UNION ALL
+            SELECT MIN(user_seq) AS min_s FROM user_room_order WHERE user_id = ?
+            UNION ALL
             SELECT MIN(user_seq) AS min_s FROM device_names WHERE user_id = ?
             UNION ALL
             SELECT MIN(user_seq) AS min_s FROM starred_items WHERE user_id = ?
         ) WHERE min_s IS NOT NULL
         "#,
     )
+    .bind(user_id)
     .bind(user_id)
     .bind(user_id)
     .bind(user_id)
@@ -169,6 +181,8 @@ async fn is_full_resync_required(
             UNION ALL
             SELECT updated_at AS ts FROM user_preferences WHERE user_id = ? AND user_seq <= ?
             UNION ALL
+            SELECT updated_at AS ts FROM user_room_order WHERE user_id = ? AND user_seq <= ?
+            UNION ALL
             SELECT updated_at AS ts FROM device_names WHERE user_id = ? AND user_seq <= ?
             UNION ALL
             SELECT starred_at AS ts FROM starred_items WHERE user_id = ? AND user_seq <= ?
@@ -177,6 +191,8 @@ async fn is_full_resync_required(
         LIMIT 1
         "#,
     )
+    .bind(user_id)
+    .bind(since_seq)
     .bind(user_id)
     .bind(since_seq)
     .bind(user_id)

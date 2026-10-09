@@ -16,13 +16,19 @@ async fn test_preference_crud_lifecycle() {
     assert_eq!(status, StatusCode::OK);
     let token = login_res["session_token"].as_str().unwrap();
 
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+
+    let dark_b64 = URL_SAFE_NO_PAD.encode(b"dark");
+    let light_b64 = URL_SAFE_NO_PAD.encode(b"light");
+
     // 1. Write preference
     let req = Request::builder()
         .method("PATCH")
         .uri("/api/v1/users/me/preferences/theme")
         .header(header::AUTHORIZATION, format!("Bearer {token}"))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "value": "dark" }).to_string()))
+        .body(Body::from(json!({ "value": dark_b64 }).to_string()))
         .unwrap();
 
     let resp = app.clone().oneshot(req).await.unwrap();
@@ -37,8 +43,8 @@ async fn test_preference_crud_lifecycle() {
         .unwrap();
     let res: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(res["key"], "theme");
-    assert_eq!(res["value_json"], "\"dark\"");
-    assert_eq!(res["user_seq"], 1);
+    assert_eq!(res["value"], dark_b64);
+    assert_eq!(res["user_seq"], 2);
 
     // 2. Read preference back
     let req = Request::builder()
@@ -60,8 +66,8 @@ async fn test_preference_crud_lifecycle() {
         .unwrap();
     let res: Value = serde_json::from_slice(&body_bytes).unwrap();
     assert_eq!(res["key"], "theme");
-    assert_eq!(res["value_json"], "\"dark\"");
-    assert_eq!(res["user_seq"], 1);
+    assert_eq!(res["value"], dark_b64);
+    assert_eq!(res["user_seq"], 2);
 
     // 3. Second write advances user_seq
     let req = Request::builder()
@@ -69,7 +75,7 @@ async fn test_preference_crud_lifecycle() {
         .uri("/api/v1/users/me/preferences/theme")
         .header(header::AUTHORIZATION, format!("Bearer {token}"))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "value": "light" }).to_string()))
+        .body(Body::from(json!({ "value": light_b64 }).to_string()))
         .unwrap();
 
     let resp = app.clone().oneshot(req).await.unwrap();
@@ -79,8 +85,8 @@ async fn test_preference_crud_lifecycle() {
         .await
         .unwrap();
     let res: Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(res["value_json"], "\"light\"");
-    assert_eq!(res["user_seq"], 2);
+    assert_eq!(res["value"], light_b64);
+    assert_eq!(res["user_seq"], 3);
 
     // 4. Read unknown key returns 404
     let req = Request::builder()
@@ -139,6 +145,9 @@ async fn test_preference_crud_lifecycle() {
 
 #[tokio::test]
 async fn test_preference_json_types() {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+
     let (app, _) = common::setup_test_app().await;
 
     common::register_user(&app, "alice", "Password123!", None).await;
@@ -147,19 +156,15 @@ async fn test_preference_json_types() {
     let token = login_res["session_token"].as_str().unwrap();
 
     let test_cases = vec![
-        ("str-key", json!("hello world"), "\"hello world\""),
-        ("num-key", json!(42), "42"),
-        ("bool-key", json!(true), "true"),
-        ("null-key", json!(null), "null"),
-        ("array-key", json!([1, 2, "three"]), "[1,2,\"three\"]"),
-        (
-            "object-key",
-            json!({"font_size": 14, "sound": false}),
-            "{\"font_size\":14,\"sound\":false}",
-        ),
+        ("str-key", URL_SAFE_NO_PAD.encode(b"hello_world")),
+        ("num-key", URL_SAFE_NO_PAD.encode(b"42")),
+        ("bool-key", URL_SAFE_NO_PAD.encode(b"true")),
+        ("null-key", URL_SAFE_NO_PAD.encode(b"null")),
+        ("array-key", URL_SAFE_NO_PAD.encode(b"[1,2]")),
+        ("object-key", URL_SAFE_NO_PAD.encode(b"{\"font_size\":14}")),
     ];
 
-    for (key, val, expected_json) in test_cases {
+    for (key, val) in test_cases {
         let req = Request::builder()
             .method("PATCH")
             .uri(format!("/api/v1/users/me/preferences/{key}"))
@@ -184,7 +189,7 @@ async fn test_preference_json_types() {
 
         let res: Value = serde_json::from_slice(&body_bytes).unwrap();
         assert_eq!(res["key"], key);
-        assert_eq!(res["value_json"], expected_json);
+        assert_eq!(res["value"], val);
 
         // GET and verify
         let req = Request::builder()
@@ -200,12 +205,15 @@ async fn test_preference_json_types() {
             .await
             .unwrap();
         let res: Value = serde_json::from_slice(&body_bytes).unwrap();
-        assert_eq!(res["value_json"], expected_json);
+        assert_eq!(res["value"], val);
     }
 }
 
 #[tokio::test]
 async fn test_preference_cross_user_isolation() {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+
     let (app, pool) = common::setup_test_app().await;
 
     // Register User A
@@ -228,13 +236,16 @@ async fn test_preference_cross_user_isolation() {
         common::login_user(&app, "bob", "Password123!", "client_device2_123456", None).await;
     let token_b = login_b["session_token"].as_str().unwrap();
 
+    let dark_b64 = URL_SAFE_NO_PAD.encode(b"dark");
+    let light_b64 = URL_SAFE_NO_PAD.encode(b"light");
+
     // User A writes theme=dark
     let req = Request::builder()
         .method("PATCH")
         .uri("/api/v1/users/me/preferences/theme")
         .header(header::AUTHORIZATION, format!("Bearer {token_a}"))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "value": "dark" }).to_string()))
+        .body(Body::from(json!({ "value": dark_b64 }).to_string()))
         .unwrap();
 
     let resp = app.clone().oneshot(req).await.unwrap();
@@ -257,7 +268,7 @@ async fn test_preference_cross_user_isolation() {
         .uri("/api/v1/users/me/preferences/theme")
         .header(header::AUTHORIZATION, format!("Bearer {token_b}"))
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json!({ "value": "light" }).to_string()))
+        .body(Body::from(json!({ "value": light_b64 }).to_string()))
         .unwrap();
 
     let resp = app.clone().oneshot(req).await.unwrap();
@@ -277,5 +288,5 @@ async fn test_preference_cross_user_isolation() {
         .await
         .unwrap();
     let res: Value = serde_json::from_slice(&body_bytes).unwrap();
-    assert_eq!(res["value_json"], "\"dark\"");
+    assert_eq!(res["value"], dark_b64);
 }

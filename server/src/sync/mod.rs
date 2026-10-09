@@ -3,6 +3,7 @@ pub mod envelope;
 pub mod preferences;
 pub mod query;
 pub mod read_state;
+pub mod room_order;
 pub mod seq;
 pub mod starred;
 
@@ -12,6 +13,7 @@ pub use envelope::{publish_user_event, UserEventEnvelope};
 pub use preferences::PreferenceRow;
 pub use query::{execute_sync, BotSettingSyncRow, SyncQuery, SyncResponse};
 pub use read_state::ReadStateRow;
+pub use room_order::{get_room_order, set_room_order, RoomOrderError, RoomOrderSyncState};
 pub use seq::allocate_user_seq;
 
 #[derive(Debug, thiserror::Error)]
@@ -26,4 +28,6 @@ pub enum SyncError {
     ReadState(#[from] read_state::ReadStateError),
     #[error("preferences error: {0}")]
     Preferences(#[from] preferences::PreferencesError),
+    #[error("room order error: {0}")]
+    RoomOrder(#[from] room_order::RoomOrderError),
 }

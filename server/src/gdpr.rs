@@ -245,6 +245,17 @@ pub async fn anonymise_user(
         Err(e) => return Err(GdprError::Database(e)),
     };
 
+    // 13. Delete user room order for the user (§14.2)
+    match sqlx::query("DELETE FROM user_room_order WHERE user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+    {
+        Ok(_) => {}
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => {}
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
     // Commit transaction
     tx.commit().await?;
 
@@ -512,7 +523,23 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
         }));
     }
 
-    // 8. Audit
+    // 8. User room order (§14.3)
+    let room_order_state = crate::sync::room_order::get_room_order(pool, user_id)
+        .await
+        .map_err(|e| match e {
+            crate::sync::RoomOrderError::Database(err) => GdprError::Database(err),
+            _ => GdprError::ExportFailed(e.to_string()),
+        })?;
+
+    let room_order_json = match room_order_state {
+        Some(ro) => json!({
+            "room_ids": ro.room_ids,
+            "user_seq": ro.user_seq
+        }),
+        None => json!({ "room_order": null }),
+    };
+
+    // 9. Audit
     let audit_rows = sqlx::query(
         "SELECT id, action, target_type, target_id, metadata, created_at FROM audit_log WHERE actor_id = ? ORDER BY created_at ASC",
     )
@@ -628,6 +655,15 @@ Store this archive securely. It contains personal data.
             .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
         zip.write_all(
             serde_json::to_string_pretty(&pref_list)
+                .map_err(|e| GdprError::ExportFailed(e.to_string()))?
+                .as_bytes(),
+        )
+        .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+
+        zip.start_file("room_order.json", options)
+            .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+        zip.write_all(
+            serde_json::to_string_pretty(&room_order_json)
                 .map_err(|e| GdprError::ExportFailed(e.to_string()))?
                 .as_bytes(),
         )
