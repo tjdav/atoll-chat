@@ -36,6 +36,7 @@ pub struct RateLimitConfig {
     pub rate_bot_create_per_hour: u32,
     pub rate_bot_grant_per_hour: u32,
     pub rate_bot_token_issue_per_hour: u32,
+    pub rate_bot_command_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -128,6 +129,7 @@ pub struct Config {
     pub max_room_metadata_bytes: usize,
     pub server_max_edit_window_seconds: i64,
     pub edit_window_seconds: i64,
+    pub bot_command_ttl_hours: u64,
     pub max_starred_items_per_user: u32,
     pub preferences_max_encrypted_bytes: usize,
     pub rate_limits: RateLimitConfig,
@@ -560,6 +562,16 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(20);
 
+        let rate_bot_command_per_min = env::var("RATE_BOT_COMMAND_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(60);
+
+        let bot_command_ttl_hours = env::var("BOT_COMMAND_TTL_HOURS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(24);
+
         let rate_limits = RateLimitConfig {
             invite_create_hourly: rate_invite_create_hourly,
             invite_create_daily: rate_invite_create_daily,
@@ -594,6 +606,7 @@ impl Config {
             rate_bot_create_per_hour,
             rate_bot_grant_per_hour,
             rate_bot_token_issue_per_hour,
+            rate_bot_command_per_min,
         };
 
         let link_preview_proxy_enabled = env::var("LINK_PREVIEW_PROXY_ENABLED")
@@ -1346,6 +1359,7 @@ impl Config {
             max_room_metadata_bytes,
             server_max_edit_window_seconds,
             edit_window_seconds,
+            bot_command_ttl_hours,
             max_starred_items_per_user,
             preferences_max_encrypted_bytes,
             rate_limits,
@@ -1467,7 +1481,9 @@ impl Config {
                 rate_bot_create_per_hour: 5,
                 rate_bot_grant_per_hour: 50,
                 rate_bot_token_issue_per_hour: 20,
+                rate_bot_command_per_min: 60,
             },
+            bot_command_ttl_hours: 24,
             link_preview_proxy_enabled: false,
             link_preview_proxy_timeout_seconds: 5,
             link_preview_proxy_max_bytes: 1_048_576,

@@ -282,6 +282,12 @@
   - **Contract Highlights:** Implemented `user_room_order` dedicated table per §7.2, `PATCH /users/me/room-order` handler per §8.2.6, `room_order.sync` event publishing per §8.9 (`{ "room_ids": [...], "user_seq": N }`), duplicate and non-member room validation (HTTP 400 `invalid_room_ids` / HTTP 403 `not_a_member`), `rooms_per_user` length cap enforcement (HTTP 400 `too_many_rooms`), no-op guard (unchanged list skips `user_seq` allocation and event emission), top-level `room_order` sync response field integration in `GET /users/me/sync`, GDPR deletion in `anonymise_user`, and `room_order.json` ZIP export member in `build_export`.
   - **Batch:** `sync`
 
+- **Bot Command Routing (Phase 32)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Add `bot_commands` table and `idx_bot_commands_pending` partial index per §7.10).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-command-routing/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/rate_limit.rs`, `server/src/config.rs`, `server/src/routes/room_bots.rs`, `server/src/routes/bots.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/src/cleanup/bot_commands.rs`, `server/src/cleanup/mod.rs`, `server/tests/bot_commands.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `verification.md`.
+  - **Contract Highlights:** Implemented `bot_commands` table and partial pending index, `POST /rooms/:id/bot-commands` endpoint (user auth, room membership, `read_commands` scope check, unpadded base64url ciphertext validation capped at 64 KiB, `request_id` correlation, `RATE_BOT_COMMAND_PER_MIN` rate limit, `bot.command_invoked` durable event on `private-bot-{bot_id}`, post-publish `delivered_at` update, HTTP 202 Accepted response with `Cache-Control: no-store`), `POST /bots/me/commands/:id/ack` endpoint (bot token auth, bot_id matching, idempotent `acked_at` update, HTTP 204 No Content response with `Cache-Control: no-store`), `BotCommandsTtlJob` cleanup job marking expired unacked commands older than `BOT_COMMAND_TTL_HOURS` (default 24), ciphertext opacity without parsing or logging, and 6 integration test cases passing under `bots` batch (`make -C server test-bots`).
+  - **Batch:** `bots`
+
 - **Bot Settings Encryption (Phase 30)**: done
   - **Migration:** `server/migrations/0001_v2_schema.sql` (Add `bot_settings` table and `idx_bot_settings_seq` index per §7.10).
   - **Delivered:** Step 0 Empirical Report at `verification/bot-settings-encryption/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/bots/settings.rs`, `server/src/routes/bots.rs`, `server/src/routes/mod.rs`, `server/src/lib.rs`, `server/src/sync/query.rs`, `server/tests/bot_settings.rs`, `server/tests/batch-manifest.toml`, `verification.md`.
@@ -294,8 +300,8 @@ None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 56
-- **Done:** 56
+- **Total Verifications/Tasks Tracked:** 57
+- **Done:** 57
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

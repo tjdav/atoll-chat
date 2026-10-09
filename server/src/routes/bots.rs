@@ -532,6 +532,50 @@ pub async fn delete_bot(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
+/// POST /bots/me/commands/:id/ack — Bot acknowledges a command (§8.8.15)
+pub async fn ack_bot_command(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(command_id): Path<String>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+    let bot_ctx = match caller {
+        CallerIdentity::Bot(b) => b,
+        CallerIdentity::User(_) => return Err(ApiError::Forbidden("forbidden".into())),
+    };
+
+    let row: Option<(String, Option<String>)> =
+        sqlx::query_as("SELECT bot_id, CAST(acked_at AS TEXT) FROM bot_commands WHERE id = ?")
+            .bind(&command_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let (bot_id, acked_at) = match row {
+        Some(r) => r,
+        None => return Err(ApiError::NotFound("command_not_found".into())),
+    };
+
+    if bot_id != bot_ctx.bot_id {
+        return Err(ApiError::Forbidden("forbidden".into()));
+    }
+
+    if acked_at.is_none() {
+        sqlx::query("UPDATE bot_commands SET acked_at = CURRENT_TIMESTAMP WHERE id = ?")
+            .bind(&command_id)
+            .execute(&state.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+    }
+
+    let mut response = StatusCode::NO_CONTENT.into_response();
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
 /// GET /bots/me/settings — bot reads its own settings (§8.8.10)
 pub async fn get_bot_settings_me(
     State(state): State<AppState>,
