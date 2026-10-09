@@ -354,6 +354,15 @@ pub fn build_app(state: AppState) -> Router {
             delete(routes::push_subscriptions::revoke),
         )
         .route("/users/me/sync", get(routes::sync::get_sync))
+        .route(
+            "/users/me/bots/{bot_id}/settings",
+            get(routes::bots::get_bot_settings_owner),
+        )
+        .route(
+            "/users/me/bots/{bot_id}/settings/{key}",
+            patch(routes::bots::patch_bot_setting_owner)
+                .delete(routes::bots::delete_bot_setting_owner),
+        )
         .route("/auth/logout", post(routes::sessions::logout))
         .route(
             "/admin/invites",
@@ -423,6 +432,7 @@ pub fn build_app(state: AppState) -> Router {
             patch(routes::room_messages::edit).delete(routes::room_messages::delete_message),
         )
         .route("/bots", post(routes::bots::create_bot))
+        .route("/bots/me/settings", get(routes::bots::get_bot_settings_me))
         .route(
             "/bots/{id}",
             get(routes::bots::get_bot)

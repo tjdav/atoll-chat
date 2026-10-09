@@ -256,6 +256,17 @@ pub async fn anonymise_user(
         Err(e) => return Err(GdprError::Database(e)),
     };
 
+    // 14. Delete all bots owned by the user (cascades to bot_settings) (§14.2)
+    match sqlx::query("DELETE FROM bot_accounts WHERE owner_user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+    {
+        Ok(_) => {}
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => {}
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
     // Commit transaction
     tx.commit().await?;
 
@@ -539,7 +550,46 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
         None => json!({ "room_order": null }),
     };
 
-    // 9. Audit
+    // 9. Bot settings (§14.3)
+    let bot_setting_rows = match sqlx::query(
+        r#"
+        SELECT bs.bot_id, bs.key, bs.is_secret, bs.value_encrypted_client, bs.value_encrypted_bot, bs.user_seq, bs.updated_at
+        FROM bot_settings bs
+        JOIN bot_accounts ba ON ba.id = bs.bot_id
+        WHERE ba.owner_user_id = ?
+        ORDER BY bs.bot_id ASC, bs.key ASC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await {
+        Ok(rows) => rows,
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => vec![],
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
+    let mut bot_setting_list = Vec::new();
+    for row in bot_setting_rows {
+        let b_id: String = row.get("bot_id");
+        let b_key: String = row.get("key");
+        let b_secret: bool = row.get::<i64, _>("is_secret") == 1;
+        let b_client_ct: Option<String> = row.get("value_encrypted_client");
+        let b_bot_ct: String = row.get("value_encrypted_bot");
+        let b_seq: i64 = row.get("user_seq");
+        let b_updated_at: DateTime<Utc> = row.get("updated_at");
+
+        bot_setting_list.push(json!({
+            "bot_id": b_id,
+            "key": b_key,
+            "is_secret": b_secret,
+            "value_encrypted_client": b_client_ct,
+            "value_encrypted_bot": b_bot_ct,
+            "user_seq": b_seq,
+            "updated_at": b_updated_at.to_rfc3339()
+        }));
+    }
+
+    // 10. Audit
     let audit_rows = sqlx::query(
         "SELECT id, action, target_type, target_id, metadata, created_at FROM audit_log WHERE actor_id = ? ORDER BY created_at ASC",
     )
@@ -668,6 +718,17 @@ Store this archive securely. It contains personal data.
                 .as_bytes(),
         )
         .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+
+        if !bot_setting_list.is_empty() {
+            zip.start_file("bot_settings.json", options)
+                .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+            zip.write_all(
+                serde_json::to_string_pretty(&bot_setting_list)
+                    .map_err(|e| GdprError::ExportFailed(e.to_string()))?
+                    .as_bytes(),
+            )
+            .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+        }
 
         zip.start_file("audit.json", options)
             .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
