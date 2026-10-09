@@ -1,0 +1,32 @@
+# Runtime Configuration
+[runtime]
+log_level = "info"
+log_format = "json"
+
+# Webhook Trigger Configuration
+[webhook]
+host = "127.0.0.1"
+port = 8787
+base_path = "/example"
+max_body_bytes = 1048576
+timeout_ms = 5000
+
+# Cron Schedule Configuration
+[cron]
+timezone = "UTC"
+catch_up = false
+
+# Reconnection Backoff Policy
+[reconnect]
+base_backoff_ms = 1000
+max_backoff_ms = 30000
+jitter = 0.2
+
+# Graceful Shutdown
+[shutdown]
+drain_ms = 30000
+
+# Runtime Diagnostics
+[diagnostics]
+enabled = true
+retention_days = 7

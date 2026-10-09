@@ -1,0 +1,13 @@
+{
+  "name": "atoll-echo-bot-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "atoll-bot run ./bot.js",
+    "dev": "atoll-bot dev ./bot.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@atoll/bot": "workspace:*"
+  }
+}
