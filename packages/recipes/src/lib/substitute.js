@@ -1,32 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-const TOKEN = /\{\{([a-zA-Z0-9_.]+)\}\}/g
+import { readPath } from './path.js'
 
-/**
- * Reads a dot-separated path from an object.
- * @param {unknown} source - The object to read from.
- * @param {string} path - Dot-separated property path.
- * @returns {unknown} The resolved value.
- * @throws {Error} When a segment is missing or source is not an
- *   object at that point.
- */
-function readPath (source, path) {
-  const segments = path.split('.')
-  let current = source
-  for (const segment of segments) {
-    if (current === null || current === undefined) {
-      throw new Error(`substitute: path "${path}" is not resolvable`)
-    }
-    if (typeof current !== 'object') {
-      throw new Error(`substitute: path "${path}" is not resolvable`)
-    }
-    if (!Object.hasOwn(current, segment)) {
-      throw new Error(`substitute: path "${path}" is not resolvable`)
-    }
-    current = current[segment]
-  }
-  return current
-}
+const TOKEN = /\{\{([a-zA-Z0-9_.]+)\}\}/g
 
 /**
  * Returns true when the string is exactly one substitution token.
