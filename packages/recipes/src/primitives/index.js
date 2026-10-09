@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { postResponse } from './post-response.js'
+import { sendLocal } from './send-local.js'
 
 /**
  * The primitive registry. Keyed by target, then by primitive id.
@@ -11,7 +12,8 @@ import { postResponse } from './post-response.js'
  */
 export const primitives = {
   bot: {
-    [postResponse.id]: postResponse
+    [postResponse.id]: postResponse,
+    [sendLocal.id]: sendLocal
   },
   extension: {}
 }
