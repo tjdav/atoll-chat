@@ -11,3 +11,5 @@
  * @type {string}
  */
 export const version = '0.0.0'
+
+export { primitives, getPrimitive, listPrimitives } from './primitives/index.js'
