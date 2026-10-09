@@ -45,5 +45,6 @@ Each plugin that ships with the client has a usage guide in this directory.
 | `storage` | [storage.md](./storage.md) | SQLite persistence, backend abstraction, migration runner, and `meta` helpers. |
 | `sync` | [sync.md](./sync.md) | User-scoped sync via `GET /users/me/sync`. |
 | `floating` | [floating.md](./floating.md) | Floating UI positioning for popovers, context menus, and tooltips. |
+| `globalStore` | [state.md](./state.md) | Single-tab reactive shell state management, store subscriptions, and state-key data passing. |
 
 New plugin tasks add their guide here in the same commit that lands the plugin.

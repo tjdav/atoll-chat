@@ -14,13 +14,14 @@ or modify the server's ledger.
 | Status | Count |
 |---|---|
 | Pending | 2 |
-| Done | 54 |
+| Done | 55 |
 | Blocked | 0 |
 
 ## Client Tasks
 
 | Task | Deliverable | Status | Depends On | Batch |
 |---|---|---|---|---|
+| C-INFRA-7b | State Plugin, Verified and Wired (`globalStore`) | done | C-INFRA-27, C-INFRA-28, C-INFRA-11, C-INFRA-24, C-INFRA-23 | unit-smoke, component-smoke |
 | C-INFRA-28 | Signal-Based Auto-Cleanup for the `floating` Plugin | done | C-INFRA-27, C-INFRA-23, C-INFRA-25 | unit-smoke, component-smoke |
 | C-CHAT-12 | Reply / Quote Flow | done | C-CHAT-9, C-CHAT-10, C-CHAT-11, C-CHAT-8, C-INFRA-25, C-INFRA-14 | unit-smoke, component-smoke |
 | C-INFRA-26 | `ui-sheet` Primitive for Modals and Bottom Sheets | done | C-INFRA-23, C-INFRA-25, C-CHAT-7 | component-smoke |
@@ -241,6 +242,14 @@ Every future plugin task creates `packages/app/docs/plugins/<plugin>.md` in the 
 | CF-007 | C-INFRA-24 | Documentation bug (LLM reference omits `client.config` in plugin example) | T4 | filed-upstream; client-mitigated-by-architecture |
 
 ## Notes
+
+- **C-INFRA-7b Deliverables:**
+  - Implemented `createStateStore({ initialState })` and `DEFAULT_SHELL_STATE` in `packages/app/src/lib/state/index.js` featuring Proxy-backed `$state` reactivity, subscriber notifications with `(newValue, oldValue)`, `{ signal }` auto-cleanup, `getSnapshot()`, `reset()`, and property deletion subscriber triggers.
+  - Implemented `globalStore` plugin in `packages/app/src/plugins/state-plugin.js` using `client.config` for `initialState` delivery, Phase 1 async dynamic import (`await import('../lib/state/index.js')`), and two-phase context resolvers exposing `$state`, `subscribe`, `subscribeAny`, `getSnapshot`, `reset` directly without a wrapper key.
+  - Registered `statePlugin({ initialState: {} })` early in `packages/app/coralite.config.js`.
+  - Created unit test suites `packages/app/tests/unit/state.test.js` (16 cases) and `packages/app/tests/unit/state-plugin.test.js` (9 cases) registered under `unit-smoke` in `packages/app/test-batches.js`.
+  - Created Playwright component test `packages/app/tests/component/state-plugin.spec.js` (5 cases) registered under `component-smoke` in `packages/app/test-batches.js`.
+  - Authored documentation at `packages/app/docs/plugins/state.md` (all 10 required sections) and updated `packages/app/docs/plugins/README.md`.
 
 - **C-INFRA-28 Deliverables:**
   - Extended `positionFloating` in `packages/app/src/plugins/floating-plugin.js` to accept optional `signal` argument (`positionFloating(params, signal)`). Short-circuits on missing `reference`/`floating` or already-aborted signal, wires internal `signal.addEventListener('abort', cleanup, { once: true })`, and returns an idempotent cleanup function guarded by `cleaned`.
