@@ -7,6 +7,7 @@ import { keyedStore } from './keyed-store.js'
 import { exposeCommand } from './expose-command.js'
 import { scheduleTask } from './schedule-task.js'
 import { webhookReceive } from './webhook-receive.js'
+import { httpFetch } from './http-fetch.js'
 
 /**
  * The primitive registry. Keyed by target, then by primitive id.
@@ -23,7 +24,8 @@ export const primitives = {
     [keyedStore.id]: keyedStore,
     [exposeCommand.id]: exposeCommand,
     [scheduleTask.id]: scheduleTask,
-    [webhookReceive.id]: webhookReceive
+    [webhookReceive.id]: webhookReceive,
+    [httpFetch.id]: httpFetch
   },
   extension: {}
 }
