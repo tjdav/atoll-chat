@@ -8,6 +8,7 @@ import { loginCommand } from './login.js'
 import { logoutCommand } from './logout.js'
 import { registerCommand } from './register.js'
 import { runCommand } from './run.js'
+import { sandboxCommand } from './sandbox/index.js'
 import { tailCommand } from './tail.js'
 import { validateCommand } from './validate.js'
 
@@ -60,6 +61,7 @@ function getBuiltinCommands () {
       run: runCommand,
       'export-keys': exportKeysCommand,
       'import-keys': importKeysCommand,
+      sandbox: sandboxCommand,
       dev: devCommand,
       inspect: inspectCommand,
       tail: tailCommand

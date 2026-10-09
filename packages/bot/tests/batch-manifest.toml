@@ -293,3 +293,9 @@ name = "cli-inspect-tail"
 files = [
   "unit/cli-inspect-tail.test.js",
 ]
+
+[[batch]]
+name = "cli-sandbox"
+files = [
+  "unit/cli-sandbox.test.js",
+]

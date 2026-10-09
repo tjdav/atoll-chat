@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 39
-- **Done:** 39
+- **Total Tasks:** 40
+- **Done:** 40
 - **In Progress:** 0
 - **Todo:** 0
 
@@ -17,6 +17,7 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-042 | CLI | done | §14.1, §14.2, §14.9 | Implement `sandbox connect`, `sandbox run`, and `sandbox reset` commands and `sandbox` dispatcher |
 | B-041 | CLI | done | §14.1, §14.6 | Implement `dev`, `inspect`, and `tail` developer subcommands and shared `diag-file.js` reader |
 | B-040 | CLI | done | §14.1, §14.9 | Implement export-keys and import-keys CLI subcommands for passphrase-independent keystore portability |
 | B-037 | CLI | done | §14.1, §14.2, §14.9 | Implement register, login, and logout subcommands, keygen primitives, and CLI dispatcher integration |
