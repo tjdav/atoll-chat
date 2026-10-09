@@ -1,5 +1,16 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-045 Verification Fact
+- **Documentation and Example Bot (`packages/bot/README.md`, `examples/echo-bot/`)**:
+  - The README lives at `packages/bot/README.md` and is included in the published npm package via the `files` array in `packages/bot/package.json`.
+  - The example bot lives at `examples/echo-bot/` at the repository root and is not published.
+  - The example's `package.json` sets `"private": true` and uses `"@atoll/bot": "workspace:*"` to resolve to the local SDK package in the monorepo workspace.
+  - The example's `bot.js` demonstrates all public SDK exports: `defineBot`, `defineSettings`, `defineCommand`, `defineCommands`, `defineTrigger`, and context methods (`ctx.post`, `ctx.reply`, `ctx.sendLocal`, `ctx.settings`, `ctx.storage`, `ctx.rooms`, `ctx.log`).
+  - The example's `bot.toml` provides an annotated, copy-pasteable configuration covering all sections defined in §14.3.
+  - **Spec Gap 1**: The README structure is unspecified in the spec. This task uses standard SDK sections (intro, install, quick start, authoring surface, testing, CLI, environment variables, server contract, status, license).
+  - **Spec Gap 2**: The example bot's location and shape are unspecified in the spec; the task ledger designates `examples/echo-bot/`.
+  - **Spec Gap 3**: Only `packages/bot/README.md` is published; `examples/` is repository-level example material and is excluded from the package distribution.
+
 ## Task B-044 Verification Fact
 - **End-to-End Smoke Test (`packages/bot/tests/integration/smoke.test.js` & `packages/bot/tests/integration/fixtures/echo-bot.js`)**:
   - The end-to-end smoke test lives at `tests/integration/smoke.test.js`. Its fixture bot lives at `tests/integration/fixtures/echo-bot.js`.
@@ -639,8 +650,6 @@
   - **Spec Gap 2 Recorded**: Response bodies for success are empty with 200 OK. Errors return JSON envelopes (`{ error, message }`).
   - Registered `webhook-server` batch in `packages/bot/tests/batch-manifest.toml` and authored 43 unit tests in `packages/bot/tests/unit/webhook-server.test.js` using local `node:http` servers.
 - **Verification Results**:
-  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
-  - `pnpm --filter @atoll/bot lint` passed (status 0).
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `pnpm --filter @atoll/bot test` passed (status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
