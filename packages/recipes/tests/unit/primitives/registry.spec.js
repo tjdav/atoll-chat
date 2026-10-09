@@ -21,15 +21,9 @@ const fixture = {
   capabilities: [],
   label: 'Fixture',
   description: 'A fixture primitive for tests.',
-  configSchema: {
-    type: 'object',
-    properties: {}
-  },
+  configSchema: { type: 'object', properties: {} },
   create: () => ({})
 }
-
-/** @type {any} */
-const unknownTarget = 'unknown'
 
 test('registry has both target keys', () => {
   assert.ok(Object.hasOwn(primitives, 'bot'))
@@ -46,16 +40,15 @@ test('getPrimitive returns undefined for an unknown id', () => {
 })
 
 test('getPrimitive returns undefined for an unknown target', () => {
-  assert.equal(getPrimitive(unknownTarget, 'anything'), undefined)
+  assert.equal(getPrimitive('unknown', 'anything'), undefined)
 })
 
-test('listPrimitives returns an empty array for an empty target', () => {
-  assert.deepEqual(listPrimitives('bot'), [])
+test('listPrimitives returns an empty array for the empty extension target', () => {
   assert.deepEqual(listPrimitives('extension'), [])
 })
 
 test('listPrimitives returns an empty array for an unknown target', () => {
-  assert.deepEqual(listPrimitives(unknownTarget), [])
+  assert.deepEqual(listPrimitives('unknown'), [])
 })
 
 test('getPrimitive finds a fixture placed in the registry', () => {
@@ -65,20 +58,11 @@ test('getPrimitive finds a fixture placed in the registry', () => {
 })
 
 test('listPrimitives returns sorted ids', () => {
-  primitives.bot.zebra = {
-    ...fixture,
-    id: 'zebra'
-  }
-  primitives.bot.alpha = {
-    ...fixture,
-    id: 'alpha'
-  }
-  primitives.bot.middle = {
-    ...fixture,
-    id: 'middle'
-  }
-  assert.deepEqual(listPrimitives('bot'), ['alpha', 'middle', 'zebra'])
-  delete primitives.bot.zebra
-  delete primitives.bot.alpha
-  delete primitives.bot.middle
+  primitives.extension.zebra = { ...fixture, id: 'zebra', targets: ['extension'] }
+  primitives.extension.alpha = { ...fixture, id: 'alpha', targets: ['extension'] }
+  primitives.extension.middle = { ...fixture, id: 'middle', targets: ['extension'] }
+  assert.deepEqual(listPrimitives('extension'), ['alpha', 'middle', 'zebra'])
+  delete primitives.extension.zebra
+  delete primitives.extension.alpha
+  delete primitives.extension.middle
 })
