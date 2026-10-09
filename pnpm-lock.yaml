@@ -75,7 +75,11 @@ importers:
         specifier: 1.0.0-rc.5
         version: 1.0.0-rc.5(@noble/hashes@1.8.0)
 
-  packages/recipes: {}
+  packages/recipes:
+    devDependencies:
+      '@atoll/bot':
+        specifier: workspace:*
+        version: link:../bot
 
 packages:
 

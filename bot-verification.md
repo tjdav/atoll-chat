@@ -1,5 +1,20 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-042 Verification Fact
+- **Sandbox Subcommands (`packages/bot/src/cli/sandbox/index.js`, `src/cli/sandbox/connect.js`, `src/cli/sandbox/run.js`, `src/cli/sandbox/reset.js`)**:
+  - The sandbox subcommands live under `packages/bot/src/cli/sandbox/`. The top-level `sandbox` command dispatches to `connect`, `run`, and `reset`. Registered in `src/cli/index.js`.
+  - The sandbox keystore lives at `<cwd>/bot.keystore.sandbox` or `ATOL_BOT_SANDBOX_KEYSTORE`. It is distinct from the production keystore.
+  - The sandbox keystore carries a `sandbox_url` field in its plaintext. `sandbox run` reads it to configure the runtime without requiring `ATOL_SERVER_URL`.
+  - `sandbox connect` registers the bot via `POST /api/v1/bots` with the sandbox token in the `Authorization` header.
+  - `sandbox run` delegates to the production `run` command with `ATOL_SERVER_URL` and `ATOL_BOT_KEYSTORE` overridden in a child `io.env`.
+  - `sandbox reset` calls `DELETE /api/v1/bots/<id>` with the bot token, treats 404 as success, and removes the local keystore unless `--keep-local`.
+  - Signal test isolation uses `{ concurrency: 1 }` on `describe` blocks and removes residual `SIGINT`/`SIGTERM` listeners in `afterEach`.
+  - **Spec Gap 1**: No sandbox bot-deletion endpoint in Server §8. Used `DELETE /api/v1/bots/:id`.
+  - **Spec Gap 2**: Sandbox server URL convention (base vs. full URL) is unspecified in §14.1. Treated as base URL matching `ATOL_SERVER_URL` convention, appending `/api/v1`.
+  - **Spec Gap 3**: Sandbox keystore path is unspecified in §14.1. Implemented as `<cwd>/bot.keystore.sandbox` or `ATOL_BOT_SANDBOX_KEYSTORE`.
+  - **Spec Gap 4**: `sandbox run` relationship to `run` is unspecified in §14.1. Implemented via delegation to `runCommand` with `io.env` overrides.
+  - Registered `cli-sandbox` (37 unit test cases in `packages/bot/tests/unit/cli-sandbox.test.js`) batch in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-041 Verification Fact
 - **Developer Subcommands (`packages/bot/src/cli/dev.js`, `src/cli/inspect.js`, `src/cli/tail.js`, `src/cli/diag-file.js`)**:
   - The subcommands live at `src/cli/dev.js`, `src/cli/inspect.js`, and `src/cli/tail.js`. The shared diagnostic-file reader lives at `src/cli/diag-file.js`.
