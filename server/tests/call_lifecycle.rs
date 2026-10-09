@@ -118,6 +118,7 @@ async fn setup_test_app(
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),
+        bot_connection_state: server::bots::BotConnectionState::new(),
     };
 
     let app = server::build_app(state);

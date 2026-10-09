@@ -107,6 +107,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        bot_connection_state: server::bots::BotConnectionState::new(),
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
@@ -578,7 +579,7 @@ async fn test_bot_target_pending_adds_and_consume_workflow() {
     // Create a bot account in bot_accounts table
     let bot_id = "b_test_bot_123";
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, owner_user_id) VALUES (?, 'Test Bot', ?)",
+        "INSERT INTO bot_accounts (id, display_name, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES (?, 'Test Bot', ?, 'pk_id', 'pk_cmd', 'pk_mls')",
     )
     .bind(bot_id)
     .bind(&user_a_id)
@@ -822,6 +823,7 @@ async fn test_mls_add_pending_publish_failure_does_not_fail_member_add() {
             std::path::PathBuf::from("/tmp/tts"),
         )),
         occupancy: server::sessions::OccupancyStore::new(),
+        bot_connection_state: server::bots::BotConnectionState::new(),
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
@@ -942,7 +944,7 @@ async fn test_select_bot_key_packages_helper() {
     // Create a bot account in bot_accounts table
     let bot_id = "b_select_kp_test";
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, owner_user_id) VALUES (?, 'KP Bot', 'u_owner')",
+        "INSERT INTO bot_accounts (id, display_name, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES (?, 'KP Bot', 'u_owner', 'pk_id', 'pk_cmd', 'pk_mls')",
     )
     .bind(bot_id)
     .execute(&pool)

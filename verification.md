@@ -1182,3 +1182,23 @@
   - **GDPR & Pruning:** Account deletion removes `user_room_order` rows. Data export includes `room_order.json`. Sync pruning skips `user_room_order` because it has no `deleted_at` column (physical replacement).
   - **Preferences Reserved Key:** `PATCH /users/me/preferences/room_order` returns 400 `reserved_key`.
 - **Link to report:** [verification/room-order-table/report.md](verification/room-order-table/report.md)
+
+## Bot Account Model (Phase 27)
+- **ID:** Bot Account Model
+- **Date:** 2026-10-09
+- **Status:** Step 0 Verification Complete. Implementation in progress.
+- **Spec / Amendment references:** V3 Spec §3.2, §3.3, §7.10, §8.8.1–§8.8.7, §8.9, §12
+- **Question asked:** What is the ground truth for bot account schema, bot tokens, declared scopes, room bot scopes, bot CRUD endpoints, token endpoints, avatar endpoints, grant endpoints, scope dependency rules, mode derivation, event publishing, and in-memory connection state?
+- **Answer found:**
+  - **Schema:**
+    - `bot_accounts` matching §7.10 (`id`, `display_name`, `avatar_file_id`, `bot_identity_pubkey TEXT NOT NULL`, `bot_command_pubkey TEXT NOT NULL`, `identity_pubkey TEXT NOT NULL`, `owner_user_id`, `created_at`, `disabled_at`, `deleted_at`).
+    - `bot_tokens` (`id`, `bot_id`, `token_hash UNIQUE`, `created_at`, `expires_at`, `revoked_at`, `last_used_at`).
+    - `bot_declared_scopes` (`bot_id`, `scope CHECK(...)`).
+    - `room_bots` (`room_id`, `bot_id`, `mode CHECK('write_only', 'observer', 'member')`, `granted_by`, `granted_at`, `revoked_at`).
+    - `room_bot_scopes` (`room_id`, `bot_id`, `scope CHECK(...)`).
+  - **Scope Vocabulary & Dependencies:** Standard vocabulary: `post_message`, `post_attachment`, `post_reaction`, `read_commands`, `read_metadata`, `read_content`, `edit_message`, `delete_message`. Dependencies: `post_reaction`, `edit_message`, `delete_message` require `read_content`.
+  - **Mode Derivation:** Scopes with any of `read_content`, `post_reaction`, `edit_message`, `delete_message` $\rightarrow$ `member`; else if `read_metadata` $\rightarrow$ `observer`; else $\rightarrow$ `write_only`.
+  - **Grants & MLS Integration:** `POST /rooms/:id/bots` and `PATCH /rooms/:id/bots/:bot_id` transition to `member` mode enqueues `pending_mls_adds` batch. Transition away from `member` or grant revocation (`DELETE /rooms/:id/bots/:bot_id`) or bot deletion (`DELETE /bots/:id`) enqueues `pending_mls_removes`.
+  - **Connection State & Owner Visibility:** `BotConnectionState` in `AppState` holds in-memory liveness per bot. `connected` field in `GET /rooms/:id/bots` is visible strictly to the bot's `owner_user_id` and omitted for all other callers. Connection state is never persisted, logged, or exported.
+  - **Rate Limits:** `RATE_BOT_CREATE_PER_HOUR` (5), `RATE_BOT_GRANT_PER_HOUR` (50), `RATE_BOT_TOKEN_ISSUE_PER_HOUR` (20).
+- **Link to report:** [verification/bot-account-model/report.md](verification/bot-account-model/report.md)

@@ -266,6 +266,11 @@
   - **Delivered:** Step 0 Empirical Report at `verification/starred-items-v3-align/report.md`, expanded V3 contract tests in `server/tests/starred_items.rs`, `verification.md`. Verified V3 spec against canonical V2 Task 42 fact (100% match across all 17 items, verification-only task).
   - **Batch:** `sync`
 
+- **Bot Account Model (Phase 27)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Complete `bot_accounts` with NOT NULL pubkeys and `created_at`; add `bot_tokens`, `bot_declared_scopes`, `room_bot_scopes`).
+  - **Delivered:** Step 0 report at `verification/bot-account-model/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/bots/`, `server/src/routes/bots.rs`, `server/src/routes/room_bots.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/tests/bots.rs`, `server/tests/room_bots.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`. Implemented bot CRUD, tokens, declared scopes, room bot grants, scope dependencies, mode derivation, bot avatar upload/delete, in-memory connection state with owner-only visibility, rate limits, MLS add/remove batch queueing, events, and 6 integration test cases passing under `bots` batch (`make -C server test-bots`).
+  - **Batch:** `bots`
+
 - **Task — Room Order Dedicated Table (Phase 25)**: done
   - **Migration:** Added `user_room_order` table to `server/migrations/0001_v2_schema.sql` per §7.2 with index `idx_user_room_order_seq`.
   - **Delivered:** Step 0 Empirical Report at `verification/room-order-table/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/sync/room_order.rs`, `server/src/sync/mod.rs`, `server/src/routes/room_order.rs`, `server/src/routes/mod.rs`, `server/src/lib.rs`, `server/src/routes/sync.rs`, `server/src/sync/query.rs`, `server/src/gdpr.rs`, `server/tests/room_order.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
@@ -279,7 +284,7 @@ None.
 ## Summary
 - **Project Status:** In Progress
 - **Total Verifications/Tasks Tracked:** 55
-- **Done:** 54
-- **Pending:** 1
+- **Done:** 55
+- **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

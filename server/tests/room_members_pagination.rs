@@ -465,7 +465,7 @@ async fn test_member_list_pagination_merged_users_and_bots() {
 
     // Insert 2 bots directly into bot_accounts and room_bots
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id) VALUES (?, ?, ?, ?)",
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES (?, ?, ?, ?, 'pk_id_a', 'pk_cmd_a', 'pk_mls_a')",
     )
     .bind("b_bot_alpha")
     .bind("Alpha Bot")
@@ -485,7 +485,7 @@ async fn test_member_list_pagination_merged_users_and_bots() {
         .unwrap();
 
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id) VALUES (?, ?, ?, ?)",
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES (?, ?, ?, ?, 'pk_id_b', 'pk_cmd_b', 'pk_mls_b')",
     )
     .bind("b_bot_beta")
     .bind("Beta Bot")
@@ -593,7 +593,7 @@ async fn test_member_list_pagination_revoked_and_deleted_bots_excluded() {
 
     // 1. Active Bot
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id) VALUES (?, ?, ?, ?)",
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES (?, ?, ?, ?, 'pk_id_act', 'pk_cmd_act', 'pk_mls_act')",
     )
     .bind("b_active")
     .bind("Active Bot")
@@ -614,7 +614,7 @@ async fn test_member_list_pagination_revoked_and_deleted_bots_excluded() {
 
     // 2. Revoked Bot (revoked_at IS NOT NULL)
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id) VALUES (?, ?, ?, ?)",
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES (?, ?, ?, ?, 'pk_id_rev', 'pk_cmd_rev', 'pk_mls_rev')",
     )
     .bind("b_revoked")
     .bind("Revoked Bot")
@@ -637,7 +637,7 @@ async fn test_member_list_pagination_revoked_and_deleted_bots_excluded() {
 
     // 3. Deleted Bot (deleted_at IS NOT NULL)
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, deleted_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, deleted_at, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 'pk_id_del', 'pk_cmd_del', 'pk_mls_del')",
     )
     .bind("b_deleted")
     .bind("Deleted Bot")
@@ -658,7 +658,7 @@ async fn test_member_list_pagination_revoked_and_deleted_bots_excluded() {
 
     // 4. Disabled Bot (disabled_at IS NOT NULL)
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, disabled_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
+        "INSERT INTO bot_accounts (id, display_name, avatar_file_id, owner_user_id, disabled_at, bot_identity_pubkey, bot_command_pubkey, identity_pubkey) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, 'pk_id_dis', 'pk_cmd_dis', 'pk_mls_dis')",
     )
     .bind("b_disabled")
     .bind("Disabled Bot")

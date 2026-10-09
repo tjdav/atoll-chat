@@ -229,6 +229,7 @@ where
         occupancy: server::sessions::OccupancyStore::new(),
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
+        bot_connection_state: server::bots::BotConnectionState::new(),
     };
 
     let app = server::build_app(state);
@@ -418,6 +419,7 @@ pub async fn setup_test_app_with_config(
         occupancy: server::sessions::OccupancyStore::new(),
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
+        bot_connection_state: server::bots::BotConnectionState::new(),
     };
 
     let app = server::build_app(state);
@@ -716,4 +718,30 @@ pub async fn login_user_with_device_name(
     let json2: Value = serde_json::from_slice(&body_bytes2).unwrap_or(json!({}));
 
     (status2, json2)
+}
+
+#[allow(dead_code)]
+pub async fn create_test_user_and_session(_app: &Router, pool: &SqlitePool) -> (String, String) {
+    let user_id = format!("u_{}", ulid::Ulid::new());
+    let username_token = format!("tok_{}", ulid::Ulid::new());
+    sqlx::query(
+        "INSERT INTO users (id, username_token, opaque_registration, identity_pubkey) VALUES (?, ?, X'1234', 'pk_test')",
+    )
+    .bind(&user_id)
+    .bind(&username_token)
+    .execute(pool)
+    .await
+    .unwrap();
+
+    sqlx::query("INSERT INTO user_seq (user_id, next_seq) VALUES (?, 1)")
+        .bind(&user_id)
+        .execute(pool)
+        .await
+        .unwrap();
+
+    let token = server::session::create_session(pool, &user_id, None, 30)
+        .await
+        .unwrap();
+
+    (token.raw, user_id)
 }

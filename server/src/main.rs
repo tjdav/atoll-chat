@@ -339,6 +339,7 @@ async fn main() -> anyhow::Result<()> {
         occupancy,
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
+        bot_connection_state: server::bots::BotConnectionState::new(),
     };
 
     // 7. Check bootstrap state

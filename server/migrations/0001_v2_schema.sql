@@ -456,16 +456,45 @@ CREATE TABLE IF NOT EXISTS oprf_audit (
 CREATE INDEX IF NOT EXISTS idx_oprf_audit_created ON oprf_audit(created_at DESC);
 
 -- Minimal Bot Tables for Member Pagination Merge
+-- Bot Model
 CREATE TABLE IF NOT EXISTS bot_accounts (
     id                  TEXT PRIMARY KEY,
     display_name        TEXT NOT NULL,
     avatar_file_id      TEXT,
+    bot_identity_pubkey TEXT NOT NULL,
+    bot_command_pubkey  TEXT NOT NULL,
+    identity_pubkey     TEXT NOT NULL,
     owner_user_id       TEXT NOT NULL REFERENCES users(id),
-    bot_identity_pubkey TEXT,
-    bot_command_pubkey  TEXT,
-    identity_pubkey     TEXT,
+    created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     disabled_at         DATETIME,
     deleted_at          DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS bot_tokens (
+    id           TEXT PRIMARY KEY,
+    bot_id       TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    token_hash   TEXT NOT NULL UNIQUE,
+    created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at   DATETIME,
+    revoked_at   DATETIME,
+    last_used_at DATETIME
+);
+CREATE INDEX IF NOT EXISTS idx_bot_tokens_bot ON bot_tokens(bot_id, revoked_at)
+    WHERE revoked_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS bot_declared_scopes (
+    bot_id TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    scope  TEXT NOT NULL CHECK(scope IN (
+        'post_message',
+        'post_attachment',
+        'post_reaction',
+        'read_commands',
+        'read_metadata',
+        'read_content',
+        'edit_message',
+        'delete_message'
+    )),
+    PRIMARY KEY (bot_id, scope)
 );
 
 CREATE TABLE IF NOT EXISTS room_bots (
@@ -481,3 +510,16 @@ CREATE TABLE IF NOT EXISTS room_bots (
 CREATE INDEX IF NOT EXISTS idx_room_bots_active
     ON room_bots(room_id, bot_id)
     WHERE revoked_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS room_bot_scopes (
+    room_id TEXT NOT NULL,
+    bot_id  TEXT NOT NULL,
+    scope   TEXT NOT NULL CHECK(scope IN (
+        'post_message', 'post_attachment', 'post_reaction', 'read_commands',
+        'read_metadata', 'read_content', 'edit_message', 'delete_message'
+    )),
+    PRIMARY KEY (room_id, bot_id, scope),
+    FOREIGN KEY (room_id, bot_id)
+        REFERENCES room_bots(room_id, bot_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_room_bot_scopes_lookup ON room_bot_scopes(scope, room_id);

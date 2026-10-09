@@ -36,6 +36,9 @@ pub enum RateLimitKey {
     SessionHeartbeat { user_id: String, session_id: String },
     SessionSignal { user_id: String, session_id: String },
     CallSignal { user_id: String, call_id: String },
+    BotCreate { user_id: String },
+    BotGrant { user_id: String },
+    BotTokenIssue { bot_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -406,6 +409,36 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_call_signal_per_min,
+            )
+        }
+        RateLimitKey::BotCreate { user_id } => {
+            let (start, reset) = compute_window(now, Window::Hour);
+            let boundary = start.format("%Y-%m-%d-%H").to_string();
+            (
+                format!("bot_create:{user_id}:hour:{boundary}"),
+                start,
+                reset,
+                config.rate_bot_create_per_hour,
+            )
+        }
+        RateLimitKey::BotGrant { user_id } => {
+            let (start, reset) = compute_window(now, Window::Hour);
+            let boundary = start.format("%Y-%m-%d-%H").to_string();
+            (
+                format!("bot_grant:{user_id}:hour:{boundary}"),
+                start,
+                reset,
+                config.rate_bot_grant_per_hour,
+            )
+        }
+        RateLimitKey::BotTokenIssue { bot_id } => {
+            let (start, reset) = compute_window(now, Window::Hour);
+            let boundary = start.format("%Y-%m-%d-%H").to_string();
+            (
+                format!("bot_token_issue:{bot_id}:hour:{boundary}"),
+                start,
+                reset,
+                config.rate_bot_token_issue_per_hour,
             )
         }
     };

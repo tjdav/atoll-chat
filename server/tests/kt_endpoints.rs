@@ -43,9 +43,12 @@ async fn test_key_transparency_log_schema_xor_check_and_bot_accounts() {
     assert!(user_row.0.is_none());
     assert!(user_row.1.is_none());
 
-    // 4. Bot accounts table schema with nullable pubkeys
+    // 4. Bot accounts table schema with NOT NULL pubkeys
     sqlx::query(
-        "INSERT INTO bot_accounts (id, display_name, owner_user_id) VALUES ('b_null_pubkeys', 'Null Bot', ?)",
+        r#"
+        INSERT INTO bot_accounts (id, display_name, owner_user_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey)
+        VALUES ('b_null_pubkeys', 'Null Bot', ?, 'pk_id_1', 'pk_cmd_1', 'pk_mls_1')
+        "#,
     )
     .bind(&user_id)
     .execute(&pool)
