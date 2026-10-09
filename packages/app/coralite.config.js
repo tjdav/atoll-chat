@@ -3,6 +3,7 @@ import postcssImport from 'postcss-import'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import extensionPlugin from '@atoll/extend/plugin'
+import statePlugin from './src/plugins/state-plugin.js'
 import iconPlugin from './src/plugins/icon-plugin.js'
 import storagePlugin from './src/plugins/storage-plugin.js'
 import syncPlugin from './src/plugins/sync-plugin.js'
@@ -66,6 +67,7 @@ export default defineConfig({
   },
   plugins: [
     extensionPlugin({ extensions }),
+    statePlugin({ initialState: {} }),
     iconPlugin(),
     storagePlugin({ dbName: 'messenger', migrations: loadMigrations() }),
     syncPlugin(),

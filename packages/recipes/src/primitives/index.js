@@ -12,6 +12,7 @@ import { settingsRead } from './settings-read.js'
 import { settingsWrite } from './settings-write.js'
 import { transform } from './transform.js'
 import { queueForOperator } from './queue-for-operator.js'
+import { llmComplete } from './llm-complete.js'
 
 /**
  * The primitive registry. Keyed by target, then by primitive id.
@@ -34,6 +35,7 @@ export const primitives = {
     [settingsWrite.id]: settingsWrite,
     [transform.id]: transform,
     [queueForOperator.id]: queueForOperator
+    [llmComplete.id]: llmComplete
   },
   extension: {}
 }

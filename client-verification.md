@@ -11,6 +11,24 @@ or modify the server's verification log.
 
 ## Verified Facts
 
+### C-INFRA-7b — State Plugin, Verified and Wired (`globalStore`)
+
+**Verified:** 2026-10-09
+
+| Fact / Mechanism | Signature & Behavior |
+|---|---|
+| Plugin Name & Surface | `name: 'globalStore'`, exposing `$state`, `subscribe`, `subscribeAny`, `getSnapshot`, `reset` directly on client context surface without a wrapper key |
+| Store Factory | `createStateStore({ initialState })` in `packages/app/src/lib/state/index.js` returning Proxy-backed `$state`, `subscribe(key, cb, { signal })`, `subscribeAny(cb, { signal })`, `getSnapshot()`, `reset(next)` |
+| `DEFAULT_SHELL_STATE` Shape | `currentUser: null`, `isAuthenticated: false`, `oprfToken: null`, `capabilities: null`, `rooms: {}`, `roomOrder: []`, `selectedRoomId: null`, `unreadCounts: {}`, `activeCall: null`, `callHistory: []`, `readAloudMode: false`, `readAloudState: null`, `settings: {}`, `ui: { activeRail: null, modal: null, toasts: [], offline: false }`, `pendingScrollToMessage: null`, `storageReady: false`, `storagePersistent: true` |
+| `client.config` Delivery | `statePlugin({ initialState })` passes options via `client.config = { initialState }`. Client context resolver reads `pluginContext.config?.initialState` to avoid factory closure serialization error |
+| Phase 1 Store Singleton | Phase 1 async dynamic import (`await import('../lib/state/index.js')`) creates a single store in Phase 1 closure. No singleton guard used (`__globalStore_client__` prohibited) |
+| Proxy Reactivity & Key Subscriptions | `set` and `deleteProperty` traps fire per-key subscriber callbacks with `(newValue, oldValue)`. A subscriber to key A does not fire when key B is written |
+| Property Delete Notification | `delete $state[key]` fires the subscriber for `key` with `undefined` as `newValue` and prior value as `oldValue` |
+| Shallow Reactivity Boundary | Reassigning nested object properties (e.g. `$state.ui.activeRail = 'x'`) does NOT fire top-level key subscribers. Callers MUST replace the whole key (`$state.ui = { ...$state.ui, activeRail: 'x' }`) |
+| Server Context Behavior | `server.context` returns plain `{}` for `$state` and no-op functions for `subscribe`, `subscribeAny`, `getSnapshot`, `reset` |
+| Documentation Path | Authored `packages/app/docs/plugins/state.md` (all 10 required sections) and updated `packages/app/docs/plugins/README.md` |
+| Test Coverage | Unit test suites `packages/app/tests/unit/state.test.js` (16 cases) and `packages/app/tests/unit/state-plugin.test.js` (9 cases); Playwright component test suite `packages/app/tests/component/state-plugin.spec.js` (5 cases) |
+
 ### C-INFRA-28 — Signal-Based Auto-Cleanup for the `floating` Plugin Architecture
 
 **Verified:** 2026-10-09
