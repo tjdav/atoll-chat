@@ -1,11 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { parseArgs } from './args.js'
+import { devCommand } from './dev.js'
 import { exportKeysCommand } from './export-keys.js'
 import { importKeysCommand } from './import-keys.js'
+import { inspectCommand } from './inspect.js'
 import { loginCommand } from './login.js'
 import { logoutCommand } from './logout.js'
 import { registerCommand } from './register.js'
 import { runCommand } from './run.js'
+import { tailCommand } from './tail.js'
 import { validateCommand } from './validate.js'
 
 const pkg = JSON.parse(
@@ -56,7 +59,10 @@ function getBuiltinCommands () {
       logout: logoutCommand,
       run: runCommand,
       'export-keys': exportKeysCommand,
-      'import-keys': importKeysCommand
+      'import-keys': importKeysCommand,
+      dev: devCommand,
+      inspect: inspectCommand,
+      tail: tailCommand
     }
   }
   return builtinCommandsCache

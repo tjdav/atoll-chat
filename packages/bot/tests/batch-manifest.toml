@@ -281,3 +281,15 @@ name = "cli-import-keys"
 files = [
   "unit/cli-import-keys.test.js",
 ]
+
+[[batch]]
+name = "cli-dev"
+files = [
+  "unit/cli-dev.test.js",
+]
+
+[[batch]]
+name = "cli-inspect-tail"
+files = [
+  "unit/cli-inspect-tail.test.js",
+]

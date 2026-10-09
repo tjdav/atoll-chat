@@ -1,5 +1,18 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-041 Verification Fact
+- **Developer Subcommands (`packages/bot/src/cli/dev.js`, `src/cli/inspect.js`, `src/cli/tail.js`, `src/cli/diag-file.js`)**:
+  - The subcommands live at `src/cli/dev.js`, `src/cli/inspect.js`, and `src/cli/tail.js`. The shared diagnostic-file reader lives at `src/cli/diag-file.js`.
+  - The diagnostic file path is derived from the keystore path: `<keystorePath>.diag.jsonl`. Each line is a JSON object with a `type` field (`'state'` or `'log'`).
+  - `inspect` reads the last `type: 'state'` line from `<keystorePath>.diag.jsonl` and pretty-prints it. Supports optional room ID filtering (`inspect [room-id]`).
+  - `tail` live-streams new JSON log lines from `<keystorePath>.diag.jsonl` using `followDiagFile` and handles signals via `installSignalHandlers` (B-032).
+  - `dev` starts `createMockServer` (B-034), overrides `config.serverUrl` with the mock's URL, generates synthetic keys when no keystore exists on disk, watches the bot file's directory with `fs.watch` and a 200 ms debounce, reloads the runtime on each change using cache-busting dynamic imports (`?t=<timestamp>`), writes state lines to the diagnostic file, and sends logs to `io.stdout` with `dev: true`.
+  - Signal test isolation uses `{ concurrency: 1 }` on `describe` blocks and removes residual `SIGINT`/`SIGTERM` listeners in `afterEach`.
+  - **Spec Gap 1**: The hot-reload mechanism is unspecified in §14.1. Implemented via `fs.watch` with a 200 ms debounce and timestamp query parameter cache-busting dynamic imports.
+  - **Spec Gap 2**: Data source for `inspect` and `tail` is unspecified in §14.1. Implemented via the shared diagnostic file `<keystorePath>.diag.jsonl`.
+  - **Spec Gap 3**: `dev` log destination is `io.stdout`; the spec does not specify.
+  - Registered `cli-dev` (12 test cases in `packages/bot/tests/unit/cli-dev.test.js`) and `cli-inspect-tail` (19 test cases in `packages/bot/tests/unit/cli-inspect-tail.test.js`) batches in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-040 Verification Fact
 - **Portability Subcommands (`packages/bot/src/cli/export-keys.js`, `src/cli/import-keys.js`)**:
   - The `export-keys` and `import-keys` subcommands live at `src/cli/export-keys.js` and `src/cli/import-keys.js`. Registered in `src/cli/index.js`.
