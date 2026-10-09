@@ -18,6 +18,8 @@ import { createCronEngine } from './triggers/cron.js'
 import { createPausePolicy } from './pause-policy.js'
 import { createReconnectController } from './reconnect.js'
 import { createShutdownTracker } from './shutdown.js'
+import { createDiagFileWriter } from './diagnostics/diag-file-writer.js'
+import { createDiagnosticsCapture } from './diagnostics/capture.js'
 
 /**
  * Decodes a base64url string to Uint8Array.
@@ -130,6 +132,41 @@ export function createRuntime ({
   const botId = keystoreData.bot_id
   const resolvedStoragePath = storagePath ?? `${config.keystorePath}.storage`
 
+  /** @type {ReturnType<typeof createDiagFileWriter> | null} */
+  let diagFileWriter = null
+  /** @type {ReturnType<typeof createDiagnosticsCapture> | null} */
+  let capture = null
+
+  // Logger wrapper to forward log lines to diagnostics capture
+  const originalLog = logger.log.bind(logger)
+  /** @type {import('./diagnostics/logger.js').Logger} */
+  const wrappedLogger = {
+    ...logger,
+    log: (level, msg, meta) => {
+      originalLog(level, msg, meta)
+      if (capture) {
+        try {
+          /** @type {Record<string, unknown>} */
+          const logRecord = {
+            level,
+            msg: String(msg ?? '')
+          }
+          if (meta && typeof meta === 'object') {
+            logRecord.meta = meta
+          }
+          capture.recordLog(logRecord)
+        } catch {
+        }
+      }
+    },
+    debug: (msg, meta) => wrappedLogger.log('debug', msg, meta),
+    info: (msg, meta) => wrappedLogger.log('info', msg, meta),
+    warn: (msg, meta) => wrappedLogger.log('warn', msg, meta),
+    error: (msg, meta) => wrappedLogger.log('error', msg, meta)
+  }
+
+  const effectiveLogger = wrappedLogger
+
   /** @type {Map<string, { mode: string, scopes: string[] }>} */
   const grants = new Map()
 
@@ -166,7 +203,6 @@ export function createRuntime ({
   let reconnectController = null
   /** @type {import('./shutdown.js').ShutdownTracker | null} */
   let shutdownTracker = null
-
   /** @type {ReturnType<import('./context/post.js').createPostHandler> | null} */
   let postHandler = null
   /** @type {ReturnType<import('./context/reply.js').createReplyHandler> | null} */
@@ -194,7 +230,7 @@ export function createRuntime ({
   async function fetchRoomListImpl () {
     if (!warnedRoomListFetch) {
       warnedRoomListFetch = true
-      logger.warn('rooms.list called but no bot-facing room list endpoint is specified; returning []')
+      effectiveLogger.warn('rooms.list called but no bot-facing room list endpoint is specified; returning []')
     }
     return []
   }
@@ -237,14 +273,14 @@ export function createRuntime ({
           unsubscribe()
         }
       })
-      logger.debug('room subscribed', {
+      effectiveLogger.debug('room subscribed', {
         meta: {
           room_id: roomId,
           kind: 'websocket'
         }
       })
     } catch (err) {
-      logger.warn('room subscribe failed', {
+      effectiveLogger.warn('room subscribe failed', {
         meta: {
           room_id: roomId,
           kind: 'websocket',
@@ -595,7 +631,7 @@ export function createRuntime ({
       storage: typedStorageStore,
       rooms: typedRoomsStore,
       log: (level, msg, meta) => {
-        logger.log(level, msg, meta)
+        effectiveLogger.log(level, msg, meta)
       },
       fetch: typedFetchMethod,
       fetchUserUrl: typedFetchUserUrlMethod,
@@ -769,28 +805,79 @@ export function createRuntime ({
 
     logger.info('runtime boot', { meta: { bot_id: botId } })
 
-    shutdownTracker = createShutdownTracker(logger)
+    shutdownTracker = createShutdownTracker(effectiveLogger)
     lifecycleController = new AbortController()
+
+    const diagPath = `${config.keystorePath}.diag.jsonl`
+    diagFileWriter = createDiagFileWriter({ path: diagPath, logger: effectiveLogger })
+    await diagFileWriter.truncate()
+
+    /**
+     * Constructs a snapshot of current runtime state for diagnostics.
+     *
+     * @returns {object}
+     */
+    function snapshotState () {
+      return {
+        grants: Array.from(grants.entries()).map(([roomId, g]) => ({
+          roomId,
+          mode: g.mode,
+          scopes: g.scopes
+        })),
+        publisher_keys: [],
+        settings_keys: settingsStore ? settingsStore.keys() : [],
+        storage_keys: storageStore ? storageStore.keys() : [],
+        in_flight: shutdownTracker ? shutdownTracker.inFlightCount() : 0,
+        paused: pausePolicy ? pausePolicy.isPaused() : false,
+        bot_id: botId
+      }
+    }
+
+    const storageForCapture = storage
+    if (!storageForCapture) {
+      throw new Error('storage instance missing')
+    }
+
+    capture = createDiagnosticsCapture({
+      storage: storageForCapture,
+      diagFile: diagFileWriter,
+      logger: effectiveLogger,
+      snapshotState,
+      botId
+    })
+
+    const stateAtISO = new Date().toISOString()
+    const stateData = snapshotState()
+    await diagFileWriter.append({
+      type: 'state',
+      at: stateAtISO,
+      data: stateData
+    })
 
     const apiHttp = createHttpClient({
       serverUrl: `${config.serverUrl ?? ''}/api/v1`,
       botToken: keystoreData?.bot_token ?? '',
-      logger,
+      logger: effectiveLogger,
       fetchImpl
     })
 
     const rootHttp = createHttpClient({
       serverUrl: config.serverUrl ?? '',
       botToken: keystoreData?.bot_token ?? '',
-      logger,
+      logger: effectiveLogger,
       fetchImpl
     })
 
     pausePolicy = createPausePolicy({
-      reportPause: (payload) => apiHttp.request('POST', '/bots/me/pause', {
-        body: payload,
-        retry: false
-      }).then(() => undefined),
+      reportPause: async (payload) => {
+        if (capture) {
+          await capture.recordSnapshot('pause', payload)
+        }
+        await apiHttp.request('POST', '/bots/me/pause', {
+          body: payload,
+          retry: false
+        })
+      },
       logger
     })
 
@@ -823,11 +910,12 @@ export function createRuntime ({
     }
 
     // Storage
-    storage = new Storage({
+    const storageInst = new Storage({
       path: resolvedStoragePath,
       seed: decodeBase64url(keystoreData.storage_seed),
       botId
     })
+    storage = storageInst
     await storage.open()
 
     idempotency = new IdempotencyStore({
@@ -977,7 +1065,14 @@ export function createRuntime ({
       baseBackoffMs: config.reconnect?.baseBackoffMs ?? 1000,
       maxBackoffMs: config.reconnect?.maxBackoffMs ?? 30000,
       jitter: config.reconnect?.jitter ?? 0.2,
-      onConnected: postReconnectSequence,
+      onConnected: async () => {
+        capture?.notifyReconnectSuccess()
+        await postReconnectSequence()
+      },
+      onReconnectFailed: (attempt, error) => {
+        capture?.notifyReconnectFailed(attempt, error).catch(() => {
+        })
+      },
       reconnectSse,
       logger
     })
@@ -1051,6 +1146,14 @@ export function createRuntime ({
       }
 
       isStarted = true
+
+      if (capture) {
+        await capture.prune().catch((err) => {
+          logger.warn('diagnostics prune on boot failed', {
+            meta: { error: err instanceof Error ? err.message : String(err) }
+          })
+        })
+      }
 
       const baseCtx = await makeBotCtx({})
       if (typeof bot.config.handlers?.install === 'function') {
@@ -1174,6 +1277,10 @@ export function createRuntime ({
         if (!result.drained) {
           logger.warn('shutdown: drain timeout', { meta: { remaining: result.remaining } })
         }
+      }
+
+      if (capture) {
+        await capture.close()
       }
 
       // Close storage (flushes the write queue).

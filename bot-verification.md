@@ -1,5 +1,17 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-043 Verification Fact
+- **Diagnostics Capture and Retention (`packages/bot/src/runtime/diagnostics/capture.js`, `src/runtime/diagnostics/diag-file-writer.js`, `src/runtime/index.js`)**:
+  - `createDiagFileWriter` appends JSON lines to `<keystorePath>.diag.jsonl` with file mode `0o600`, internal queue serialization, write failure throttling (1 warn per minute), `truncate()`, `close()`, and `pendingCount()`.
+  - `createDiagnosticsCapture` records snapshots across four triggers (`pause`, `keystore_warning`, `reconnect_storm`, `operator`), writes to storage under `_runtime:diagnostics:<timestamp>` and the diagnostic file, handles 10-consecutive-failure reconnect storm thresholding (reset on success via `notifyReconnectSuccess`), forwards log lines via `recordLog`, and prunes entries older than 7 days or malformed entries via `prune()`.
+  - Added `keys()` accessors to `SettingsStore` and `StorageStore`, optional `onReconnectFailed` callback to `createReconnectController`, and `entries()` method to `PublisherKeyCache`.
+  - `runtime/index.js` constructs `diagFileWriter` and `capture` post-`storage.open()`, truncates file at boot, writes initial `state` line, wraps logger to forward logs to capture, wires pause policy and reconnect hooks, executes boot-time `prune()`, and closes capture on runtime shutdown.
+  - **Spec Gap 1**: The triggers' integration points are the runtime's responsibility; the capture exposes the API.
+  - **Spec Gap 2**: `inspect --snapshot` is not implemented; the API is exposed for a future task.
+  - **Spec Gap 3**: "Reconnect storm" is defined as 10 consecutive failed attempts with a counter reset on successful reconnect.
+  - **Spec Gap 4**: "Keystore warning" is defined as any non-fatal keystore event. The current runtime does not exercise the trigger; the API is exposed.
+  - Registered `diagnostics-file-writer` (9 test cases) and `diagnostics-capture` (20 test cases) batches in `packages/bot/tests/batch-manifest.toml`.
+
 ## Task B-042 Verification Fact
 - **Sandbox Subcommands (`packages/bot/src/cli/sandbox/index.js`, `src/cli/sandbox/connect.js`, `src/cli/sandbox/run.js`, `src/cli/sandbox/reset.js`)**:
   - The sandbox subcommands live under `packages/bot/src/cli/sandbox/`. The top-level `sandbox` command dispatches to `connect`, `run`, and `reset`. Registered in `src/cli/index.js`.

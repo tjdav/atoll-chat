@@ -299,3 +299,15 @@ name = "cli-sandbox"
 files = [
   "unit/cli-sandbox.test.js",
 ]
+
+[[batch]]
+name = "diagnostics-file-writer"
+files = [
+  "unit/diagnostics-file-writer.test.js",
+]
+
+[[batch]]
+name = "diagnostics-capture"
+files = [
+  "unit/diagnostics-capture.test.js",
+]

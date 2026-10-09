@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 40
-- **Done:** 40
+- **Total Tasks:** 41
+- **Done:** 41
 - **In Progress:** 0
 - **Todo:** 0
 
@@ -17,6 +17,7 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-043 | Diagnostics | done | §4.5, §14.6, §14.12 | Implement diagnostics capture, retention pruning, and diagnostic file writer (`diag-file-writer.js`, `capture.js`) |
 | B-042 | CLI | done | §14.1, §14.2, §14.9 | Implement `sandbox connect`, `sandbox run`, and `sandbox reset` commands and `sandbox` dispatcher |
 | B-041 | CLI | done | §14.1, §14.6 | Implement `dev`, `inspect`, and `tail` developer subcommands and shared `diag-file.js` reader |
 | B-040 | CLI | done | §14.1, §14.9 | Implement export-keys and import-keys CLI subcommands for passphrase-independent keystore portability |

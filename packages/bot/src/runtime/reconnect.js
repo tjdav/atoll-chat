@@ -71,6 +71,8 @@ export function computeBackoffDelay ({
  * @param {() => Promise<void>} deps.onConnected - Runs after each
  *   successful reconnect. Errors are logged but do not abort the
  *   loop.
+ * @param {(attempt: number, error: Error) => void} [deps.onReconnectFailed] -
+ *   Fires after each failed reconnect attempt.
  * @param {(roomId?: string) => Promise<void>} deps.reconnectSse - Runs after each
  *   successful WebSocket reconnect and on every SSE close. Reconnects
  *   the SSE streams.
@@ -89,6 +91,7 @@ export function createReconnectController ({
   jitter,
   stableConnectionMs = 5000,
   onConnected,
+  onReconnectFailed,
   reconnectSse,
   sleep = defaultSleep,
   now = Date.now,
@@ -189,12 +192,19 @@ export function createReconnectController ({
       // Successful connect. The loop stops; a future close re-triggers it.
     } catch (err) {
       currentConnectPromise = null
+      const errObj = err instanceof Error ? err : new Error(String(err))
       logger?.warn('reconnect failed', {
         meta: {
           attempt,
-          error: err instanceof Error ? err.message : String(err)
+          error: errObj.message
         }
       })
+      if (onReconnectFailed) {
+        try {
+          onReconnectFailed(attempt, errObj)
+        } catch {
+        }
+      }
       if (stopped) {
         currentLoopPromise = null
         return
