@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 41
-- **Done:** 41
+- **Total Tasks:** 42
+- **Done:** 42
 - **In Progress:** 0
 - **Todo:** 0
 
@@ -17,6 +17,7 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-044 | Testing | done | §13, §13.2, §13.3 | Implement the end-to-end smoke test suite (`smoke.test.js`) and fixture bot (`echo-bot.js`) exercising 26 scenarios |
 | B-043 | Diagnostics | done | §4.5, §14.6, §14.12 | Implement diagnostics capture, retention pruning, and diagnostic file writer (`diag-file-writer.js`, `capture.js`) |
 | B-042 | CLI | done | §14.1, §14.2, §14.9 | Implement `sandbox connect`, `sandbox run`, and `sandbox reset` commands and `sandbox` dispatcher |
 | B-041 | CLI | done | §14.1, §14.6 | Implement `dev`, `inspect`, and `tail` developer subcommands and shared `diag-file.js` reader |
