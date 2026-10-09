@@ -11,6 +11,7 @@ import { httpFetch } from './http-fetch.js'
 import { settingsRead } from './settings-read.js'
 import { settingsWrite } from './settings-write.js'
 import { transform } from './transform.js'
+import { queueForOperator } from './queue-for-operator.js'
 import { llmComplete } from './llm-complete.js'
 
 /**
@@ -33,6 +34,7 @@ export const primitives = {
     [settingsRead.id]: settingsRead,
     [settingsWrite.id]: settingsWrite,
     [transform.id]: transform,
+    [queueForOperator.id]: queueForOperator
     [llmComplete.id]: llmComplete
   },
   extension: {}
