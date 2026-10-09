@@ -23,8 +23,6 @@
 
 .menu {
   position: fixed;
-  left: var(--menu-x, 0);
-  top: var(--menu-y, 0);
   z-index: var(--z-popover);
   min-width: 180px;
   padding: var(--space-1);
@@ -89,8 +87,6 @@ import { defineComponent } from 'coralite'
 export default defineComponent({
   attributes: {
     open: { type: Boolean, default: false, reflect: true },
-    x: { type: Number, default: 0 },
-    y: { type: Number, default: 0 },
     messageId: { type: String, default: '' },
     canReply: { type: Boolean, default: true },
     canUnsend: { type: Boolean, default: false },
@@ -106,11 +102,6 @@ export default defineComponent({
     copyHidden: ({ state }) => !state.canCopy,
     unsendHidden: ({ state }) => !state.canUnsend,
     reactionsHidden: ({ state }) => !state.canReact
-  },
-
-  style: {
-    '--menu-x': (state) => `${state.x}px`,
-    '--menu-y': (state) => `${state.y}px`
   },
 
   server({ i18n }) {
@@ -132,7 +123,39 @@ export default defineComponent({
     }
   },
 
-  client({ state, refs, emit, i18n, signal }) {
+  client({ state, refs, floating, emit, i18n, observe, signal }) {
+    const menu = refs('menu')
+    let cleanup = null
+
+    function applyPosition() {
+      if (cleanup) {
+        cleanup()
+        cleanup = null
+      }
+      if (!state.open) return
+      const host = menu.closest('message-context-menu') || menu.getRootNode()?.host || menu
+      const getAnchor = typeof host?.getAnchor === 'function' ? host.getAnchor.bind(host) : (typeof menu.getAnchor === 'function' ? menu.getAnchor.bind(menu) : null)
+      if (!getAnchor) return
+      const anchor = getAnchor()
+      if (!anchor) return
+
+      cleanup = floating.positionFloating({
+        reference: anchor,
+        floating: menu,
+        placement: 'bottom-start',
+        offsetPx: 6,
+        padding: 8
+      })
+    }
+
+    observe('open', () => {
+      applyPosition()
+    })
+
+    signal.addEventListener('abort', () => {
+      if (cleanup) cleanup()
+    })
+
     const updateLocale = (locale) => {
       state.locale = locale
       Object.assign(state, i18n.strings([
@@ -183,12 +206,11 @@ export default defineComponent({
 
     function onDocumentClick(event) {
       if (!state.open) return
-      const menu = refs('menu')
-      if (menu && menu.contains(event.target)) return
+      const menuEl = refs('menu')
+      if (menuEl && menuEl.contains(event.target)) return
       emit('menu:close', {})
     }
     document.addEventListener('click', onDocumentClick, { signal })
-    document.addEventListener('contextmenu', onDocumentClick, { signal })
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && state.open) emit('menu:close', {})

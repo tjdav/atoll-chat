@@ -69,7 +69,8 @@ export default [
       'tests/unit/send-message.test.js',
       'tests/unit/message-actions.test.js',
       'tests/unit/edit-message.test.js',
-      'tests/unit/reactions.test.js'
+      'tests/unit/reactions.test.js',
+      'tests/unit/floating-plugin.test.js'
     ]
   },
   {
@@ -93,7 +94,8 @@ export default [
       'tests/component/message-edit.spec.js',
       'tests/component/message-versions-sheet.spec.js',
       'tests/component/ui-sheet.spec.js',
-      'tests/component/reactions.spec.js'
+      'tests/component/reactions.spec.js',
+      'tests/component/floating-positioning.spec.js'
     ]
   },
   {

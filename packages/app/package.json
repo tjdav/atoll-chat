@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@atoll/extend": "workspace:*",
+    "@floating-ui/dom": "^1.8.0",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^1.8.0",
     "@serenity-kit/opaque": "1.1.0",

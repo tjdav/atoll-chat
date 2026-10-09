@@ -39,8 +39,6 @@
     <message-context-menu
       ref="contextMenu"
       open="{{ menuOpen }}"
-      x="{{ menuX }}"
-      y="{{ menuY }}"
       message-id="{{ menuMessageId }}"
       can-reply="{{ menuCanReply }}"
       can-unsend="{{ menuCanUnsend }}"
@@ -141,8 +139,6 @@ import { defineComponent } from 'coralite'
 export default defineComponent({
   attributes: {
     menuOpen: { type: Boolean, default: false },
-    menuX: { type: Number, default: 0 },
-    menuY: { type: Number, default: 0 },
     menuMessageId: { type: String, default: '' },
     menuCanReply: { type: Boolean, default: true },
     menuCanUnsend: { type: Boolean, default: false },
@@ -171,8 +167,6 @@ export default defineComponent({
       locale: i18n.getLocale(),
       showScrollBtn: false,
       menuOpen: false,
-      menuX: 0,
-      menuY: 0,
       menuMessageId: '',
       menuCanReply: true,
       menuCanUnsend: false,
@@ -222,7 +216,7 @@ export default defineComponent({
     }
   },
 
-  async client({ state, refs, router, i18n, storage, repos, signal, globalStore }) {
+  async client({ state, refs, floating, router, i18n, storage, repos, signal, globalStore }) {
     const reposApi = repos ?? storage?.repos?.()
 
     const {
@@ -468,9 +462,11 @@ export default defineComponent({
             const { messageId, x, y } = event.detail
             const dbMsg = await reposApi.messages.get(messageId)
             if (!dbMsg) return
+            const contextMenuEl = refs('contextMenu')
+            if (contextMenuEl) {
+              contextMenuEl.getAnchor = () => floating.virtualElementFromPoint(x, y, threadEl)
+            }
             state.menuMessageId = messageId
-            state.menuX = x
-            state.menuY = y
             state.menuCanReply = isReplyAllowed(dbMsg)
             state.menuCanUnsend = isUnsendAvailable(dbMsg, userId)
             state.menuCanCopy = !dbMsg.deleted_at
