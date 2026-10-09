@@ -18,7 +18,7 @@ By integrating Floating UI as a Coralite plugin:
 ## 3. The `ctx.floating` Contract
 
 The plugin exposes two top-level methods directly under `ctx.floating`:
-- `positionFloating({ reference, floating, placement, strategy, offsetPx, padding })`
+- `positionFloating({ reference, floating, placement, strategy, offsetPx, padding }, signal)`
 - `virtualElementFromPoint(x, y)`
 
 Keys are exposed directly under `ctx.floating`. There is no nested wrapper object (e.g. `ctx.floating.floating` is invalid).
@@ -32,21 +32,31 @@ const cleanup = ctx.floating.positionFloating({
   placement,   // string (optional, default 'bottom-start')
   offsetPx,    // number (optional, default 6)
   padding      // number (optional, default 8)
-})
+}, signal)     // AbortSignal (optional)
 ```
 
 ### Parameters
-- `reference` (`Element` | `object`): The anchor element (real DOM node or virtual element object with `getBoundingClientRect()`).
-- `floating` (`HTMLElement`): The floating element to be positioned (must have `position: fixed` in CSS).
-- `placement` (`string`, optional): Preferred placement (e.g., `'bottom-start'`, `'top'`, `'right-end'`). Defaults to `'bottom-start'`.
-- `offsetPx` (`number`, optional): Pixel distance between the reference and floating elements. Defaults to `6`.
-- `padding` (`number`, optional): Minimum pixel padding from viewport edges. Defaults to `8`.
+- `params` (`object`): Positioning parameters object.
+  - `reference` (`Element` | `object`): The anchor element (real DOM node or virtual element object with `getBoundingClientRect()`).
+  - `floating` (`HTMLElement`): The floating element to be positioned (must have `position: fixed` in CSS).
+  - `placement` (`string`, optional): Preferred placement (e.g., `'bottom-start'`, `'top'`, `'right-end'`). Defaults to `'bottom-start'`.
+  - `offsetPx` (`number`, optional): Pixel distance between the reference and floating elements. Defaults to `6`.
+  - `padding` (`number`, optional): Minimum pixel padding from viewport edges. Defaults to `8`.
+- `signal` (`AbortSignal`, optional): Component lifecycle signal from `client()` context.
 
 ### Behavior
 - Computes position using `strategy: 'fixed'` with `offset`, `flip`, and `shift` middleware.
 - Immediately applies computed `left` and `top` inline CSS values to `floating`.
 - Starts `autoUpdate` tracking for scroll, resize, and layout shifts.
-- Returns a synchronous `cleanup()` function to stop `autoUpdate` listeners when the popover closes.
+- Returns a synchronous, idempotent `cleanup()` function to stop `autoUpdate` listeners.
+
+### Signal-based cleanup
+- The function accepts an optional `AbortSignal` as its second positional argument.
+- When the signal is provided, `positionFloating` registers its own abort listener (`signal.addEventListener('abort', cleanup, { once: true })`). Callers do not need to manage manual abort listeners for positioning.
+- When the signal aborts, the autoUpdate cleanup runs automatically and unregisters the event listener. The cleanup becomes a no-op for future invocations.
+- When the signal is already aborted at call time, `positionFloating` short-circuits. It does not set up `computePosition` or `autoUpdate` and returns a no-op cleanup.
+- The returned cleanup is idempotent. Callers may invoke it on their own (e.g. when an `open` attribute toggles to `false`) and the signal will invoke it on disconnect; the second invocation has no effect.
+- **Recommended pattern:** pass the component's `signal` from the `client()` context as the second argument. The plugin handles teardown on unmount.
 
 ## 5. The `virtualElementFromPoint` API
 
@@ -72,7 +82,7 @@ Use `virtualElementFromPoint` when anchoring popovers to arbitrary point coordin
 
 ## 6. Integration in a Coralite Component
 
-Components consume `ctx.floating` inside `client()`:
+Components consume `ctx.floating` inside `client()`. See `packages/app/src/components/composed/message-context-menu.html` for canonical implementation:
 
 ```html
 <script type="module">
@@ -103,15 +113,11 @@ export default defineComponent({
         placement: 'bottom-start',
         offsetPx: 6,
         padding: 8
-      })
+      }, signal)
     }
 
     observe('open', () => {
       applyPosition()
-    })
-
-    signal.addEventListener('abort', () => {
-      if (cleanup) cleanup()
     })
   }
 })
@@ -137,7 +143,8 @@ Popover positioning must be performed exclusively in client-side lifecycle callb
 
 | Failure Mode | Root Cause | Symptom | Resolution |
 |---|---|---|---|
-| Popover position is stuck after scroll/resize | Missing `cleanup()` invocation on popover close | Memory leak & outdated element position | Call `cleanup()` when `open` becomes `false` or when `signal` aborts |
+| Popover position is stuck after scroll/resize | Holding the cleanup function and forgetting to invoke it on `open = false` | Memory leak & outdated element position | Call `cleanup()` when `open` becomes `false` in `observe('open')` |
+| Redundant abort handling | Registering a manual `signal.addEventListener('abort', ...)` for positioning | Unnecessary boilerplate & potential listener leaks | Pass `signal` directly as second argument to `positionFloating` |
 | Popover renders at `0,0` | `getAnchor()` returns `undefined` or null | Menu floats at top-left corner | Ensure parent sets `getAnchor()` on the component before `open` becomes `true` |
 | Coordinates mismatch with mouse | CSS `.menu` uses `position: absolute` instead of `fixed` | Position misaligned on scrolled pages | Ensure floating element CSS uses `position: fixed` |
 
@@ -146,6 +153,5 @@ Popover positioning must be performed exclusively in client-side lifecycle callb
 To adopt `ctx.floating` on a new surface (e.g. tooltip or dropdown):
 
 1. Ensure the floating DOM element has `position: fixed` in CSS.
-2. In the component's `client()`, destructure `floating`.
-3. In `observe('open')`, invoke `floating.positionFloating({ reference: anchor, floating: el })` when `open` is true, and invoke `cleanup()` when `open` is false.
-4. Add `signal.addEventListener('abort', cleanup)` to ensure teardown on component unmount.
+2. In the component's `client()`, destructure `floating` and `signal`.
+3. In `observe('open')`, invoke `floating.positionFloating({ reference: anchor, floating: el }, signal)` when `open` is true, and invoke `cleanup()` when `open` is false.

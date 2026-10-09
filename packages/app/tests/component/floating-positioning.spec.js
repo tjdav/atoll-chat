@@ -206,4 +206,103 @@ test.describe('Floating UI positioning for message context menu', () => {
     expect(props.menuX).toBe('')
     expect(props.menuY).toBe('')
   })
+
+  test('8. Cleanup is idempotent across manual close and signal abort', async ({ page }) => {
+    const consoleErrors = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text())
+    })
+
+    const bubbleCard = page.locator('message-bubble[message-id="m_1"] .bubble')
+    const cardBox = await bubbleCard.boundingBox()
+    expect(cardBox).not.toBeNull()
+
+    await page.mouse.click(Math.round(cardBox.x + cardBox.width / 2), Math.round(cardBox.y + cardBox.height / 2), { button: 'right' })
+    const menu = page.locator('[role="menu"]')
+    await expect(menu).toBeVisible()
+    await waitForPositioned(page)
+
+    await page.screenshot({ path: 'test-results/menu-position-after-signal-cleanup.png' })
+
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
+
+    await page.mouse.click(Math.round(cardBox.x + cardBox.width / 2), Math.round(cardBox.y + cardBox.height / 2), { button: 'right' })
+    await expect(menu).toBeVisible()
+    await waitForPositioned(page)
+
+    await page.evaluate(() => {
+      document.querySelector('message-context-menu')?.remove()
+    })
+
+    const thread = page.locator('.chat__thread')
+    if (await thread.count() > 0) {
+      await thread.evaluate((el) => {
+        el.scrollTop += 50
+      })
+    }
+    await page.waitForTimeout(100)
+
+    const floatingErrors = consoleErrors.filter(err =>
+      /floating|autoUpdate|ResizeObserver/i.test(err)
+    )
+    expect(floatingErrors).toEqual([])
+  })
+
+  test('9. Disconnect without prior close does not leak', async ({ page }) => {
+    const consoleErrors = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text())
+    })
+
+    const bubbleCard = page.locator('message-bubble[message-id="m_1"] .bubble')
+    const cardBox = await bubbleCard.boundingBox()
+    expect(cardBox).not.toBeNull()
+
+    await page.mouse.click(Math.round(cardBox.x + cardBox.width / 2), Math.round(cardBox.y + cardBox.height / 2), { button: 'right' })
+    const menu = page.locator('[role="menu"]')
+    await expect(menu).toBeVisible()
+    await waitForPositioned(page)
+
+    await page.evaluate(() => {
+      document.querySelector('message-context-menu')?.remove()
+    })
+
+    await page.setViewportSize({ width: 1200, height: 800 })
+    await page.waitForTimeout(100)
+
+    const floatingErrors = consoleErrors.filter(err =>
+      /floating|autoUpdate|ResizeObserver/i.test(err)
+    )
+    expect(floatingErrors).toEqual([])
+  })
+
+  test('10. Idempotent cleanup when the signal aborts after manual close', async ({ page }) => {
+    const consoleErrors = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') consoleErrors.push(msg.text())
+    })
+
+    const bubbleCard = page.locator('message-bubble[message-id="m_1"] .bubble')
+    const cardBox = await bubbleCard.boundingBox()
+    expect(cardBox).not.toBeNull()
+
+    await page.mouse.click(Math.round(cardBox.x + cardBox.width / 2), Math.round(cardBox.y + cardBox.height / 2), { button: 'right' })
+    const menu = page.locator('[role="menu"]')
+    await expect(menu).toBeVisible()
+    await waitForPositioned(page)
+
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
+
+    await page.evaluate(() => {
+      document.querySelector('message-context-menu')?.remove()
+    })
+    await page.waitForTimeout(100)
+
+    const floatingErrors = consoleErrors.filter(err =>
+      /floating|autoUpdate|ResizeObserver/i.test(err)
+    )
+    expect(floatingErrors).toEqual([])
+  })
 })

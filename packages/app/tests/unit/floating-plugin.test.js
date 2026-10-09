@@ -106,4 +106,37 @@ describe('floating-plugin Coralite integration', () => {
     assert.strictEqual(ctx1.positionFloating, ctx2.positionFloating)
     assert.strictEqual(ctx1.virtualElementFromPoint, ctx2.virtualElementFromPoint)
   })
+
+  it('12. Missing reference short-circuits and returns a no-op cleanup', async () => {
+    const plugin = floatingPluginFactory({})
+    const instanceResolver = await plugin.client.context({})
+    const clientCtx = instanceResolver({})
+
+    const cleanup = clientCtx.positionFloating({ reference: null, floating: {} })
+    assert.equal(typeof cleanup, 'function')
+    assert.doesNotThrow(() => cleanup())
+  })
+
+  it('13. Missing floating short-circuits and returns a no-op cleanup', async () => {
+    const plugin = floatingPluginFactory({})
+    const instanceResolver = await plugin.client.context({})
+    const clientCtx = instanceResolver({})
+
+    const cleanup = clientCtx.positionFloating({ reference: {}, floating: null })
+    assert.equal(typeof cleanup, 'function')
+    assert.doesNotThrow(() => cleanup())
+  })
+
+  it('14. Already-aborted signal short-circuits and returns a no-op cleanup', async () => {
+    const plugin = floatingPluginFactory({})
+    const instanceResolver = await plugin.client.context({})
+    const clientCtx = instanceResolver({})
+
+    const controller = new AbortController()
+    controller.abort()
+
+    const cleanup = clientCtx.positionFloating({ reference: {}, floating: {} }, controller.signal)
+    assert.equal(typeof cleanup, 'function')
+    assert.doesNotThrow(() => cleanup())
+  })
 })
