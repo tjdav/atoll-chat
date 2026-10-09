@@ -199,8 +199,9 @@ timeout_seconds = 60
 
 [[batch]]
 name = "bots"
-description = "Bot account CRUD, bot tokens, declared scopes, room bot grants, and bot avatar"
+description = "Bot account CRUD, bot tokens, declared scopes, room bot grants, bot avatar, and bot commands"
 files = [
+    "bot_commands",
     "bot_settings",
     "bots",
     "room_bots",

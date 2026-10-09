@@ -1,4 +1,5 @@
 use crate::auth::AuthUser;
+use crate::bots::CallerIdentity;
 use crate::bots::{derive_mode, validate_dependencies, Mode};
 use crate::error::ApiError;
 use crate::rate_limit::{self, RateLimitKey};
@@ -9,13 +10,16 @@ use crate::sockudo::Publisher;
 use crate::AppState;
 use axum::{
     extract::{Path, State},
-    http::{header, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{Row, SqlitePool};
+use ulid::Ulid;
 
 async fn check_room_grant_auth(
     pool: &SqlitePool,
@@ -615,4 +619,204 @@ pub async fn delete_room_bot(
     .await;
 
     Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+#[derive(Deserialize)]
+pub struct PostBotCommandReq {
+    pub bot_id: String,
+    pub ciphertext: String,
+    pub request_id: String,
+}
+
+#[derive(Serialize)]
+pub struct PostBotCommandResp {
+    pub command_id: String,
+    pub created_at: String,
+    pub request_id: String,
+}
+
+pub async fn post_bot_command(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(room_id): Path<String>,
+    Json(req): Json<PostBotCommandReq>,
+) -> Result<Response, ApiError> {
+    let caller = crate::routes::bots::resolve_caller(&state.pool, &headers, &state).await?;
+    let auth_user = match caller {
+        CallerIdentity::User(u) => u,
+        CallerIdentity::Bot(_) => return Err(ApiError::Forbidden("forbidden".into())),
+    };
+
+    // 1. Verify caller is a member of room_id
+    let is_member: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?)",
+    )
+    .bind(&room_id)
+    .bind(&auth_user.user_id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if !is_member {
+        return Err(ApiError::NotFound("room_not_found".into()));
+    }
+
+    // 2. Verify bot_id is non-empty and has an active grant in room_id with read_commands scope
+    let bot_id = req.bot_id.trim();
+    if bot_id.is_empty() {
+        return Err(ApiError::BadRequest("invalid_bot_id".into()));
+    }
+
+    let has_grant: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM room_bots rb
+            JOIN room_bot_scopes rbs ON rbs.room_id = rb.room_id AND rbs.bot_id = rb.bot_id
+            WHERE rb.room_id = ? AND rb.bot_id = ? AND rb.revoked_at IS NULL AND rbs.scope = 'read_commands'
+        )
+        "#,
+    )
+    .bind(&room_id)
+    .bind(bot_id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if !has_grant {
+        return Err(ApiError::Forbidden("bot_not_granted".into()));
+    }
+
+    // 3. Validate ciphertext
+    let ciphertext_trimmed = req.ciphertext.trim();
+    if ciphertext_trimmed.is_empty() {
+        return Err(ApiError::BadRequest("invalid_ciphertext".into()));
+    }
+
+    let decoded_ciphertext = match URL_SAFE_NO_PAD.decode(ciphertext_trimmed) {
+        Ok(bytes) => bytes,
+        Err(_) => return Err(ApiError::BadRequest("invalid_ciphertext".into())),
+    };
+
+    if decoded_ciphertext.is_empty() {
+        return Err(ApiError::BadRequest("invalid_ciphertext".into()));
+    }
+
+    if decoded_ciphertext.len() > 65536 {
+        return Err(ApiError::InternalCustom(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "ciphertext_too_large".into(),
+        ));
+    }
+
+    // 4. Validate request_id
+    let request_id_trimmed = req.request_id.trim();
+    if request_id_trimmed.is_empty()
+        || request_id_trimmed.len() > 64
+        || !request_id_trimmed.bytes().all(|b| (32..=126).contains(&b))
+    {
+        return Err(ApiError::BadRequest("invalid_request_id".into()));
+    }
+
+    // 5. Check rate limit per (bot_id, sender_user_id)
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::BotCommand {
+            bot_id: bot_id.to_string(),
+            user_id: auth_user.user_id.clone(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    // 6. Resolve sender_client_id
+    let sender_client_id = match auth_user.device_id.as_deref() {
+        Some(dev_id) => {
+            let cid: Option<String> =
+                sqlx::query_scalar("SELECT client_id FROM devices WHERE id = ?")
+                    .bind(dev_id)
+                    .fetch_optional(&state.pool)
+                    .await
+                    .map_err(|e| ApiError::Internal(e.into()))?;
+            cid
+        }
+        None => None,
+    };
+
+    let sender_client_id = match sender_client_id {
+        Some(cid) => cid,
+        None => {
+            let cid: Option<String> = sqlx::query_scalar(
+                "SELECT client_id FROM devices WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+            )
+            .bind(&auth_user.user_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+            cid.unwrap_or_else(|| "unknown".to_string())
+        }
+    };
+
+    // 7. Store in bot_commands
+    let command_id = format!("cmd_{}", Ulid::new());
+    let created_at: String = sqlx::query_scalar(
+        r#"
+        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext)
+        VALUES (?, ?, ?, ?, ?, ?)
+        RETURNING CAST(created_at AS TEXT)
+        "#,
+    )
+    .bind(&command_id)
+    .bind(bot_id)
+    .bind(&room_id)
+    .bind(&auth_user.user_id)
+    .bind(&sender_client_id)
+    .bind(&decoded_ciphertext)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    // 8. Publish bot.command_invoked on private-bot-{bot_id}
+    let event_payload = json!({
+        "command_id": command_id,
+        "room_id": room_id,
+        "sender_user_id": auth_user.user_id,
+        "sender_client_id": sender_client_id,
+        "ciphertext": ciphertext_trimmed,
+    });
+
+    let publish_res = Publisher::publish(
+        &state.publisher,
+        &format!("private-bot-{}", bot_id),
+        "bot.command_invoked",
+        event_payload,
+    )
+    .await;
+
+    if publish_res.is_ok() {
+        let _ =
+            sqlx::query("UPDATE bot_commands SET delivered_at = CURRENT_TIMESTAMP WHERE id = ?")
+                .bind(&command_id)
+                .execute(&state.pool)
+                .await;
+    }
+
+    let resp = PostBotCommandResp {
+        command_id,
+        created_at,
+        request_id: request_id_trimmed.to_string(),
+    };
+
+    let mut response = (StatusCode::ACCEPTED, Json(resp)).into_response();
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
 }

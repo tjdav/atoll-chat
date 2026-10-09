@@ -434,6 +434,10 @@ pub fn build_app(state: AppState) -> Router {
         .route("/bots", post(routes::bots::create_bot))
         .route("/bots/me/settings", get(routes::bots::get_bot_settings_me))
         .route(
+            "/bots/me/commands/{id}/ack",
+            post(routes::bots::ack_bot_command),
+        )
+        .route(
             "/bots/{id}",
             get(routes::bots::get_bot)
                 .patch(routes::bots::patch_bot)
@@ -455,6 +459,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/bots/{bot_id}",
             patch(routes::room_bots::patch_room_bot).delete(routes::room_bots::delete_room_bot),
+        )
+        .route(
+            "/rooms/{id}/bot-commands",
+            post(routes::room_bots::post_bot_command),
         )
         .route(
             "/rooms/{id}/publisher-key",
