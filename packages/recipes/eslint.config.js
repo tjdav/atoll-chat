@@ -19,6 +19,8 @@ const definedTypes = [
   'MatchResult',
   'RankOptions',
   'Embedder',
+  'MatcherConfig',
+  'Matcher',
   'Instantiation',
   'Composition',
   'BotScript',
