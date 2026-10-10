@@ -35,6 +35,7 @@ pub mod action {
     pub const SESSION_CREATE: &str = "session.create";
     pub const SESSION_DELETE: &str = "session.delete";
     pub const EXTENSION_PROXY_REQUEST: &str = "extension.proxy_request";
+    pub const BOT_DECLARATION_UPDATE: &str = "bot.declaration_update";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
