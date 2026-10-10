@@ -565,3 +565,13 @@ CREATE TABLE IF NOT EXISTS bot_commands (
 CREATE INDEX IF NOT EXISTS idx_bot_commands_pending
     ON bot_commands(bot_id, acked_at)
     WHERE acked_at IS NULL AND expired_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS bot_request_log (
+    bot_id        TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    request_id    TEXT NOT NULL,
+    endpoint      TEXT NOT NULL,
+    response_code INTEGER NOT NULL,
+    created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (bot_id, request_id)
+);
+CREATE INDEX IF NOT EXISTS idx_bot_request_log_ttl ON bot_request_log(created_at);

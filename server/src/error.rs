@@ -19,6 +19,7 @@ use chrono::{DateTime, Utc};
 use serde_json::json;
 use tracing::error;
 
+#[derive(Debug)]
 #[allow(dead_code)]
 pub enum ApiError {
     NotFound(String),

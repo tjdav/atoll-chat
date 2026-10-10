@@ -4,6 +4,32 @@ use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
 use crate::error::ApiError;
 
+/// Encodes the bot message signing input per V3 §8.10:
+///   u32_be(len(room_id)) || room_id_utf8
+///   || epoch_u64_be
+///   || u32_be(len(content_type)) || content_type_utf8
+///   || u32_be(len(ciphertext)) || ciphertext_bytes
+pub fn encode_bot_message_signing_input(
+    room_id: &str,
+    epoch: u64,
+    content_type: &str,
+    ciphertext: &[u8],
+) -> Vec<u8> {
+    let room_bytes = room_id.as_bytes();
+    let content_type_bytes = content_type.as_bytes();
+    let mut buf = Vec::with_capacity(
+        4 + room_bytes.len() + 8 + 4 + content_type_bytes.len() + 4 + ciphertext.len(),
+    );
+    buf.extend_from_slice(&(room_bytes.len() as u32).to_be_bytes());
+    buf.extend_from_slice(room_bytes);
+    buf.extend_from_slice(&epoch.to_be_bytes());
+    buf.extend_from_slice(&(content_type_bytes.len() as u32).to_be_bytes());
+    buf.extend_from_slice(content_type_bytes);
+    buf.extend_from_slice(&(ciphertext.len() as u32).to_be_bytes());
+    buf.extend_from_slice(ciphertext);
+    buf
+}
+
 /// Encodes the publisher key signing input per V3 §8.10:
 ///   u32_be(len(room_id)) || room_id_utf8
 ///   || epoch_u64_be

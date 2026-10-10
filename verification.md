@@ -47,3 +47,14 @@
   - **Sync Integration:** `GET /users/me/sync` joins `bot_settings` with `bot_accounts` filtering by `owner_user_id = caller_id`. Returns `bot_settings` array ordered by `user_seq ASC`. Participates in `max_seq` calculation.
   - **Opacity & GDPR:** Server stores ciphertexts opaquely without decryption or ECDH inspection (§12). `bot_settings.key` is opaque; `room:` prefix is unparsed. On operator account deletion, `bot_accounts` rows and cascaded `bot_settings` rows are deleted.
 - **Link to report:** [verification/bot-settings-encryption/report.md](verification/bot-settings-encryption/report.md)
+
+## Bot Request Idempotency Verification Fact (Phase 46)
+- **ID:** Phase 46 Bot Request Idempotency
+- **Date:** 2026-10-10
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §4.5, §5.6, §7.10, §8.8.10, §8.8.11, §8.9
+- **Verified Facts:**
+  - **Case A Classification:** Standard interpretation (Interpretation A) applies. Deduplication uses `bot_request_log` `(bot_id, request_id, endpoint, response_code, created_at)` without requiring a `response_body` column. Duplicate `request_id` calls to the same endpoint return the same status code (202 Accepted) with an idempotent response payload.
+  - **Cross-Endpoint Conflict:** Reusing a `request_id` across different endpoints returns 409 `request_id_conflict`.
+  - **Cleanup Rule:** 24-hour retention for `bot_request_log` rows via periodic scheduler job.
+- **Link to report:** [verification/bot-request-idempotency/report.md](verification/bot-request-idempotency/report.md)

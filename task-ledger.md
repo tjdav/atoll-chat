@@ -298,10 +298,16 @@
 
 None.
 
+- **Bot Request Idempotency (Phase 46)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Add `bot_request_log` table and `idx_bot_request_log_ttl` index per §7.10).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-request-idempotency/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/bots/idempotency.rs`, `server/src/bots/mod.rs`, `server/src/signing.rs`, `server/src/routes/room_bots.rs`, `server/src/lib.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/cleanup/bot_request_log.rs`, `server/src/cleanup/mod.rs`, `server/src/main.rs`, `server/tests/bot_request_log.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `verification.md`.
+  - **Contract Highlights:** Implemented `bot_request_log` table and `idx_bot_request_log_ttl` index per §7.10, transaction-bound idempotency helpers (`check_or_reserve_request_id`, `record_response_code`, `validate_request_id`), `POST /rooms/:id/bot-messages` endpoint (bot token auth, room grant scope check, Ed25519 signature verification over length-prefixed big-endian bytes, epoch window check, `RATE_BOT_MESSAGE_PER_MIN` rate limit, durable `message.new` event publishing), updated `POST /rooms/:id/bot-commands` with optional `request_id` idempotency deduplication, cross-endpoint conflict detection returning 409 `request_id_conflict`, 24-hour cleanup job `BotRequestLogTtlJob` registered on shared scheduler, and 6 integration test cases passing under `bots` batch (`make -C server test-bots`).
+  - **Batch:** `bots`
+
 ## Summary
-- **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 57
-- **Done:** 57
+- **Project Status:** Complete
+- **Total Verifications/Tasks Tracked:** 58
+- **Done:** 58
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

@@ -625,14 +625,17 @@ pub async fn delete_room_bot(
 pub struct PostBotCommandReq {
     pub bot_id: String,
     pub ciphertext: String,
-    pub request_id: String,
+    pub request_id: Option<String>,
 }
 
 #[derive(Serialize)]
 pub struct PostBotCommandResp {
     pub command_id: String,
     pub created_at: String,
-    pub request_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub idempotent: Option<bool>,
 }
 
 pub async fn post_bot_command(
@@ -708,14 +711,17 @@ pub async fn post_bot_command(
         ));
     }
 
-    // 4. Validate request_id
-    let request_id_trimmed = req.request_id.trim();
-    if request_id_trimmed.is_empty()
-        || request_id_trimmed.len() > 64
-        || !request_id_trimmed.bytes().all(|b| (32..=126).contains(&b))
-    {
-        return Err(ApiError::BadRequest("invalid_request_id".into()));
-    }
+    // 4. Validate request_id if present
+    let request_id_trimmed = match req.request_id.as_deref() {
+        Some(s) => {
+            let trimmed = s.trim();
+            if !crate::bots::validate_request_id(trimmed) {
+                return Err(ApiError::BadRequest("invalid_request_id".into()));
+            }
+            Some(trimmed)
+        }
+        None => None,
+    };
 
     // 5. Check rate limit per (bot_id, sender_user_id)
     let decision = rate_limit::check(
@@ -763,6 +769,48 @@ pub async fn post_bot_command(
         }
     };
 
+    // Begin transaction for idempotency check and command insertion
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if let Some(req_id) = request_id_trimmed {
+        let outcome = crate::bots::check_or_reserve_request_id(
+            &mut tx,
+            bot_id,
+            req_id,
+            crate::bots::ENDPOINT_BOT_COMMANDS,
+        )
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+        match outcome {
+            crate::bots::IdempotencyOutcome::Duplicate { response_code } => {
+                let _ = tx.rollback().await;
+                let resp = json!({
+                    "command_id": "idempotent",
+                    "created_at": chrono::Utc::now().to_rfc3339(),
+                    "request_id": req_id,
+                    "idempotent": true,
+                });
+                let status = StatusCode::from_u16(response_code).unwrap_or(StatusCode::ACCEPTED);
+                let mut response = (status, Json(resp)).into_response();
+                response.headers_mut().insert(
+                    header::CACHE_CONTROL,
+                    header::HeaderValue::from_static("no-store"),
+                );
+                return Ok(response);
+            }
+            crate::bots::IdempotencyOutcome::Conflict => {
+                let _ = tx.rollback().await;
+                return Err(ApiError::Conflict("request_id_conflict".into()));
+            }
+            crate::bots::IdempotencyOutcome::Reserved => {}
+        }
+    }
+
     // 7. Store in bot_commands
     let command_id = format!("cmd_{}", Ulid::new());
     let created_at: String = sqlx::query_scalar(
@@ -778,9 +826,19 @@ pub async fn post_bot_command(
     .bind(&auth_user.user_id)
     .bind(&sender_client_id)
     .bind(&decoded_ciphertext)
-    .fetch_one(&state.pool)
+    .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if let Some(req_id) = request_id_trimmed {
+        crate::bots::record_response_code(&mut tx, bot_id, req_id, 202)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
 
     // 8. Publish bot.command_invoked on private-bot-{bot_id}
     let event_payload = json!({
@@ -810,7 +868,276 @@ pub async fn post_bot_command(
     let resp = PostBotCommandResp {
         command_id,
         created_at,
-        request_id: request_id_trimmed.to_string(),
+        request_id: request_id_trimmed.map(|s| s.to_string()),
+        idempotent: None,
+    };
+
+    let mut response = (StatusCode::ACCEPTED, Json(resp)).into_response();
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
+#[derive(Deserialize)]
+pub struct PostBotMessageReq {
+    pub epoch: i64,
+    pub ciphertext: String,
+    pub content_type: String,
+    pub signature: String,
+    pub request_id: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct PostBotMessageResp {
+    pub message_id: String,
+    pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub idempotent: Option<bool>,
+}
+
+pub async fn post_bot_message(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(room_id): Path<String>,
+    Json(req): Json<PostBotMessageReq>,
+) -> Result<Response, ApiError> {
+    let caller = crate::routes::bots::resolve_caller(&state.pool, &headers, &state).await?;
+    let bot_ctx = match caller {
+        CallerIdentity::Bot(b) => b,
+        CallerIdentity::User(_) => return Err(ApiError::Forbidden("forbidden".into())),
+    };
+
+    let bot_id = &bot_ctx.bot_id;
+
+    // 1. Verify active grant in room with post_message scope
+    let has_grant: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1 FROM room_bots rb
+            JOIN room_bot_scopes rbs ON rbs.room_id = rb.room_id AND rbs.bot_id = rb.bot_id
+            WHERE rb.room_id = ? AND rb.bot_id = ? AND rb.revoked_at IS NULL AND rbs.scope = 'post_message'
+        )
+        "#,
+    )
+    .bind(&room_id)
+    .bind(bot_id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if !has_grant {
+        return Err(ApiError::Forbidden("bot_not_granted".into()));
+    }
+
+    // 2. Validate content_type
+    if req.content_type.trim() != "bot" {
+        return Err(ApiError::BadRequest("invalid_content_type".into()));
+    }
+
+    // 3. Validate ciphertext
+    let ciphertext_trimmed = req.ciphertext.trim();
+    if ciphertext_trimmed.is_empty() {
+        return Err(ApiError::BadRequest("invalid_ciphertext".into()));
+    }
+
+    let decoded_ciphertext = match URL_SAFE_NO_PAD.decode(ciphertext_trimmed) {
+        Ok(bytes) => bytes,
+        Err(_) => return Err(ApiError::BadRequest("invalid_ciphertext".into())),
+    };
+
+    if decoded_ciphertext.is_empty() {
+        return Err(ApiError::BadRequest("invalid_ciphertext".into()));
+    }
+
+    if decoded_ciphertext.len() > 65536 {
+        return Err(ApiError::InternalCustom(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "ciphertext_too_large".into(),
+        ));
+    }
+
+    // 4. Check request_id format if present
+    let request_id_trimmed = match req.request_id.as_deref() {
+        Some(s) => {
+            let trimmed = s.trim();
+            if !crate::bots::validate_request_id(trimmed) {
+                return Err(ApiError::BadRequest("invalid_request_id".into()));
+            }
+            Some(trimmed)
+        }
+        None => None,
+    };
+
+    // 5. Check epoch window
+    let current_epoch: i64 = sqlx::query_scalar("SELECT epoch FROM room_epochs WHERE room_id = ?")
+        .bind(&room_id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?
+        .unwrap_or(0);
+
+    let min_epoch = if current_epoch >= 3 {
+        current_epoch - 3
+    } else {
+        0
+    };
+    if req.epoch < min_epoch || req.epoch > current_epoch {
+        return Err(ApiError::BadRequest("epoch_out_of_window".into()));
+    }
+
+    // 6. Verify Ed25519 signature
+    let bot_row: Option<(String, String)> = sqlx::query_as(
+        "SELECT bot_identity_pubkey, owner_user_id FROM bot_accounts WHERE id = ? AND deleted_at IS NULL AND disabled_at IS NULL"
+    )
+    .bind(bot_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let (bot_pubkey, owner_user_id) = match bot_row {
+        Some(row) => row,
+        None => return Err(ApiError::Forbidden("bot_not_granted".into())),
+    };
+
+    let signing_input = crate::signing::encode_bot_message_signing_input(
+        &room_id,
+        req.epoch as u64,
+        &req.content_type,
+        &decoded_ciphertext,
+    );
+
+    if crate::signing::verify_publisher_key_signature(&bot_pubkey, &signing_input, &req.signature)
+        .is_err()
+    {
+        return Err(ApiError::BadRequest("signature_invalid".into()));
+    }
+
+    // 7. Check rate limit
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::BotMessage {
+            bot_id: bot_id.to_string(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    // 8. Begin transaction
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if let Some(req_id) = request_id_trimmed {
+        let outcome = crate::bots::check_or_reserve_request_id(
+            &mut tx,
+            bot_id,
+            req_id,
+            crate::bots::ENDPOINT_BOT_MESSAGES,
+        )
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+        match outcome {
+            crate::bots::IdempotencyOutcome::Duplicate { response_code } => {
+                let _ = tx.rollback().await;
+                let resp = PostBotMessageResp {
+                    message_id: "idempotent".to_string(),
+                    created_at: chrono::Utc::now().to_rfc3339(),
+                    request_id: Some(req_id.to_string()),
+                    idempotent: Some(true),
+                };
+                let status = StatusCode::from_u16(response_code).unwrap_or(StatusCode::ACCEPTED);
+                let mut response = (status, Json(resp)).into_response();
+                response.headers_mut().insert(
+                    header::CACHE_CONTROL,
+                    header::HeaderValue::from_static("no-store"),
+                );
+                return Ok(response);
+            }
+            crate::bots::IdempotencyOutcome::Conflict => {
+                let _ = tx.rollback().await;
+                return Err(ApiError::Conflict("request_id_conflict".into()));
+            }
+            crate::bots::IdempotencyOutcome::Reserved => {}
+        }
+    }
+
+    // 9. Insert into room_messages table
+    let message_id = format!("msg_{}", Ulid::new());
+    let seq: i64 =
+        sqlx::query_scalar("SELECT COALESCE(MAX(seq), 0) + 1 FROM room_messages WHERE room_id = ?")
+            .bind(&room_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let created_at: String = sqlx::query_scalar(
+        r#"
+        INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext)
+        VALUES (?, ?, ?, 'bot', ?, ?, ?, ?)
+        RETURNING CAST(created_at AS TEXT)
+        "#,
+    )
+    .bind(&message_id)
+    .bind(&room_id)
+    .bind(&owner_user_id)
+    .bind(req.epoch)
+    .bind(seq)
+    .bind(&req.content_type)
+    .bind(&decoded_ciphertext)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if let Some(req_id) = request_id_trimmed {
+        crate::bots::record_response_code(&mut tx, bot_id, req_id, 202)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    // 10. Publish message.new event on private-room-{room_id}
+    let msg_payload = json!({
+        "id": message_id,
+        "room_id": room_id,
+        "sender_type": "bot",
+        "sender_id": bot_id,
+        "sender_client_id": "bot",
+        "epoch": req.epoch,
+        "seq": seq,
+        "content_type": req.content_type,
+        "created_at": created_at,
+    });
+
+    let _ = Publisher::publish(
+        &state.publisher,
+        &format!("private-room-{}", room_id),
+        "message.new",
+        msg_payload,
+    )
+    .await;
+
+    let resp = PostBotMessageResp {
+        message_id,
+        created_at,
+        request_id: request_id_trimmed.map(|s| s.to_string()),
+        idempotent: None,
     };
 
     let mut response = (StatusCode::ACCEPTED, Json(resp)).into_response();

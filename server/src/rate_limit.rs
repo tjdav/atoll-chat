@@ -40,6 +40,7 @@ pub enum RateLimitKey {
     BotGrant { user_id: String },
     BotTokenIssue { bot_id: String },
     BotCommand { bot_id: String, user_id: String },
+    BotMessage { bot_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -450,6 +451,16 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_bot_command_per_min,
+            )
+        }
+        RateLimitKey::BotMessage { bot_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("bot_message:{bot_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_bot_message_per_min,
             )
         }
     };

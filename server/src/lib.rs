@@ -461,6 +461,10 @@ pub fn build_app(state: AppState) -> Router {
             patch(routes::room_bots::patch_room_bot).delete(routes::room_bots::delete_room_bot),
         )
         .route(
+            "/rooms/{id}/bot-messages",
+            post(routes::room_bots::post_bot_message),
+        )
+        .route(
             "/rooms/{id}/bot-commands",
             post(routes::room_bots::post_bot_command),
         )

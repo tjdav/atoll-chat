@@ -148,6 +148,7 @@ async fn wait_for_shutdown(
 pub mod attachments;
 pub mod audit;
 pub mod bot_commands;
+pub mod bot_request_log;
 pub mod memory;
 pub mod oprf_audit;
 pub mod pending_removes;
