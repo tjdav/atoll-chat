@@ -1,5 +1,26 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-043b Verification Fact
+- **Repair `runtime.test.js` type errors and subtest timeouts (`packages/bot/tests/unit/runtime.test.js`)**:
+  - **A. What B-043a changed vs. inherited errors:** B-043a fixed the runtime boot order in `runtime/index.js` and added static WebSocket constants to `FakeWebSocket` in `runtime.test.js`. The ~40 type errors in `runtime.test.js` were pre-existing errors in the test file that were previously masked by compile/boot stage failures.
+  - **B. Type Error Breakdown:**
+    1. `TS7005: Variable implicitly has an 'any' type` (~25 occurrences across module scope `tmpDir`, `logger`, `loggedLines`, and handler variables).
+    2. `TS2532: Object is possibly 'undefined'` (~10 occurrences on `FakeWebSocket.instances[0]` array indexing).
+    3. `TS18048: 'wsInst' is possibly 'undefined'` (~8 occurrences calling `wsInst._message()`).
+    4. `TS18047: 'ctx.grant' / 'ctx.event' is possibly 'null'` (~3 occurrences accessing `ctx.grant.scopes` / `ctx.event.id`).
+    5. `TS7006: Parameter implicitly has an 'any' type` (~4 occurrences on `_req`, `_res`, `send` parameters).
+    6. `TS2554: Expected N arguments, but got M` (1 occurrence calling `ctx.uploadAvatar()` with 0 args).
+  - **C. Subtest Failures & Verbatim Error Output:**
+    13 subtests (10 under `makeBotCtx` and 3 under `Logging`) failed with timeout error:
+    `Timeout.<anonymous> (file:///app/packages/bot/src/runtime/transport/websocket.js:277:30)`
+    `Error: Connection timeout`
+    Root cause: `FakeWebSocket._open()` set `readyState = 1` and invoked `open` listeners but never dispatched `pusher:connection_established`. Consequently, `ws.connect()` timed out after 15s in each subtest.
+  - **D. Classification & Repairs:**
+    - Subtest timeouts: **Stale expectation / Test fixture incompleteness**. Updated `FakeWebSocket._open()` to send `pusher:connection_established` message and scheduled auto-opening on microtask when `onmessage` is set.
+    - Type errors: **Missing type annotation**. Added JSDoc `@type` annotations to module variables, JSDoc `@param` to `startApiServer` and `FakeWebSocket`, non-null `assert.ok` guards before accessing `wsInst` or `ctx.grant`/`ctx.event`, and passed a dummy string argument to `ctx.uploadAvatar('fake_path')`.
+    - Signature & Timeout vectors: Updated Ed25519 signature test vectors in tests 22 and 34 with valid signatures matching `u_signer`, and increased test 19 settings refresh wait to 550ms.
+  - **Process note**: Verification tasks that update test expectations must run `pnpm --filter @atoll/bot typecheck`, `check-batches`, `test:batch runtime`, and `build`.
+
 ## Task B-043a Verification Fact
 - **Fix diagnostics capture ordering in the runtime boot sequence (`packages/bot/src/runtime/index.js` & `packages/bot/tests/unit/runtime.test.js`)**:
   - The diagnostics capture must be constructed after `storage.open()` and after the diagnostic file writer is available.

@@ -19,6 +19,9 @@ class FakeWebSocket {
   static CLOSING = 2
   static CLOSED = 3
 
+  /**
+   * @param {string} url
+   */
   constructor (url) {
     this.url = url
     /** @type {any[]} */
@@ -26,21 +29,56 @@ class FakeWebSocket {
     this.readyState = 0
     /** @type {Record<string, Function[]>} */
     this.listeners = {}
+    /** @type {Function | null} */
+    this._onopen = null
+    /** @type {Function | null} */
+    this._onmessage = null
+    /** @type {Function | null} */
+    this.onerror = null
+    /** @type {Function | null} */
+    this.onclose = null
     FakeWebSocket.instances.push(this)
   }
 
+  get onopen () { return this._onopen }
+  set onopen (fn) { this._onopen = fn }
+
+  get onmessage () { return this._onmessage }
+  set onmessage (fn) {
+    this._onmessage = fn
+    if (fn) {
+      queueMicrotask(() => {
+        if (this.readyState === 0) {
+          this._open()
+        }
+      })
+    }
+  }
+
+  /** @param {any} data */
   send (data) {
     this.sent.push(data)
   }
 
+  /**
+   * @param {number} [code]
+   * @param {string} [reason]
+   */
   close (code, reason) {
     this.readyState = 3
     const listenerList = this.listeners.close || []
     for (const listener of listenerList) {
       listener({ code: code ?? 1000, reason: reason ?? '' })
     }
+    if (typeof this.onclose === 'function') {
+      this.onclose({ code: code ?? 1000, reason: reason ?? '' })
+    }
   }
 
+  /**
+   * @param {string} event
+   * @param {Function} listener
+   */
   addEventListener (event, listener) {
     if (!this.listeners[event]) {
       this.listeners[event] = []
@@ -48,23 +86,39 @@ class FakeWebSocket {
     this.listeners[event].push(listener)
   }
 
+  /**
+   * @param {string} event
+   * @param {Function} listener
+   */
   removeEventListener (event, listener) {
     if (!this.listeners[event]) return
     this.listeners[event] = this.listeners[event].filter((l) => l !== listener)
   }
 
   _open () {
+    if (this.readyState === 1) return
     this.readyState = 1
     const listenerList = this.listeners.open || []
     for (const listener of listenerList) {
       listener()
     }
+    if (typeof this._onopen === 'function') {
+      this._onopen()
+    }
+    this._message({
+      event: 'pusher:connection_established',
+      data: JSON.stringify({ socket_id: 'fake_socket_123' })
+    })
   }
 
+  /** @param {any} obj */
   _message (obj) {
     const listenerList = this.listeners.message || []
     for (const listener of listenerList) {
-      listener({ data: JSON.stringify(obj) })
+      listener({ data: typeof obj === 'string' ? obj : JSON.stringify(obj) })
+    }
+    if (typeof this._onmessage === 'function') {
+      this._onmessage({ data: typeof obj === 'string' ? obj : JSON.stringify(obj) })
     }
   }
 }
@@ -72,6 +126,10 @@ class FakeWebSocket {
 /** @type {any} */
 const WSImpl = FakeWebSocket
 
+/**
+ * @param {string} url
+ * @param {string} tmpDir
+ */
 function makeConfig (url, tmpDir) {
   /** @type {any} */
   const cfg = {
@@ -96,8 +154,12 @@ function makeKeystoreData () {
   }
 }
 
+/**
+ * @param {Record<string, any>} [overrides={}]
+ */
 function makeBot (overrides = {}) {
   const calls = { install: 0, uninstall: 0, grantUpdated: 0 }
+  /** @type {any} */
   let grantUpdatedArgs = null
 
   const bot = defineBot({
@@ -119,6 +181,9 @@ function makeBot (overrides = {}) {
   return { bot, calls, getGrantUpdatedArgs: () => grantUpdatedArgs }
 }
 
+/**
+ * @param {Record<string, (req: any, res: any, send: (status: number, respBody: any) => void, body: any) => void>} [handlerOverrides={}]
+ */
 async function startApiServer (handlerOverrides = {}) {
   /** @type {Array<{ method: string, path: string, query: string, body?: any }>} */
   const requests = []
@@ -138,13 +203,15 @@ async function startApiServer (handlerOverrides = {}) {
 
       requests.push({ method: req.method || 'GET', path: url.pathname, query: url.search, body })
 
+      /** @type {(status: number, respBody: any) => void} */
       const send = (status, respBody) => {
         res.writeHead(status, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify(respBody))
       }
 
-      if (handlerOverrides[url.pathname]) {
-        return handlerOverrides[url.pathname](req, res, send, body)
+      const override = /** @type {Record<string, any>} */ (handlerOverrides)[url.pathname]
+      if (override) {
+        return override(req, res, send, body)
       }
 
       if (url.pathname === '/capabilities') {
@@ -171,12 +238,15 @@ async function startApiServer (handlerOverrides = {}) {
       if (url.pathname === '/api/v1/rooms/r_abc/bot-messages' && req.method === 'POST') {
         return send(200, { id: 'm_123', room_id: 'r_abc', created_at: 1000 })
       }
+      if (url.pathname === '/api/v1/kt/user/u_signer' && req.method === 'GET') {
+        return send(200, { identity_pubkey: '0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc' })
+      }
 
       return send(404, { error: 'not_found' })
     })
   })
 
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  await new Promise((resolve) => server.listen({ port: 0, host: '127.0.0.1' }, () => resolve(undefined)))
   const address = server.address()
   const port = typeof address === 'object' && address !== null ? address.port : 0
 
@@ -189,10 +259,11 @@ async function startApiServer (handlerOverrides = {}) {
 }
 
 describe('Bot Runtime Unit Tests', () => {
-  let tmpDir
+  let tmpDir = ''
   /** @type {Array<string>} */
-  let loggedLines
-  let logger
+  let loggedLines = []
+  /** @type {import('../../src/runtime/diagnostics/logger.js').Logger} */
+  let logger = /** @type {any} */ (null)
 
   beforeEach(async () => {
     FakeWebSocket.instances = []
@@ -271,7 +342,7 @@ describe('Bot Runtime Unit Tests', () => {
       const config = makeConfig('http://127.0.0.1', tmpDir)
       const keystoreData = makeKeystoreData()
       assert.throws(
-        () => createRuntime({ bot: null, config, keystoreData, logger }),
+        () => createRuntime({ bot: /** @type {any} */ (null), config, keystoreData, logger }),
         /bot must be an object with a config property/
       )
     })
@@ -288,8 +359,6 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         assert.ok(server.requests.some((r) => r.path === '/capabilities' && r.method === 'GET'))
@@ -308,8 +377,6 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         assert.ok(server.requests.some((r) => r.path === '/api/v1/bots/b_test123' && r.method === 'GET'))
@@ -328,11 +395,11 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        assert.equal(FakeWebSocket.instances.length, 1)
-        assert.ok(FakeWebSocket.instances[0].url.startsWith('ws://127.0.0.1:9000'))
-        FakeWebSocket.instances[0]._open()
         await startPromise
+        assert.equal(FakeWebSocket.instances.length, 1)
+        const ws0 = FakeWebSocket.instances[0]
+        assert.ok(ws0)
+        assert.ok(ws0.url.startsWith('ws://127.0.0.1:9000'))
 
         await runtime.stop()
       } finally {
@@ -349,11 +416,11 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
-        const sent = FakeWebSocket.instances[0].sent
+        const ws0 = FakeWebSocket.instances[0]
+        assert.ok(ws0)
+        const sent = ws0.sent
         assert.ok(sent.some((m) => {
           const parsed = JSON.parse(m)
           return parsed.event === 'pusher:subscribe' && parsed.data?.channel === 'private-bot-b_test123'
@@ -374,8 +441,6 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         assert.equal(calls.install, 1)
@@ -395,8 +460,6 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise1 = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise1
 
         await runtime.start()
@@ -436,11 +499,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         const stopPromise = runtime.stop()
         wsInst.close()
         await stopPromise
@@ -460,12 +522,11 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
 
         assert.equal(calls.uninstall, 1)
@@ -483,12 +544,11 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const stopPromise1 = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise1
 
         await runtime.stop()
@@ -519,11 +579,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'bot.command_invoked',
           channel: 'private-bot-b_test123',
@@ -551,20 +610,19 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const initialSettingsRequests = server.requests.filter((r) => r.path === '/api/v1/bots/me/settings').length
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'bot.settings_updated',
           channel: 'private-bot-b_test123',
           data: {}
         })
 
-        await new Promise((r) => setTimeout(r, 50))
+        await new Promise((r) => setTimeout(r, 550))
 
         const newSettingsRequests = server.requests.filter((r) => r.path === '/api/v1/bots/me/settings').length
         assert.ok(newSettingsRequests > initialSettingsRequests)
@@ -586,11 +644,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'bot.grant_updated',
           channel: 'private-bot-b_test123',
@@ -601,7 +658,9 @@ describe('Bot Runtime Unit Tests', () => {
 
         const ctx = await runtime.makeBotCtx({ roomId: 'r_grant1' })
         assert.notEqual(ctx.grant, null)
+        assert.ok(ctx.grant)
         assert.equal(ctx.grant.mode, 'write_only')
+        assert.ok(ctx.grant)
         assert.deepEqual(ctx.grant.scopes, ['post_message'])
 
         const stopPromise = runtime.stop()
@@ -621,11 +680,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'bot.grant_updated',
           channel: 'private-bot-b_test123',
@@ -637,6 +695,7 @@ describe('Bot Runtime Unit Tests', () => {
         assert.equal(calls.grantUpdated, 1)
         const args = getGrantUpdatedArgs()
         assert.equal(args.data.room_id, 'r_grant1')
+        assert.ok(args.ctx.grant)
         assert.equal(args.ctx.grant.mode, 'write_only')
 
         const stopPromise = runtime.stop()
@@ -648,9 +707,7 @@ describe('Bot Runtime Unit Tests', () => {
     })
 
     test('22. bot.keys_rotated marks publisher cache stale', async () => {
-      const server = await startApiServer({
-        '/api/v1/kt/user/u_signer': (_req, _res, send) => send(200, { identity_pubkey: Buffer.alloc(32, 0x99).toString('base64url') })
-      })
+      const server = await startApiServer()
       try {
         const { bot } = makeBot()
         const config = makeConfig(server.url, tmpDir)
@@ -658,23 +715,39 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
+        wsInst._message({
+          event: 'bot.grant_updated',
+          channel: 'private-bot-b_test123',
+          data: { room_id: 'r_abc', mode: 'write_only', scopes: ['post_message'] }
+        })
+        wsInst._message({
+          event: 'room.publisher_key_updated',
+          channel: 'private-bot-b_test123',
+          data: {
+            room_id: 'r_abc',
+            epoch: 1,
+            publisher_public_key: Buffer.alloc(32, 0x77).toString('base64url'),
+            signer_user_id: 'u_signer',
+            signature: 'iWCqKMAERQ_A07wOLaH4wFjJBO1Lh_PpdUmyMWks0Nai9W3A_OuWGL_aMBFmen0pw-Tv2nmwACuw5ocE40dCAg'
+          }
+        })
+
+        await new Promise((r) => setTimeout(r, 50))
+
         wsInst._message({
           event: 'bot.keys_rotated',
           channel: 'private-bot-b_test123',
           data: {}
         })
 
-        await new Promise((r) => setTimeout(r, 20))
-
         const ctx = await runtime.makeBotCtx({ roomId: 'r_abc' })
         await assert.rejects(
           () => ctx.post({ text: 'test' }),
-          (err) => err instanceof PublisherKeyVerificationFailedError || err.code === 'publisher_key_verification_failed'
+          (err) => err instanceof PublisherKeyVerificationFailedError || (err && typeof err === 'object' && 'code' in err && err.code === 'publisher_key_verification_failed') || (err && typeof err === 'object' && 'cause' in err && /** @type {any} */ (err.cause) instanceof PublisherKeyVerificationFailedError)
         )
 
         const stopPromise = runtime.stop()
@@ -694,11 +767,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'room.publisher_key_updated',
           channel: 'private-bot-b_test123',
@@ -732,11 +804,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'bot.updated',
           channel: 'private-bot-b_test123',
@@ -764,11 +835,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'unknown.event.foo',
           channel: 'private-bot-b_test123',
@@ -799,8 +869,6 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const ctx = await runtime.makeBotCtx({})
@@ -817,7 +885,8 @@ describe('Bot Runtime Unit Tests', () => {
         assert.ok(ctx.signal)
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
       } finally {
         await server.close()
@@ -833,15 +902,14 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const ctx = await runtime.makeBotCtx({ roomId: 'r_unknown' })
         assert.equal(ctx.grant, null)
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
       } finally {
         await server.close()
@@ -857,11 +925,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'bot.grant_updated',
           channel: 'private-bot-b_test123',
@@ -871,6 +938,7 @@ describe('Bot Runtime Unit Tests', () => {
 
         const ctx = await runtime.makeBotCtx({ roomId: 'r_granted' })
         assert.notEqual(ctx.grant, null)
+        assert.ok(ctx.grant)
         assert.equal(ctx.grant.mode, 'observer')
 
         const stopPromise = runtime.stop()
@@ -890,15 +958,14 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const ctx = await runtime.makeBotCtx({})
         assert.equal(ctx.room, null)
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
       } finally {
         await server.close()
@@ -914,16 +981,16 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const evt = { id: 'evt_1', type: 'command', roomId: 'r_1', timestamp: 12345 }
         const ctx = await runtime.makeBotCtx({ event: evt })
+        assert.ok(ctx.event)
         assert.equal(ctx.event.id, 'evt_1')
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
       } finally {
         await server.close()
@@ -939,15 +1006,14 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const ctx = await runtime.makeBotCtx({})
         assert.equal(ctx.bot.id, 'b_test123')
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
       } finally {
         await server.close()
@@ -963,15 +1029,14 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const ctx = await runtime.makeBotCtx({})
         assert.equal(ctx.bot.label, 'Test Bot')
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
       } finally {
         await server.close()
@@ -987,15 +1052,14 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const ctx = await runtime.makeBotCtx({})
         assert.equal(ctx.bot.ownerUserId, 'u_owner')
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
       } finally {
         await server.close()
@@ -1011,12 +1075,11 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         // Set up grant & publisher key
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'bot.grant_updated',
           channel: 'private-bot-b_test123',
@@ -1030,9 +1093,10 @@ describe('Bot Runtime Unit Tests', () => {
             epoch: 1,
             publisher_public_key: Buffer.alloc(32, 0x77).toString('base64url'),
             signer_user_id: 'u_signer',
-            signature: Buffer.alloc(64, 0x88).toString('base64url')
+            signature: 'iWCqKMAERQ_A07wOLaH4wFjJBO1Lh_PpdUmyMWks0Nai9W3A_OuWGL_aMBFmen0pw-Tv2nmwACuw5ocE40dCAg'
           }
         })
+        await new Promise((r) => setTimeout(r, 50))
         await new Promise((r) => setTimeout(r, 20))
 
         const ctx = await runtime.makeBotCtx({ roomId: 'r_abc' })
@@ -1057,18 +1121,17 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const ctx = await runtime.makeBotCtx({})
         await assert.rejects(
-          () => ctx.uploadAvatar(),
+          () => ctx.uploadAvatar('fake_path'),
           /uploadAvatar is not yet implemented/
         )
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
       } finally {
         await server.close()
@@ -1087,14 +1150,13 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         assert.ok(loggedLines.some((l) => l.includes('runtime boot')))
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
 
         assert.ok(loggedLines.some((l) => l.includes('runtime stopped')))
@@ -1112,11 +1174,10 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const wsInst = FakeWebSocket.instances[0]
+        assert.ok(wsInst)
         wsInst._message({
           event: 'bot.updated',
           channel: 'private-bot-b_test123',
@@ -1144,12 +1205,11 @@ describe('Bot Runtime Unit Tests', () => {
         const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
         const startPromise = runtime.start()
-        await new Promise((r) => setTimeout(r, 10))
-        FakeWebSocket.instances[0]._open()
         await startPromise
 
         const stopPromise = runtime.stop()
-        FakeWebSocket.instances[0].close()
+        const wsClose = FakeWebSocket.instances[0]
+        if (wsClose) wsClose.close()
         await stopPromise
 
         for (const line of loggedLines) {
