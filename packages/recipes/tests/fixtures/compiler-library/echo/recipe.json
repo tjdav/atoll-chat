@@ -1,0 +1,37 @@
+{
+  "id": "echo",
+  "version": "1.0.0",
+  "label": "Echo",
+  "description": "A minimal recipe with a handler, a trigger, and a slot, used by compiler pipeline tests.",
+  "kind": "pure",
+  "capabilities": ["read_content", "post_message"],
+  "slots": [
+    { "name": "greeting", "type": "string", "question": "What greeting?", "default": "hi" }
+  ],
+  "handlers": {
+    "install": {
+      "id": "echo-install",
+      "primitive": "post-response",
+      "config": { "text": "{greeting}, I am echo." }
+    },
+    "message": {
+      "id": "echo-watch",
+      "primitive": "watch-pattern",
+      "config": { "pattern": "ping" },
+      "children": [
+        {
+          "id": "echo-reply",
+          "primitive": "post-response",
+          "config": { "text": "pong from {greeting}" }
+        }
+      ]
+    }
+  },
+  "triggers": [
+    {
+      "id": "echo-schedule",
+      "primitive": "schedule-task",
+      "config": { "name": "echo-tick", "cron": "0 9 * * *" }
+    }
+  ]
+}
