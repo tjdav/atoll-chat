@@ -589,6 +589,40 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
         }));
     }
 
+    // 9b. Bot declarations (§14.3)
+    let bot_decl_rows = match sqlx::query(
+        r#"
+        SELECT id, display_name, declarations
+        FROM bot_accounts
+        WHERE owner_user_id = ? AND deleted_at IS NULL AND declarations IS NOT NULL
+        ORDER BY id ASC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    {
+        Ok(rows) => rows,
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => vec![],
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
+    let mut bot_decl_list = Vec::new();
+    for row in bot_decl_rows {
+        let b_id: String = row.get("id");
+        let b_display_name: String = row.get("display_name");
+        let b_decl_str: Option<String> = row.get("declarations");
+        let b_decl_val: serde_json::Value = b_decl_str
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or(json!(null));
+
+        bot_decl_list.push(json!({
+            "bot_id": b_id,
+            "display_name": b_display_name,
+            "declarations": b_decl_val
+        }));
+    }
+
     // 10. Audit
     let audit_rows = sqlx::query(
         "SELECT id, action, target_type, target_id, metadata, created_at FROM audit_log WHERE actor_id = ? ORDER BY created_at ASC",
@@ -724,6 +758,17 @@ Store this archive securely. It contains personal data.
                 .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
             zip.write_all(
                 serde_json::to_string_pretty(&bot_setting_list)
+                    .map_err(|e| GdprError::ExportFailed(e.to_string()))?
+                    .as_bytes(),
+            )
+            .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+        }
+
+        if !bot_decl_list.is_empty() {
+            zip.start_file("bot_declarations.json", options)
+                .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+            zip.write_all(
+                serde_json::to_string_pretty(&bot_decl_list)
                     .map_err(|e| GdprError::ExportFailed(e.to_string()))?
                     .as_bytes(),
             )

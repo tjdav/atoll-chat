@@ -294,14 +294,20 @@
   - **Contract Highlights:** Case A verified (`value_encrypted_bot` embeds 32-byte `ephemeral_pubkey`), `bot_settings` table with XOR CHECK `(is_secret = 1 AND value_encrypted_client IS NULL) OR (is_secret = 0 AND value_encrypted_client IS NOT NULL)`, `GET /bots/me/settings` for bot token auth, `GET /users/me/bots/:bot_id/settings`, `PATCH /users/me/bots/:bot_id/settings/:key`, and `DELETE /users/me/bots/:bot_id/settings/:key` for bot owner session auth, operator `user_seq` allocation, durable event publishing (`bot_settings.updated` on user channel, `bot.settings_updated` on bot channel), no-op guard, operator sync integration in `GET /users/me/sync`, value and key opacity, `Cache-Control: no-store` on all endpoint responses, and 18 integration tests in `server/tests/bot_settings.rs` passing under `bots` batch.
   - **Batch:** `bots`
 
+- **Bot Declarations (Phase 43)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Add `declarations TEXT` column to `bot_accounts`).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-declarations/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/bots/declarations.rs`, `server/src/bots/mod.rs`, `server/src/routes/bots.rs`, `server/src/audit.rs`, `server/src/gdpr.rs`, `server/tests/bot_declarations.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `verification.md`.
+  - **Contract Highlights:** Implemented `declarations TEXT` column, top-level validation helper `validate_declarations_top_level` (256 KiB size cap, `schema_version == 1`, `commands` array, `settings` array, unvalidated opaque contents), `POST /bots` declaration acceptance, `GET /bots/:id` declaration object/null retrieval, `PATCH /bots/:id` declaration update/clearing with value-level no-op guard, event publishing carrying `changed: ["commands"]` on `private-bot-{bot_id}` and `private-room-{room_id}` for active grants, `bot.declaration_update` audit logging with metadata `{ "bot_id": bot_id, "room_id": null }` (omitting declarations contents), `bot_declarations.json` GDPR export archive member, and integration tests in `server/tests/bot_declarations.rs` passing under `bots` batch.
+  - **Batch:** `bots`
+
 ## Annotations for Future Tasks
 
 None.
 
 ## Summary
 - **Project Status:** In Progress
-- **Total Verifications/Tasks Tracked:** 57
-- **Done:** 57
+- **Total Verifications/Tasks Tracked:** 58
+- **Done:** 58
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

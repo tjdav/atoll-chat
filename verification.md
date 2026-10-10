@@ -47,3 +47,17 @@
   - **Sync Integration:** `GET /users/me/sync` joins `bot_settings` with `bot_accounts` filtering by `owner_user_id = caller_id`. Returns `bot_settings` array ordered by `user_seq ASC`. Participates in `max_seq` calculation.
   - **Opacity & GDPR:** Server stores ciphertexts opaquely without decryption or ECDH inspection (§12). `bot_settings.key` is opaque; `room:` prefix is unparsed. On operator account deletion, `bot_accounts` rows and cascaded `bot_settings` rows are deleted.
 - **Link to report:** [verification/bot-settings-encryption/report.md](verification/bot-settings-encryption/report.md)
+
+## Bot Declarations Verification Fact (Phase 43)
+- **ID:** Phase 43 Bot Declarations
+- **Date:** 2026-10-09
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §7.10, §8.8.1, §8.8.2, §8.8.3, §8.9, §14.3, §14.6, §14.8
+- **Verified Facts:**
+  - **Declarations Column:** `bot_accounts.declarations` is a nullable `TEXT` column storing raw UTF-8 JSON.
+  - **Validation Rules:** Server validates top-level shape only (`schema_version` integer equal to 1, `commands` array, `settings` array). Total declarations size bounded to 256 KiB. Contents of `commands` and `settings` are opaque and unvalidated. Unknown top-level fields are accepted and ignored.
+  - **API Contract:** `POST /bots` accepts optional `declarations`; `GET /bots/:id` returns `declarations` object or `null`; `PATCH /bots/:id` accepts `declarations`.
+  - **Event Fanout:** Declarations update publishes `bot.updated` carrying `changed: ["commands"]` on `private-bot-{bot_id}` (omitting `avatar_file_id`) and on each granted room's `private-room-{room_id}` channel (omitting `scopes` and `avatar_file_id`).
+  - **Audit & Privacy:** Declarations update logs `bot.declaration_update` audit entry with metadata `json!({ "bot_id": bot_id, "room_id": null })`. Declarations contents are omitted from audit metadata and never logged.
+  - **GDPR:** Owned bot declarations exported in `bot_declarations.json` ZIP member.
+- **Link to report:** [verification/bot-declarations/report.md](verification/bot-declarations/report.md)
