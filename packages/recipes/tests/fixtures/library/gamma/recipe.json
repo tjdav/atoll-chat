@@ -1,0 +1,19 @@
+{
+  "id": "gamma",
+  "version": "0.1.0",
+  "label": "Gamma",
+  "description": "The third fixture recipe.",
+  "kind": "operated",
+  "targets": ["bot"],
+  "capabilities": ["post_message"],
+  "slots": [
+    { "name": "label", "type": "string", "question": "What should the bot be called?" }
+  ],
+  "handlers": {
+    "install": {
+      "id": "gamma-install",
+      "primitive": "post-response",
+      "config": { "text": "Gamma is ready." }
+    }
+  }
+}
