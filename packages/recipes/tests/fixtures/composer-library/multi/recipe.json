@@ -1,0 +1,17 @@
+{
+  "id": "multi",
+  "version": "1.0.0",
+  "label": "Multi",
+  "description": "A multi-target recipe used by composer rejection tests.",
+  "kind": "pure",
+  "targets": ["bot", "extension"],
+  "capabilities": ["read_content"],
+  "slots": [],
+  "handlers": {
+    "message": {
+      "id": "multi-watch",
+      "primitive": "watch-pattern",
+      "config": { "pattern": "multi" }
+    }
+  }
+}

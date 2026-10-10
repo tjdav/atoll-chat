@@ -159,6 +159,8 @@
  *   composition.
  * @property {string[]} capabilities - The capabilities the artifact
  *   declares.
+ * @property {import('@atoll/bot').SettingsDecl} [settings] - Runtime
+ *   settings declarations, passed through from the recipe.
  */
 
 /**
