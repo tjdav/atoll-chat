@@ -18,6 +18,7 @@ const definedTypes = [
   'Candidate',
   'MatchResult',
   'RankOptions',
+  'Embedder',
   'Instantiation',
   'Composition',
   'BotScript',
