@@ -14,3 +14,4 @@ export const version = '0.0.0'
 
 export { primitives, getPrimitive, listPrimitives } from './primitives/index.js'
 export { validateRecipe, formatErrors } from './recipe/validate.js'
+export { parseRecipe, loadRecipeFile } from './recipe/load.js'

@@ -34,7 +34,7 @@ export const primitives = {
     [settingsRead.id]: settingsRead,
     [settingsWrite.id]: settingsWrite,
     [transform.id]: transform,
-    [queueForOperator.id]: queueForOperator
+    [queueForOperator.id]: queueForOperator,
     [llmComplete.id]: llmComplete
   },
   extension: {}
