@@ -131,6 +131,15 @@
  * } MatchResult
  */
 
+/**
+ * Options for candidate ranking.
+ * @typedef {object} RankOptions
+ * @property {number} [threshold] - Minimum score for a candidate to
+ *   be considered a match. Defaults to 0.55.
+ * @property {number} [margin] - Minimum score gap between the top
+ *   two candidates for a confident match. Defaults to 0.05.
+ */
+
 /* Instantiation and output */
 
 /**
