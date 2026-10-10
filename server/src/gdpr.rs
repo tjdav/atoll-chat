@@ -589,7 +589,49 @@ pub async fn build_export(pool: &SqlitePool, user_id: &str) -> Result<Vec<u8>, G
         }));
     }
 
-    // 10. Audit
+    // 10. Bot accounts and declarations (§14.3)
+    let bot_account_rows = match sqlx::query(
+        r#"
+        SELECT id, display_name, avatar_file_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey, declarations, created_at
+        FROM bot_accounts
+        WHERE owner_user_id = ? AND deleted_at IS NULL
+        ORDER BY id ASC
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await {
+        Ok(rows) => rows,
+        Err(sqlx::Error::Database(e)) if e.message().contains("no such table") => vec![],
+        Err(e) => return Err(GdprError::Database(e)),
+    };
+
+    let mut bot_account_list = Vec::new();
+    for row in bot_account_rows {
+        let ba_id: String = row.get("id");
+        let ba_display_name: String = row.get("display_name");
+        let ba_avatar_file_id: Option<String> = row.get("avatar_file_id");
+        let ba_bot_identity_pubkey: String = row.get("bot_identity_pubkey");
+        let ba_bot_command_pubkey: String = row.get("bot_command_pubkey");
+        let ba_identity_pubkey: String = row.get("identity_pubkey");
+        let ba_decl_str: Option<String> = row.get("declarations");
+        let ba_declarations: Option<serde_json::Value> =
+            ba_decl_str.and_then(|s| serde_json::from_str(&s).ok());
+        let ba_created_at: DateTime<Utc> = row.get("created_at");
+
+        bot_account_list.push(json!({
+            "id": ba_id,
+            "display_name": ba_display_name,
+            "avatar_file_id": ba_avatar_file_id,
+            "bot_identity_pubkey": ba_bot_identity_pubkey,
+            "bot_command_pubkey": ba_bot_command_pubkey,
+            "identity_pubkey": ba_identity_pubkey,
+            "declarations": ba_declarations,
+            "created_at": ba_created_at.to_rfc3339()
+        }));
+    }
+
+    // 11. Audit
     let audit_rows = sqlx::query(
         "SELECT id, action, target_type, target_id, metadata, created_at FROM audit_log WHERE actor_id = ? ORDER BY created_at ASC",
     )
@@ -724,6 +766,17 @@ Store this archive securely. It contains personal data.
                 .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
             zip.write_all(
                 serde_json::to_string_pretty(&bot_setting_list)
+                    .map_err(|e| GdprError::ExportFailed(e.to_string()))?
+                    .as_bytes(),
+            )
+            .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+        }
+
+        if !bot_account_list.is_empty() {
+            zip.start_file("bot_accounts.json", options)
+                .map_err(|e| GdprError::ExportFailed(e.to_string()))?;
+            zip.write_all(
+                serde_json::to_string_pretty(&bot_account_list)
                     .map_err(|e| GdprError::ExportFailed(e.to_string()))?
                     .as_bytes(),
             )
