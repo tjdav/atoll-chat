@@ -1,0 +1,16 @@
+{
+  "id": "valid-fixture",
+  "version": "1.0.0",
+  "label": "Valid Fixture",
+  "description": "A minimal valid recipe used by loader tests.",
+  "kind": "pure",
+  "capabilities": ["post_message"],
+  "slots": [],
+  "handlers": {
+    "install": {
+      "id": "install-hook",
+      "primitive": "post-response",
+      "config": { "text": "Hello." }
+    }
+  }
+}
