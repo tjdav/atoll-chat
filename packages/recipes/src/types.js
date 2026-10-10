@@ -150,6 +150,30 @@
  *   the embedding for the given text.
  */
 
+/**
+ * Configuration for `createMatcher`.
+ * @typedef {object} MatcherConfig
+ * @property {Embedder} embedder - The embedder to use.
+ * @property {object} index - The vector index. Must expose
+ *   `search(query, k)`.
+ * @property {object[]} recipes - Recipe summaries. Each carries at
+ *   least an `id`; `label` and `description` are used during
+ *   disambiguation.
+ * @property {number} [topK] - Candidates to fetch from the index.
+ *   Defaults to 10.
+ * @property {RankOptions} [rankOptions] - Ranking options.
+ * @property {(intent: string, candidates: Candidate[], recipes: object[]) =>
+ *   Promise<MatchResult>} [disambiguator] - Resolves ambiguous
+ *   results.
+ */
+
+/**
+ * A matcher created by `createMatcher`.
+ * @typedef {object} Matcher
+ * @property {(intent: string) => Promise<MatchResult>} match -
+ *   Matches an intent against the recipe library.
+ */
+
 /* Instantiation and output */
 
 /**
