@@ -202,6 +202,7 @@ name = "bots"
 description = "Bot account CRUD, bot tokens, declared scopes, room bot grants, bot avatar, and bot commands"
 files = [
     "bot_commands",
+    "bot_request_log",
     "bot_settings",
     "bots",
     "room_bots",

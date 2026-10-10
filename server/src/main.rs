@@ -388,6 +388,9 @@ async fn main() -> anyhow::Result<()> {
             server::cleanup::pending_removes::PendingRemovesJob,
         ));
         scheduler.register(Box::new(server::cleanup::bot_commands::BotCommandsTtlJob));
+        scheduler.register(Box::new(
+            server::cleanup::bot_request_log::BotRequestLogTtlJob,
+        ));
 
         let ctx = server::cleanup::CleanupContextOwned {
             pool: pool.clone(),
