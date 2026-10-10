@@ -1,0 +1,16 @@
+{
+  "id": "alpha",
+  "version": "1.0.0",
+  "label": "Alpha",
+  "description": "The first fixture recipe.",
+  "kind": "pure",
+  "capabilities": ["post_message"],
+  "slots": [],
+  "handlers": {
+    "install": {
+      "id": "alpha-install",
+      "primitive": "post-response",
+      "config": { "text": "Alpha is ready." }
+    }
+  }
+}

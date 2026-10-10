@@ -1,0 +1,16 @@
+{
+  "id": "beta",
+  "version": "2.1.0",
+  "label": "Beta",
+  "description": "The second fixture recipe.",
+  "kind": "assisted",
+  "capabilities": ["read_commands", "post_message"],
+  "slots": [],
+  "handlers": {
+    "install": {
+      "id": "beta-install",
+      "primitive": "post-response",
+      "config": { "text": "Beta is ready." }
+    }
+  }
+}
