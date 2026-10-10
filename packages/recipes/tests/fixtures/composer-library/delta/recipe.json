@@ -1,0 +1,40 @@
+{
+  "id": "delta",
+  "version": "1.0.0",
+  "label": "Delta",
+  "description": "A recipe with slots, nested config, and children, used by composer tests.",
+  "kind": "pure",
+  "capabilities": ["read_content"],
+  "slots": [
+    { "name": "prefix", "type": "string", "question": "Key prefix?" },
+    { "name": "count", "type": "number", "question": "How many?", "default": 3 }
+  ],
+  "handlers": {
+    "message": {
+      "id": "delta-watch",
+      "primitive": "watch-pattern",
+      "config": { "pattern": "delta" },
+      "children": [
+        {
+          "id": "delta-store",
+          "primitive": "keyed-store",
+          "config": {
+            "key": "{prefix}:{{match}}",
+            "value": {
+              "count": "{count}",
+              "tag": "delta",
+              "list": ["{prefix}", "{count}"]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "triggers": [
+    {
+      "id": "delta-trigger",
+      "primitive": "schedule-task",
+      "config": { "name": "delta-run", "cron": "0 9 * * *" }
+    }
+  ]
+}
