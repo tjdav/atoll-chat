@@ -140,6 +140,16 @@
  *   two candidates for a confident match. Defaults to 0.05.
  */
 
+/**
+ * An embedder turns text into a fixed-dimension vector. The same
+ * text always produces the same vector.
+ * @typedef {object} Embedder
+ * @property {() => number} dimensions - The vector dimension this
+ *   embedder produces.
+ * @property {(text: string) => Promise<number[]>} embed - Returns
+ *   the embedding for the given text.
+ */
+
 /* Instantiation and output */
 
 /**
