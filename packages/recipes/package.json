@@ -17,6 +17,10 @@
       "types": "./dist/index.d.ts",
       "import": "./src/index.js"
     },
+    "./primitives": {
+      "types": "./dist/primitives/entry.d.ts",
+      "import": "./src/primitives/entry.js"
+    },
     "./server": {
       "types": "./dist/server.d.ts",
       "import": "./src/server/index.js"
