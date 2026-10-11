@@ -1,0 +1,16 @@
+{
+  "id": "no-doc",
+  "version": "1.0.0",
+  "label": "No Doc",
+  "description": "A recipe without a markdown file.",
+  "kind": "pure",
+  "capabilities": ["post_message"],
+  "slots": [],
+  "handlers": {
+    "install": {
+      "id": "no-doc-install",
+      "primitive": "post-response",
+      "config": { "text": "No Doc is ready." }
+    }
+  }
+}
