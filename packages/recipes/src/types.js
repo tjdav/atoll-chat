@@ -174,6 +174,15 @@
  *   Matches an intent against the recipe library.
  */
 
+/**
+ * An authenticator validates the authorization on an incoming
+ * request. It is called before a route handler runs.
+ * @typedef {object} Authenticator
+ * @property {(ctx: object) => Promise<{ valid: boolean, reason?: string }>} authenticate -
+ *   Returns `{ valid: true }` to allow the request, or
+ *   `{ valid: false, reason }` to reject it.
+ */
+
 /* Instantiation and output */
 
 /**

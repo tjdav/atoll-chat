@@ -21,6 +21,7 @@ const definedTypes = [
   'Embedder',
   'MatcherConfig',
   'Matcher',
+  'Authenticator',
   'Instantiation',
   'Composition',
   'BotScript',
