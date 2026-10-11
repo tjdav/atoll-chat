@@ -7,6 +7,7 @@
 
 export { postResponse } from './post-response.js'
 export { sendLocal } from './send-local.js'
+export { replyLocal } from './reply-local.js'
 export { watchPattern } from './watch-pattern.js'
 export { keyedStore } from './keyed-store.js'
 export { exposeCommand } from './expose-command.js'

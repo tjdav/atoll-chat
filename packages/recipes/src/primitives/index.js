@@ -2,6 +2,7 @@
 
 import { postResponse } from './post-response.js'
 import { sendLocal } from './send-local.js'
+import { replyLocal } from './reply-local.js'
 import { watchPattern } from './watch-pattern.js'
 import { keyedStore } from './keyed-store.js'
 import { exposeCommand } from './expose-command.js'
@@ -25,6 +26,7 @@ export const primitives = {
   bot: {
     [postResponse.id]: postResponse,
     [sendLocal.id]: sendLocal,
+    [replyLocal.id]: replyLocal,
     [watchPattern.id]: watchPattern,
     [keyedStore.id]: keyedStore,
     [exposeCommand.id]: exposeCommand,
