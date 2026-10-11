@@ -98,6 +98,9 @@
  * @property {Slot[]} slots - Parameters the user fills in.
  * @property {Record<string, PrimitiveInstance>} handlers - Handler
  *   map. Keys are handler names from the bot SDK.
+ * @property {Record<string, PrimitiveInstance>} [commands] -
+ *   Command map. Keys are command names, values are primitive
+ *   instances using the `expose-command` primitive.
  * @property {PrimitiveInstance[]} [triggers] - Trigger composition.
  * @property {string[]} [constraints] - What this recipe does not
  *   support.
@@ -217,6 +220,8 @@
  * @property {Record<string, unknown>} slots - The slot values used.
  * @property {Record<string, PrimitiveInstance>} handlers - Resolved
  *   handler map, with slot references substituted.
+ * @property {Record<string, PrimitiveInstance>} [commands] - Resolved
+ *   command map, with slot references substituted.
  * @property {PrimitiveInstance[]} [triggers] - Resolved trigger
  *   composition.
  * @property {string[]} capabilities - The capabilities the artifact

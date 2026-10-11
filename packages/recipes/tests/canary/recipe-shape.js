@@ -29,6 +29,16 @@ const validBotRecipe = {
         text: 'Ready.'
       }
     }
+  },
+  commands: {
+    save: {
+      id: 'save-command',
+      primitive: 'expose-command',
+      config: { name: 'save', description: 'Save an item.', args: { url: { type: 'string', required: true } } },
+      children: [
+        { id: 'save-respond', primitive: 'post-response', config: { text: 'Saved.' } }
+      ]
+    }
   }
 }
 
@@ -98,6 +108,12 @@ const wrongTarget = {
   targets: ['widget']
 }
 
+// @ts-expect-error — commands must be a plain object when present
+const commandsNotObject = { ...validBotRecipe, commands: [] }
+
+// @ts-expect-error — commands entries must be PrimitiveInstance-shaped
+const commandsBadValue = { ...validBotRecipe, commands: { save: 'not-an-instance' } }
+
 export {
   validBotRecipe,
   noTargets,
@@ -105,5 +121,7 @@ export {
   missingKind,
   wrongKind,
   wrongSlot,
-  wrongTarget
+  wrongTarget,
+  commandsNotObject,
+  commandsBadValue
 }

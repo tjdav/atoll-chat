@@ -106,6 +106,32 @@ const wrongCreate = {
   create: (_config) => 'not a handler'
 }
 
+/** @type {Composition} */
+const composition = {
+  recipeId: 'searchable-store',
+  recipeVersion: '1.0.0',
+  target: 'bot',
+  slots: { itemName: 'widget' },
+  handlers: {
+    install: {
+      id: 'install-hook',
+      primitive: 'post-response',
+      config: { text: 'Ready.' }
+    }
+  },
+  commands: {
+    save: {
+      id: 'save-command',
+      primitive: 'expose-command',
+      config: { name: 'save' }
+    }
+  },
+  capabilities: ['read_commands', 'post_message']
+}
+
+// @ts-expect-error — commands entries must be PrimitiveInstance-shaped
+const badCommands = { ...composition, commands: { save: 42 } }
+
 export {
   watchPattern,
   renderCard,
@@ -116,5 +142,7 @@ export {
   missingPrimitive,
   noTargets,
   noCapabilities,
-  wrongCreate
+  wrongCreate,
+  composition,
+  badCommands
 }

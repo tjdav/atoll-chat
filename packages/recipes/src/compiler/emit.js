@@ -125,6 +125,12 @@ export function emit (composition, options) {
     throw new Error('emit: options must be an object')
   }
 
+  if (composition.commands !== undefined && Object.keys(composition.commands).length > 0) {
+    throw new Error(
+      'emit: composition has commands; command emission is not implemented in this version'
+    )
+  }
+
   const { botId, label } = options
   const apiVersion = options.apiVersion === undefined ? '1.0.0' : options.apiVersion
   const hostApi = options.hostApi === undefined ? '^1.0' : options.hostApi

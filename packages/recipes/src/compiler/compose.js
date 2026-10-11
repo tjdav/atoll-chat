@@ -170,6 +170,14 @@ export async function compose (rootDir, instantiation) {
     resolvedHandlers[key] = resolveInstance(recipe.handlers[key], resolvedSlots)
   }
 
+  let resolvedCommands = null
+  if (recipe.commands !== undefined) {
+    resolvedCommands = {}
+    for (const key of Object.keys(recipe.commands)) {
+      resolvedCommands[key] = resolveInstance(recipe.commands[key], resolvedSlots)
+    }
+  }
+
   const composition = {
     recipeId: recipe.id,
     recipeVersion: recipe.version,
@@ -177,6 +185,10 @@ export async function compose (rootDir, instantiation) {
     slots: resolvedSlots,
     handlers: resolvedHandlers,
     capabilities: recipe.capabilities
+  }
+
+  if (resolvedCommands !== null) {
+    composition.commands = resolvedCommands
   }
 
   if (recipe.triggers !== undefined) {
