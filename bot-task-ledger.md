@@ -6,10 +6,10 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 45
-- **Done:** 45
+- **Total Tasks:** 49
+- **Done:** 46
 - **In Progress:** 0
-- **Todo:** 0
+- **Todo:** 3
 
 ---
 
@@ -17,10 +17,14 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-043c-1 | Scaffolding | done | B-001 | Scope the strict type check to `src/` and add a relaxed test config |
+| B-043c-2 | Testing | pending | B-043c-1 | Remove `@type {any}` suppressions from tests |
+| B-043c-3 | Scaffolding | pending | B-043c-1 | Fix the source-file type errors properly |
+| B-043c-4 | Verification | pending | B-043c-2, B-043c-3 | Verify clean canary and add the process note |
 | B-045 | Documentation | done | §1, §3, §4, §5, §6, §7, §13, §14 | Author the SDK README (`packages/bot/README.md`) and runnable example bot (`examples/echo-bot/`) |
 | B-044 | Testing | done | §13, §13.2, §13.3 | Implement the end-to-end smoke test suite (`smoke.test.js`) and fixture bot (`echo-bot.js`) exercising 26 scenarios |
-| B-043b | Testing | done | §13, §14.12 | Repair `runtime.test.js` type errors and subtest timeouts |
-| B-043a | Diagnostics | done | §4, §14.12 | Fix diagnostics capture ordering in the runtime boot sequence. Completion contingent on B-043b. B-043a's boot-order fix corrected the storage instance issue but left the runtime test file with stale expectations and missing type annotations. B-043b repaired them. |
+| B-043b | Testing | done | §13, §14.12 | Repair `runtime.test.js` type errors and subtest timeouts. Superseded by B-043c-1. The strict-canary approach for test files was a design flaw in B-001; the fix is to scope strict typing to `src/` and treat the test tree separately. |
+| B-043a | Diagnostics | done | §4, §14.12 | Fix diagnostics capture ordering in the runtime boot sequence. Completion contingent on B-043b. B-043a's boot-order fix corrected the storage instance issue but left the runtime test file with stale expectations and missing type annotations. B-043b repaired them. Superseded by B-043c-1. The strict-canary approach for test files was a design flaw in B-001; the fix is to scope strict typing to `src/` and treat the test tree separately. |
 | B-043 | Diagnostics | done | §4.5, §14.6, §14.12 | Implement diagnostics capture, retention pruning, and diagnostic file writer (`diag-file-writer.js`, `capture.js`). Completion contingent on B-043a. B-043's runtime wiring introduced a boot-order bug (diagnostics capture constructed before storage opened). The bug was latent and surfaced at B-046's Step 0. |
 | B-042 | CLI | done | §14.1, §14.2, §14.9 | Implement `sandbox connect`, `sandbox run`, and `sandbox reset` commands and `sandbox` dispatcher |
 | B-041 | CLI | done | §14.1, §14.6 | Implement `dev`, `inspect`, and `tail` developer subcommands and shared `diag-file.js` reader |

@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["src/**/*.js", "tests/**/*.js"],
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitOverride": false,
+    "noFallthroughCasesInSwitch": false
+  }
+}

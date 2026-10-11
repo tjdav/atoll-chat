@@ -34,6 +34,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "test:canary": "tsc --noEmit",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json",
     "check-batches": "node tests/manifest-check.js",
     "test:batch": "node tests/manifest-check.js --batch",
     "test:all": "node tests/run-all-batches.js",
