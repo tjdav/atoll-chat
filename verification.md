@@ -1,4 +1,31 @@
 
+## Link Preview Proxy v3.0.4 Alignment Verification Fact (Phase 17)
+- **ID:** Phase 17 Link Preview Proxy v3.0.4 Alignment
+- **Date:** 2026-10-11
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §5.9, §5.23, §5.31, §5.6, §7.13, §8.1, §8.1.2, §8.1.5, §12 (Specification Team Response 2026-10-11)
+- **Verified Facts:**
+  - **Adopted Contract Match:**
+    - `POST /api/v1/link-preview/proxy` requires Bearer session token authentication (`AuthUser`). Unauthenticated requests return HTTP 401 Unauthorized.
+    - Enforces per-user rate limit `RATE_LINK_PREVIEW_PER_MIN` (default 10) with key format `link_preview:{user_id}:min:{boundary}`.
+    - JSON request envelope: `{ "ephemeral_pubkey": "<base64>", "nonce": "<base64>", "ciphertext": "<base64>" }`.
+    - JSON response envelope: `{ "nonce": "<base64>", "ciphertext": "<base64>" }`.
+    - Content Key derivation: Ephemeral-Static X25519 ECDH + `HKDF-Expand(shared, b"link-preview-content-key-v1", 32)` with SHA-256.
+    - Cipher: AES-256-GCM with 12-byte random nonce and 16-byte authentication tag.
+    - SSRF protection: HTTPS required in production, URL length limit (2048), blocked IP ranges (private, loopback, link-local, cloud metadata), IP pinning, redirect re-validation (max 5), body size cap, connect/read timeout.
+  - **No RSA-OAEP Code Paths:** Confirmed zero RSA-OAEP code paths or RSA public key material in production server code (`server/src/`).
+  - **Capabilities Behavior:**
+    - `GET /capabilities` exposes `extension_proxy_key` (Base64 string of 32-byte X25519 public key) whenever `link_preview_proxy_enabled || extension_proxy_enabled` is true. Serializes to `null` when both are disabled.
+    - Response includes `extension_proxy_enabled`, `extension_proxy_key`, `extension_proxy_max_request_bytes`, `extension_proxy_max_response_bytes`, `extension_proxy_supports_streaming`, alongside `link_preview_proxy_enabled`.
+    - `link_preview_proxy_key` is not present in capabilities response.
+  - **Shared Key File & HKDF Separation:**
+    - Both Link Preview Proxy and Extension Proxy share the static X25519 keypair loaded from `LINK_PREVIEW_PROXY_KEY_PATH` (default `./data/link-preview.key`, Unix permissions `0600`).
+    - Link Preview Proxy uses HKDF info string `b"link-preview-content-key-v1"`, while Extension Proxy uses `b"extension-proxy-content-key-v1"`.
+    - Replay prevention: Payloads encrypted for one endpoint cannot be decrypted by the other.
+  - **Tracing Log Opacity:** Server decrypts URLs and response bodies in memory only. Plaintext URLs and response bodies are never written to stdout, stderr, or server logs.
+  - **Backup Finding:** `LINK_PREVIEW_PROXY_KEY_PATH` is currently not packed by `server/src/backup/format.rs` (recorded gap).
+- **Link to report:** [verification/link-preview-v304-align/report.md](verification/link-preview-v304-align/report.md)
+
 ## Bot Command Routing Verification Fact (Phase 32)
 - **ID:** Phase 32 Bot Command Routing
 - **Date:** 2026-10-09
