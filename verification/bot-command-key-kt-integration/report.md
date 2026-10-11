@@ -5,25 +5,24 @@
 In `server/src/routes/room_bots.rs` (`post_bot_message`):
 - The current SQL insert statement is:
   ```sql
-  INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext)
-  VALUES (?, ?, ?, 'bot', ?, ?, ?, ?)
+  INSERT INTO room_messages (id, room_id, sender_bot_id, sender_client_id, bot_key_leaf_index, epoch, seq, content_type, ciphertext)
+  VALUES (?, ?, ?, 'bot', ?, ?, ?, ?, ?)
   ```
-- `bot_key_leaf_index` is omitted from the column list, leaving its value as `NULL`.
-- Currently, `sender_user_id` is bound to `owner_user_id` while `sender_bot_id` is `NULL`.
-- Per V3 §7.6 & §8.8.10, bot messages must set `sender_bot_id = bot_id`, `sender_user_id = NULL`, and `bot_key_leaf_index` to the bot's currently active KT leaf index at insertion time.
+- `bot_key_leaf_index` is queried via `current_bot_leaf_index_tx(&mut tx, bot_id)` inside the transaction and stored.
+- `sender_bot_id` is set to `bot_id` and `sender_user_id` is omitted (null). `sender_client_id` is set to `'bot'` (derived as the bot's static connection client identifier).
+- Per V3 §7.6 & §8.8.10, bot messages set `sender_bot_id = bot_id`, `sender_user_id = NULL`, and `bot_key_leaf_index` to the bot's currently active KT leaf index at insertion time.
 
 ## 2. Current `GET /rooms/:id/messages` Handler
 
 In `server/src/routes/room_messages.rs` (`list`) and `server/src/room_messages.rs` (`list_messages`):
-- `list_messages` queries `SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, edited_at, deleted_at, created_at FROM room_messages`.
-- `RoomMessageView` does not currently include `sender_type`, `sender_id`, or `bot_key_leaf_index`.
-- Per §8.5.1, the message fetch response must return `sender_type` ("user" | "bot"), `sender_id` (user_id | bot_id), and `bot_key_leaf_index` (integer leaf index or `null`).
+- `list_messages` queries `SELECT id, room_id, sender_user_id, sender_bot_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, bot_key_leaf_index, edited_at, deleted_at, created_at FROM room_messages`.
+- `RoomMessageView` includes `sender_type` ("user" | "bot"), `sender_id` (user_id | bot_id), and `bot_key_leaf_index` (integer leaf index or `null`).
 
 ## 3. Current `GET /kt/bot/:id` Handler
 
 In `server/src/routes/key_transparency.rs`:
-- Endpoints `GET /kt/bot/:id` and `GET /kt/bot/:id/history` are not yet mounted.
-- When implemented, `GET /kt/bot/:id` queries `key_transparency_log` for the bot's current leaf and constructs the Merkle inclusion proof and tree head response including `bot_command_pubkey` (from `key_transparency_log.command_pubkey`).
+- Endpoints `GET /kt/bot/:id` and `GET /kt/bot/:id/history` are mounted and registered in `server/src/lib.rs`.
+- `GET /kt/bot/:id` queries `key_transparency_log` for the bot's current leaf and constructs the Merkle inclusion proof and tree head response including `bot_command_pubkey` (from `key_transparency_log.command_pubkey`).
 
 ## 4. Current `bot_accounts` Schema
 
@@ -56,9 +55,8 @@ CREATE TABLE IF NOT EXISTS key_transparency_log (
 
 ## 6. Current KT Helper for Leaf Index Lookup
 
-In `server/src/key_transparency/`:
-- No helper function currently exists for finding a bot's current active leaf index.
-- This task adds `pub async fn current_bot_leaf_index(pool: &SqlitePool, bot_id: &str) -> Result<Option<i64>, ApiError>` in `server/src/key_transparency/log.rs` running `SELECT MAX(leaf_index) FROM key_transparency_log WHERE bot_id = ?`.
+In `server/src/key_transparency/log.rs`:
+- `current_bot_leaf_index` (and `current_bot_leaf_index_tx`) helper function exists for finding a bot's current active leaf index running `SELECT MAX(leaf_index) FROM key_transparency_log WHERE bot_id = ?`.
 
 ## 7. Current `room_messages.bot_key_leaf_index` Type
 
@@ -69,7 +67,7 @@ In `server/migrations/0001_v2_schema.sql`:
 
 In `server/src/routes/room_bots.rs` (`post_bot_message`):
 - Fetches `bot_identity_pubkey` from `bot_accounts WHERE id = ?`.
-- Verifies Ed25519 signature over length-prefixed big-endian payload via `crate::signing::verify_publisher_key_signature(&bot_pubkey, &signing_input, &req.signature)`.
+- Verifies Ed25519 signature over length-prefixed big-endian payload via `encode_bot_message_signing_input(&room_id, req.epoch as u64, &req.content_type, &decoded_ciphertext)` and `crate::signing::verify_publisher_key_signature(&bot_pubkey, &signing_input, &req.signature)`.
 
 ## 9. Current `POST /rooms/:id/bot-messages` Idempotency Wiring
 
@@ -85,14 +83,23 @@ In `server/src/routes/room_bots.rs` (`post_bot_command`):
 
 ## 11. Existing Tests
 
+- `server/tests/bot_leaf_index.rs` (`bots` batch)
+- `server/tests/kt_bot_endpoints.rs` (`identity` batch)
 - `server/tests/bot_request_log.rs` (`bots` batch)
 - `server/tests/bot_command_results.rs` (`bots` batch)
 - `server/tests/kt_endpoints.rs` (`identity` batch)
 - `server/tests/room_messages.rs` (`messaging` batch)
 
-## 12. V2 Remnants
+## 12. Step 0 Continuation Verification Checklist
 
-- `post_bot_message` setting `sender_user_id = owner_user_id` instead of `sender_bot_id = bot_id`.
-- `post_bot_message` omitting `bot_key_leaf_index` from message insert.
-- `list_messages` omitting `sender_type`, `sender_id`, and `bot_key_leaf_index` from fetch response.
-- Missing `append_bot_leaf` call on `POST /bots` and missing `GET /kt/bot/:id` and `GET /kt/bot/:id/history` handlers in `server/src/routes/key_transparency.rs`.
+Before implementation, all 7 continuation checklist items were empirically verified in the codebase:
+
+1. **`append_bot_leaf` helper**: **Present** in `server/src/key_transparency/log.rs` (`append_bot_leaf`).
+2. **`serialize_bot_leaf` and `bot_leaf_hash`**: **Present** in `server/src/key_transparency/merkle.rs`.
+3. **`GET /kt/bot/:id` handler**: **Present** in `server/src/routes/key_transparency.rs`.
+4. **`GET /kt/bot/:id/history` handler**: **Present** in `server/src/routes/key_transparency.rs`.
+5. **Route registrations**: **Present** in `server/src/lib.rs` under `/kt/bot/{id}` and `/kt/bot/{id}/history`.
+6. **`append_bot_leaf` call in `POST /bots`**: **Present** in `server/src/routes/bots.rs`.
+7. **`room_messages` XOR CHECK constraint**: **Present** in `server/migrations/0001_v2_schema.sql` (`CHECK ((sender_user_id IS NOT NULL AND sender_bot_id IS NULL) OR (sender_user_id IS NULL AND sender_bot_id IS NOT NULL))`).
+
+**Note on `sender_client_id` derivation:** On `POST /rooms/:id/bot-messages`, `sender_client_id` is set to `'bot'` representing the bot's client identity binding.
