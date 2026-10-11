@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { dispatch } from '../../src/cli/index.js'
 
+/** @type {any} */
 function makeIO (cwd) {
   let out = ''
   let err = ''
@@ -43,42 +44,42 @@ export default {
 
 test('1. No arguments prints usage to stderr and returns 1', async () => {
   const io = makeIO(process.cwd())
-  const code = await dispatch([], io)
+  const code = await dispatch([], /** @type {any} */ (io))
   assert.equal(code, 1)
   assert.match(io.err, /atoll-bot <command> \[options\]/)
 })
 
 test('2. --help prints usage to stdout and returns 0', async () => {
   const io = makeIO(process.cwd())
-  const code = await dispatch(['--help'], io)
+  const code = await dispatch(['--help'], /** @type {any} */ (io))
   assert.equal(code, 0)
   assert.match(io.out, /atoll-bot <command> \[options\]/)
 })
 
 test('3. -h behaves the same as --help', async () => {
   const io = makeIO(process.cwd())
-  const code = await dispatch(['-h'], io)
+  const code = await dispatch(['-h'], /** @type {any} */ (io))
   assert.equal(code, 0)
   assert.match(io.out, /atoll-bot <command> \[options\]/)
 })
 
 test('4. --version prints the version to stdout and returns 0', async () => {
   const io = makeIO(process.cwd())
-  const code = await dispatch(['--version'], io)
+  const code = await dispatch(['--version'], /** @type {any} */ (io))
   assert.equal(code, 0)
   assert.match(io.out, /@atoll\/bot \d+\.\d+\.\d+/)
 })
 
 test('5. -v behaves the same as --version', async () => {
   const io = makeIO(process.cwd())
-  const code = await dispatch(['-v'], io)
+  const code = await dispatch(['-v'], /** @type {any} */ (io))
   assert.equal(code, 0)
   assert.match(io.out, /@atoll\/bot \d+\.\d+\.\d+/)
 })
 
 test('6. Unknown command prints an error and usage to stderr, returns 1', async () => {
   const io = makeIO(process.cwd())
-  const code = await dispatch(['unknowncmd'], io)
+  const code = await dispatch(['unknowncmd'], /** @type {any} */ (io))
   assert.equal(code, 1)
   assert.match(io.err, /unknown command: unknowncmd/)
   assert.match(io.err, /atoll-bot <command> \[options\]/)
@@ -100,7 +101,7 @@ test('8. validate -h behaves the same', async () => {
 
 test('9. Missing path argument returns 1 with an error', async () => {
   const io = makeIO(process.cwd())
-  const code = await dispatch(['validate'], io)
+  const code = await dispatch(['validate'], /** @type {any} */ (io))
   assert.equal(code, 1)
   assert.match(io.err, /validate requires a path to a bot file/)
 })
@@ -113,7 +114,8 @@ test('10. Nonexistent file returns 1', async () => {
 })
 
 test('11. Relative path resolves against cwd', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(
       join(tmpDir, 'test-bot.js'),
@@ -129,7 +131,8 @@ test('11. Relative path resolves against cwd', async () => {
 })
 
 test('12. A file that throws at import returns 1 with a load error', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(join(tmpDir, 'syntax-err.js'), 'invalid syntax {{{')
     const io = makeIO(tmpDir)
@@ -142,7 +145,8 @@ test('12. A file that throws at import returns 1 with a load error', async () =>
 })
 
 test('13. A file that does not export a default returns 1', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(join(tmpDir, 'no-default.js'), 'export const foo = 123;')
     const io = makeIO(tmpDir)
@@ -155,7 +159,8 @@ test('13. A file that does not export a default returns 1', async () => {
 })
 
 test('14. A file whose default export is not an object returns 1', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(join(tmpDir, 'string-default.js'), 'export default "not a bot";')
     const io = makeIO(tmpDir)
@@ -168,7 +173,8 @@ test('14. A file whose default export is not an object returns 1', async () => {
 })
 
 test('15. A file whose default export lacks a config field returns 1', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(join(tmpDir, 'no-config.js'), 'export default { foo: 1 };')
     const io = makeIO(tmpDir)
@@ -181,7 +187,8 @@ test('15. A file whose default export lacks a config field returns 1', async () 
 })
 
 test('16. A file whose config lacks an id returns 1', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(join(tmpDir, 'no-id.js'), 'export default { config: { label: "No ID" } };')
     const io = makeIO(tmpDir)
@@ -194,7 +201,8 @@ test('16. A file whose config lacks an id returns 1', async () => {
 })
 
 test('17. A valid bot file returns 0 and prints OK: <id> (<label>)', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(
       join(tmpDir, 'valid.js'),
@@ -210,7 +218,8 @@ test('17. A valid bot file returns 0 and prints OK: <id> (<label>)', async () =>
 })
 
 test('18. A bot with no label falls back to id in the output', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(
       join(tmpDir, 'nolabel.js'),
@@ -237,7 +246,8 @@ test('18. A bot with no label falls back to id in the output', async () => {
 })
 
 test('19. defineBot was already called in the file and no re-validation error occurs', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(
       join(tmpDir, 'already-defined.js'),
@@ -252,7 +262,8 @@ test('19. defineBot was already called in the file and no re-validation error oc
 })
 
 test('20. A bot file that calls defineBot with an invalid config returns 1 during import', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(
       join(tmpDir, 'invalid-import.js'),
@@ -268,7 +279,8 @@ test('20. A bot file that calls defineBot with an invalid config returns 1 durin
 })
 
 test('21. A bot file that exports a plain invalid object returns 1 via re-validation', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(
       join(tmpDir, 'plain-invalid.js'),
@@ -284,7 +296,8 @@ test('21. A bot file that exports a plain invalid object returns 1 via re-valida
 })
 
 test('22. The validation failure message contains the failure list', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(
       join(tmpDir, 'plain-invalid-msg.js'),
@@ -301,7 +314,8 @@ test('22. The validation failure message contains the failure list', async () =>
 })
 
 test('23. Success returns 0', async () => {
-  const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
+  /** @type {any} */
+const tmpDir = mkdtempSync(join(tmpdir(), 'bot-cli-test-'))
   try {
     writeFileSync(
       join(tmpDir, 'ok.js'),
@@ -332,7 +346,7 @@ test('25. Internal errors return 2', async () => {
       }
     }
   }
-  const code = await dispatch(['buggy'], io)
+  const code = await dispatch(['buggy'], /** @type {any} */ (io))
   assert.equal(code, 2)
   assert.match(io.err, /internal error: Unexpected catastrophe/)
 })

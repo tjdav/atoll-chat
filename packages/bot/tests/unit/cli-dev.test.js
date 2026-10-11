@@ -52,7 +52,8 @@ const VALID_BOT_JS = `
 `
 
 describe('devCommand unit tests', { concurrency: 1 }, () => {
-  let tmpDir
+  /** @type {any} */
+let tmpDir
   let stdout
   let stderr
 
@@ -293,7 +294,8 @@ describe('devCommand unit tests', { concurrency: 1 }, () => {
     const filePath = join(tmpDir, 'valid-bot.js')
     writeFileSync(filePath, VALID_BOT_JS)
 
-    let loggerInstance
+    /** @type {any} */
+let loggerInstance
     const fakeRuntimeFactory = ({ logger }) => {
       loggerInstance = logger
       return {
@@ -346,7 +348,8 @@ describe('devCommand unit tests', { concurrency: 1 }, () => {
       }
     `)
 
-    let runtimeConstructedCount = 0
+    /** @type {any} */
+let runtimeConstructedCount = 0
     const fakeRuntimeFactory = () => {
       runtimeConstructedCount++
       return {
@@ -412,7 +415,8 @@ describe('devCommand unit tests', { concurrency: 1 }, () => {
       }
     `)
 
-    let runtimeConstructedCount = 0
+    /** @type {any} */
+let runtimeConstructedCount = 0
     const fakeRuntimeFactory = () => {
       runtimeConstructedCount++
       return {

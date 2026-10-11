@@ -112,7 +112,7 @@ class FakeWebSocket {
 async function setupServer () {
   /** @type {Array<{ method: string, url: string, headers: http.IncomingHttpHeaders, body: any }>} */
   const requests = []
-  const server = http.createServer((req, res) => {
+  const server = http.createServer((/** @type {any} */ req, /** @type {any} */ res) => {
     /** @type {Buffer[]} */
     const bodyChunks = []
     req.on('data', (c) => bodyChunks.push(c))
@@ -250,7 +250,8 @@ function makeRuntimeArgs (serverUrl, tmpDir) {
 
   /** @type {Array<{ level: string, msg: string, meta?: any }>} */
   const logs = []
-  const logger = createLogger({
+  /** @type {any} */
+const logger = createLogger({
     botId: 'b_reconnect_test',
     sink: (line) => {
       try {
@@ -267,12 +268,14 @@ function makeRuntimeArgs (serverUrl, tmpDir) {
 describe('Runtime Reconnection Integration Tests', () => {
   test('1. A WebSocket close triggers a reconnect', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger } = makeRuntimeArgs(url, tmpDir)
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -283,7 +286,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       await runtime.start()
       assert.equal(FakeWebSocket.instances.length, 1)
 
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.close(1006, 'abnormal close')
 
       // Wait for backoff delay (baseBackoffMs: 10)
@@ -299,12 +303,14 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('2. onConnected calls settingsStore.refresh()', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, requests, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger } = makeRuntimeArgs(url, tmpDir)
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -317,7 +323,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       // Clear initial setup requests
       requests.length = 0
 
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.close(1006, 'abnormal close')
 
       // Wait for backoff + settings coalesce duration (500ms)
@@ -335,12 +342,14 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('3. onConnected calls publisherKeys.reverifyAll()', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger, logs } = makeRuntimeArgs(url, tmpDir)
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -351,7 +360,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       await runtime.start()
 
       // Simulate publisher key updated event
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.emit('message', JSON.stringify({
         event: 'room.publisher_key_updated',
         data: JSON.stringify({
@@ -375,12 +385,14 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('4. Refetch grants logs a warning', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger, logs } = makeRuntimeArgs(url, tmpDir)
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -390,7 +402,8 @@ describe('Runtime Reconnection Integration Tests', () => {
 
       await runtime.start()
 
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.close(1006, 'abnormal close')
 
       await new Promise((r) => setTimeout(r, 100))
@@ -407,12 +420,14 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('5. SSE close schedules a reconnect', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, requests, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger } = makeRuntimeArgs(url, tmpDir)
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -423,7 +438,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       await runtime.start()
 
       // Grant observer mode
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.emit('message', JSON.stringify({
         event: 'bot.grant_updated',
         data: JSON.stringify({
@@ -457,12 +473,14 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('6. SSE reconnect sends the correct Last-Event-ID', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, requests, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger } = makeRuntimeArgs(url, tmpDir)
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -473,7 +491,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       await runtime.start()
 
       // Grant observer mode
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.emit('message', JSON.stringify({
         event: 'bot.grant_updated',
         data: JSON.stringify({
@@ -505,7 +524,8 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('7. stop() cancels the reconnect loop', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, close } = await setupServer()
 
     try {
@@ -513,7 +533,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       // Long backoff delay so we can stop during sleep
       config.reconnect.baseBackoffMs = 5000
 
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -522,7 +543,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       })
 
       await runtime.start()
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.close(1006, 'abnormal close')
 
       await new Promise((r) => setTimeout(r, 20))
@@ -537,14 +559,16 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('8. stop() cancels SSE reconnect timers', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger } = makeRuntimeArgs(url, tmpDir)
       config.reconnect.baseBackoffMs = 5000
 
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -554,7 +578,8 @@ describe('Runtime Reconnection Integration Tests', () => {
 
       await runtime.start()
 
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.emit('message', JSON.stringify({
         event: 'bot.grant_updated',
         data: JSON.stringify({
@@ -579,13 +604,15 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('9. After stop() and a fresh start(), the loop runs again', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger } = makeRuntimeArgs(url, tmpDir)
 
-      const runtime1 = createRuntime({
+      /** @type {any} */
+const runtime1 = createRuntime({
         bot,
         config,
         keystoreData,
@@ -596,7 +623,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       await runtime1.start()
       await runtime1.stop()
 
-      const runtime2 = createRuntime({
+      /** @type {any} */
+const runtime2 = createRuntime({
         bot,
         config,
         keystoreData,
@@ -607,7 +635,8 @@ describe('Runtime Reconnection Integration Tests', () => {
       await runtime2.start()
       assert.equal(FakeWebSocket.instances.length, 2)
 
-      const wsInst2 = FakeWebSocket.instances[1]
+      /** @type {any} */
+const wsInst2 = FakeWebSocket.instances[1]
       wsInst2?.close(1006, 'abnormal close')
 
       await new Promise((r) => setTimeout(r, 50))
@@ -622,13 +651,15 @@ describe('Runtime Reconnection Integration Tests', () => {
 
   test('10. Reconnect does not fire when the runtime is paused (independent reconnect loop)', async () => {
     FakeWebSocket.instances = []
-    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
+    /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'reconnect-test-'))
     const { server, url, close } = await setupServer()
 
     try {
       const { bot, config, keystoreData, logger } = makeRuntimeArgs(url, tmpDir)
 
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -638,7 +669,8 @@ describe('Runtime Reconnection Integration Tests', () => {
 
       await runtime.start()
 
-      const wsInst1 = FakeWebSocket.instances[0]
+      /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
       wsInst1?.close(1006, 'abnormal close')
 
       await new Promise((r) => setTimeout(r, 50))

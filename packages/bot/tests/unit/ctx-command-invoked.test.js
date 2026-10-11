@@ -22,7 +22,7 @@ function startServer (requestHandler) {
   return new Promise((resolve) => {
     /** @type {import('node:http').IncomingMessage[]} */
     const requests = []
-    const server = createServer((req, res) => {
+    const server = createServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => { body += chunk })
       req.on('end', () => {

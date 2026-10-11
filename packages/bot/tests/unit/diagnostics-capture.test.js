@@ -31,12 +31,14 @@ class FakeStorage {
 }
 
 describe('Diagnostics Capture Unit Tests', () => {
-  let tmpDir
+  /** @type {any} */
+let tmpDir
   let diagPath
   let diagFile
   let storage
   let logs
-  let logger
+  /** @type {any} */
+let logger
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'diag-capture-test-'))

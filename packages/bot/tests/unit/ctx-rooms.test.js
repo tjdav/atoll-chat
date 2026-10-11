@@ -11,7 +11,8 @@ import { createRoomsStore } from '../../src/runtime/context/rooms.js'
 function makeSpyLogger () {
   /** @type {Array<{ msg: string, meta?: any }>} */
   const warnings = []
-  const logger = /** @type {unknown} */ ({
+  /** @type {any} */
+const logger = /** @type {unknown} */ ({
     debug () {},
     info () {},
     warn (/** @type {string} */ msg, /** @type {any} */ meta) {

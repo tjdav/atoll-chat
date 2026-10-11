@@ -78,7 +78,7 @@ describe('SettingsStore unit tests', () => {
       res.end(JSON.stringify([]))
     }
 
-    server = createServer((req, res) => serverHandler(req, res))
+    server = createServer((/** @type {any} */ req, /** @type {any} */ res) => serverHandler(req, res))
     await new Promise((resolve) => {
       server.listen(0, '127.0.0.1', () => resolve(undefined))
     })
@@ -756,7 +756,8 @@ describe('SettingsStore unit tests', () => {
   it('30. Logger emits debug on fetch', async () => {
     /** @type {Array<{ level: string, msg: string, meta: any }>} */
     const logs = []
-    const logger = createMockLogger(logs)
+    /** @type {any} */
+const logger = createMockLogger(logs)
 
     const http = createHttpClient({ serverUrl, botToken: 'test-token' })
     const store = createSettingsStore({
@@ -782,7 +783,8 @@ describe('SettingsStore unit tests', () => {
 
     /** @type {Array<{ level: string, msg: string, meta: any }>} */
     const logs = []
-    const logger = createMockLogger(logs)
+    /** @type {any} */
+const logger = createMockLogger(logs)
 
     const http = createHttpClient({ serverUrl, botToken: 'test-token' })
     const store = createSettingsStore({
@@ -813,7 +815,8 @@ describe('SettingsStore unit tests', () => {
 
     /** @type {Array<{ level: string, msg: string, meta: any }>} */
     const logs = []
-    const logger = createMockLogger(logs)
+    /** @type {any} */
+const logger = createMockLogger(logs)
 
     const http = createHttpClient({ serverUrl, botToken: 'test-token' })
     const store = createSettingsStore({

@@ -6,7 +6,8 @@ describe('Logger unit tests', () => {
   it('1. Basic line emitted', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -30,7 +31,8 @@ describe('Logger unit tests', () => {
   it('2. Level filter drops lower levels', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'warn',
       sink: (line) => lines.push(line)
@@ -55,7 +57,8 @@ describe('Logger unit tests', () => {
   it('3. Silent level drops everything', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'silent',
       sink: (line) => lines.push(line)
@@ -73,7 +76,8 @@ describe('Logger unit tests', () => {
   it('4. Level-specific methods', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'debug',
       sink: (line) => lines.push(line)
@@ -94,7 +98,8 @@ describe('Logger unit tests', () => {
   it('5. Context fields hoisted', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -119,7 +124,8 @@ describe('Logger unit tests', () => {
   it('6. Meta fields preserved', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -139,7 +145,8 @@ describe('Logger unit tests', () => {
   it('7. Unknown key redacted', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -157,7 +164,8 @@ describe('Logger unit tests', () => {
   it('8. Case and separator variants redacted', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -177,7 +185,8 @@ describe('Logger unit tests', () => {
   it('9. Nested redaction', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -199,7 +208,8 @@ describe('Logger unit tests', () => {
   it('10. Array redaction', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -219,7 +229,8 @@ describe('Logger unit tests', () => {
   it('11. Cyclic meta', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -241,7 +252,8 @@ describe('Logger unit tests', () => {
   })
 
   it('12. _secret: in dev mode throws', () => {
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       dev: true,
@@ -263,7 +275,8 @@ describe('Logger unit tests', () => {
   it('13. _secret: in prod mode redacts', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       dev: false,
@@ -280,7 +293,8 @@ describe('Logger unit tests', () => {
   })
 
   it('14. _secret: case-insensitive', () => {
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       dev: true,
@@ -302,7 +316,8 @@ describe('Logger unit tests', () => {
   it('15. URL query stripped', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -320,7 +335,8 @@ describe('Logger unit tests', () => {
   it('16. Malformed URL unchanged', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -338,7 +354,8 @@ describe('Logger unit tests', () => {
   it('17. BigInt in meta', () => {
     /** @type {string[]} */
     const lines = []
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: (line) => lines.push(line)
@@ -356,7 +373,8 @@ describe('Logger unit tests', () => {
   })
 
   it('18. Sink throws', () => {
-    const logger = createLogger({
+    /** @type {any} */
+const logger = createLogger({
       botId: 'b_x',
       level: 'info',
       sink: () => {

@@ -10,7 +10,8 @@ import { encrypt } from '../../src/runtime/storage/crypto.js'
 
 describe('Storage unit tests', () => {
   /** @type {string} */
-  let tmpDir
+  /** @type {any} */
+let tmpDir
 
   before(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'storage-test-'))

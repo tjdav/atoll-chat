@@ -86,7 +86,7 @@ class FakeWebSocket {
  */
 async function setupServer () {
   const requests = []
-  const server = http.createServer((req, res) => {
+  const server = http.createServer((/** @type {any} */ req, /** @type {any} */ res) => {
     let bodyChunks = []
     req.on('data', (c) => bodyChunks.push(c))
     req.on('end', () => {
@@ -215,7 +215,8 @@ function makeTestDeps (serverUrl, tmpDir, botConfigOverrides = {}) {
     storage_seed: makeKey(3)
   }
 
-  const logger = createLogger({
+  /** @type {any} */
+const logger = createLogger({
     botId: 'bot_123',
     level: 'silent'
   })
@@ -226,7 +227,8 @@ function makeTestDeps (serverUrl, tmpDir, botConfigOverrides = {}) {
 test('1. Three consecutive handler failures pause the runtime', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-1-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-1-'))
 
   try {
     let callCount = 0
@@ -239,7 +241,8 @@ test('1. Three consecutive handler failures pause the runtime', async () => {
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -249,7 +252,8 @@ test('1. Three consecutive handler failures pause the runtime', async () => {
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -287,7 +291,8 @@ test('1. Three consecutive handler failures pause the runtime', async () => {
 test('2. The pause is reported to the server', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, requests, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-2-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-2-'))
 
   try {
     const { bot, config, keystoreData, logger } = makeTestDeps(serverUrl, tmpDir, {
@@ -298,7 +303,8 @@ test('2. The pause is reported to the server', async () => {
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -308,7 +314,8 @@ test('2. The pause is reported to the server', async () => {
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -344,7 +351,8 @@ test('2. The pause is reported to the server', async () => {
 test('3. A command dispatched after pause produces a paused local_message', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, requests, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-3-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-3-'))
 
   try {
     let commandExecuted = false
@@ -364,7 +372,8 @@ test('3. A command dispatched after pause produces a paused local_message', asyn
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -374,7 +383,8 @@ test('3. A command dispatched after pause produces a paused local_message', asyn
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -443,7 +453,8 @@ test('3. A command dispatched after pause produces a paused local_message', asyn
 test('4. A room event dispatched after pause is skipped', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-4-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-4-'))
 
   try {
     let roomEventsHandled = 0
@@ -456,7 +467,8 @@ test('4. A room event dispatched after pause is skipped', async () => {
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -466,7 +478,8 @@ test('4. A room event dispatched after pause is skipped', async () => {
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -503,7 +516,8 @@ test('4. A room event dispatched after pause is skipped', async () => {
 test('5. A webhook after pause returns 503', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-5-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-5-'))
 
   try {
     let webhookHandled = false
@@ -519,7 +533,8 @@ test('5. A webhook after pause returns 503', async () => {
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -529,7 +544,8 @@ test('5. A webhook after pause returns 503', async () => {
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -548,7 +564,8 @@ test('5. A webhook after pause returns 503', async () => {
     // Call webhook via HTTP on the webhook server port
     // In makeTestDeps, config.webhook.port is set to 0. Retrieve the actual bound port from webhookServer.
     /** @type {any} */
-    const runtimeUntyped = runtime
+    /** @type {any} */
+const runtimeUntyped = runtime
     const webhookPort = runtimeUntyped.webhookServer?.getBoundPort() ?? config.webhook.port
 
     const webhookRes = await fetch(`http://127.0.0.1:${webhookPort}/webhooks/test`, {
@@ -571,7 +588,8 @@ test('5. A webhook after pause returns 503', async () => {
 test('6. A cron fire after pause is skipped', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-6-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-6-'))
 
   try {
     let cronFired = false
@@ -587,7 +605,8 @@ test('6. A cron fire after pause is skipped', async () => {
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -597,7 +616,8 @@ test('6. A cron fire after pause is skipped', async () => {
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -624,7 +644,8 @@ test('6. A cron fire after pause is skipped', async () => {
 test('7. A failure count exceeding the threshold does not re-report', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, requests, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-7-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-7-'))
 
   try {
     const { bot, config, keystoreData, logger } = makeTestDeps(serverUrl, tmpDir, {
@@ -635,7 +656,8 @@ test('7. A failure count exceeding the threshold does not re-report', async () =
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -645,7 +667,8 @@ test('7. A failure count exceeding the threshold does not re-report', async () =
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -676,7 +699,8 @@ test('7. A failure count exceeding the threshold does not re-report', async () =
 test('8. A success before the threshold resets', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, requests, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-8-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-8-'))
 
   try {
     let count = 0
@@ -690,7 +714,8 @@ test('8. A success before the threshold resets', async () => {
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -700,7 +725,8 @@ test('8. A success before the threshold resets', async () => {
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -737,7 +763,8 @@ test('8. A success before the threshold resets', async () => {
 test('9. The pause state survives dispatch of other event types', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-9-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-9-'))
 
   try {
     let roomHandlerCalls = 0
@@ -752,7 +779,8 @@ test('9. The pause state survives dispatch of other event types', async () => {
       }
     })
 
-    const runtime = createRuntime({
+    /** @type {any} */
+const runtime = createRuntime({
       bot,
       config,
       keystoreData,
@@ -762,7 +790,8 @@ test('9. The pause state survives dispatch of other event types', async () => {
 
     await runtime.start()
 
-    const wsInst = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -798,7 +827,8 @@ test('9. The pause state survives dispatch of other event types', async () => {
 test('10. stop() then start() on a fresh runtime is unpaused', async () => {
   FakeWebSocket.instances = []
   const { serverUrl, close } = await setupServer()
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-10-'))
+  /** @type {any} */
+const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-pause-10-'))
 
   try {
     let callCount = 0
@@ -814,7 +844,8 @@ test('10. stop() then start() on a fresh runtime is unpaused', async () => {
       }
     })
 
-    const runtime1 = createRuntime({
+    /** @type {any} */
+const runtime1 = createRuntime({
       bot,
       config,
       keystoreData,
@@ -824,7 +855,8 @@ test('10. stop() then start() on a fresh runtime is unpaused', async () => {
 
     await runtime1.start()
 
-    const wsInst1 = FakeWebSocket.instances[0]
+    /** @type {any} */
+const wsInst1 = FakeWebSocket.instances[0]
     wsInst1.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
@@ -843,7 +875,8 @@ test('10. stop() then start() on a fresh runtime is unpaused', async () => {
     await runtime1.stop()
 
     // Create a new fresh runtime instance
-    const runtime2 = createRuntime({
+    /** @type {any} */
+const runtime2 = createRuntime({
       bot,
       config,
       keystoreData,
@@ -853,7 +886,8 @@ test('10. stop() then start() on a fresh runtime is unpaused', async () => {
 
     await runtime2.start()
 
-    const wsInst2 = FakeWebSocket.instances[1]
+    /** @type {any} */
+const wsInst2 = FakeWebSocket.instances[1]
     wsInst2.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })

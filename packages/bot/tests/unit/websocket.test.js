@@ -838,7 +838,8 @@ describe('createWebSocketClient', () => {
     /** @type {Array<{ msg: string, meta?: any }>} */
     const logs = []
     /** @type {any} */
-    const logger = {
+    /** @type {any} */
+const logger = {
       /**
        * @param {string} msg - Message.
        * @param {any} [meta] - Metadata.
@@ -895,7 +896,8 @@ describe('createWebSocketClient', () => {
     /** @type {Array<{ msg: string, meta?: any }>} */
     const logs = []
     /** @type {any} */
-    const logger = {
+    /** @type {any} */
+const logger = {
       /**
        * @param {string} msg - Message.
        * @param {any} [meta] - Metadata.

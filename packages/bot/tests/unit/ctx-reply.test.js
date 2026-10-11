@@ -25,7 +25,8 @@ function makeLoggerSpy () {
   /** @type {Array<{ level: string, message: string, meta?: any }>} */
   const logs = []
   /** @type {any} */
-  const logger = {
+  /** @type {any} */
+const logger = {
     /**
      * @param {string} lineLevel
      * @param {string} msg
@@ -308,7 +309,8 @@ describe('ctx.reply', () => {
 
   test('20. Logger emits debug on rejection', async () => {
     const spy = makePostSpy()
-    const loggerSpy = makeLoggerSpy()
+    /** @type {any} */
+const loggerSpy = makeLoggerSpy()
     const reply = createReplyHandler({ post: spy.post, logger: loggerSpy.logger })
 
     await assert.rejects(
@@ -324,7 +326,8 @@ describe('ctx.reply', () => {
 
   test('21. Logger falls back to ctx.grant.roomId', async () => {
     const spy = makePostSpy()
-    const loggerSpy = makeLoggerSpy()
+    /** @type {any} */
+const loggerSpy = makeLoggerSpy()
     const reply = createReplyHandler({ post: spy.post, logger: loggerSpy.logger })
     const ctx = { grant: { roomId: 'r_y' } }
 
@@ -339,7 +342,8 @@ describe('ctx.reply', () => {
 
   test('22. Logger uses null when neither is available', async () => {
     const spy = makePostSpy()
-    const loggerSpy = makeLoggerSpy()
+    /** @type {any} */
+const loggerSpy = makeLoggerSpy()
     const reply = createReplyHandler({ post: spy.post, logger: loggerSpy.logger })
 
     await assert.rejects(
@@ -353,7 +357,8 @@ describe('ctx.reply', () => {
 
   test('23. Logger emits nothing on success', async () => {
     const spy = makePostSpy()
-    const loggerSpy = makeLoggerSpy()
+    /** @type {any} */
+const loggerSpy = makeLoggerSpy()
     const reply = createReplyHandler({ post: spy.post, logger: loggerSpy.logger })
 
     await reply({ replyTo: 'm_1' }, null)
@@ -363,7 +368,8 @@ describe('ctx.reply', () => {
 
   test('24. replyTo value is not logged', async () => {
     const spy = makePostSpy()
-    const loggerSpy = makeLoggerSpy()
+    /** @type {any} */
+const loggerSpy = makeLoggerSpy()
     const reply = createReplyHandler({ post: spy.post, logger: loggerSpy.logger })
     const replyTarget = 'm_secret_target_id'
 

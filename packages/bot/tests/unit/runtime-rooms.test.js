@@ -132,7 +132,7 @@ async function startApiServer (handlerOverrides = {}) {
   /** @type {Record<string, any>} */
   const sseStreams = {}
 
-  const server = httpServer((req, res) => {
+  const server = httpServer((/** @type {any} */ req, /** @type {any} */ res) => {
     const url = new URL(req.url || '/', 'http://127.0.0.1')
     /** @type {Uint8Array[]} */
     const chunks = []
@@ -213,7 +213,8 @@ async function startApiServer (handlerOverrides = {}) {
 
 async function bootRuntime (runtime) {
   const startPromise = runtime.start()
-  let wsInst = FakeWebSocket.instances[0]
+  /** @type {any} */
+let wsInst = FakeWebSocket.instances[0]
   while (!wsInst) {
     await new Promise((r) => setTimeout(r, 5))
     wsInst = FakeWebSocket.instances[0]
@@ -228,10 +229,12 @@ async function bootRuntime (runtime) {
 }
 
 describe('Runtime Room Subscriptions Unit Tests', () => {
-  let tmpDir
+  /** @type {any} */
+let tmpDir
   /** @type {Array<string>} */
   let loggedLines
-  let logger
+  /** @type {any} */
+let logger
 
   beforeEach(async () => {
     FakeWebSocket.instances = []
@@ -258,9 +261,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -287,9 +292,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -313,9 +320,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -340,9 +349,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -376,9 +387,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -408,9 +421,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -440,9 +455,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -475,9 +492,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -516,9 +535,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -554,9 +575,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -590,9 +613,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -635,9 +660,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -671,9 +698,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -710,9 +739,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -746,9 +777,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -780,9 +813,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -821,9 +856,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -857,9 +894,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -894,9 +933,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -930,9 +971,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -965,9 +1008,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1003,9 +1048,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1035,9 +1082,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot() // No message handler defined
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1073,9 +1122,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1108,9 +1159,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1143,9 +1196,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         })
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1178,9 +1233,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1205,9 +1262,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1234,9 +1293,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1277,9 +1338,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',
@@ -1306,9 +1369,11 @@ describe('Runtime Room Subscriptions Unit Tests', () => {
         const bot = makeBot()
         const config = makeConfig(server.url, tmpDir)
         const keystoreData = makeKeystoreData()
-        const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
+        /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: WSImpl })
 
-        const wsInst = await bootRuntime(runtime)
+        /** @type {any} */
+const wsInst = await bootRuntime(runtime)
 
         wsInst._message({
           event: 'bot.grant_updated',

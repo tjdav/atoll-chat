@@ -350,7 +350,8 @@ describe('Cron Engine Unit Tests', () => {
     test('28. start() computes the next fire for each valid trigger', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
 
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
@@ -381,7 +382,8 @@ describe('Cron Engine Unit Tests', () => {
     test('29. Invalid cron is skipped and logged', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
 
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
@@ -413,7 +415,8 @@ describe('Cron Engine Unit Tests', () => {
     test('30. Invalid timezone is skipped and logged', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
 
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
@@ -584,7 +587,8 @@ describe('Cron Engine Unit Tests', () => {
     test('35. Handler timeout (60 s) is enforced', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
 
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
@@ -809,7 +813,8 @@ describe('Cron Engine Unit Tests', () => {
       const nowMs = startMs + 200 * 60 * 1000
       const clock = makeClock(nowMs)
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
       const stateStore = makeStateStore({
         '_runtime:cron:minutely:last_fire': new Date(startMs).toISOString()
       })
@@ -1197,7 +1202,8 @@ describe('Cron Engine Unit Tests', () => {
     test('53. Logger emits debug on start and dispatch', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
 
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
@@ -1229,7 +1235,8 @@ describe('Cron Engine Unit Tests', () => {
     test('54. Logger emits warn on skipped trigger', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
 
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
@@ -1254,7 +1261,8 @@ describe('Cron Engine Unit Tests', () => {
     test('55. Logger emits error on handler failure', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
 
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
@@ -1288,7 +1296,8 @@ describe('Cron Engine Unit Tests', () => {
     test('56. Logger does not log the handler result', async () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
-      const logger = makeLogger()
+      /** @type {any} */
+const logger = makeLogger()
 
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },

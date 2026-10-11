@@ -88,7 +88,7 @@ function startServer (handler) {
 describe('ctx.post', () => {
   test('1. Happy path', async () => {
     let receivedUrl
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       receivedUrl = req.url
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
@@ -122,7 +122,7 @@ describe('ctx.post', () => {
   test('2. Request body shape', async () => {
     /** @type {Record<string, any> | undefined} */
     let recordedBody
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -159,7 +159,7 @@ describe('ctx.post', () => {
   test('3. reply_to included when set', async () => {
     /** @type {Record<string, any> | undefined} */
     let recordedBody
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -190,7 +190,7 @@ describe('ctx.post', () => {
   test('4. Ciphertext is decodable by publisher key holder', async () => {
     /** @type {Record<string, any> | undefined} */
     let recordedBody
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -235,7 +235,7 @@ describe('ctx.post', () => {
   test('5. Signature verifies', async () => {
     /** @type {Record<string, any> | undefined} */
     let recordedBody
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -276,7 +276,7 @@ describe('ctx.post', () => {
   test('6. Ephemeral key is fresh per call', async () => {
     /** @type {string[]} */
     const ciphertexts = []
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -314,7 +314,7 @@ describe('ctx.post', () => {
   test('7. request_id is fresh per call', async () => {
     /** @type {string[]} */
     const requestIds = []
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -346,7 +346,7 @@ describe('ctx.post', () => {
 
   test('8. Room id from ctx.grant when opts.roomId is unset', async () => {
     let targetUrl
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       targetUrl = req.url
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ id: 'm_1' }))
@@ -370,7 +370,7 @@ describe('ctx.post', () => {
 
   test('9. opts.roomId overrides ctx.grant', async () => {
     let targetUrl
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       targetUrl = req.url
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ id: 'm_1' }))
@@ -466,7 +466,7 @@ describe('ctx.post', () => {
 
   test('12. Observer mode uses the same ECDH path', async () => {
     let receivedUrl
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       receivedUrl = req.url
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ id: 'm_1' }))
@@ -702,7 +702,7 @@ describe('ctx.post', () => {
   test('20. text is serialized into the plaintext', async () => {
     /** @type {Record<string, any> | undefined} */
     let recordedBody
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -745,7 +745,7 @@ describe('ctx.post', () => {
   test('21. Attachments are serialized into the plaintext', async () => {
     /** @type {Record<string, any> | undefined} */
     let recordedBody
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -794,7 +794,7 @@ describe('ctx.post', () => {
   test('22. Empty text with attachments', async () => {
     /** @type {Record<string, any> | undefined} */
     let recordedBody
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let data = ''
       req.on('data', (chunk) => { data += chunk })
       req.on('end', () => {
@@ -845,7 +845,8 @@ describe('ctx.post', () => {
     /** @type {Array<{ level: string, msg: string, data: any }>} */
     const logs = []
     /** @type {any} */
-    const logger = {
+    /** @type {any} */
+const logger = {
       level: 'debug',
       log: () => {},
       /**
@@ -910,7 +911,8 @@ describe('ctx.post', () => {
     /** @type {string[]} */
     const logs = []
     /** @type {any} */
-    const logger = {
+    /** @type {any} */
+const logger = {
       level: 'debug',
       log: () => {},
       /**
@@ -964,7 +966,7 @@ describe('ctx.post', () => {
   test('25. URL-unsafe room ids are encoded', async () => {
     let receivedUrl
     const unsafeRoomId = 'r_test/unsafe'
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       receivedUrl = req.url
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ id: 'm_1' }))

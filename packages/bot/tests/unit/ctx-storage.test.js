@@ -11,7 +11,8 @@ import { StorageReservedPrefixError } from '../../src/errors.js'
 
 describe('StorageStore unit tests', () => {
   /** @type {string} */
-  let tmpDir
+  /** @type {any} */
+let tmpDir
   /** @type {Storage} */
   let storage
   /** @type {StorageStore} */

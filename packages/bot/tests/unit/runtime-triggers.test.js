@@ -172,7 +172,7 @@ async function startApiServer (handlerOverrides = {}) {
   /** @type {Array<{ method: string, path: string, query: string, body?: any }>} */
   const requests = []
 
-  const server = httpServer((req, res) => {
+  const server = httpServer((/** @type {any} */ req, /** @type {any} */ res) => {
     const url = new URL(req.url || '/', 'http://127.0.0.1')
     /** @type {Uint8Array[]} */
     const chunks = []
@@ -335,10 +335,12 @@ async function bootRuntime (runtime, wsIndex = 0) {
 }
 
 describe('Runtime Triggers Unit Tests', () => {
-  let tmpDir
+  /** @type {any} */
+let tmpDir
   /** @type {Array<string>} */
   let loggedLines
-  let logger
+  /** @type {any} */
+let logger
 
   beforeEach(async () => {
     FakeWebSocket.instances = []
@@ -366,7 +368,8 @@ describe('Runtime Triggers Unit Tests', () => {
       const bot = makeBot([])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -394,7 +397,8 @@ describe('Runtime Triggers Unit Tests', () => {
       }])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -423,7 +427,8 @@ describe('Runtime Triggers Unit Tests', () => {
       }])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -458,7 +463,8 @@ describe('Runtime Triggers Unit Tests', () => {
       ])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -492,7 +498,7 @@ describe('Runtime Triggers Unit Tests', () => {
           path: '/hook'
         }],
         {
-          webhook: (ctx, payload) => {
+          webhook: (/** @type {any} */ ctx, /** @type {any} */ payload) => {
             webhookCalled = true
             receivedCtx = ctx
             receivedPayload = payload
@@ -502,7 +508,8 @@ describe('Runtime Triggers Unit Tests', () => {
 
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -542,7 +549,7 @@ describe('Runtime Triggers Unit Tests', () => {
           cron: '* * * * *'
         }],
         {
-          schedule: (ctx, payload) => {
+          schedule: (/** @type {any} */ ctx, /** @type {any} */ payload) => {
             scheduleCalled = true
             receivedCtx = ctx
             receivedPayload = payload
@@ -569,7 +576,8 @@ describe('Runtime Triggers Unit Tests', () => {
         }
       })
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -598,7 +606,8 @@ describe('Runtime Triggers Unit Tests', () => {
       }])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -627,7 +636,8 @@ describe('Runtime Triggers Unit Tests', () => {
       }])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -654,7 +664,8 @@ describe('Runtime Triggers Unit Tests', () => {
       }])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -688,7 +699,8 @@ describe('Runtime Triggers Unit Tests', () => {
       }])
       const config = makeConfig(server.url, tmpDir, { webhook: { port: 8787 } })
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -730,7 +742,8 @@ describe('Runtime Triggers Unit Tests', () => {
       ])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -765,7 +778,8 @@ describe('Runtime Triggers Unit Tests', () => {
       ])
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -807,7 +821,8 @@ describe('Runtime Triggers Unit Tests', () => {
       )
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -850,7 +865,8 @@ describe('Runtime Triggers Unit Tests', () => {
       )
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -896,7 +912,8 @@ describe('Runtime Triggers Unit Tests', () => {
       )
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -952,7 +969,8 @@ describe('Runtime Triggers Unit Tests', () => {
       )
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -987,7 +1005,8 @@ describe('Runtime Triggers Unit Tests', () => {
       }])
       const config = makeConfig(server.url, tmpDir, { webhook: { port: 8787 } })
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,
@@ -1029,7 +1048,8 @@ describe('Runtime Triggers Unit Tests', () => {
       )
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({
+      /** @type {any} */
+const runtime = createRuntime({
         bot,
         config,
         keystoreData,

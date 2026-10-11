@@ -34,6 +34,7 @@ function makeIo (overrides = {}) {
   return ioObj
 }
 
+/** @type {any} */
 async function writeKeystore (ksPath, secret, botId = 'b_test') {
   await createKeystore({
     path: ksPath,
@@ -72,7 +73,8 @@ function writeBotFile (dir, name = 'bot.js', extraConfig = '') {
 function makeFakeRuntimeFactory (behavior = {}) {
   const instances = []
   const factory = (deps) => {
-    const runtime = {
+    /** @type {any} */
+const runtime = {
       deps,
       started: false,
       stopped: false,
@@ -106,7 +108,7 @@ function emitSignalSafely (signal = 'SIGINT') {
 }
 
 async function runAndEmitSignal (args, io, signal = 'SIGINT', secondSignal = null) {
-  const runPromise = dispatch(args, io)
+  const runPromise = dispatch(args, /** @type {any} */ (io))
   while (!io.getStdout().includes('Ready.')) {
     await new Promise((r) => setTimeout(r, 5))
   }
@@ -118,7 +120,8 @@ async function runAndEmitSignal (args, io, signal = 'SIGINT', secondSignal = nul
 }
 
 describe('cli-run Subcommand', { concurrency: 1 }, () => {
-  let tmpDir
+  /** @type {any} */
+let tmpDir
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cli-run-test-'))
@@ -136,7 +139,7 @@ describe('cli-run Subcommand', { concurrency: 1 }, () => {
   describe('Path handling', { concurrency: 1 }, () => {
     test('1. Missing path -> exit 1, "requires a path"', async () => {
       const io = makeIo({ cwd: tmpDir })
-      const code = await dispatch(['run'], io)
+      const code = await dispatch(['run'], /** @type {any} */ (io))
       assert.equal(code, 1)
       assert.ok(io.getStderr().includes('run requires a path to a bot file'))
     })

@@ -85,7 +85,7 @@ function makeConfig (serverUrl, tmpDir) {
 }
 
 async function startApiServer () {
-  const server = httpServer((req, res) => {
+  const server = httpServer((/** @type {any} */ req, /** @type {any} */ res) => {
     const url = new URL(req.url || '/', 'http://127.0.0.1')
 
     const send = (status, respBody) => {
@@ -129,8 +129,10 @@ async function startApiServer () {
 }
 
 describe('runtime-shutdown integration tests', () => {
-  let tmpDir
-  let logger
+  /** @type {any} */
+let tmpDir
+  /** @type {any} */
+let logger
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'atoll-runtime-shutdown-test-'))
@@ -150,10 +152,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot(async () => {})
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -175,10 +179,12 @@ describe('runtime-shutdown integration tests', () => {
       })
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -205,10 +211,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot()
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -229,10 +237,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot()
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -266,10 +276,12 @@ describe('runtime-shutdown integration tests', () => {
       })
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       const origClose = wsInst.close.bind(wsInst)
       wsInst.close = function (code, reason) {
         order.push('ws_close')
@@ -304,10 +316,12 @@ describe('runtime-shutdown integration tests', () => {
       })
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -335,10 +349,12 @@ describe('runtime-shutdown integration tests', () => {
       })
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       const origClose = wsInst.close.bind(wsInst)
       wsInst.close = function (code, reason) {
         order.push('ws_close')
@@ -369,10 +385,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot()
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -391,10 +409,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot()
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -418,10 +438,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot(async () => { handlerCalled = true })
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -449,10 +471,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot()
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -472,10 +496,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot()
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -496,10 +522,12 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot(async () => { handlerRan = true })
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       const startPromise = runtime.start()
-      const wsInst = await waitForWsInstance()
+      /** @type {any} */
+const wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise
@@ -527,11 +555,13 @@ describe('runtime-shutdown integration tests', () => {
       const { bot } = makeBot()
       const config = makeConfig(server.url, tmpDir)
       const keystoreData = makeKeystoreData()
-      const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
+      /** @type {any} */
+const runtime = createRuntime({ bot, config, keystoreData, logger, WebSocketImpl: FakeWebSocket })
 
       // First run
       let startPromise = runtime.start()
-      let wsInst = await waitForWsInstance()
+      /** @type {any} */
+let wsInst = await waitForWsInstance()
       wsInst._open()
       wsInst._emitMessage({ event: 'pusher:connection_established', data: JSON.stringify({ socket_id: 'sock_1' }) })
       await startPromise

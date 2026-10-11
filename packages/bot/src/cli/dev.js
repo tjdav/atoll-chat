@@ -191,6 +191,7 @@ export const devCommand = {
     const targetBaseName = basename(resolvedPath)
     const targetDir = dirname(resolvedPath)
 
+    /** @type {import('node:fs').FSWatcher | null} */
     let fsWatcher = null
     try {
       fsWatcher = watch(targetDir, (eventType, filename) => {

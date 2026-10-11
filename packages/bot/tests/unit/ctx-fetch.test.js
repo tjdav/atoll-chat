@@ -49,7 +49,7 @@ function makeSpyLogger () {
 describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   // Basic behavior
   test('1. GET returns the response', async () => {
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200, { 'Content-Type': 'text/plain' })
       res.end('ok')
     })
@@ -68,7 +68,7 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
 
   test('2. POST with body', async () => {
     let receivedBody = ''
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       req.on('data', (chunk) => { receivedBody += chunk })
       req.on('end', () => {
         res.writeHead(200, { 'Content-Type': 'text/plain' })
@@ -89,7 +89,7 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('3. Non-2xx does not throw', async () => {
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(404, { 'Content-Type': 'text/plain' })
       res.end('not found')
     })
@@ -116,7 +116,7 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('5. Body can be read by the caller', async () => {
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ greeting: 'hello' }))
     })
@@ -195,7 +195,7 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('12. http:// scheme accepted', async () => {
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -226,8 +226,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
 
   // Logging
   test('14. Logger emits debug on entry', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -245,8 +246,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('15. Logger emits debug on success', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -264,7 +266,8 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('16. Logger emits warn on failure', async () => {
-    const logger = makeSpyLogger()
+    /** @type {any} */
+const logger = makeSpyLogger()
     const { fetch } = createFetchMethods({ logger })
     try {
       await fetch('http://127.0.0.1:1')
@@ -278,8 +281,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('17. Query string stripped from entry log', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -297,8 +301,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('18. Fragment stripped from entry log', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -316,8 +321,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('19. Query string stripped from success log', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -336,7 +342,8 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('20. Query string stripped from failure log', async () => {
-    const logger = makeSpyLogger()
+    /** @type {any} */
+const logger = makeSpyLogger()
     const { fetch } = createFetchMethods({ logger })
     try {
       await fetch('http://127.0.0.1:1/path?token=secret123#frag=xyz')
@@ -351,8 +358,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('21. Headers not logged', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -375,9 +383,10 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('22. Body not logged', async () => {
-    const logger = makeSpyLogger()
+    /** @type {any} */
+const logger = makeSpyLogger()
     const sentinel = 'SENTINEL_REQUEST_BODY_12345'
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -396,9 +405,10 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('23. Response body not logged', async () => {
-    const logger = makeSpyLogger()
+    /** @type {any} */
+const logger = makeSpyLogger()
     const sentinel = 'SENTINEL_RESPONSE_BODY_67890'
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end(sentinel)
     })
@@ -415,8 +425,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('24. has_body flag reflects the request', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -439,8 +450,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('25. duration_ms present and non-negative on success and failure', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })
@@ -481,7 +493,7 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
     let reqMethod = null
     /** @type {import('node:http').IncomingHttpHeaders|null} */
     let reqHeaders = null
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       reqMethod = req.method ?? null
       reqHeaders = req.headers
       res.writeHead(200)
@@ -500,8 +512,9 @@ describe('ctx.fetch and ctx.fetchUserUrl unit tests', () => {
   })
 
   test('28. fetchUserUrl log includes on_behalf_of: "user"', async () => {
-    const logger = makeSpyLogger()
-    const { server, url } = await startServer((req, res) => {
+    /** @type {any} */
+const logger = makeSpyLogger()
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200)
       res.end('ok')
     })

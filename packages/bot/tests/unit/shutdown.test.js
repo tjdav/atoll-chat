@@ -175,7 +175,8 @@ describe('installSignalHandlers unit tests', () => {
 
   test('16. onSignal rejection is logged and swallowed', async () => {
     const logged = []
-    const logger = {
+    /** @type {any} */
+const logger = {
       info: () => {},
       warn: () => {},
       error: (msg, meta) => logged.push({ msg, meta })
@@ -216,7 +217,8 @@ describe('installSignalHandlers unit tests', () => {
 
 describe('runShutdownSequence unit tests', () => {
   test('18. Returns 0 when runtime.stop resolves drained: true', async () => {
-    const runtime = {
+    /** @type {any} */
+const runtime = {
       stop: async () => ({ drained: true, remaining: 0 })
     }
     const code = await runShutdownSequence({ runtime, drainMs: 100 })
@@ -224,7 +226,8 @@ describe('runShutdownSequence unit tests', () => {
   })
 
   test('19. Returns 1 when runtime.stop resolves drained: false', async () => {
-    const runtime = {
+    /** @type {any} */
+const runtime = {
       stop: async () => ({ drained: false, remaining: 2 })
     }
     const code = await runShutdownSequence({ runtime, drainMs: 100 })
@@ -232,7 +235,8 @@ describe('runShutdownSequence unit tests', () => {
   })
 
   test('20. Returns 1 when runtime.stop rejects', async () => {
-    const runtime = {
+    /** @type {any} */
+const runtime = {
       stop: async () => { throw new Error('stop crashed') }
     }
     const code = await runShutdownSequence({ runtime, drainMs: 100 })
@@ -241,12 +245,14 @@ describe('runShutdownSequence unit tests', () => {
 
   test('21. Logs shutdown: starting and shutdown: complete on success', async () => {
     const logs = []
-    const logger = {
+    /** @type {any} */
+const logger = {
       info: (msg, meta) => logs.push({ type: 'info', msg, meta }),
       warn: (msg, meta) => logs.push({ type: 'warn', msg, meta }),
       error: (msg, meta) => logs.push({ type: 'error', msg, meta })
     }
-    const runtime = {
+    /** @type {any} */
+const runtime = {
       stop: async () => ({ drained: true, remaining: 0 })
     }
 
@@ -259,12 +265,14 @@ describe('runShutdownSequence unit tests', () => {
 
   test('22. Logs shutdown: drain timeout on drain failure', async () => {
     const logs = []
-    const logger = {
+    /** @type {any} */
+const logger = {
       info: (msg, meta) => logs.push({ type: 'info', msg, meta }),
       warn: (msg, meta) => logs.push({ type: 'warn', msg, meta }),
       error: (msg, meta) => logs.push({ type: 'error', msg, meta })
     }
-    const runtime = {
+    /** @type {any} */
+const runtime = {
       stop: async () => ({ drained: false, remaining: 3 })
     }
 

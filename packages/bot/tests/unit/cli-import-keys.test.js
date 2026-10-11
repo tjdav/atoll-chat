@@ -7,6 +7,7 @@ import { test } from 'node:test'
 import { dispatch } from '../../src/cli/index.js'
 import { createKeystore } from '../../src/runtime/keystore/index.js'
 
+/** @type {any} */
 function makeIO (cwd, env, overrides = {}) {
   let out = ''
   let err = ''
@@ -25,6 +26,7 @@ function makeStdin (bytes) {
   return Readable.from([bytes])
 }
 
+/** @type {any} */
 async function writeKeystore (path, secret, botId = 'b_test') {
   await createKeystore({
     path,
@@ -48,7 +50,7 @@ test('import-keys: 1. Missing path argument -> exit 1, "requires a path"', async
   const tmp = mkdtempSync(join(tmpdir(), 'imp-test-'))
   try {
     const io = makeIO(tmp, {})
-    const code = await dispatch(['import-keys'], io)
+    const code = await dispatch(['import-keys'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /import-keys requires a path/)
   } finally {

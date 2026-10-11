@@ -74,7 +74,8 @@ function writeBotFile (dir, name = 'bot.js') {
 function makeFakeRuntimeFactory (behavior = {}) {
   const instances = []
   const factory = (deps) => {
-    const runtime = {
+    /** @type {any} */
+const runtime = {
       deps,
       started: false,
       stopped: false,
@@ -108,7 +109,7 @@ function emitSignalSafely (signal = 'SIGINT') {
 }
 
 async function runAndEmitSignal (args, io, signal = 'SIGINT') {
-  const runPromise = dispatch(args, io)
+  const runPromise = dispatch(args, /** @type {any} */ (io))
   while (!io.getStdout().includes('Ready.')) {
     await new Promise((r) => setTimeout(r, 5))
   }
@@ -117,7 +118,8 @@ async function runAndEmitSignal (args, io, signal = 'SIGINT') {
 }
 
 describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
-  let tmpDir
+  /** @type {any} */
+let tmpDir
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cli-sandbox-test-'))
@@ -138,7 +140,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
   describe('sandbox dispatcher', { concurrency: 1 }, () => {
     test('1. No sub-subcommand -> exit 1, message lists choices', async () => {
       const io = makeIo({ cwd: tmpDir })
-      const code = await dispatch(['sandbox'], io)
+      const code = await dispatch(['sandbox'], /** @type {any} */ (io))
       assert.equal(code, 1)
       assert.ok(io.getStderr().includes('sandbox requires a subcommand: connect, run, or reset'))
     })
@@ -229,7 +231,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       try {
         const botFile = writeBotFile(tmpDir)
         let receivedBody = null
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           receivedBody = req.json
           res.send(201, { bot_id: 'b_sb_1', bot_token: 'sb_tok_1' })
         })
@@ -258,7 +260,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       try {
         const botFile = writeBotFile(tmpDir)
         let receivedAuth = null
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           receivedAuth = req.headers.authorization
           res.send(201, { bot_id: 'b_sb_1', bot_token: 'sb_tok_1' })
         })
@@ -281,7 +283,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       const mockServer = await createMockServer()
       try {
         const botFile = writeBotFile(tmpDir)
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(201, { bot_id: 'b_sb_1', bot_token: 'sb_tok_1' })
         })
 
@@ -304,7 +306,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       const mockServer = await createMockServer()
       try {
         const botFile = writeBotFile(tmpDir)
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(201, { bot_id: 'b_sb_1', bot_token: 'sb_tok_1' })
         })
 
@@ -335,7 +337,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       const mockServer = await createMockServer()
       try {
         const botFile = writeBotFile(tmpDir)
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(201, { bot_id: 'b_sb_99', bot_token: 'sb_tok_99' })
         })
 
@@ -391,7 +393,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
         const ksPath = path.join(tmpDir, 'bot.keystore.sandbox')
         await writeSandboxKeystore(ksPath, 'sec123', { bot_id: 'old_bot_id' })
 
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(201, { bot_id: 'new_bot_id', bot_token: 'new_tok' })
         })
 
@@ -421,7 +423,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       const mockServer = await createMockServer()
       try {
         const botFile = writeBotFile(tmpDir)
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(400, { error: 'invalid_scope' })
         })
 
@@ -443,7 +445,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       const mockServer = await createMockServer()
       try {
         const botFile = writeBotFile(tmpDir)
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(201, { bot_id: 'b_sb_77', bot_token: 'sb_tok_77' })
         })
 
@@ -474,7 +476,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
         await writeSandboxKeystore(prodKsPath, 'sec123', { bot_id: 'prod_bot' })
         const initialMtime = statSync(prodKsPath).mtimeMs
 
-        mockServer.setHandler('POST', '/api/v1/bots', async (req, res) => {
+        mockServer.setHandler('POST', '/api/v1/bots', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(201, { bot_id: 'sandbox_bot', bot_token: 'sb_tok' })
         })
 
@@ -593,7 +595,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       const mockServer = await createMockServer()
       try {
         let deletedId = null
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           deletedId = 'b_sandbox123'
           res.send(204)
         })
@@ -622,7 +624,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       const mockServer = await createMockServer()
       try {
         let receivedAuth = null
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           receivedAuth = req.headers.authorization
           res.send(204)
         })
@@ -651,7 +653,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
     test('31. Success removes the local keystore', async () => {
       const mockServer = await createMockServer()
       try {
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(204)
         })
 
@@ -677,7 +679,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
     test('32. 404 from the server is treated as success', async () => {
       const mockServer = await createMockServer()
       try {
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(404, { error: 'bot_not_found' })
         })
 
@@ -703,7 +705,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
     test('33. 4xx (other than 404) -> exit 1, keystore kept', async () => {
       const mockServer = await createMockServer()
       try {
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(403, { error: 'forbidden' })
         })
 
@@ -731,7 +733,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
       const mockServer = await createMockServer()
       try {
         let deleteCalled = false
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           deleteCalled = true
           res.send(204)
         })
@@ -759,7 +761,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
     test('35. --keep-local skips the file removal', async () => {
       const mockServer = await createMockServer()
       try {
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(204)
         })
 
@@ -785,7 +787,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
     test('36. stdout receives the confirmation lines', async () => {
       const mockServer = await createMockServer()
       try {
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(204)
         })
 
@@ -814,7 +816,7 @@ describe('cli-sandbox Subcommands', { concurrency: 1 }, () => {
     test('37. Local file delete failure -> exit 2', async () => {
       const mockServer = await createMockServer()
       try {
-        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (req, res) => {
+        mockServer.setHandler('DELETE', '/api/v1/bots/b_sandbox123', async (/** @type {any} */ req, /** @type {any} */ res) => {
           res.send(204)
         })
 

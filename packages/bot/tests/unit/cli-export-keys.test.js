@@ -6,8 +6,10 @@ import { test } from 'node:test'
 import { dispatch } from '../../src/cli/index.js'
 import { createKeystore } from '../../src/runtime/keystore/index.js'
 
+/** @type {any} */
 function makeIO (cwd, env, { captureBytes = false } = {}) {
   let out = ''
+  /** @type {any[]} */
   const outBytes = []
   let err = ''
   return {
@@ -29,6 +31,7 @@ function makeIO (cwd, env, { captureBytes = false } = {}) {
   }
 }
 
+/** @type {any} */
 async function writeKeystore (path, secret, botId = 'b_test') {
   await createKeystore({
     path,
@@ -52,7 +55,7 @@ test('export-keys: 1. Missing keystore -> exit 1, "keystore not found"', async (
   const tmp = mkdtempSync(join(tmpdir(), 'exp-test-'))
   try {
     const io = makeIO(tmp, {})
-    const code = await dispatch(['export-keys'], io)
+    const code = await dispatch(['export-keys'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /keystore not found/)
   } finally {
@@ -66,7 +69,7 @@ test('export-keys: 2. A file that is not valid JSON -> exit 1, "not valid JSON"'
     const ksPath = join(tmp, 'bot.keystore')
     writeFileSync(ksPath, 'NOT-VALID-JSON{{{', 'utf8')
     const io = makeIO(tmp, {})
-    const code = await dispatch(['export-keys'], io)
+    const code = await dispatch(['export-keys'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /not valid JSON/)
   } finally {
@@ -80,7 +83,7 @@ test('export-keys: 3. A file that fails validateOuter -> exit 1, "malformed keys
     const ksPath = join(tmp, 'bot.keystore')
     writeFileSync(ksPath, JSON.stringify({ version: 1, bot_id: 'b_test' }), 'utf8')
     const io = makeIO(tmp, {})
-    const code = await dispatch(['export-keys'], io)
+    const code = await dispatch(['export-keys'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /malformed keystore/)
   } finally {
@@ -177,7 +180,7 @@ test('export-keys: 11 & 12 & 13 & 14. No --out writes raw bytes to io.stdout, me
     const originalBytes = readFileSync(ksPath)
 
     const io = makeIO(tmp, {}, { captureBytes: true })
-    const code = await dispatch(['export-keys'], io)
+    const code = await dispatch(['export-keys'], /** @type {any} */ (io))
     assert.equal(code, 0)
 
     assert.deepEqual(io.outBytes, originalBytes)
@@ -196,7 +199,7 @@ test('export-keys: 15. Read error on the source -> exit 1', async () => {
     chmodSync(ksPath, 0o000)
 
     const io = makeIO(tmp, {})
-    const code = await dispatch(['export-keys'], io)
+    const code = await dispatch(['export-keys'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /cannot read/)
   } finally {
@@ -234,7 +237,7 @@ test('export-keys: 17. No ATOL_BOT_KEYSTORE_SECRET is required', async () => {
 
     const emptyEnv = {}
     const io = makeIO(tmp, emptyEnv, { captureBytes: true })
-    const code = await dispatch(['export-keys'], io)
+    const code = await dispatch(['export-keys'], /** @type {any} */ (io))
     assert.equal(code, 0)
     assert.equal(io.outBytes.length > 0, true)
   } finally {

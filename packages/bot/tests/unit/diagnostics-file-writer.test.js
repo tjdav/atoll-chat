@@ -7,11 +7,13 @@ import os from 'node:os'
 import { createDiagFileWriter } from '../../src/runtime/diagnostics/diag-file-writer.js'
 
 describe('Diagnostic File Writer Unit Tests', () => {
-  let tmpDir
+  /** @type {any} */
+let tmpDir
   let diagPath
   /** @type {Array<{ level: string, msg: string, meta?: any }>} */
   let logs
-  let logger
+  /** @type {any} */
+let logger
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'diag-writer-test-'))

@@ -44,7 +44,8 @@ test('createTestRuntime Unit Tests', async (t) => {
   // Construction
   await t.test('1. createTestRuntime(bot) resolves with a runtime', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       assert.ok(runtime)
       assert.equal(typeof runtime.inject, 'function')
@@ -64,7 +65,8 @@ test('createTestRuntime Unit Tests', async (t) => {
 
   await t.test('2. The mock server is bound', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       assert.ok(Array.isArray(runtime.calls))
     } finally {
@@ -78,7 +80,8 @@ test('createTestRuntime Unit Tests', async (t) => {
       { roomId: 'r_1', mode: 'observer', scopes: ['read'] },
       { roomId: 'r_2', mode: 'write_only', scopes: ['write'] }
     ]
-    const runtime = await createTestRuntime(bot, { grants })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { grants })
     try {
       const gMap = runtime.getGrants()
       assert.equal(gMap.size, 2)
@@ -95,7 +98,8 @@ test('createTestRuntime Unit Tests', async (t) => {
       { roomId: 'r_1', mode: 'observer', scopes: [] },
       { roomId: 'r_2', mode: 'write_only', scopes: [] }
     ]
-    const runtime = await createTestRuntime(bot, { grants })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { grants })
     try {
       const pMap = runtime.getPublisherKeys()
       assert.equal(pMap.size, 2)
@@ -110,7 +114,8 @@ test('createTestRuntime Unit Tests', async (t) => {
 
   await t.test('5. calls is initially empty', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       assert.equal(runtime.calls.length, 0)
     } finally {
@@ -120,7 +125,8 @@ test('createTestRuntime Unit Tests', async (t) => {
 
   await t.test('6. Synthetic keystore is generated when not provided', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot, { botId: 'b_synth' })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { botId: 'b_synth' })
     try {
       assert.ok(runtime)
     } finally {
@@ -140,7 +146,8 @@ test('createTestRuntime Unit Tests', async (t) => {
       created_at: new Date(0).toISOString(),
       rotated_at: new Date(0).toISOString()
     }
-    const runtime = await createTestRuntime(bot, { keystoreData })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { keystoreData })
     try {
       assert.ok(runtime)
     } finally {
@@ -161,7 +168,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       const res = await runtime.inject({
         type: 'command',
@@ -194,7 +202,8 @@ test('createTestRuntime Unit Tests', async (t) => {
       }
     })
     const grants = [{ roomId: 'r_grant', mode: 'write_only', scopes: ['write'] }]
-    const runtime = await createTestRuntime(bot, { grants })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { grants })
     try {
       await runtime.inject({
         type: 'command',
@@ -221,7 +230,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({
         type: 'command',
@@ -243,7 +253,8 @@ test('createTestRuntime Unit Tests', async (t) => {
 
   await t.test('11. An unknown event type returns { ok: false }', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       const res = await runtime.inject({
         type: 'invalid_type',
@@ -264,7 +275,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       const res = await runtime.inject({
         type: 'message',
@@ -287,7 +299,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({
         type: 'message',
@@ -308,7 +321,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({
         type: 'message',
@@ -332,7 +346,8 @@ test('createTestRuntime Unit Tests', async (t) => {
       }
     })
     const grants = [{ roomId: 'r_msg_grant', mode: 'observer', scopes: ['read'] }]
-    const runtime = await createTestRuntime(bot, { grants })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { grants })
     try {
       await runtime.inject({
         type: 'message',
@@ -354,7 +369,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({
         type: 'room',
@@ -375,7 +391,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({
         type: 'room',
@@ -390,7 +407,8 @@ test('createTestRuntime Unit Tests', async (t) => {
   // inject — grant_updated
   await t.test('18. grant_updated updates the grants map', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       assert.equal(runtime.getGrants().size, 0)
       await runtime.inject({
@@ -419,7 +437,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({
         type: 'grant_updated',
@@ -441,7 +460,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.dispatchWebhook({
         path: '/wh',
@@ -467,7 +487,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.dispatchWebhook({
         path: '/wh',
@@ -489,7 +510,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.dispatchWebhook({
         path: '/wh',
@@ -509,7 +531,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await assert.rejects(async () => {
         await runtime.dispatchWebhook({ path: '/wh', body: '' })
@@ -530,7 +553,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.fireSchedule('daily')
       assert.deepEqual(received, { name: 'daily' })
@@ -549,7 +573,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.fireSchedule('hourly')
       assert.equal(firedName, 'hourly')
@@ -562,7 +587,8 @@ test('createTestRuntime Unit Tests', async (t) => {
     const bot = makeBot({
       triggers: [{ type: 'schedule', name: 'daily', cron: '0 0 * * *' }]
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await assert.rejects(async () => {
         await runtime.fireSchedule('unknown')
@@ -583,7 +609,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.advanceTime(24 * 60 * 60 * 1000)
       assert.equal(fireCount, 1)
@@ -602,7 +629,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.advanceTime(3 * 60 * 60 * 1000)
       assert.equal(fires.length, 3)
@@ -623,7 +651,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.advanceTime(2 * 60 * 60 * 1000)
       assert.equal(callCount, 2)
@@ -642,7 +671,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.advanceTime(0)
       assert.equal(fired, false)
@@ -660,7 +690,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.advanceTime(60 * 60 * 1000)
       await runtime.advanceTime(60 * 60 * 1000)
@@ -671,7 +702,8 @@ test('createTestRuntime Unit Tests', async (t) => {
 
   await t.test('32. advanceTime on a runtime with no schedule triggers is a no-op', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.advanceTime(100000)
     } finally {
@@ -689,7 +721,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot, {
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, {
       settings: { my_key: 'my_value' }
     })
     try {
@@ -718,7 +751,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({ type: 'message', payload: { roomId: 'r_1' } })
       assert.equal(storedVal, 's_val')
@@ -736,7 +770,8 @@ test('createTestRuntime Unit Tests', async (t) => {
   await t.test('35. restart preserves grants', async () => {
     const bot = makeBot()
     const grants = [{ roomId: 'r_p', mode: 'observer', scopes: [] }]
-    const runtime = await createTestRuntime(bot, { grants })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { grants })
     try {
       assert.equal(runtime.getGrants().size, 1)
       await runtime.restart()
@@ -755,7 +790,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({ type: 'command', payload: { commandName: 'ping' } })
       const count1 = runtime.calls.length
@@ -780,7 +816,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.advanceTime(24 * 60 * 60 * 1000)
       assert.equal(fireCount, 1)
@@ -805,7 +842,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       runtime.simulateResponse('/custom-path', { status: 200, body: { custom: 'ok' } })
       await runtime.inject({ type: 'message', payload: { roomId: 'r_1' } })
@@ -828,7 +866,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       runtime.simulateResponse('/any-method', { status: 200, body: { ok: true } })
       await runtime.inject({ type: 'message', payload: { roomId: 'r_1' } })
@@ -844,7 +883,8 @@ test('createTestRuntime Unit Tests', async (t) => {
 
   await t.test('40. An explicit method narrows the match', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       runtime.simulateResponse('/narrow', { status: 200, body: { post: true } }, 'POST')
       assert.ok(runtime)
@@ -856,7 +896,8 @@ test('createTestRuntime Unit Tests', async (t) => {
   // getPendingOutbound
   await t.test('41. Returns an empty array', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       const outbound = runtime.getPendingOutbound()
       assert.deepEqual(outbound, [])
@@ -875,7 +916,8 @@ test('createTestRuntime Unit Tests', async (t) => {
       }
     })
     const grants = [{ roomId: 'r_1', mode: 'write_only', scopes: ['write'] }]
-    const runtime = await createTestRuntime(bot, { grants })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { grants })
     await runtime.close()
 
     const res = await runtime.inject({
@@ -887,7 +929,8 @@ test('createTestRuntime Unit Tests', async (t) => {
 
   await t.test('43. close is idempotent', async () => {
     const bot = makeBot()
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     await runtime.close()
     await runtime.close()
   })
@@ -905,7 +948,8 @@ test('createTestRuntime Unit Tests', async (t) => {
       }
     })
     const grants = [{ roomId: 'r_announce', mode: 'write_only', scopes: ['write'] }]
-    const runtime = await createTestRuntime(bot, { grants })
+    /** @type {any} */
+const runtime = await createTestRuntime(bot, { grants })
     try {
       await runtime.inject({
         type: 'command',
@@ -933,7 +977,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({
         type: 'command',
@@ -957,7 +1002,8 @@ test('createTestRuntime Unit Tests', async (t) => {
         }
       }
     })
-    const runtime = await createTestRuntime(bot)
+    /** @type {any} */
+const runtime = await createTestRuntime(bot)
     try {
       await runtime.inject({
         type: 'command',

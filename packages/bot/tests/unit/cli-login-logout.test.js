@@ -9,6 +9,7 @@ import { Keystore, createKeystore } from '../../src/runtime/keystore/index.js'
 import { envResolver } from '../../src/runtime/keystore/resolvers/env.js'
 import { createMockServer } from '../../src/testing/mock-server.js'
 
+/** @type {any} */
 function makeIO (cwd, env, overrides = {}) {
   let out = ''
   let err = ''
@@ -47,7 +48,7 @@ test('cli-login: 1. Missing --token and missing env -> exit 1', async () => {
   try {
     await createFixtureKeystore(tmp)
     const io = makeIO(tmp, { ATOL_BOT_KEYSTORE_SECRET: 'test-secret' })
-    const code = await dispatch(['login'], io)
+    const code = await dispatch(['login'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /login requires --token or ATOL_USER_TOKEN/)
   } finally {
@@ -86,7 +87,7 @@ test('cli-login: 3. ATOL_USER_TOKEN env used when --token absent', async () => {
     }
     const io = makeIO(tmp, env)
 
-    const code = await dispatch(['login'], io)
+    const code = await dispatch(['login'], /** @type {any} */ (io))
     assert.equal(code, 0)
 
     const ks = new Keystore({
@@ -131,7 +132,7 @@ test('cli-login: 5. Missing keystore -> exit 1, "keystore not found"', async () 
       ATOL_BOT_KEYSTORE_SECRET: 'test-secret',
       ATOL_USER_TOKEN: 'tok'
     })
-    const code = await dispatch(['login'], io)
+    const code = await dispatch(['login'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /keystore not found/)
   } finally {
@@ -148,7 +149,7 @@ test('cli-login: 6 & 9 & 10. Keystore passphrase from env used & stdout message 
       ATOL_USER_TOKEN: 'token-xyz'
     })
 
-    const code = await dispatch(['login'], io)
+    const code = await dispatch(['login'], /** @type {any} */ (io))
     assert.equal(code, 0)
     assert.match(io.out, /Operator session cached\./)
   } finally {
@@ -165,7 +166,7 @@ test('cli-login: 7. Wrong passphrase -> exit 1 with keystore-locked message', as
       ATOL_USER_TOKEN: 'token-xyz'
     })
 
-    const code = await dispatch(['login'], io)
+    const code = await dispatch(['login'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /Decryption failed|No passphrase could be resolved/)
   } finally {
@@ -204,7 +205,7 @@ test('cli-logout: 11. Missing keystore -> exit 1', async () => {
   const tmp = mkdtempSync(join(tmpdir(), 'log-test-'))
   try {
     const io = makeIO(tmp, { ATOL_BOT_KEYSTORE_SECRET: 'test-secret' })
-    const code = await dispatch(['logout'], io)
+    const code = await dispatch(['logout'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /keystore not found/)
   } finally {
@@ -219,7 +220,7 @@ test('cli-logout: 12 & 15 & 16. logout clears operator_session field & prints me
     const env = { ATOL_BOT_KEYSTORE_SECRET: 'test-secret' }
     const io = makeIO(tmp, env)
 
-    const code = await dispatch(['logout'], io)
+    const code = await dispatch(['logout'], /** @type {any} */ (io))
     assert.equal(code, 0)
     assert.match(io.out, /Operator session cleared\./)
 
@@ -306,7 +307,7 @@ export default defineBot({
 `
     writeFileSync(botPath, code, 'utf8')
 
-    server.setHandler('POST', '/api/v1/bots', (req, res) => {
+    server.setHandler('POST', '/api/v1/bots', (/** @type {any} */ req, /** @type {any} */ res) => {
       res.send(200, { bot_id: 'rt-bot-id', bot_token: 'rt-bot-token' })
     })
 

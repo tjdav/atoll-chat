@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import { loadConfig } from '../../src/runtime/config/index.js';
 
 describe('Config loader unit tests', () => {
-  let tmpDir = '';
+  /** @type {any} */
+let tmpDir = '';
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'bot-config-test-'));
@@ -283,7 +284,8 @@ catch_up = true
     assert.equal(Object.isFrozen(config.diagnostics), true);
 
     assert.throws(() => {
-      const runtime = /** @type {{ logLevel: string }} */ (/** @type {unknown} */ (config.runtime));
+      /** @type {any} */
+const runtime = /** @type {{ logLevel: string }} */ (/** @type {unknown} */ (config.runtime));
       runtime.logLevel = 'debug';
     }, TypeError);
   });

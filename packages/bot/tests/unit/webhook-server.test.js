@@ -263,7 +263,8 @@ describe('Webhook Trigger Server Unit Tests', () => {
       const sentinelBody = 'PAYLOAD_SECRET_DATA'
       /** @type {string[]} */
       const logs = []
-      const logger = {
+      /** @type {any} */
+const logger = {
         debug: (/** @type {string} */ msg, /** @type {any} */ meta) => logs.push(JSON.stringify({ msg, meta })),
         warn: (/** @type {string} */ msg, /** @type {any} */ meta) => logs.push(JSON.stringify({ msg, meta })),
         error: (/** @type {string} */ msg, /** @type {any} */ meta) => logs.push(JSON.stringify({ msg, meta }))

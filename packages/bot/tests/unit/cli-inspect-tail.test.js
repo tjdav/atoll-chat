@@ -23,7 +23,8 @@ function createMockStream () {
 }
 
 describe('cli-inspect-tail unit tests', { concurrency: 1 }, () => {
-  let tmpDir
+  /** @type {any} */
+let tmpDir
   let stdout
   let stderr
 

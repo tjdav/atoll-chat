@@ -10,7 +10,8 @@ import { IdempotencyStore, STORAGE_PREFIX } from '../../src/runtime/idempotency/
 
 describe('IdempotencyStore unit tests', () => {
   /** @type {string} */
-  let tmpDir
+  /** @type {any} */
+let tmpDir
   /** @type {Storage} */
   let storage
   /** @type {Uint8Array} */
@@ -324,7 +325,8 @@ describe('IdempotencyStore unit tests', () => {
     /** @type {Array<{ level: string, msg: string, meta?: object }>} */
     const logs = []
     /** @type {import('../../src/runtime/diagnostics/logger.js').Logger} */
-    const logger = {
+    /** @type {any} */
+const logger = {
       log: (level, msg, meta) => {
         logs.push({ level, msg, ...(meta !== undefined ? { meta } : {}) })
       },

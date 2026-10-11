@@ -10,7 +10,7 @@ import { HttpRequestError } from '../../src/errors.js'
  */
 function sseServer (handler) {
   return new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
+    const server = http.createServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.setHeader('Content-Type', 'text/event-stream')
       res.setHeader('Cache-Control', 'no-cache')
       res.writeHead(200)
@@ -30,7 +30,7 @@ function sseServer (handler) {
  */
 function customServer (handler) {
   return new Promise((resolve) => {
-    const server = http.createServer((req, res) => {
+    const server = http.createServer((/** @type {any} */ req, /** @type {any} */ res) => {
       handler(req, res)
     })
     server.listen(0, '127.0.0.1', () => {
@@ -45,7 +45,7 @@ describe('createSseClient unit tests', () => {
   test('1. Single event', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('event: message.new\ndata: {"id":"m1"}\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -82,7 +82,7 @@ describe('createSseClient unit tests', () => {
   test('2. Bare data: defaults to message event type', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: hello world\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -116,7 +116,7 @@ describe('createSseClient unit tests', () => {
   test('3. Multiple events', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('event: e1\ndata: d1\n\nevent: e2\ndata: d2\n\nevent: e3\ndata: d3\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -151,7 +151,7 @@ describe('createSseClient unit tests', () => {
   test('4. Multi-line data', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: a\ndata: b\ndata: c\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -184,7 +184,7 @@ describe('createSseClient unit tests', () => {
   test('5. Comment line ignored', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write(':comment\ndata: x\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -217,7 +217,7 @@ describe('createSseClient unit tests', () => {
   test('6. Line with no colon', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -250,7 +250,7 @@ describe('createSseClient unit tests', () => {
   test('7. id: line sets the last event ID', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('id: 42\ndata: x\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -284,7 +284,7 @@ describe('createSseClient unit tests', () => {
   test('8. id: persists across events', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('id: 42\ndata: x\n\ndata: y\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -318,7 +318,7 @@ describe('createSseClient unit tests', () => {
   test('9. retry: value stored', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('retry: 3000\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -351,7 +351,7 @@ describe('createSseClient unit tests', () => {
   test('10. Retry persists across events', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('retry: 3000\ndata: e1\n\ndata: e2\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -384,7 +384,7 @@ describe('createSseClient unit tests', () => {
   test('11. CRLF line endings', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: x\r\n\r\n')
       setTimeout(() => res.end(), 50)
     })
@@ -417,7 +417,7 @@ describe('createSseClient unit tests', () => {
   test('12. Standalone CR line endings', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: x\r\r')
       setTimeout(() => res.end(), 50)
     })
@@ -450,7 +450,7 @@ describe('createSseClient unit tests', () => {
   test('13. Mixed line endings', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('event: e1\rdata: d1\r\n\rdata: d2\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -484,7 +484,7 @@ describe('createSseClient unit tests', () => {
   test('14. Chunk boundary splits a line', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: he')
       setTimeout(() => {
         res.write('llo\n\n')
@@ -520,7 +520,7 @@ describe('createSseClient unit tests', () => {
   test('15. Chunk boundary splits a multi-byte UTF-8 character', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       // "data: " + € (0xE2, 0x82, 0xAC) + "\n\n"
       const prefix = Buffer.from('data: ')
       const euro = Buffer.from('€') // 3 bytes: 0xE2, 0x82, 0xAC
@@ -566,7 +566,7 @@ describe('createSseClient unit tests', () => {
   test('16. Chunk boundary splits the CRLF pair', async () => {
     /** @type {any[]} */
     const events = []
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write(Buffer.from('data: x\r'))
       setTimeout(() => {
         res.write(Buffer.from('\n\r\n'))
@@ -600,7 +600,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('17. connect() resolves on valid response', async () => {
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: hello\n\n')
       setTimeout(() => res.end(), 100)
     })
@@ -622,7 +622,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('18. Non-200 status rejects connect()', async () => {
-    const { server, url } = await customServer((req, res) => {
+    const { server, url } = await customServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(403)
       res.end('Forbidden')
     })
@@ -652,7 +652,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('19. Wrong Content-Type rejects connect()', async () => {
-    const { server, url } = await customServer((req, res) => {
+    const { server, url } = await customServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.setHeader('Content-Type', 'text/plain')
       res.writeHead(200)
       res.end('ok')
@@ -735,7 +735,7 @@ describe('createSseClient unit tests', () => {
   test('22. close() aborts the stream', async () => {
     /** @type {any} */
     let closedReason = null
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: ping\n\n')
     })
 
@@ -774,7 +774,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('24. close() on already-closed client is idempotent', async () => {
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: ping\n\n')
       res.end()
     })
@@ -810,7 +810,7 @@ describe('createSseClient unit tests', () => {
     /** @type {any} */
     let closedReason = null
 
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: hello\n\n')
       setTimeout(() => res.end(), 30)
     })
@@ -850,7 +850,7 @@ describe('createSseClient unit tests', () => {
     /** @type {any} */
     let closedReason = null
 
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: hello\n\n')
       setTimeout(() => {
         req.destroy()
@@ -890,7 +890,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('27. isConnected() transitions correctly', async () => {
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('data: ping\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -921,7 +921,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('28. getLastEventId() returns null before any event, the last id after', async () => {
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('id: evt-1\ndata: x\n\n')
       setTimeout(() => res.end(), 50)
     })
@@ -954,7 +954,7 @@ describe('createSseClient unit tests', () => {
     /** @type {Record<string, string>[]} */
     const receivedHeaders = []
 
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       receivedHeaders.push(/** @type {Record<string, string>} */ (req.headers))
       if (receivedHeaders.length === 1) {
         res.write('id: 100\ndata: evt1\n\n')
@@ -1004,7 +1004,7 @@ describe('createSseClient unit tests', () => {
     /** @type {Record<string, string>[]} */
     const receivedHeaders = []
 
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       receivedHeaders.push(/** @type {Record<string, string>} */ (req.headers))
       res.write('data: evt\n\n')
       setTimeout(() => res.end(), 30)
@@ -1049,7 +1049,7 @@ describe('createSseClient unit tests', () => {
       error: (msg, meta) => logLines.push({ level: 'error', msg, meta })
     }
 
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write('id: e1\ndata: secret_payload\n\n')
       setTimeout(() => res.end(), 30)
     })
@@ -1100,7 +1100,7 @@ describe('createSseClient unit tests', () => {
     }
 
     const secretPayload = 'super_secret_user_message_content'
-    const { server, url } = await sseServer((req, res) => {
+    const { server, url } = await sseServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.write(`data: ${secretPayload}\n\n`)
       setTimeout(() => res.end(), 30)
     })

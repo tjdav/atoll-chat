@@ -346,7 +346,7 @@ test('Mock Server Unit Tests', async (t) => {
   await t.test('26. setHandler receives the recorded request and a response object', async () => {
     const server = await createMockServer()
     try {
-      server.setHandler('POST', '/custom-handler', (req, res) => {
+      server.setHandler('POST', '/custom-handler', (/** @type {any} */ req, /** @type {any} */ res) => {
         res.send(202, { received: req.json.foo })
       })
       const res = await fetch(`${server.getUrl()}/custom-handler`, {

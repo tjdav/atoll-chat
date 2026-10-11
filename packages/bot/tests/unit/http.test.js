@@ -21,7 +21,7 @@ function startServer (handler) {
 
 describe('createHttpClient unit tests', () => {
   it('1. Basic GET', async () => {
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       assert.equal(req.method, 'GET')
       assert.equal(req.url, '/test')
       res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -38,7 +38,7 @@ describe('createHttpClient unit tests', () => {
   })
 
   it('2. Basic POST with JSON body', async () => {
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       assert.equal(req.method, 'POST')
       assert.equal(req.headers['content-type'], 'application/json')
       let body = ''
@@ -61,7 +61,7 @@ describe('createHttpClient unit tests', () => {
 
   it('3. Authorization header present', async () => {
     let seenAuth = ''
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       seenAuth = req.headers['authorization'] ?? ''
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
@@ -77,7 +77,7 @@ describe('createHttpClient unit tests', () => {
 
   it('4. User-Agent present', async () => {
     let seenUserAgent = ''
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       seenUserAgent = req.headers['user-agent'] ?? ''
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
@@ -98,7 +98,7 @@ describe('createHttpClient unit tests', () => {
 
   it('5. Accept header present', async () => {
     let seenAccept = ''
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       seenAccept = req.headers['accept'] ?? ''
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
@@ -114,7 +114,7 @@ describe('createHttpClient unit tests', () => {
 
   it('6. Caller cannot override Authorization', async () => {
     let seenAuth = ''
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       seenAuth = req.headers['authorization'] ?? ''
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
@@ -132,7 +132,7 @@ describe('createHttpClient unit tests', () => {
 
   it('7. Caller can set other headers', async () => {
     let seenCustom = ''
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       const headerVal = req.headers['x-custom']
       seenCustom = Array.isArray(headerVal) ? headerVal.join(',') : (headerVal ?? '')
       res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -149,7 +149,7 @@ describe('createHttpClient unit tests', () => {
 
   it('8. Query string preserved', async () => {
     let seenUrl = ''
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       seenUrl = req.url ?? ''
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
@@ -607,7 +607,7 @@ describe('createHttpClient unit tests', () => {
     /** @type {string[]} */
     const bodies = []
     let requestCount = 0
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       requestCount++
       let b = ''
       req.on('data', (c) => { b += c })

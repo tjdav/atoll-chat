@@ -8,6 +8,7 @@ import { Keystore } from '../../src/runtime/keystore/index.js'
 import { envResolver } from '../../src/runtime/keystore/resolvers/env.js'
 import { createMockServer } from '../../src/testing/mock-server.js'
 
+/** @type {any} */
 function makeIO (cwd, env, overrides = {}) {
   let out = ''
   let err = ''
@@ -43,7 +44,7 @@ test('cli-register: 1. Missing path argument -> exit 1, "requires a path"', asyn
   const tmp = mkdtempSync(join(tmpdir(), 'reg-test-'))
   try {
     const io = makeIO(tmp, {})
-    const code = await dispatch(['register'], io)
+    const code = await dispatch(['register'], /** @type {any} */ (io))
     assert.equal(code, 1)
     assert.match(io.err, /requires a path/)
   } finally {
@@ -140,7 +141,7 @@ test('cli-register: 7. Existing keystore with --force proceeds past pre-flight c
     const ksPath = join(tmp, 'bot.keystore')
     writeFileSync(ksPath, 'dummy keystore', 'utf8')
 
-    server.setHandler('POST', '/api/v1/bots', (req, res) => {
+    server.setHandler('POST', '/api/v1/bots', (/** @type {any} */ req, /** @type {any} */ res) => {
       res.send(200, { bot_id: 'test-bot-id', bot_token: 'bot-token-123' })
     })
 
@@ -229,7 +230,7 @@ test('cli-register: 11-22. Happy path registration tests', async () => {
     const serverUrl = await server.getUrl()
     const botPath = makeValidBotFile(tmp)
 
-    server.setHandler('POST', '/api/v1/bots', (req, res) => {
+    server.setHandler('POST', '/api/v1/bots', (/** @type {any} */ req, /** @type {any} */ res) => {
       res.send(200, { bot_id: 'registered-bot-42', bot_token: 'bot-secret-token' })
     })
 
@@ -320,7 +321,7 @@ test('cli-register: 23. 4xx response -> exit 1, message contains server error co
     const serverUrl = await server.getUrl()
     const botPath = makeValidBotFile(tmp)
 
-    server.setHandler('POST', '/api/v1/bots', (req, res) => {
+    server.setHandler('POST', '/api/v1/bots', (/** @type {any} */ req, /** @type {any} */ res) => {
       res.send(400, { error: 'invalid_scope' })
     })
 
@@ -345,7 +346,7 @@ test('cli-register: 24. 5xx response -> exit 1 (no retries)', async () => {
     const serverUrl = await server.getUrl()
     const botPath = makeValidBotFile(tmp)
 
-    server.setHandler('POST', '/api/v1/bots', (req, res) => {
+    server.setHandler('POST', '/api/v1/bots', (/** @type {any} */ req, /** @type {any} */ res) => {
       res.send(500, { error: 'internal_error' })
     })
 
@@ -374,7 +375,7 @@ test('cli-register: 25. Malformed success response -> exit 1', async () => {
     const serverUrl = await server.getUrl()
     const botPath = makeValidBotFile(tmp)
 
-    server.setHandler('POST', '/api/v1/bots', (req, res) => {
+    server.setHandler('POST', '/api/v1/bots', (/** @type {any} */ req, /** @type {any} */ res) => {
       res.send(200, { status: 'ok' }) // missing bot_id and bot_token
     })
 
@@ -400,7 +401,7 @@ test('cli-register: 26. --force overwrites an existing keystore and rotates toke
     const botPath = makeValidBotFile(tmp)
 
     let count = 0
-    server.setHandler('POST', '/api/v1/bots', (req, res) => {
+    server.setHandler('POST', '/api/v1/bots', (/** @type {any} */ req, /** @type {any} */ res) => {
       count++
       res.send(200, { bot_id: 'bot-id-1', bot_token: `token-${count}` })
     })

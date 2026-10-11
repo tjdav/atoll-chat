@@ -18,6 +18,18 @@ import { defineTrigger } from '../../../src/define-trigger.js'
  * - install, uninstall, message, room, grantUpdated, and webhook and
  *   schedule handlers
  */
+/**
+ * @type {{
+ *   install: Array<{ roomId: string | null }>,
+ *   uninstall: Array<{ roomId: string | null }>,
+ *   message: Array<{ roomId: string, type: string, data: any }>,
+ *   room: Array<{ roomId: string, type: string, data: any }>,
+ *   grantUpdated: Array<{ roomId: string, newMode: string }>,
+ *   webhook: Array<{ path: string, body: any }>,
+ *   schedule: Array<{ name: string }>,
+ *   ping: Array<{ count: number }>
+ * }}
+ */
 export const calls = {
   install: [],
   uninstall: [],
@@ -81,7 +93,7 @@ export const bot = defineBot({
     },
     message: (ctx, event) => {
       calls.message.push({
-        roomId: event.roomId,
+        roomId: /** @type {any} */ (event).roomId,
         type: event.type,
         data: event.data
       })

@@ -74,7 +74,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('1. Happy path', async () => {
     /** @type {Array<{ method: string | undefined, url: string | undefined, body: any }>} */
     const requests = []
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -116,7 +116,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('2. Request path is POST /bots/me/messages', async () => {
     /** @type {any} */
     let recordedReq = null
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       recordedReq = {
         method: req.method,
         url: req.url
@@ -153,7 +153,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('3. Request body shape', async () => {
     /** @type {any} */
     let recordedBody = null
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -202,7 +202,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('4. Ciphertext decodes to the correct plaintext', async () => {
     /** @type {any} */
     let recordedBody = null
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -254,7 +254,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test("5. format: 'markdown' propagates", async () => {
     /** @type {any} */
     let recordedBody = null
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -480,7 +480,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test('13. HTTP 400 throws SendLocalFailedError with cause set', async () => {
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(400, {
         'Content-Type': 'application/json'
       })
@@ -520,7 +520,7 @@ test('ctx.sendLocal unit tests', async (t) => {
 
   await t.test('14. HTTP 500 does not retry', async () => {
     let count = 0
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       count++
       res.writeHead(500, {
         'Content-Type': 'application/json'
@@ -556,7 +556,7 @@ test('ctx.sendLocal unit tests', async (t) => {
 
   await t.test('15. HTTP 429 retries', async () => {
     let count = 0
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       count++
       if (count === 1) {
         res.writeHead(429, {
@@ -624,7 +624,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('17. request_id is fresh per call', async () => {
     /** @type {any[]} */
     const bodies = []
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -665,7 +665,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('18. Ephemeral public key is fresh per call', async () => {
     /** @type {any[]} */
     const bodies = []
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -706,7 +706,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('19. Empty text is accepted', async () => {
     /** @type {any} */
     let recordedBody = null
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -758,7 +758,7 @@ test('ctx.sendLocal unit tests', async (t) => {
     const unicodeText = 'Hello 🚀 World! 🐙 日本語, Português, Español 🎉'
     /** @type {any} */
     let recordedBody = null
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -807,7 +807,7 @@ test('ctx.sendLocal unit tests', async (t) => {
     const longText = 'x'.repeat(10 * 1024)
     /** @type {any} */
     let recordedBody = null
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       let body = ''
       req.on('data', (chunk) => {
         body += chunk
@@ -855,9 +855,10 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('22. Logger emits entry and success lines', async () => {
     /** @type {Array<{ level: string, msg: string, meta: any }>} */
     const logs = []
-    const logger = createMockLogger(logs)
+    /** @type {any} */
+const logger = createMockLogger(logs)
 
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200, {
         'Content-Type': 'application/json'
       })
@@ -907,7 +908,8 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('23. Logger emits warn on validation failure', async () => {
     /** @type {Array<{ level: string, msg: string, meta: any }>} */
     const logs = []
-    const logger = createMockLogger(logs)
+    /** @type {any} */
+const logger = createMockLogger(logs)
 
     const http = createHttpClient({
       serverUrl: 'http://127.0.0.1:1',
@@ -943,9 +945,10 @@ test('ctx.sendLocal unit tests', async (t) => {
   await t.test('24. Logger emits error on transport failure', async () => {
     /** @type {Array<{ level: string, msg: string, meta: any }>} */
     const logs = []
-    const logger = createMockLogger(logs)
+    /** @type {any} */
+const logger = createMockLogger(logs)
 
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(500, {
         'Content-Type': 'application/json'
       })
@@ -988,7 +991,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test('25. No ctx parameter', async () => {
-    const { server, url } = await startServer((req, res) => {
+    const { server, url } = await startServer((/** @type {any} */ req, /** @type {any} */ res) => {
       res.writeHead(200, {
         'Content-Type': 'application/json'
       })

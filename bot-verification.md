@@ -1,5 +1,74 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-043c Verification Fact
+- **Restore a clean canary across the repository (`packages/bot/`)**:
+  - **A. Inventory (Part A):**
+    ```
+          4 src/cli/dev.js
+          5 src/cli/diag-file.js
+         10 tests/integration/fixtures/echo-bot.js
+         64 tests/integration/smoke.test.js
+         85 tests/unit/cli-dev.test.js
+         20 tests/unit/cli-export-keys.test.js
+         26 tests/unit/cli-import-keys.test.js
+         75 tests/unit/cli-inspect-tail.test.js
+         52 tests/unit/cli-login-logout.test.js
+         44 tests/unit/cli-register.test.js
+        141 tests/unit/cli-run.test.js
+        136 tests/unit/cli-sandbox.test.js
+         29 tests/unit/cli-validate.test.js
+         18 tests/unit/create-test-ctx.test.js
+         53 tests/unit/create-test-runtime.test.js
+          2 tests/unit/ctx-command-invoked.test.js
+        116 tests/unit/diagnostics-capture.test.js
+         32 tests/unit/diagnostics-file-writer.test.js
+         28 tests/unit/mock-server.test.js
+         27 tests/unit/reconnect.test.js
+         51 tests/unit/runtime-pause.test.js
+         13 tests/unit/runtime-reconnect.test.js
+        187 tests/unit/runtime-rooms.test.js
+        100 tests/unit/runtime-triggers.test.js
+    ```
+    Total errors at start: 1318 across 24 files.
+
+  - **B. Pattern Grouping (Part B):**
+    - **P1 — Untyped local variable (`TS7005`, `TS7034`):** 590 errors across 15 files.
+    - **P2 — Untyped function parameter (`TS7006`):** 174 errors across 18 files.
+    - **P3 — Possibly undefined/null access (`TS2532`, `TS18047`, `TS18048`, `TS2531`):** 86 errors across 9 files.
+    - **P4 — `never[]` inferred for empty array literal (`TS2345`):** 13 errors across 4 files.
+    - **P5 — `WebSocket` structural mismatch (`TS2322` `FakeWebSocket`):** 40 errors across 3 files.
+    - **P6 — Wrong or missing property on typed object (`TS2339`, `TS2739`):** 119 errors across 13 files.
+    - **P7 — Unknown or untyped value not narrowed (`TS18046`, `TS2571`):** 36 errors across 7 files.
+    - **P8 — Wrong call signature (`TS2554`, `TS2769`, `TS2722`):** 12 errors across 6 files.
+    - **P9 — Assignment of incompatible type (`TS2322` non-WebSocket):** 50 errors across 8 files.
+    - **P10 — Other (CLI test IO stream object mismatch `TS2345`, `TS7031`, `TS7008`, `TS2740`, `TS2741`, `TS2353`, `TS2379`, `TS7017`):** 198 errors across 18 files.
+
+  - **C. Fixes Applied (Part C):**
+    - P1 & P2: Added explicit JSDoc `@type` / `@param` annotations across affected source and test files.
+    - P3: Added `assert.ok(...)` non-null guards or optional chaining truthiness checks.
+    - P4: Added explicit array item type JSDoc annotations to empty array declarations (e.g. `calls` object in `echo-bot.js`).
+    - P5: Annotated `FakeWebSocket` instances / constructor types where intentionally partial.
+    - P6 & P8: Fixed property accesses (`event.roomId` in `echo-bot.js`) and call site parameters.
+    - P7 & P9: Added type assertions/casts for narrowed types or `unknown` inputs.
+    - P10: Typed mock `io` objects passed to CLI dispatchers with JSDoc `/** @type {any} */`.
+
+  - **Process note — narrow-fix pattern**:
+    > Three consecutive fix tasks (B-043a, B-043b, B-043c) were required
+    > to restore the tree after B-043. The first two scoped to
+    > `runtime.test.js` and verified with `test:batch runtime` only. Each
+    > passed its own verification while leaving errors in other files
+    > that the full canary would have caught.
+    >
+    > Going forward:
+    >
+    > - Every fix task that touches shared code (runtime modules, test
+    >   fixtures, test helpers) must run `pnpm --filter @atoll/bot
+    >   typecheck` and `pnpm --filter @atoll/bot test` before closing.
+    > - Every test file's batch is a subset of the full suite; a batch
+    >   passing does not imply the full suite passes.
+    > - The canary (`tsc --noEmit`) is the type contract of the entire
+    >   package. It must pass on the tree at every task boundary.
+
 ## Task B-043b Verification Fact
 - **Repair `runtime.test.js` type errors and subtest timeouts (`packages/bot/tests/unit/runtime.test.js`)**:
   - **A. What B-043a changed vs. inherited errors:** B-043a fixed the runtime boot order in `runtime/index.js` and added static WebSocket constants to `FakeWebSocket` in `runtime.test.js`. The ~40 type errors in `runtime.test.js` were pre-existing errors in the test file that were previously masked by compile/boot stage failures.
