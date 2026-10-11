@@ -26,6 +26,19 @@
   - **Backup Finding:** `LINK_PREVIEW_PROXY_KEY_PATH` is currently not packed by `server/src/backup/format.rs` (recorded gap).
 - **Link to report:** [verification/link-preview-v304-align/report.md](verification/link-preview-v304-align/report.md)
 
+## Bot Command Key KT Integration Verification Fact (Phase 29)
+- **ID:** Phase 29 Bot Command Key KT Integration
+- **Date:** 2026-10-11
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §6.31, §7.6, §7.11, §8.5.1, §8.8.10, §8.8.11, §8.11.2, §12
+- **Verified Facts:**
+  - **`current_bot_leaf_index` Helper Contract:** Returns `SELECT MAX(leaf_index) FROM key_transparency_log WHERE bot_id = ?` for a given bot. Returns `None` if the bot has no leaf entries. Read-only; does not allocate or insert.
+  - **`bot_key_leaf_index` Population Rule:** On `POST /rooms/:id/bot-messages`, `bot_key_leaf_index` is queried via `current_bot_leaf_index` inside the message insertion transaction and stored in `room_messages.bot_key_leaf_index`. Missing leaves write `NULL` and trigger a `warn` log with `bot_id` without logging pubkeys.
+  - **Event Inclusion Rule:** The room-channel `message.new` event payload includes `bot_key_leaf_index` iff `sender_type = "bot"`. On user messages, `bot_key_leaf_index` is omitted.
+  - **`GET /rooms/:id/messages` Inclusion Rule:** Every row in the message fetch response includes `bot_key_leaf_index` (integer leaf index for bot messages with an active KT leaf, or `null` for bot messages without a leaf or user messages).
+  - **KT Command Key Consistency:** `GET /kt/bot/:id` returns `bot_command_pubkey` matching `bot_accounts.bot_command_pubkey`. `GET /kt/bot/:id/history` returns `bot_command_pubkey` on every entry.
+- **Link to report:** [verification/bot-command-key-kt-integration/report.md](verification/bot-command-key-kt-integration/report.md)
+
 ## Bot Command Routing Verification Fact (Phase 32)
 - **ID:** Phase 32 Bot Command Routing
 - **Date:** 2026-10-09

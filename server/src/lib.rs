@@ -252,6 +252,14 @@ pub fn build_app(state: AppState) -> Router {
             get(routes::key_transparency::get_user_kt_handler),
         )
         .route(
+            "/kt/bot/{id}",
+            get(routes::key_transparency::get_bot_kt_handler),
+        )
+        .route(
+            "/kt/bot/{id}/history",
+            get(routes::key_transparency::get_bot_kt_history_handler),
+        )
+        .route(
             "/kt/snapshot",
             get(routes::key_transparency::get_kt_snapshot_handler),
         )

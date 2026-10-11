@@ -160,21 +160,28 @@ CREATE TABLE IF NOT EXISTS room_publisher_keys (
 
 -- Messaging & Reactions
 CREATE TABLE IF NOT EXISTS room_messages (
-    id               TEXT PRIMARY KEY,
-    room_id          TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    sender_user_id   TEXT NOT NULL REFERENCES users(id),
-    sender_client_id TEXT NOT NULL,
-    epoch            INTEGER NOT NULL,
-    seq              INTEGER NOT NULL,
-    content_type     TEXT NOT NULL CHECK(content_type IN ('application', 'commit', 'proposal', 'bot')),
-    ciphertext       BLOB NOT NULL,
-    reply_to         TEXT REFERENCES room_messages(id),
-    target_user_ids  TEXT,
-    edit_of          TEXT REFERENCES room_messages(id),
-    edit_sequence    INTEGER NOT NULL DEFAULT 0,
-    edited_at        DATETIME,
-    deleted_at       DATETIME,
-    created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id                 TEXT PRIMARY KEY,
+    room_id            TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    sender_user_id     TEXT REFERENCES users(id),
+    sender_bot_id      TEXT REFERENCES bot_accounts(id),
+    sender_client_id   TEXT NOT NULL,
+    bot_key_leaf_index INTEGER,
+    epoch              INTEGER NOT NULL,
+    seq                INTEGER NOT NULL,
+    content_type       TEXT NOT NULL CHECK(content_type IN ('application', 'commit', 'proposal', 'bot')),
+    ciphertext         BLOB NOT NULL,
+    reply_to           TEXT REFERENCES room_messages(id),
+    target_user_ids    TEXT,
+    edit_of            TEXT REFERENCES room_messages(id),
+    edit_sequence      INTEGER NOT NULL DEFAULT 0,
+    edited_at          DATETIME,
+    deleted_at         DATETIME,
+    created_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+        (sender_user_id IS NOT NULL AND sender_bot_id IS NULL)
+        OR
+        (sender_user_id IS NULL AND sender_bot_id IS NOT NULL)
+    )
 );
 CREATE INDEX IF NOT EXISTS idx_room_messages_room_epoch_seq ON room_messages(room_id, epoch, seq);
 CREATE INDEX IF NOT EXISTS idx_room_messages_room_created ON room_messages(room_id, created_at DESC);
@@ -349,13 +356,14 @@ CREATE INDEX IF NOT EXISTS idx_recovery_codes_user ON recovery_codes(user_id, co
 
 -- Key Transparency
 CREATE TABLE IF NOT EXISTS key_transparency_log (
-    leaf_index       INTEGER PRIMARY KEY,
-    user_id          TEXT REFERENCES users(id) ON DELETE CASCADE,
-    bot_id           TEXT REFERENCES bot_accounts(id) ON DELETE CASCADE,
-    username_token   TEXT,
-    identity_pubkey  TEXT,
-    command_pubkey   TEXT,
-    added_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    leaf_index           INTEGER PRIMARY KEY,
+    user_id              TEXT REFERENCES users(id) ON DELETE CASCADE,
+    bot_id               TEXT REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    username_token       TEXT,
+    bot_identity_pubkey  TEXT,
+    identity_pubkey      TEXT,
+    command_pubkey       TEXT,
+    added_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (
         (user_id IS NOT NULL AND bot_id IS NULL)
         OR
