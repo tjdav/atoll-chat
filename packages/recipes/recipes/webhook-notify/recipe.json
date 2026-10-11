@@ -1,0 +1,53 @@
+{
+  "id": "webhook-notify",
+  "version": "1.0.0",
+  "label": "Webhook Notify",
+  "description": "Receives inbound webhooks and forwards a message field to the bot's owner.",
+  "kind": "pure",
+  "capabilities": [],
+  "slots": [
+    {
+      "name": "path",
+      "type": "string",
+      "question": "Which URL path should the webhook listen on?",
+      "default": "/hooks/notify",
+      "hint": "Must start with /. Relative to the runtime's webhook base path."
+    }
+  ],
+  "handlers": {
+    "webhook": {
+      "id": "receive-webhook",
+      "primitive": "webhook-receive",
+      "config": { "path": "{path}", "method": "POST" },
+      "children": [
+        {
+          "id": "extract-body",
+          "primitive": "transform",
+          "config": { "op": "pick", "path": "body" },
+          "children": [
+            {
+              "id": "parse-json",
+              "primitive": "transform",
+              "config": { "op": "json" },
+              "children": [
+                {
+                  "id": "notify-owner",
+                  "primitive": "send-local",
+                  "config": {
+                    "text": "Webhook received: {{message}}"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": [
+    "The webhook body must be JSON with a `message` string field. Other shapes produce a runtime error.",
+    "Notification is delivered via send-local to the bot's owner. If the owner is offline, the notification is lost.",
+    "The bot requires no room capabilities. It does not post into rooms.",
+    "The runtime's webhook HTTP server must be reachable from wherever the external system sends requests. Exposing it publicly is the operator's responsibility."
+  ]
+}
