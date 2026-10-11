@@ -50,8 +50,11 @@ export function asCommandDecl (name, description, argsDecl, handler) {
       for (const key of Object.keys(declaredArgs)) {
         argsObject[key] = argsReader.get(key)
       }
-      await handler(ctx, { args: argsObject, command: name })
-      return { type: 'none' }
+      const result = await handler(ctx, { args: argsObject, command: name })
+      if (result === undefined) {
+        return { type: 'none' }
+      }
+      return result
     }
   }
   if (description !== undefined) {

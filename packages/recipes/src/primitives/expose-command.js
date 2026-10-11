@@ -59,12 +59,14 @@ export const exposeCommand = {
     return async (ctx, input) => {
       const args = input && typeof input === 'object' ? input.args : undefined
       if (args === undefined || args === null) {
-        return
+        return undefined
       }
       const payload = { args, command: name }
+      let lastResult
       for (const child of children) {
-        await child(ctx, payload)
+        lastResult = await child(ctx, payload)
       }
+      return lastResult
     }
   }
 }

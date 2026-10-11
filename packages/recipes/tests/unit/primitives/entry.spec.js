@@ -110,3 +110,38 @@ test('asCommandDecl with no declared args passes an empty object', async () => {
   await decl.handler({}, makeReader({}))
   assert.deepEqual(captured.args, {})
 })
+
+test('asCommandDecl returns { type: "none" } when the inner handler returns nothing', async () => {
+  const inner = async () => {}
+  const decl = asCommandDecl('save', undefined, {}, inner)
+  const result = await decl.handler({}, makeReader({}))
+  assert.deepEqual(result, { type: 'none' })
+})
+
+test('asCommandDecl passes through a non-undefined result unchanged', async () => {
+  const inner = async () => ({ type: 'local_message', content: 'private' })
+  const decl = asCommandDecl('save', undefined, {}, inner)
+  const result = await decl.handler({}, makeReader({}))
+  assert.deepEqual(result, { type: 'local_message', content: 'private' })
+})
+
+test('asCommandDecl passes a toast result through unchanged', async () => {
+  const inner = async () => ({ type: 'toast', content: 'done' })
+  const decl = asCommandDecl('save', undefined, {}, inner)
+  const result = await decl.handler({}, makeReader({}))
+  assert.deepEqual(result, { type: 'toast', content: 'done' })
+})
+
+test('asCommandDecl passes a panel result through unchanged', async () => {
+  const inner = async () => ({ type: 'panel', content: 'details' })
+  const decl = asCommandDecl('save', undefined, {}, inner)
+  const result = await decl.handler({}, makeReader({}))
+  assert.deepEqual(result, { type: 'panel', content: 'details' })
+})
+
+test('asCommandDecl passes a room_message result through unchanged', async () => {
+  const inner = async () => ({ type: 'room_message', content: 'public' })
+  const decl = asCommandDecl('save', undefined, {}, inner)
+  const result = await decl.handler({}, makeReader({}))
+  assert.deepEqual(result, { type: 'room_message', content: 'public' })
+})
