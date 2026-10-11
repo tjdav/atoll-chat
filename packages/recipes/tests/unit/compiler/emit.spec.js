@@ -188,6 +188,36 @@ test('emit omits the triggers block when no triggers exist', () => {
   assert.doesNotMatch(output, /const triggers = \[/)
 })
 
+test('emit produces valid JavaScript when handlers and triggers are both present', () => {
+  const composition = simpleComposition()
+  composition.triggers = [
+    {
+      id: 'schedule',
+      primitive: 'schedule-task',
+      config: { name: 'daily', cron: '0 9 * * *' }
+    }
+  ]
+  const output = emit(composition, standardOptions())
+
+  const encoded = Buffer.from(output, 'utf8').toString('base64')
+  const build = new Function(`
+    const defineBot = (config) => config
+    const postResponse = { create: () => ({}) }
+    const scheduleTask = { create: () => ({}) }
+    const src = Buffer.from('${encoded}', 'base64').toString('utf8')
+    const cleaned = src
+      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
+      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/recipes\\/primitives'/, '')
+      .replace('export default defineBot', 'return defineBot')
+    const fn = new Function('defineBot', 'postResponse', 'scheduleTask', cleaned)
+    return fn(defineBot, postResponse, scheduleTask)
+  `)
+  const result = build()
+  assert.ok(result)
+  assert.ok(Object.hasOwn(result, 'handlers'))
+  assert.ok(Object.hasOwn(result, 'triggers'))
+})
+
 test('emit exports default defineBot', () => {
   const output = emit(simpleComposition(), standardOptions())
   assert.match(output, /export default defineBot\(\{/)
