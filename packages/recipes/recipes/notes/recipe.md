@@ -47,8 +47,9 @@ value.
 - **The pad is shared across the room.** Every invoker reads and writes
   the same set of names. There is no per-user or per-command scoping.
   The bot has no user identity on the engine side.
-- **Recalling a name that was never saved produces an error.** The SDK
-  reports a generic failure. There is no "not found" message.
+- **Recalling a name that was never saved returns a "not saved" reply.**
+  The reply is delivered privately to the invoker, like every other
+  response from this bot.
 - **Values are stored as text.** They are not parsed. A value that
   looks like JSON is stored as a string.
 - **The pad is local to the instance.** It is not synced across
