@@ -39,6 +39,43 @@ pub fn leaf_hash(username_token: &str, identity_pubkey: &str) -> [u8; 32] {
     hasher.finalize().into()
 }
 
+/// Serializes a bot log leaf into canonical format (§7.11):
+/// `I2OSP(len(bot_identity_pubkey), 2) || bot_identity_pubkey || I2OSP(len(command_pubkey), 2) || command_pubkey || I2OSP(len(identity_pubkey), 2) || identity_pubkey`
+pub fn serialize_bot_leaf(
+    bot_identity_pubkey: &str,
+    command_pubkey: &str,
+    identity_pubkey: &str,
+) -> Vec<u8> {
+    let b_bytes = bot_identity_pubkey.as_bytes();
+    let c_bytes = command_pubkey.as_bytes();
+    let i_bytes = identity_pubkey.as_bytes();
+    let b_len = b_bytes.len() as u16;
+    let c_len = c_bytes.len() as u16;
+    let i_len = i_bytes.len() as u16;
+
+    let mut out = Vec::with_capacity(6 + b_bytes.len() + c_bytes.len() + i_bytes.len());
+    out.extend_from_slice(&b_len.to_be_bytes());
+    out.extend_from_slice(b_bytes);
+    out.extend_from_slice(&c_len.to_be_bytes());
+    out.extend_from_slice(c_bytes);
+    out.extend_from_slice(&i_len.to_be_bytes());
+    out.extend_from_slice(i_bytes);
+    out
+}
+
+/// Computes bot leaf hash: `SHA-256(0x00 || bot_leaf_bytes)`.
+pub fn bot_leaf_hash(
+    bot_identity_pubkey: &str,
+    command_pubkey: &str,
+    identity_pubkey: &str,
+) -> [u8; 32] {
+    let leaf_bytes = serialize_bot_leaf(bot_identity_pubkey, command_pubkey, identity_pubkey);
+    let mut hasher = Sha256::new();
+    hasher.update([0x00]);
+    hasher.update(&leaf_bytes);
+    hasher.finalize().into()
+}
+
 /// Computes internal node hash: `SHA-256(0x01 || left_hash || right_hash)`.
 pub fn node_hash(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut hasher = Sha256::new();

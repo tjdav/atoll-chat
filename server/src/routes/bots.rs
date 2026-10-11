@@ -248,6 +248,15 @@ pub async fn create_bot(
         .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
+    crate::key_transparency::append_bot_leaf(
+        &mut tx,
+        &bot_id,
+        &req.bot_identity_pubkey,
+        &req.bot_command_pubkey,
+        &req.identity_pubkey,
+    )
+    .await?;
+
     tx.commit()
         .await
         .map_err(|e| ApiError::Internal(e.into()))?;

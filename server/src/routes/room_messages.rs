@@ -607,8 +607,8 @@ pub async fn edit(
     let response_body = json!({
         "id": result.id,
         "room_id": result.room_id,
-        "sender_type": "user",
-        "sender_id": result.sender_user_id,
+        "sender_type": result.sender_type,
+        "sender_id": result.sender_id,
         "sender_client_id": result.sender_client_id,
         "epoch": result.epoch,
         "seq": result.seq,
@@ -618,8 +618,8 @@ pub async fn edit(
         "target_user_ids": result.target_user_ids,
         "edit_of": result.edit_of,
         "edit_sequence": result.edit_sequence,
-        "bot_key_leaf_index": serde_json::Value::Null,
-        "read_by_count": 0,
+        "bot_key_leaf_index": result.bot_key_leaf_index,
+        "read_by_count": result.read_by_count,
         "created_at": result.created_at.to_rfc3339(),
         "deleted_at": result.deleted_at,
     });

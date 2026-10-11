@@ -1026,7 +1026,7 @@ pub async fn post_bot_message(
     .await
     .map_err(|e| ApiError::Internal(e.into()))?;
 
-    let (bot_pubkey, owner_user_id) = match bot_row {
+    let (bot_pubkey, _owner_user_id) = match bot_row {
         Some(row) => row,
         None => return Err(ApiError::Forbidden("bot_not_granted".into())),
     };
@@ -1103,7 +1103,13 @@ pub async fn post_bot_message(
         }
     }
 
-    // 9. Insert into room_messages table
+    // 9. Lookup current active KT leaf index for bot and insert into room_messages table
+    let leaf_index_opt =
+        crate::key_transparency::current_bot_leaf_index_tx(&mut tx, bot_id).await?;
+    if leaf_index_opt.is_none() {
+        tracing::warn!(bot_id = %bot_id, "bot missing key transparency leaf entry on message insert");
+    }
+
     let message_id = format!("msg_{}", Ulid::new());
     let seq: i64 =
         sqlx::query_scalar("SELECT COALESCE(MAX(seq), 0) + 1 FROM room_messages WHERE room_id = ?")
@@ -1114,14 +1120,15 @@ pub async fn post_bot_message(
 
     let created_at: String = sqlx::query_scalar(
         r#"
-        INSERT INTO room_messages (id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, ciphertext)
-        VALUES (?, ?, ?, 'bot', ?, ?, ?, ?)
+        INSERT INTO room_messages (id, room_id, sender_bot_id, sender_client_id, bot_key_leaf_index, epoch, seq, content_type, ciphertext)
+        VALUES (?, ?, ?, 'bot', ?, ?, ?, ?, ?)
         RETURNING CAST(created_at AS TEXT)
         "#,
     )
     .bind(&message_id)
     .bind(&room_id)
-    .bind(&owner_user_id)
+    .bind(bot_id)
+    .bind(leaf_index_opt)
     .bind(req.epoch)
     .bind(seq)
     .bind(&req.content_type)
@@ -1150,6 +1157,7 @@ pub async fn post_bot_message(
         "epoch": req.epoch,
         "seq": seq,
         "content_type": req.content_type,
+        "bot_key_leaf_index": leaf_index_opt,
         "created_at": created_at,
     });
 

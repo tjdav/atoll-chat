@@ -323,10 +323,16 @@ None.
   - **Contract Highlights:** Implemented `target: "owner"` mode for `POST /bots/me/messages`, validating `result_type` ("local_message" | "toast" | "panel"; rejecting "none"), non-empty base64url `ciphertext` capped at 64 KiB, and 32-byte base64url `bot_result_pubkey`. Enforced per-bot rate limit `RATE_BOT_LOCAL_MESSAGE_PER_MIN` (key `bot_local_message:{bot_id}:min:{boundary}`), idempotency deduplication with `ENDPOINT_BOT_LOCAL_MESSAGE`, owner lookup from `bot_accounts.owner_user_id`, non-durable `bot.local_message` event publication on `private-user-{owner_user_id}` without `user_seq` allocation, HTTP status 204 No Content with `Cache-Control: no-store`, and 7 integration test cases passing under `bots` batch (`make -C server test-bots`).
   - **Batch:** `bots`
 
+- **Bot Command Key KT Integration (Phase 29)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (`key_transparency_log.bot_identity_pubkey` column added; `room_messages` updated with `sender_bot_id` and `bot_key_leaf_index`).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-command-key-kt-integration/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/key_transparency/log.rs`, `server/src/key_transparency/mod.rs`, `server/src/routes/key_transparency.rs`, `server/src/routes/bots.rs`, `server/src/routes/room_bots.rs`, `server/src/room_messages.rs`, `server/src/routes/room_messages.rs`, `server/src/lib.rs`, `server/tests/bot_leaf_index.rs`, `server/tests/kt_bot_endpoints.rs`, `server/tests/batch-manifest.toml`, `verification.md`.
+  - **Contract Highlights:** Implemented `current_bot_leaf_index` and `append_bot_leaf` helpers, wired `append_bot_leaf` into `POST /bots`, implemented `GET /kt/bot/:id` and `GET /kt/bot/:id/history` handlers, populated `bot_key_leaf_index` and `sender_bot_id` on `POST /rooms/:id/bot-messages`, exposed `bot_key_leaf_index`, `sender_type`, and `sender_id` on `GET /rooms/:id/messages` fetch response, and added 4 integration tests across `bot_leaf_index.rs` and `kt_bot_endpoints.rs`. Phase 38 (bot key rotation) is unblocked.
+  - **Batch:** `bots`, `identity`, `messaging`
+
 ## Summary
 - **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 60
-- **Done:** 60
+- **Total Verifications/Tasks Tracked:** 61
+- **Done:** 61
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

@@ -29,7 +29,8 @@ pub struct ListMessagesResult {
 pub struct RoomMessageView {
     pub id: String,
     pub room_id: String,
-    pub sender_user_id: String,
+    pub sender_type: String,
+    pub sender_id: String,
     pub sender_client_id: String,
     pub epoch: i64,
     pub seq: i64,
@@ -38,6 +39,8 @@ pub struct RoomMessageView {
     pub target_user_ids: Option<Vec<String>>,
     pub edit_of: Option<String>,
     pub edit_sequence: i64,
+    pub bot_key_leaf_index: Option<i64>,
+    pub read_by_count: i64,
     pub edited_at: Option<DateTime<Utc>>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -402,7 +405,7 @@ pub async fn list_messages(
         Some(since) => {
             let rows = sqlx::query(
                 r#"
-                    SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, edited_at, deleted_at, created_at
+                    SELECT id, room_id, sender_user_id, sender_bot_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, bot_key_leaf_index, edited_at, deleted_at, created_at
                 FROM room_messages
                 WHERE room_id = ?
                       AND (target_user_ids IS NULL OR sender_user_id = ? OR target_user_ids LIKE ?)
@@ -434,24 +437,36 @@ pub async fn list_messages(
                 .into_iter()
                 .filter_map(|row| {
                     let id: String = row.get("id");
-                    let sender_user_id: String = row.get("sender_user_id");
+                    let sender_user_id: Option<String> = row.get("sender_user_id");
+                    let sender_bot_id: Option<String> = row.get("sender_bot_id");
                     let target_user_ids_raw: Option<String> = row.get("target_user_ids");
                     let target_user_ids: Option<Vec<String>> =
                         target_user_ids_raw.and_then(|s| serde_json::from_str(&s).ok());
 
                     if let Some(ref targets) = target_user_ids {
-                        if sender_user_id != query.requester_id
-                            && !targets.contains(&query.requester_id)
-                        {
+                        let is_sender = match &sender_user_id {
+                            Some(uid) => uid == &query.requester_id,
+                            None => false,
+                        };
+                        if !is_sender && !targets.contains(&query.requester_id) {
                             return None;
                         }
                     }
+
+                    let (sender_type, sender_id) = if let Some(bot_id) = sender_bot_id {
+                        ("bot".to_string(), bot_id)
+                    } else {
+                        ("user".to_string(), sender_user_id.unwrap_or_default())
+                    };
+
+                    let bot_key_leaf_index: Option<i64> = row.get("bot_key_leaf_index");
 
                     let reactions = reactions_map.get(&id).cloned().unwrap_or_default();
                     Some(RoomMessageView {
                         id,
                         room_id: row.get("room_id"),
-                        sender_user_id,
+                        sender_type,
+                        sender_id,
                         sender_client_id: row.get("sender_client_id"),
                         epoch: row.get("epoch"),
                         seq: row.get("seq"),
@@ -460,6 +475,8 @@ pub async fn list_messages(
                         target_user_ids,
                         edit_of: row.get("edit_of"),
                         edit_sequence: row.get("edit_sequence"),
+                        bot_key_leaf_index,
+                        read_by_count: 0,
                         edited_at: row.get("edited_at"),
                         deleted_at: row.get("deleted_at"),
                         created_at: row.get("created_at"),
@@ -477,7 +494,7 @@ pub async fn list_messages(
         None => {
             let rows = sqlx::query(
                 r#"
-                    SELECT id, room_id, sender_user_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, edited_at, deleted_at, created_at
+                    SELECT id, room_id, sender_user_id, sender_bot_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, bot_key_leaf_index, edited_at, deleted_at, created_at
                 FROM room_messages
                 WHERE room_id = ?
                       AND (target_user_ids IS NULL OR sender_user_id = ? OR target_user_ids LIKE ?)
@@ -506,24 +523,36 @@ pub async fn list_messages(
                 .into_iter()
                 .filter_map(|row| {
                     let id: String = row.get("id");
-                    let sender_user_id: String = row.get("sender_user_id");
+                    let sender_user_id: Option<String> = row.get("sender_user_id");
+                    let sender_bot_id: Option<String> = row.get("sender_bot_id");
                     let target_user_ids_raw: Option<String> = row.get("target_user_ids");
                     let target_user_ids: Option<Vec<String>> =
                         target_user_ids_raw.and_then(|s| serde_json::from_str(&s).ok());
 
                     if let Some(ref targets) = target_user_ids {
-                        if sender_user_id != query.requester_id
-                            && !targets.contains(&query.requester_id)
-                        {
+                        let is_sender = match &sender_user_id {
+                            Some(uid) => uid == &query.requester_id,
+                            None => false,
+                        };
+                        if !is_sender && !targets.contains(&query.requester_id) {
                             return None;
                         }
                     }
+
+                    let (sender_type, sender_id) = if let Some(bot_id) = sender_bot_id {
+                        ("bot".to_string(), bot_id)
+                    } else {
+                        ("user".to_string(), sender_user_id.unwrap_or_default())
+                    };
+
+                    let bot_key_leaf_index: Option<i64> = row.get("bot_key_leaf_index");
 
                     let reactions = reactions_map.get(&id).cloned().unwrap_or_default();
                     Some(RoomMessageView {
                         id,
                         room_id: row.get("room_id"),
-                        sender_user_id,
+                        sender_type,
+                        sender_id,
                         sender_client_id: row.get("sender_client_id"),
                         epoch: row.get("epoch"),
                         seq: row.get("seq"),
@@ -532,6 +561,8 @@ pub async fn list_messages(
                         target_user_ids,
                         edit_of: row.get("edit_of"),
                         edit_sequence: row.get("edit_sequence"),
+                        bot_key_leaf_index,
+                        read_by_count: 0,
                         edited_at: row.get("edited_at"),
                         deleted_at: row.get("deleted_at"),
                         created_at: row.get("created_at"),
@@ -813,7 +844,8 @@ pub async fn edit_message(
         Ok(RoomMessageView {
             id: edit_id,
             room_id: req.room_id,
-            sender_user_id: req.requester_user_id,
+            sender_type: "user".to_string(),
+            sender_id: req.requester_user_id,
             sender_client_id: req.requester_client_id,
             epoch: original_epoch,
             seq: 0,
@@ -822,6 +854,8 @@ pub async fn edit_message(
             target_user_ids: orig_target_user_ids,
             edit_of: Some(req.message_id),
             edit_sequence: next_edit_sequence,
+            bot_key_leaf_index: None,
+            read_by_count: 0,
             edited_at: Some(edit_created_at),
             deleted_at: None,
             created_at: edit_created_at,
