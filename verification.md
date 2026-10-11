@@ -115,3 +115,27 @@
     - Writes `bot.declaration_update` audit log entry with metadata `{"bot_id": bot_id, "room_id": null}`.
   - **Opacity & GDPR:** Server never logs declarations content. GDPR export (`build_export`) includes owned bot accounts and declarations in `bot_accounts.json`. Account deletion (`anonymise_user`) cascades owned `bot_accounts` rows.
 - **Link to report:** [verification/bot-declarations/report.md](verification/bot-declarations/report.md)
+
+## Key Transparency Bot Leaf and Bot Endpoints Verification Fact (Phase 16)
+- **ID:** Phase 16 Key Transparency Bot Leaf and Endpoints
+- **Date:** 2026-10-11
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §2.1, §5.22, §7.11, §8.11.2, §8.11.3, §12, §14.2, §14.6; Specification Team Response 2026-10-11 (Amendments A.1 and A.2)
+- **Verified Facts:**
+  - **Schema:**
+    - `key_transparency_log` contains `bot_identity_pubkey TEXT` column, nullable, populated only for bot entries and NULL for user entries per Amendment A.1.
+    - Table enforces XOR `CHECK ((user_id IS NOT NULL AND bot_id IS NULL) OR (user_id IS NULL AND bot_id IS NOT NULL))`.
+  - **Leaf Serialization & Hashing:**
+    - Bot leaf is serialized as `I2OSP(len(bot_identity_pubkey), 2) || bot_identity_pubkey || I2OSP(len(command_pubkey), 2) || command_pubkey || I2OSP(len(identity_pubkey), 2) || identity_pubkey` per Amendment A.2. Length prefixes are 16-bit big-endian unsigned integers.
+    - Bot leaf hash is `SHA-256(0x00 || serialize_bot_leaf(...))`.
+    - User leaf serialization (`I2OSP(len(username_token), 2) || username_token || I2OSP(len(identity_pubkey), 2) || identity_pubkey`) and leaf hash (`SHA-256(0x00 || serialize_leaf(...))`) are unchanged.
+    - Both user and bot leaves share the same Merkle tree construction rules (`0x01` internal node prefix, RFC 6962 split rule) and root hash computation.
+  - **Helper & Bot Creation Wiring:**
+    - `append_bot_leaf(tx, bot_id, bot_identity_pubkey, command_pubkey, identity_pubkey)` allocates an atomic `leaf_index` and inserts a bot leaf row within the caller's transaction `tx`.
+    - `POST /bots` calls `append_bot_leaf` inside its creation transaction. A rollback of bot creation leaves the KT log unchanged.
+  - **Endpoints:**
+    - `GET /api/v1/kt/bot/:id` (§8.11.2) returns the latest leaf for the specified bot (`bot_id`, `leaf_index`, `bot_identity_pubkey`, `bot_command_pubkey`, `identity_pubkey`, `inclusion_proof`, `tree_head`, empty `auditor_signatures`). Requires authentication. Returns `Cache-Control: no-store`. Omits `username_token`. Returns 404 `bot_not_found` if bot leaf missing, or 404 `key_transparency_disabled` if KT disabled.
+    - `GET /api/v1/kt/bot/:id/history` (§8.11.3) returns array of history entries (`leaf_index`, `bot_identity_pubkey`, `bot_command_pubkey`, `identity_pubkey`, `added_at`) ordered by `leaf_index ASC`. Requires authentication. Returns `Cache-Control: no-store`. Does not include inclusion proofs.
+  - **Anonymization:**
+    - `anonymise_user` in `gdpr.rs` explicitly anonymizes bot leaves for owned bots by updating `key_transparency_log.bot_id` to an `anon_<hex>` placeholder and inserting a bot account tombstone before deleting owned bot accounts, preserving leaves in the append-only audit log.
+- **Link to report:** [verification/kt-bot-leaf/report.md](verification/kt-bot-leaf/report.md)

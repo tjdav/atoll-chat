@@ -235,9 +235,10 @@
   - **Delivered:** Step 0 report at `verification/kt-bot-keys/report.md` (including "Amendment Request" section), `server/migrations/0001_v2_schema.sql`, `server/src/routes/key_transparency.rs`, `server/src/routes/mod.rs`, `server/src/lib.rs`, `server/tests/kt_endpoints.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`. Implemented `GET /kt/user/{id}` (omitting `username_token` per §12 and §14.6 with inclusion proof and `Cache-Control: no-store`) and `GET /kt/snapshot` (omitting `signature` per §8.11.3 with `Cache-Control: no-store`). Added 5 test cases in `kt_endpoints.rs`.
   - **Batch:** `identity`
 
-- **Key Transparency bot endpoints and helper**: pending
-  - **Blocked:** Blocked on bot leaf serialization amendment approval by spec owner (see `verification/kt-bot-keys/report.md` §"Amendment Request").
-  - **Scope:** `append_bot_leaf` helper, `GET /kt/bot/:id`, `GET /kt/bot/:id/history`, bot leaf serialization, bot anonymization helper.
+- **Key Transparency Bot Leaf and Bot Endpoints (Phase 16)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Added nullable `bot_identity_pubkey TEXT` column to `key_transparency_log` per Amendment A.1).
+  - **Delivered:** Step 0 report at `verification/kt-bot-leaf/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/key_transparency/merkle.rs`, `server/src/key_transparency/log.rs`, `server/src/key_transparency/snapshot.rs`, `server/src/routes/key_transparency.rs`, `server/src/routes/bots.rs`, `server/src/gdpr.rs`, `server/src/cli.rs`, `server/src/lib.rs`, `server/tests/kt_bot_endpoints.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`. Implemented `serialize_bot_leaf` and `bot_leaf_hash` per Amendment A.2, `append_bot_leaf` transaction helper, wired `append_bot_leaf` into `POST /bots`, implemented `GET /kt/bot/:id` and `GET /kt/bot/:id/history` handlers returning `Cache-Control: no-store` and omitting `username_token`, added GDPR bot leaf anonymization in `gdpr.rs`, and added integration tests in `kt_bot_endpoints.rs`. Unblocks Phase 29.
+  - **Batch:** `identity`
 - **Link Preview Proxy V3 Alignment (Phase 17)**: blocked
   - **Status:** Step 0 Complete — Case B Identified (Specification Error).
   - **Delivered:** `verification/link-preview-proxy-v3/report.md`, `verification.md`, `task-ledger.md`.
