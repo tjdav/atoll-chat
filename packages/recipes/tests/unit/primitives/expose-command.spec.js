@@ -182,3 +182,25 @@ test('the primitive is registered under primitives.bot', async () => {
   assert.ok(Object.hasOwn(primitives.bot, 'watch-pattern'))
   assert.ok(Object.hasOwn(primitives.bot, 'keyed-store'))
 })
+
+test('the handler returns undefined when children return nothing', async () => {
+  const { child } = createRecordingChild()
+  const handler = exposeCommand.create({ name: 'save' }, [child])
+  const result = await handler(createMockCtx(), { args: { url: 'x' } })
+  assert.equal(result, undefined)
+})
+
+test('the handler returns the last child return value', async () => {
+  const first = async () => 'first'
+  const second = async () => ({ type: 'local_message', content: 'hello' })
+  const handler = exposeCommand.create({ name: 'save' }, [first, second])
+  const result = await handler(createMockCtx(), { args: {} })
+  assert.deepEqual(result, { type: 'local_message', content: 'hello' })
+})
+
+test('the handler returns undefined when args is null', async () => {
+  const { child } = createRecordingChild()
+  const handler = exposeCommand.create({ name: 'save' }, [child])
+  const result = await handler(createMockCtx(), { args: null })
+  assert.equal(result, undefined)
+})
