@@ -689,7 +689,168 @@ pub async fn post_bot_messages(
 
     let target_trimmed = req.target.trim();
     if target_trimmed == "owner" {
-        return Err(ApiError::BadRequest("unsupported_target".into()));
+        let result_type_trimmed = req.result_type.trim();
+        if !["local_message", "toast", "panel"].contains(&result_type_trimmed) {
+            return Err(ApiError::BadRequest("invalid_result_type".into()));
+        }
+
+        let ct_str = match req.ciphertext.as_deref() {
+            Some(s) if !s.trim().is_empty() => s.trim(),
+            _ => return Err(ApiError::BadRequest("invalid_ciphertext".into())),
+        };
+
+        let decoded_ct = match URL_SAFE_NO_PAD.decode(ct_str) {
+            Ok(bytes) if !bytes.is_empty() => bytes,
+            _ => return Err(ApiError::BadRequest("invalid_ciphertext".into())),
+        };
+
+        if decoded_ct.len() > 65536 {
+            return Err(ApiError::InternalCustom(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "ciphertext_too_large".into(),
+            ));
+        }
+
+        let pubkey_str = match req.bot_result_pubkey.as_deref() {
+            Some(s) if !s.trim().is_empty() => s.trim(),
+            _ => return Err(ApiError::BadRequest("invalid_bot_result_pubkey".into())),
+        };
+
+        let decoded_pk = match URL_SAFE_NO_PAD.decode(pubkey_str) {
+            Ok(bytes) if bytes.len() == 32 => bytes,
+            _ => return Err(ApiError::BadRequest("invalid_bot_result_pubkey".into())),
+        };
+        let _ = decoded_pk;
+
+        let request_id_trimmed = match req.request_id.as_deref() {
+            Some(s) => {
+                let trimmed = s.trim();
+                if !crate::bots::validate_request_id(trimmed) {
+                    return Err(ApiError::BadRequest("invalid_request_id".into()));
+                }
+                Some(trimmed)
+            }
+            None => None,
+        };
+
+        // Check rate limit per bot BEFORE idempotency reservation
+        let decision = rate_limit::check(
+            &state.pool,
+            &state.config.rate_limits,
+            RateLimitKey::BotLocalMessage {
+                bot_id: bot_ctx.bot_id.clone(),
+            },
+        )
+        .await?;
+
+        if !decision.allowed {
+            return Err(ApiError::TooManyRequests {
+                message: "rate_limited".into(),
+                reset_at: decision.reset_at,
+            });
+        }
+
+        let owner_user_id: String = if let Some(req_id) = request_id_trimmed {
+            let mut tx = state
+                .pool
+                .begin()
+                .await
+                .map_err(|e| ApiError::Internal(e.into()))?;
+
+            let outcome = crate::bots::check_or_reserve_request_id(
+                &mut tx,
+                &bot_ctx.bot_id,
+                req_id,
+                crate::bots::ENDPOINT_BOT_LOCAL_MESSAGE,
+            )
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+            match outcome {
+                crate::bots::IdempotencyOutcome::Duplicate { response_code } => {
+                    let _ = tx.rollback().await;
+                    let status =
+                        StatusCode::from_u16(response_code).unwrap_or(StatusCode::NO_CONTENT);
+                    let mut response = if status == StatusCode::NO_CONTENT {
+                        StatusCode::NO_CONTENT.into_response()
+                    } else {
+                        let resp = json!({ "idempotent": true });
+                        (status, Json(resp)).into_response()
+                    };
+                    response.headers_mut().insert(
+                        header::CACHE_CONTROL,
+                        header::HeaderValue::from_static("no-store"),
+                    );
+                    return Ok(response);
+                }
+                crate::bots::IdempotencyOutcome::Conflict => {
+                    let _ = tx.rollback().await;
+                    return Err(ApiError::Conflict("request_id_conflict".into()));
+                }
+                crate::bots::IdempotencyOutcome::Reserved => {}
+            }
+
+            let owner_res = sqlx::query_scalar::<_, String>(
+                "SELECT owner_user_id FROM bot_accounts WHERE id = ? AND deleted_at IS NULL",
+            )
+            .bind(&bot_ctx.bot_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+            let owner_id = match owner_res {
+                Some(id) => id,
+                None => {
+                    let _ = tx.rollback().await;
+                    return Err(ApiError::NotFound("bot_not_found".into()));
+                }
+            };
+
+            crate::bots::record_response_code(&mut tx, &bot_ctx.bot_id, req_id, 204)
+                .await
+                .map_err(|e| ApiError::Internal(e.into()))?;
+
+            tx.commit()
+                .await
+                .map_err(|e| ApiError::Internal(e.into()))?;
+
+            owner_id
+        } else {
+            let owner_res = sqlx::query_scalar::<_, String>(
+                "SELECT owner_user_id FROM bot_accounts WHERE id = ? AND deleted_at IS NULL",
+            )
+            .bind(&bot_ctx.bot_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+            match owner_res {
+                Some(id) => id,
+                None => return Err(ApiError::NotFound("bot_not_found".into())),
+            }
+        };
+
+        let event_payload = json!({
+            "bot_id": bot_ctx.bot_id,
+            "result_type": result_type_trimmed,
+            "ciphertext": ct_str,
+            "bot_result_pubkey": pubkey_str,
+        });
+
+        let _ = Publisher::publish(
+            &state.publisher,
+            &format!("private-user-{}", owner_user_id),
+            "bot.local_message",
+            event_payload,
+        )
+        .await;
+
+        let mut response = StatusCode::NO_CONTENT.into_response();
+        response.headers_mut().insert(
+            header::CACHE_CONTROL,
+            header::HeaderValue::from_static("no-store"),
+        );
+        return Ok(response);
     }
 
     if target_trimmed != "invoker" {

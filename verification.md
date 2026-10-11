@@ -70,6 +70,18 @@
   - **Cleanup Rule:** 24-hour retention for `bot_request_log` rows via periodic scheduler job.
 - **Link to report:** [verification/bot-request-idempotency/report.md](verification/bot-request-idempotency/report.md)
 
+## Bot Owner Local Messages Verification Fact (Phase 45)
+- **ID:** Phase 45 Bot Owner Local Messages
+- **Date:** 2026-10-10
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §5.6, §6.31, §8.8.12, §8.9, §12
+- **Verified Facts:**
+  - **`POST /bots/me/messages` Owner Target:** Bearer bot token auth required (`validate_bot_token`). Request body `{ target: "owner", result_type: "local_message" | "toast" | "panel", ciphertext: string, bot_result_pubkey: string, request_id?: string }`.
+  - **Validation & Rejections:** `result_type = "none"` or unrecognized `result_type` rejected with 400 `invalid_result_type`. Missing or malformed base64url `ciphertext` rejected with 400 `invalid_ciphertext`. Decoded ciphertext > 64 KiB rejected with 413 `ciphertext_too_large`. Missing or non-32-byte `bot_result_pubkey` rejected with 400 `invalid_bot_result_pubkey`. User session tokens return 401 Unauthorized.
+  - **Rate Limiting & Idempotency:** Enforces `RATE_BOT_LOCAL_MESSAGE_PER_MIN` (default 60) per bot (`bot_local_message:{bot_id}:min:{boundary}`) before idempotency reservation. Deduplication uses `ENDPOINT_BOT_LOCAL_MESSAGE = "bot-local-message"`. Cross-target `request_id` reuse across `invoker` and `owner` targets does not conflict due to distinct endpoint constants. Replays return stored status code 204 No Content without re-publishing events.
+  - **Event Fanout:** Derives owner recipient from `bot_accounts.owner_user_id` where `deleted_at IS NULL`. Publishes non-durable `bot.local_message` event on `private-user-{owner_user_id}` carrying `{ bot_id, result_type, ciphertext, bot_result_pubkey }`. No event published on room or bot channels. Zero `user_seq` allocated.
+  - **Opacity & Logging:** Server treats ciphertext and `bot_result_pubkey` opaquely without logging or ECDH derivation.
+
 ## Bot Declarations Verification Fact (Phase 43)
 - **ID:** Phase 43 Bot Declarations
 - **Date:** 2026-10-10

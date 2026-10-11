@@ -3,6 +3,7 @@ use sqlx::{Row, SqliteConnection};
 pub const ENDPOINT_BOT_MESSAGES: &str = "bot-messages";
 pub const ENDPOINT_BOT_COMMANDS: &str = "bot-commands";
 pub const ENDPOINT_BOT_COMMAND_RESULT: &str = "bot-command-result";
+pub const ENDPOINT_BOT_LOCAL_MESSAGE: &str = "bot-local-message";
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum IdempotencyOutcome {

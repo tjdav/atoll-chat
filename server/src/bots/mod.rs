@@ -10,7 +10,8 @@ pub use connection::BotConnectionState;
 pub use declarations::{validate_declarations_top_level, DECLARATIONS_MAX_BYTES};
 pub use idempotency::{
     check_or_reserve_request_id, record_response_code, validate_request_id, IdempotencyOutcome,
-    ENDPOINT_BOT_COMMANDS, ENDPOINT_BOT_COMMAND_RESULT, ENDPOINT_BOT_MESSAGES,
+    ENDPOINT_BOT_COMMANDS, ENDPOINT_BOT_COMMAND_RESULT, ENDPOINT_BOT_LOCAL_MESSAGE,
+    ENDPOINT_BOT_MESSAGES,
 };
 pub use scopes::{
     derive_mode, is_valid_scope, validate_dependencies, validate_scopes, Mode, ScopeError, SCOPES,
