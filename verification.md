@@ -1,4 +1,25 @@
 
+## Bot Key Rotation Verification Fact (Phase 38)
+- **ID:** Phase 38 Bot Key Rotation
+- **Date:** 2026-10-12
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §5.6, §7.10, §7.11, §8.8.17, §8.9, §8.10, §12, §14.8
+- **Verified Facts:**
+  - **Endpoint Contract (`PATCH /bots/:id/keys`):**
+    - Auth: Bot owner session token or bot token where `bot_token.bot_id == :id`. Unauthenticated requests return 401 Unauthorized; non-owner user session tokens or bot tokens for other bots return 403 Forbidden.
+    - Rate limit: `RATE_BOT_KEY_ROTATE_PER_HOUR` (default 5/hour) enforced per bot with key format `bot_key_rotate:{bot_id}:hour:{boundary}`.
+    - Request payload requires all three public keys (`bot_identity_pubkey`, `bot_command_pubkey`, `identity_pubkey`) as 32-byte base64url strings. Missing any field returns 400 `partial_rotation_not_supported`; malformed/invalid-length base64url returns 400 `invalid_<field>`.
+    - Returns 200 OK with the updated bot record (`BotView` matching `GET /bots/:id` shape, without `bot_token`) and `Cache-Control: no-store`.
+  - **Transaction Atomicity:** `append_bot_leaf`, `bot_accounts` pubkey update, and owner `user_seq` allocation execute within a single SQLite transaction.
+  - **Dual-Channel Publication & Event Durability:**
+    - Non-durable `bot.keys_rotated` event published on `private-bot-{bot_id}` carrying `{ "bot_id": "b_...", "rotated_at": "<ISO 8601 UTC>" }` (without `user_seq`).
+    - Durable `bot.keys_rotated` event published on `private-user-{owner_user_id}` carrying `{ "bot_id": "b_...", "rotated_at": "<ISO 8601 UTC>", "user_seq": N }`.
+  - **Audit Logging:** Writes `bot.key_rotate` audit entry with metadata `{ "bot_id": "...", "room_id": null }` without logging public key values.
+  - **Historical Preservation Rule:** `room_messages.bot_key_leaf_index` on existing historical messages is frozen at creation time and never rewritten. Existing `bot_settings` and `bot_commands` ciphertexts are preserved without re-encryption.
+  - **Signature Verification:** Subsequent messages signed with rotated-out private keys fail verification with 400 `signature_invalid`; messages signed with the new private key succeed against updated `bot_accounts.bot_identity_pubkey`.
+  - **KT History:** `GET /kt/bot/:id` reflects the newly appended leaf as the current entry; `GET /kt/bot/:id/history` lists all historical leaves in ascending order of `leaf_index`.
+- **Link to report:** [verification/bot-key-rotation/report.md](verification/bot-key-rotation/report.md)
+
 ## Link Preview Proxy v3.0.4 Alignment Verification Fact (Phase 17)
 - **ID:** Phase 17 Link Preview Proxy v3.0.4 Alignment
 - **Date:** 2026-10-11

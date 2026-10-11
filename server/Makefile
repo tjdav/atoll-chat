@@ -70,7 +70,7 @@ test-link-preview:
 
 .PHONY: test-bots
 test-bots:
-	$(CARGO) test --test bot_command_results --test bot_commands --test bot_declarations --test bot_local_messages --test bot_request_log --test bot_settings --test bots --test room_bots
+	$(CARGO) test --test bot_command_results --test bot_commands --test bot_declarations --test bot_key_rotation --test bot_local_messages --test bot_request_log --test bot_settings --test bots --test room_bots
 
 .PHONY: test-all
 test-all: check-batches test-identity test-auth test-messaging test-storage test-oprf test-operations test-transport test-sockudo test-push test-sync test-link-preview test-bots

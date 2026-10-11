@@ -43,6 +43,7 @@ pub enum RateLimitKey {
     BotMessage { bot_id: String },
     BotCommandResult { bot_id: String, user_id: String },
     BotLocalMessage { bot_id: String },
+    BotKeyRotate { bot_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -483,6 +484,16 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_bot_local_message_per_min,
+            )
+        }
+        RateLimitKey::BotKeyRotate { bot_id } => {
+            let (start, reset) = compute_window(now, Window::Hour);
+            let boundary = start.format("%Y-%m-%d-%H").to_string();
+            (
+                format!("bot_key_rotate:{bot_id}:hour:{boundary}"),
+                start,
+                reset,
+                config.rate_bot_key_rotate_per_hour,
             )
         }
     };

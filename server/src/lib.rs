@@ -452,6 +452,7 @@ pub fn build_app(state: AppState) -> Router {
                 .patch(routes::bots::patch_bot)
                 .delete(routes::bots::delete_bot),
         )
+        .route("/bots/{id}/keys", patch(routes::bots::rotate_bot_keys))
         .route("/bots/{id}/tokens", post(routes::bots::create_token))
         .route(
             "/bots/{id}/tokens/{token_id}",

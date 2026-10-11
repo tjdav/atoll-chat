@@ -1439,6 +1439,178 @@ pub async fn create_token(
     Ok(response)
 }
 
+#[derive(Deserialize)]
+pub struct RotateBotKeysReq {
+    pub bot_identity_pubkey: Option<String>,
+    pub bot_command_pubkey: Option<String>,
+    pub identity_pubkey: Option<String>,
+}
+
+pub async fn rotate_bot_keys(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(bot_id): Path<String>,
+    Json(req): Json<RotateBotKeysReq>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+
+    let row =
+        sqlx::query("SELECT owner_user_id FROM bot_accounts WHERE id = ? AND deleted_at IS NULL")
+            .bind(&bot_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Err(ApiError::NotFound("bot_not_found".into())),
+    };
+
+    let owner_user_id: String = row.get("owner_user_id");
+    if !caller.is_owner_or_bot(&bot_id, &owner_user_id) {
+        return Err(ApiError::Forbidden("forbidden".into()));
+    }
+
+    let bot_identity_pubkey = match req.bot_identity_pubkey {
+        Some(s) => s,
+        None => {
+            return Err(ApiError::BadRequest(
+                "partial_rotation_not_supported".into(),
+            ))
+        }
+    };
+    let bot_command_pubkey = match req.bot_command_pubkey {
+        Some(s) => s,
+        None => {
+            return Err(ApiError::BadRequest(
+                "partial_rotation_not_supported".into(),
+            ))
+        }
+    };
+    let identity_pubkey = match req.identity_pubkey {
+        Some(s) => s,
+        None => {
+            return Err(ApiError::BadRequest(
+                "partial_rotation_not_supported".into(),
+            ))
+        }
+    };
+
+    if !validate_pubkey_32(&bot_identity_pubkey) {
+        return Err(ApiError::BadRequest("invalid_bot_identity_pubkey".into()));
+    }
+    if !validate_pubkey_32(&bot_command_pubkey) {
+        return Err(ApiError::BadRequest("invalid_bot_command_pubkey".into()));
+    }
+    if !validate_pubkey_32(&identity_pubkey) {
+        return Err(ApiError::BadRequest("invalid_identity_pubkey".into()));
+    }
+
+    // Rate limit check
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::BotKeyRotate {
+            bot_id: bot_id.clone(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    crate::key_transparency::append_bot_leaf(
+        &mut tx,
+        &bot_id,
+        &bot_identity_pubkey,
+        &bot_command_pubkey,
+        &identity_pubkey,
+    )
+    .await?;
+
+    sqlx::query(
+        r#"
+        UPDATE bot_accounts
+        SET bot_identity_pubkey = ?,
+            bot_command_pubkey = ?,
+            identity_pubkey = ?
+        WHERE id = ? AND deleted_at IS NULL
+        "#,
+    )
+    .bind(&bot_identity_pubkey)
+    .bind(&bot_command_pubkey)
+    .bind(&identity_pubkey)
+    .bind(&bot_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let user_seq = allocate_user_seq(&mut tx, &owner_user_id)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let rotated_at = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
+    let bot_event = json!({
+        "bot_id": bot_id,
+        "rotated_at": rotated_at
+    });
+    let _ = Publisher::publish(
+        &state.publisher,
+        &format!("private-bot-{}", bot_id),
+        "bot.keys_rotated",
+        bot_event,
+    )
+    .await;
+
+    let user_event = json!({
+        "bot_id": bot_id,
+        "rotated_at": rotated_at,
+        "user_seq": user_seq
+    });
+    let _ = Publisher::publish(
+        &state.publisher,
+        &format!("private-user-{}", owner_user_id),
+        "bot.keys_rotated",
+        user_event,
+    )
+    .await;
+
+    let caller_id = match &caller {
+        CallerIdentity::User(u) => Some(u.user_id.as_str()),
+        CallerIdentity::Bot(b) => Some(b.owner_user_id.as_str()),
+    };
+
+    let _ = crate::audit::log(
+        &state.pool,
+        caller_id,
+        crate::audit::action::BOT_KEY_ROTATE,
+        Some("bot"),
+        Some(&bot_id),
+        Some(json!({
+            "bot_id": bot_id,
+            "room_id": serde_json::Value::Null
+        })),
+    )
+    .await;
+
+    get_bot(State(state), headers, Path(bot_id)).await
+}
+
 pub async fn delete_token(
     State(state): State<AppState>,
     headers: HeaderMap,

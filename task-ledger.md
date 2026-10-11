@@ -329,10 +329,16 @@ None.
   - **Contract Highlights:** Implemented `current_bot_leaf_index` and `append_bot_leaf` helpers, wired `append_bot_leaf` into `POST /bots`, implemented `GET /kt/bot/:id` and `GET /kt/bot/:id/history` handlers, populated `bot_key_leaf_index` and `sender_bot_id` on `POST /rooms/:id/bot-messages`, exposed `bot_key_leaf_index`, `sender_type`, and `sender_id` on `GET /rooms/:id/messages` fetch response, and added 4 integration tests across `bot_leaf_index.rs` and `kt_bot_endpoints.rs`. Phase 38 (bot key rotation) is unblocked.
   - **Batch:** `bots`, `identity`, `messaging`
 
+- **Bot Key Rotation (Phase 38)**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-key-rotation/report.md`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/audit.rs`, `server/src/routes/bots.rs`, `server/src/lib.rs`, `server/tests/bot_key_rotation.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `verification.md`.
+  - **Contract Highlights:** Implemented `PATCH /bots/:id/keys` handler matching §8.8.17 (owner session or bot token auth), `RateLimitKey::BotKeyRotate` rate limit (default 5/hour), requirement for all three 32-byte base64url keys, atomic transaction for KT leaf insertion via `append_bot_leaf`, `bot_accounts` pubkey update, and owner `user_seq` allocation, non-durable `bot.keys_rotated` event on bot channel and durable `bot.keys_rotated` event on user channel, `bot.key_rotate` audit logging without pubkey values, historical preservation of message `bot_key_leaf_index` and encrypted settings/commands, and 5 integration test cases passing under `bots` batch (`make -C server test-bots`).
+  - **Batch:** `bots`
+
 ## Summary
 - **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 61
-- **Done:** 61
+- **Total Verifications/Tasks Tracked:** 62
+- **Done:** 62
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0
