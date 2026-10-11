@@ -183,6 +183,16 @@
  *   `{ valid: false, reason }` to reject it.
  */
 
+/**
+ * A rate limiter tracks a fixed-window counter per opaque key.
+ * @typedef {object} RateLimiter
+ * @property {(key: string) => { allowed: boolean, remaining: number, retryAfterMs: number }} check -
+ *   Records a request against a key and returns the decision.
+ * @property {() => number} size - The number of active buckets.
+ * @property {() => void} clear - Removes all buckets.
+ * @property {() => void} sweep - Removes expired buckets.
+ */
+
 /* Instantiation and output */
 
 /**
