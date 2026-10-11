@@ -135,3 +135,63 @@ test('the primitive is registered under primitives.bot', async () => {
   assert.equal(getPrimitive('bot', 'post-response'), postResponse)
   assert.ok(Object.hasOwn(primitives.bot, 'post-response'))
 })
+
+test('handler substitutes a single-token template in text', async () => {
+  const handler = postResponse.create({ text: '{{match}}' })
+  const { ctx, calls } = createMockCtx('r_1')
+  await handler(ctx, { match: 'https://example.com' })
+  assert.equal(calls[0].text, 'https://example.com')
+})
+
+test('handler substitutes a mixed template in text', async () => {
+  const handler = postResponse.create({ text: 'Found: {{match}}' })
+  const { ctx, calls } = createMockCtx('r_1')
+  await handler(ctx, { match: 'hello' })
+  assert.equal(calls[0].text, 'Found: hello')
+})
+
+test('handler substitutes a nested path in text', async () => {
+  const handler = postResponse.create({ text: '{{args.question}}' })
+  const { ctx, calls } = createMockCtx('r_1')
+  await handler(ctx, { args: { question: 'why?' } })
+  assert.equal(calls[0].text, 'why?')
+})
+
+test('handler substitutes a single-token template in roomId', async () => {
+  const handler = postResponse.create({ text: 'hi', roomId: '{{targetRoom}}' })
+  const { ctx, calls } = createMockCtx('r_1')
+  await handler(ctx, { targetRoom: 'r_2' })
+  assert.equal(calls[0].roomId, 'r_2')
+})
+
+test('handler substitutes a mixed template in roomId', async () => {
+  const handler = postResponse.create({ text: 'hi', roomId: 'room-{{id}}' })
+  const { ctx, calls } = createMockCtx('r_1')
+  await handler(ctx, { id: 'abc' })
+  assert.equal(calls[0].roomId, 'room-abc')
+})
+
+test('handler throws when resolved text is empty', async () => {
+  const handler = postResponse.create({ text: '{{value}}' })
+  const { ctx } = createMockCtx('r_1')
+  await assert.rejects(
+    () => handler(ctx, { value: '' }),
+    /resolved text is empty/
+  )
+})
+
+test('handler throws when a template path is unresolvable', async () => {
+  const handler = postResponse.create({ text: '{{missing}}' })
+  const { ctx } = createMockCtx('r_1')
+  await assert.rejects(
+    () => handler(ctx, {}),
+    /path "missing" is not resolvable/
+  )
+})
+
+test('handler still works when input is undefined', async () => {
+  const handler = postResponse.create({ text: 'plain text' })
+  const { ctx, calls } = createMockCtx('r_1')
+  await handler(ctx)
+  assert.equal(calls[0].text, 'plain text')
+})

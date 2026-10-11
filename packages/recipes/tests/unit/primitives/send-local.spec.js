@@ -97,3 +97,49 @@ test('the primitive is registered under primitives.bot', async () => {
   assert.ok(Object.hasOwn(primitives.bot, 'send-local'))
   assert.ok(Object.hasOwn(primitives.bot, 'post-response'))
 })
+
+test('handler substitutes a single-token template in text', async () => {
+  const handler = sendLocal.create({ text: '{{match}}' })
+  const { ctx, calls } = createMockCtx()
+  await handler(ctx, { match: 'hello' })
+  assert.equal(calls[0].text, 'hello')
+})
+
+test('handler substitutes a mixed template in text', async () => {
+  const handler = sendLocal.create({ text: 'Value: {{match}}' })
+  const { ctx, calls } = createMockCtx()
+  await handler(ctx, { match: 'x' })
+  assert.equal(calls[0].text, 'Value: x')
+})
+
+test('handler substitutes a nested path in text', async () => {
+  const handler = sendLocal.create({ text: '{{args.message}}' })
+  const { ctx, calls } = createMockCtx()
+  await handler(ctx, { args: { message: 'private' } })
+  assert.equal(calls[0].text, 'private')
+})
+
+test('handler throws when resolved text is empty', async () => {
+  const handler = sendLocal.create({ text: '{{value}}' })
+  const { ctx } = createMockCtx()
+  await assert.rejects(
+    () => handler(ctx, { value: '' }),
+    /resolved text is empty/
+  )
+})
+
+test('handler throws when a template path is unresolvable', async () => {
+  const handler = sendLocal.create({ text: '{{missing}}' })
+  const { ctx } = createMockCtx()
+  await assert.rejects(
+    () => handler(ctx, {}),
+    /path "missing" is not resolvable/
+  )
+})
+
+test('handler still works when input is undefined', async () => {
+  const handler = sendLocal.create({ text: 'plain' })
+  const { ctx, calls } = createMockCtx()
+  await handler(ctx)
+  assert.equal(calls[0].text, 'plain')
+})
