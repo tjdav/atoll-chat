@@ -110,7 +110,7 @@ async fn create_room(app: &Router, token: &str) -> String {
 async fn test_message_edit_window_validation() {
     let (app, pool, _) = setup_test_app_with_config(true, "auto", 100).await;
 
-    // Mutate edit_window_seconds on instance_config if needed, or query room_messages
+    // Mutate edit_window_seconds on server_config if needed, or query room_messages
     let (_user_id, token, client_id) = create_test_user_with_device(&app, &pool, "ev1").await;
     let room_id = create_room(&app, &token).await;
 

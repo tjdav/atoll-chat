@@ -245,9 +245,9 @@ async fn hmac_secret_persisted_in_instance_config() {
     let altcha_config1 = AltchaConfig::from_env(&config, &pool).await.unwrap();
     assert!(!altcha_config1.hmac_secret.is_empty());
 
-    // Query instance_config table directly
+    // Query server_config table directly
     let saved_secret: String =
-        sqlx::query_scalar("SELECT value FROM instance_config WHERE key = 'altcha_hmac_secret'")
+        sqlx::query_scalar("SELECT value FROM server_config WHERE key = 'altcha_hmac_secret'")
             .fetch_one(&pool)
             .await
             .unwrap();

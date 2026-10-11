@@ -87,11 +87,39 @@ async fn test_vapid_rotation_revokes_subscriptions() {
 }
 
 #[tokio::test]
+async fn test_server_config_show_cli() {
+    let tmp = tempfile::NamedTempFile::new().unwrap();
+    let db_path = tmp.path().to_str().unwrap().to_string();
+
+    std::env::set_var("APP_ENV", "development");
+    std::env::set_var("DB_PATH", &db_path);
+    std::env::set_var("MODEL_HOSTING_ENABLED", "false");
+
+    let config = server::Config::from_env().unwrap();
+    let pool = server::db::init_pool(&config).await.unwrap();
+
+    // Ensure server_config has a public and secret key
+    sqlx::query("INSERT INTO server_config (key, value, is_secret) VALUES ('test_pub', 'public_val', 0) ON CONFLICT(key) DO UPDATE SET value='public_val'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    sqlx::query("INSERT INTO server_config (key, value, is_secret) VALUES ('test_secret', 'secret_val', 1) ON CONFLICT(key) DO UPDATE SET value='secret_val'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Call run_config_show
+    let res = server::cli::run_config_show().await;
+    assert!(res.is_ok(), "run_config_show failed: {:?}", res);
+}
+
+#[tokio::test]
 async fn test_altcha_rotation() {
     let (_, pool) = setup_test_app().await;
 
     let secret_before: String =
-        sqlx::query_scalar("SELECT value FROM instance_config WHERE key = 'altcha_hmac_secret'")
+        sqlx::query_scalar("SELECT value FROM server_config WHERE key = 'altcha_hmac_secret'")
             .fetch_one(&pool)
             .await
             .unwrap();
@@ -101,7 +129,7 @@ async fn test_altcha_rotation() {
         .unwrap();
 
     let secret_after: String =
-        sqlx::query_scalar("SELECT value FROM instance_config WHERE key = 'altcha_hmac_secret'")
+        sqlx::query_scalar("SELECT value FROM server_config WHERE key = 'altcha_hmac_secret'")
             .fetch_one(&pool)
             .await
             .unwrap();

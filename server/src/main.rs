@@ -139,6 +139,15 @@ async fn main() -> anyhow::Result<()> {
                 }
             },
         },
+        Command::Config { command } => match command {
+            server::cli::ConfigCommand::Show => {
+                if let Err(e) = server::cli::run_config_show().await {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
+                return Ok(());
+            }
+        },
         Command::SessionTypes { command } => match command {
             server::cli::SessionTypesCommand::Validate { path } => {
                 match server::cli::run_session_types_validate(path) {

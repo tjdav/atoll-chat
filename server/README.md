@@ -147,7 +147,7 @@ ALTCHA is a privacy-friendly, self-hosted Proof-of-Work (PoW) CAPTCHA alternativ
 | Variable | Description | Default |
 | --- | --- | --- |
 | `ALTCHA_ENABLED` | Enable or disable ALTCHA protection for registration endpoints. | `true` |
-| `ALTCHA_HMAC_SECRET` | Secret key used to sign and verify ALTCHA challenges. Set to `auto` to generate and persist a 32-byte secret in `instance_config`. | `auto` |
+| `ALTCHA_HMAC_SECRET` | Secret key used to sign and verify ALTCHA challenges. Set to `auto` to generate and persist a 32-byte secret in `server_config`. | `auto` |
 | `ALTCHA_ALGORITHM` | PoW hash algorithm used for challenge derivation. | `PBKDF2/SHA-256` |
 | `ALTCHA_COST` | PoW difficulty cost (number of iterations). | `5000` |
 
@@ -423,7 +423,7 @@ Administrative configuration and limit management endpoints are guarded by the `
 
 ### Instance Config
 
-Instance runtime configuration is stored as key-value pairs in the `instance_config` table.
+Instance runtime configuration is stored as key-value pairs in the `server_config` table.
 
 #### Key Categories
 
@@ -708,7 +708,7 @@ Room creation and membership enforcement respects instance limits and server har
 
 ### Moderation
 
-Phase 7b adds moderation capabilities governed by instance-wide configuration (`moderation_mode` in `instance_config`):
+Phase 7b adds moderation capabilities governed by instance-wide configuration (`moderation_mode` in `server_config`):
 
 - **Messenger mode (default)**: Only room owners can kick members. Moderators cannot exist, and promotion/demotion endpoints return 409 (`moderation_disabled`).
 - **Discord mode**: Room owners can promote members to moderators and demote moderators to members. Both owners and moderators can kick members.
@@ -914,7 +914,7 @@ Phase 11 integrates Sockudo for push-based real-time event delivery and exposes 
 ### Overview & Pusher Protocol
 
 - **Protocol**: Clients connect directly to Sockudo via WebSocket using the Pusher protocol.
-- **App Credentials**: On first startup with default settings (`SOCKUDO_APP_KEY=auto`, `SOCKUDO_APP_SECRET=auto`), the server generates 24-byte random app keys and 32-byte random secrets, persisting them in `instance_config`. External credentials can be provided via environment variables.
+- **App Credentials**: On first startup with default settings (`SOCKUDO_APP_KEY=auto`, `SOCKUDO_APP_SECRET=auto`), the server generates 24-byte random app keys and 32-byte random secrets, persisting them in `server_config`. External credentials can be provided via environment variables.
 - **Private Channels**: Public channels are not used. All room channels follow the naming convention `private-room-<room_id>`.
 
 ### Channel Authentication (`POST /api/v1/sockudo/auth`)

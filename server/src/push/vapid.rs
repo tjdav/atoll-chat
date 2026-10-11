@@ -89,19 +89,19 @@ impl VapidKeys {
         }
 
         let existing_pub: Option<String> = sqlx::query_scalar(
-            "SELECT value FROM instance_config WHERE key = 'push_vapid_public_key'",
+            "SELECT value FROM server_config WHERE key = 'push_vapid_public_key'",
         )
         .fetch_optional(pool)
         .await?;
 
         let existing_priv: Option<String> = sqlx::query_scalar(
-            "SELECT value FROM instance_config WHERE key = 'push_vapid_private_key'",
+            "SELECT value FROM server_config WHERE key = 'push_vapid_private_key'",
         )
         .fetch_optional(pool)
         .await?;
 
         if let (Some(pub_k), Some(priv_k)) = (existing_pub, existing_priv) {
-            info!("push: loaded VAPID keys from instance_config");
+            info!("push: loaded VAPID keys from server_config");
             return Ok(Some(VapidKeys {
                 public_key: pub_k,
                 private_key: priv_k,
@@ -120,9 +120,9 @@ impl VapidKeys {
 
         sqlx::query(
             r#"
-            INSERT INTO instance_config (key, value, updated_at)
-            VALUES ('push_vapid_public_key', ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+            INSERT INTO server_config (key, value, is_secret)
+            VALUES ('push_vapid_public_key', ?, 0)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
             "#,
         )
         .bind(&public_b64)
@@ -131,9 +131,9 @@ impl VapidKeys {
 
         sqlx::query(
             r#"
-            INSERT INTO instance_config (key, value, updated_at)
-            VALUES ('push_vapid_private_key', ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+            INSERT INTO server_config (key, value, is_secret)
+            VALUES ('push_vapid_private_key', ?, 1)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
             "#,
         )
         .bind(&private_b64)
@@ -172,9 +172,9 @@ pub async fn rotate_vapid_keys(
 
     sqlx::query(
         r#"
-        INSERT INTO instance_config (key, value, updated_at)
-        VALUES ('push_vapid_public_key', ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        INSERT INTO server_config (key, value, is_secret)
+        VALUES ('push_vapid_public_key', ?, 0)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
         "#,
     )
     .bind(&public_b64)
@@ -183,9 +183,9 @@ pub async fn rotate_vapid_keys(
 
     sqlx::query(
         r#"
-        INSERT INTO instance_config (key, value, updated_at)
-        VALUES ('push_vapid_private_key', ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        INSERT INTO server_config (key, value, is_secret)
+        VALUES ('push_vapid_private_key', ?, 1)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
         "#,
     )
     .bind(&private_b64)
