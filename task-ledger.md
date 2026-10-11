@@ -310,10 +310,16 @@ None.
   - **Contract Highlights:** Implemented `validate_declarations_top_level` (validating schema_version 1, commands array, settings array, 256 KiB size cap, and opaque contents), `POST /bots` acceptance and storage of declarations, `GET /bots/:id` declarations response, `PATCH /bots/:id` with tri-state `double_option` deserialization, no-op guard, event publishing with `changed: ["commands"]` on `private-bot-{bot_id}` and granted room channels, `bot.declaration_update` audit logging without declarations contents, GDPR export inclusion in `bot_accounts.json`, and 3 integration tests passing under `bots` batch (`make -C server test-bots`).
   - **Batch:** `bots`
 
+- **Bot Command Results (Phase 44)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Extended `bot_commands` table with `ephemeral_result_pubkey BLOB NOT NULL`, `result_at DATETIME`, `result_type TEXT`).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-command-results/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/bots/idempotency.rs`, `server/src/bots/mod.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/routes/room_bots.rs`, `server/src/routes/bots.rs`, `server/src/lib.rs`, `server/tests/bot_command_results.rs`, `server/tests/bot_commands.rs`, `server/tests/bot_request_log.rs`, `server/tests/batch-manifest.toml`, `verification.md`.
+  - **Contract Highlights:** Updated `POST /rooms/:id/bot-commands` to accept, validate, and store 32-byte `ephemeral_result_pubkey` and include it in `bot.command_invoked` event. Implemented `POST /bots/me/messages` for `target: "invoker"` with command validation (`command_not_found`, `forbidden`, `target_mismatch`, `command_not_acked`, `command_result_already_delivered`), `RATE_BOT_COMMAND_RESULT_PER_MIN` rate limiting, idempotency deduplication with `ENDPOINT_BOT_COMMAND_RESULT`, non-durable `bot.command_result` event publication on `private-user-{sender_user_id}`, short-circuiting for `result_type = "none"`, and 4 integration test cases passing under `bots` batch (`make -C server test-bots`).
+  - **Batch:** `bots`
+
 ## Summary
 - **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 58
-- **Done:** 58
+- **Total Verifications/Tasks Tracked:** 59
+- **Done:** 59
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

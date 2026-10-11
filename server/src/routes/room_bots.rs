@@ -625,6 +625,7 @@ pub async fn delete_room_bot(
 pub struct PostBotCommandReq {
     pub bot_id: String,
     pub ciphertext: String,
+    pub ephemeral_result_pubkey: Option<String>,
     pub request_id: Option<String>,
 }
 
@@ -689,7 +690,32 @@ pub async fn post_bot_command(
         return Err(ApiError::Forbidden("bot_not_granted".into()));
     }
 
-    // 3. Validate ciphertext
+    // 3. Validate ephemeral_result_pubkey (unpadded base64url, exactly 32 bytes)
+    let erpk_trimmed = match req.ephemeral_result_pubkey.as_deref() {
+        Some(s) if !s.trim().is_empty() => s.trim(),
+        _ => {
+            return Err(ApiError::BadRequest(
+                "invalid_ephemeral_result_pubkey".into(),
+            ))
+        }
+    };
+
+    let decoded_erpk = match URL_SAFE_NO_PAD.decode(erpk_trimmed) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            return Err(ApiError::BadRequest(
+                "invalid_ephemeral_result_pubkey".into(),
+            ))
+        }
+    };
+
+    if decoded_erpk.len() != 32 {
+        return Err(ApiError::BadRequest(
+            "invalid_ephemeral_result_pubkey".into(),
+        ));
+    }
+
+    // 4. Validate ciphertext
     let ciphertext_trimmed = req.ciphertext.trim();
     if ciphertext_trimmed.is_empty() {
         return Err(ApiError::BadRequest("invalid_ciphertext".into()));
@@ -711,7 +737,7 @@ pub async fn post_bot_command(
         ));
     }
 
-    // 4. Validate request_id if present
+    // 5. Validate request_id if present
     let request_id_trimmed = match req.request_id.as_deref() {
         Some(s) => {
             let trimmed = s.trim();
@@ -815,8 +841,8 @@ pub async fn post_bot_command(
     let command_id = format!("cmd_{}", Ulid::new());
     let created_at: String = sqlx::query_scalar(
         r#"
-        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext, ephemeral_result_pubkey)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         RETURNING CAST(created_at AS TEXT)
         "#,
     )
@@ -826,6 +852,7 @@ pub async fn post_bot_command(
     .bind(&auth_user.user_id)
     .bind(&sender_client_id)
     .bind(&decoded_ciphertext)
+    .bind(&decoded_erpk)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError::Internal(e.into()))?;
@@ -847,6 +874,7 @@ pub async fn post_bot_command(
         "sender_user_id": auth_user.user_id,
         "sender_client_id": sender_client_id,
         "ciphertext": ciphertext_trimmed,
+        "ephemeral_result_pubkey": erpk_trimmed,
     });
 
     let publish_res = Publisher::publish(

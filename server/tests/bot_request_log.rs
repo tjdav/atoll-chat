@@ -409,6 +409,7 @@ async fn test_bot_command_idempotency_flow() {
             json!({
                 "bot_id": bot_id,
                 "ciphertext": ciphertext_b64,
+                "ephemeral_result_pubkey": valid_pubkey(1),
             })
             .to_string(),
         ))
@@ -437,6 +438,7 @@ async fn test_bot_command_idempotency_flow() {
             json!({
                 "bot_id": bot_id,
                 "ciphertext": ciphertext_b64,
+                "ephemeral_result_pubkey": valid_pubkey(1),
                 "request_id": req_id_1,
             })
             .to_string(),
@@ -463,6 +465,7 @@ async fn test_bot_command_idempotency_flow() {
             json!({
                 "bot_id": bot_id,
                 "ciphertext": ciphertext_b64,
+                "ephemeral_result_pubkey": valid_pubkey(1),
                 "request_id": req_id_1,
             })
             .to_string(),
@@ -540,6 +543,7 @@ async fn test_cross_endpoint_request_id_conflict() {
             json!({
                 "bot_id": bot_id,
                 "ciphertext": ciphertext_b64,
+                "ephemeral_result_pubkey": valid_pubkey(1),
                 "request_id": shared_req_id,
             })
             .to_string(),
@@ -583,6 +587,7 @@ async fn test_invalid_request_id_format() {
             json!({
                 "bot_id": bot_id,
                 "ciphertext": ciphertext_b64,
+                "ephemeral_result_pubkey": valid_pubkey(1),
                 "request_id": "   ",
             })
             .to_string(),
@@ -610,6 +615,7 @@ async fn test_invalid_request_id_format() {
             json!({
                 "bot_id": bot_id,
                 "ciphertext": ciphertext_b64,
+                "ephemeral_result_pubkey": valid_pubkey(1),
                 "request_id": long_req_id,
             })
             .to_string(),

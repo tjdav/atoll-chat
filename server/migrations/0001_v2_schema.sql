@@ -552,16 +552,19 @@ CREATE TABLE IF NOT EXISTS bot_settings (
 CREATE INDEX IF NOT EXISTS idx_bot_settings_seq ON bot_settings(user_seq);
 
 CREATE TABLE IF NOT EXISTS bot_commands (
-    id               TEXT PRIMARY KEY,
-    bot_id           TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
-    room_id          TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-    sender_user_id   TEXT NOT NULL REFERENCES users(id),
-    sender_client_id TEXT NOT NULL,
-    ciphertext       BLOB NOT NULL,
-    created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    delivered_at     DATETIME,
-    acked_at         DATETIME,
-    expired_at       DATETIME
+    id                        TEXT PRIMARY KEY,
+    bot_id                    TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    room_id                   TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    sender_user_id            TEXT NOT NULL REFERENCES users(id),
+    sender_client_id          TEXT NOT NULL,
+    ciphertext                BLOB NOT NULL,
+    ephemeral_result_pubkey   BLOB NOT NULL,
+    created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    delivered_at              DATETIME,
+    acked_at                  DATETIME,
+    expired_at                DATETIME,
+    result_at                 DATETIME,
+    result_type               TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_bot_commands_pending
     ON bot_commands(bot_id, acked_at)

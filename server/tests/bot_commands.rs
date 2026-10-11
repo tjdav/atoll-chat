@@ -257,6 +257,7 @@ async fn test_post_bot_command_happy_path() {
     let payload = json!({
         "bot_id": bot_id,
         "ciphertext": URL_SAFE_NO_PAD.encode(b"command_payload_raw_bytes"),
+        "ephemeral_result_pubkey": valid_pubkey(),
         "request_id": "req_corr_123"
     });
 
@@ -286,9 +287,10 @@ async fn test_post_bot_command_happy_path() {
     assert!(body_json["created_at"].is_string());
 
     // Verify row in DB
-    let row: (String, String, String, Vec<u8>, Option<String>, Option<String>) = sqlx::query_as(
+    #[allow(clippy::type_complexity)]
+    let row: (String, String, String, Vec<u8>, Vec<u8>, Option<String>, Option<String>) = sqlx::query_as(
         r#"
-        SELECT bot_id, room_id, sender_user_id, ciphertext, CAST(delivered_at AS TEXT), CAST(acked_at AS TEXT)
+        SELECT bot_id, room_id, sender_user_id, ciphertext, ephemeral_result_pubkey, CAST(delivered_at AS TEXT), CAST(acked_at AS TEXT)
         FROM bot_commands WHERE id = ?
         "#,
     )
@@ -301,8 +303,9 @@ async fn test_post_bot_command_happy_path() {
     assert_eq!(row.1, room_id);
     assert_eq!(row.2, user1_id);
     assert_eq!(row.3, b"command_payload_raw_bytes");
-    assert!(row.4.is_some(), "delivered_at must be set after publish");
-    assert!(row.5.is_none(), "acked_at must initially be null");
+    assert_eq!(row.4, URL_SAFE_NO_PAD.decode(valid_pubkey()).unwrap());
+    assert!(row.5.is_some(), "delivered_at must be set after publish");
+    assert!(row.6.is_none(), "acked_at must initially be null");
 
     // Verify event payload received by mock server
     let requests = mock_server.received_requests().await.unwrap();
@@ -329,6 +332,7 @@ async fn test_post_bot_command_happy_path() {
         inner_data["ciphertext"],
         URL_SAFE_NO_PAD.encode(b"command_payload_raw_bytes")
     );
+    assert_eq!(inner_data["ephemeral_result_pubkey"], valid_pubkey());
     assert!(
         inner_data.get("command_name").is_none(),
         "command_name MUST NOT be in event payload"
@@ -348,6 +352,7 @@ async fn test_post_bot_command_validation_and_scopes() {
         create_bot_and_token(&app, &token1, &room_id, &["post_message"]).await;
 
     let valid_ciphertext = URL_SAFE_NO_PAD.encode(b"cmd");
+    let valid_erpk = valid_pubkey();
 
     // 1. Bot without read_commands scope returns 403 bot_not_granted
     let req = Request::builder()
@@ -359,6 +364,7 @@ async fn test_post_bot_command_validation_and_scopes() {
             json!({
                 "bot_id": bot2_id,
                 "ciphertext": valid_ciphertext,
+                "ephemeral_result_pubkey": valid_erpk,
                 "request_id": "req_1"
             })
             .to_string(),
@@ -377,6 +383,7 @@ async fn test_post_bot_command_validation_and_scopes() {
             json!({
                 "bot_id": bot1_id,
                 "ciphertext": valid_ciphertext,
+                "ephemeral_result_pubkey": valid_erpk,
                 "request_id": "req_1"
             })
             .to_string(),
@@ -395,6 +402,7 @@ async fn test_post_bot_command_validation_and_scopes() {
             json!({
                 "bot_id": bot1_id,
                 "ciphertext": valid_ciphertext,
+                "ephemeral_result_pubkey": valid_erpk,
                 "request_id": "req_1"
             })
             .to_string(),
@@ -413,6 +421,7 @@ async fn test_post_bot_command_validation_and_scopes() {
             json!({
                 "bot_id": bot1_id,
                 "ciphertext": "NOT_BASE64_!!!",
+                "ephemeral_result_pubkey": valid_erpk,
                 "request_id": "req_1"
             })
             .to_string(),
@@ -431,6 +440,7 @@ async fn test_post_bot_command_validation_and_scopes() {
             json!({
                 "bot_id": bot1_id,
                 "ciphertext": "",
+                "ephemeral_result_pubkey": valid_erpk,
                 "request_id": "req_1"
             })
             .to_string(),
@@ -450,6 +460,7 @@ async fn test_post_bot_command_validation_and_scopes() {
             json!({
                 "bot_id": bot1_id,
                 "ciphertext": oversized,
+                "ephemeral_result_pubkey": valid_erpk,
                 "request_id": "req_1"
             })
             .to_string(),
@@ -468,7 +479,43 @@ async fn test_post_bot_command_validation_and_scopes() {
             json!({
                 "bot_id": bot1_id,
                 "ciphertext": valid_ciphertext,
+                "ephemeral_result_pubkey": valid_erpk,
                 "request_id": ""
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    // 8. Missing ephemeral_result_pubkey returns 400
+    let req = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/bot-commands", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token1))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "bot_id": bot1_id,
+                "ciphertext": valid_ciphertext
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+
+    // 9. Non-32-byte ephemeral_result_pubkey returns 400 invalid_ephemeral_result_pubkey
+    let req = Request::builder()
+        .method("POST")
+        .uri(format!("/api/v1/rooms/{}/bot-commands", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", token1))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "bot_id": bot1_id,
+                "ciphertext": valid_ciphertext,
+                "ephemeral_result_pubkey": URL_SAFE_NO_PAD.encode([1u8; 16])
             })
             .to_string(),
         ))
@@ -499,6 +546,7 @@ async fn test_ack_bot_command() {
             json!({
                 "bot_id": bot1_id,
                 "ciphertext": URL_SAFE_NO_PAD.encode(b"cmd_bytes"),
+                "ephemeral_result_pubkey": valid_pubkey(),
                 "request_id": "req_1"
             })
             .to_string(),
@@ -617,8 +665,8 @@ async fn test_bot_command_ttl_cleanup_job() {
     // 1. Insert command older than 24h, NOT acked
     sqlx::query(
         r#"
-        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext, created_at)
-        VALUES ('cmd_old_unacked', 'b_ttl', 'r_ttl', 'u_ttl', 'c_1', X'1234', datetime('now', '-25 hours'))
+        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext, ephemeral_result_pubkey, created_at)
+        VALUES ('cmd_old_unacked', 'b_ttl', 'r_ttl', 'u_ttl', 'c_1', X'1234', X'0707070707070707070707070707070707070707070707070707070707070707', datetime('now', '-25 hours'))
         "#,
     )
     .execute(&pool)
@@ -628,8 +676,8 @@ async fn test_bot_command_ttl_cleanup_job() {
     // 2. Insert command older than 24h, ACKED
     sqlx::query(
         r#"
-        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext, created_at, acked_at)
-        VALUES ('cmd_old_acked', 'b_ttl', 'r_ttl', 'u_ttl', 'c_1', X'1234', datetime('now', '-25 hours'), datetime('now', '-24 hours'))
+        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext, ephemeral_result_pubkey, created_at, acked_at)
+        VALUES ('cmd_old_acked', 'b_ttl', 'r_ttl', 'u_ttl', 'c_1', X'1234', X'0707070707070707070707070707070707070707070707070707070707070707', datetime('now', '-25 hours'), datetime('now', '-24 hours'))
         "#,
     )
     .execute(&pool)
@@ -639,8 +687,8 @@ async fn test_bot_command_ttl_cleanup_job() {
     // 3. Insert command recent (<24h), NOT acked
     sqlx::query(
         r#"
-        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext, created_at)
-        VALUES ('cmd_recent_unacked', 'b_ttl', 'r_ttl', 'u_ttl', 'c_1', X'1234', datetime('now', '-1 hour'))
+        INSERT INTO bot_commands (id, bot_id, room_id, sender_user_id, sender_client_id, ciphertext, ephemeral_result_pubkey, created_at)
+        VALUES ('cmd_recent_unacked', 'b_ttl', 'r_ttl', 'u_ttl', 'c_1', X'1234', X'0707070707070707070707070707070707070707070707070707070707070707', datetime('now', '-1 hour'))
         "#,
     )
     .execute(&pool)
@@ -724,6 +772,7 @@ async fn test_bot_command_rate_limit() {
 
     // Fill rate limit bucket (60 requests)
     let valid_ciphertext = URL_SAFE_NO_PAD.encode(b"cmd");
+    let valid_erpk = valid_pubkey();
     for i in 0..60 {
         let req = Request::builder()
             .method("POST")
@@ -734,6 +783,7 @@ async fn test_bot_command_rate_limit() {
                 json!({
                     "bot_id": bot_id,
                     "ciphertext": valid_ciphertext,
+                    "ephemeral_result_pubkey": valid_erpk,
                     "request_id": format!("req_{}", i)
                 })
                 .to_string(),
@@ -759,6 +809,7 @@ async fn test_bot_command_rate_limit() {
             json!({
                 "bot_id": bot_id,
                 "ciphertext": valid_ciphertext,
+                "ephemeral_result_pubkey": valid_erpk,
                 "request_id": "req_61"
             })
             .to_string(),
