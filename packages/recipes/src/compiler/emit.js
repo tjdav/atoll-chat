@@ -191,7 +191,8 @@ export function emit (composition, options) {
   if (avatar !== undefined) {
     botConfigLines.push(`  avatar: ${json(avatar)},`)
   }
-  botConfigLines.push('  handlers')
+  const handlersLine = triggersBlock !== null ? '  handlers,' : '  handlers'
+  botConfigLines.push(handlersLine)
   if (triggersBlock !== null) {
     botConfigLines.push('  triggers')
   }
