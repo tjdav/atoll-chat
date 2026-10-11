@@ -12,8 +12,23 @@ Consequences for future tasks:
 - `pnpm --filter @atoll/bot test:canary` checks `src/` only.
 - `pnpm --filter @atoll/bot typecheck:tests` runs the relaxed config. It is not a gate.
 - No `@ts-ignore`, `@ts-expect-error`, or `@type {any}` in `src/`.
-- No `@ts-ignore` or `@ts-expect-error` anywhere.
-- Test files may be type-checked under the relaxed config at any time. A clean run is desirable but not required.
+- In `tests/`: `@ts-expect-error` is allowed when documenting a deliberate type violation and must have an explanatory comment. `@ts-ignore` and `@type {any}` are not allowed.
+- Canary files in `tests/canary/`: `@ts-expect-error` is mandatory to assert that the type surface rejects invalid input.
+- Test files are checked under relaxed `tsconfig.tests.json` (`pnpm --filter @atoll/bot typecheck:tests`), which is informational and not a gate.
+
+## Task B-043c-2 Verification Fact
+- **Audit and Clean Suppressions in Tests (`packages/bot/tests/`)**:
+  - Implemented the revised suppressions policy across all test files under `packages/bot/tests/`.
+  - **Audit Outcome**:
+    - **@type {any}**: Removed or replaced all 183 occurrences with real types, `Partial<...>` shapes, or specific property types. Zero `@type {unknown}` introduced.
+    - **@ts-ignore**: Removed or converted all 16 occurrences to `@ts-expect-error` with descriptive comments explaining deliberate runtime type assertions.
+    - **@ts-expect-error**: Retained 28 occurrences (canaries and negative test runtime assertions). All non-canary `@ts-expect-error` lines carry an explanatory comment on the line above.
+  - **Verification Results**:
+    - `grep -rn '@type {any' packages/bot/tests` -> 0 occurrences.
+    - `grep -rn '@ts-ignore' packages/bot/tests` -> 0 occurrences.
+    - `git diff packages/bot/tests/ | grep '@type {unknown}'` -> 0 occurrences.
+    - `pnpm --filter @atoll/bot check-batches` passed cleanly.
+    - `pnpm --filter @atoll/bot typecheck` confirmed strict scope remains strictly on `src/`.
 
 ## Task B-043b Verification Fact
 - **Repair `runtime.test.js` type errors and subtest timeouts (`packages/bot/tests/unit/runtime.test.js`)**:

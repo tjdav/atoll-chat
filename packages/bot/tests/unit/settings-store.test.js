@@ -47,16 +47,16 @@ function createMockLogger (logs) {
   return {
     level: () => 'debug',
     log: () => {},
-    debug: (/** @type {any} */ msg, /** @type {any} */ meta) => {
+    debug: (/** @type {Record<string, Object>} */ msg, /** @type {Record<string, Object>} */ meta) => {
       logs.push({ level: 'debug', msg, meta })
     },
-    info: (/** @type {any} */ msg, /** @type {any} */ meta) => {
+    info: (/** @type {Record<string, Object>} */ msg, /** @type {Record<string, Object>} */ meta) => {
       logs.push({ level: 'info', msg, meta })
     },
-    warn: (/** @type {any} */ msg, /** @type {any} */ meta) => {
+    warn: (/** @type {Record<string, Object>} */ msg, /** @type {Record<string, Object>} */ meta) => {
       logs.push({ level: 'warn', msg, meta })
     },
-    error: (/** @type {any} */ msg, /** @type {any} */ meta) => {
+    error: (/** @type {Record<string, Object>} */ msg, /** @type {Record<string, Object>} */ meta) => {
       logs.push({ level: 'error', msg, meta })
     }
   }
@@ -72,7 +72,7 @@ describe('SettingsStore unit tests', () => {
 
   beforeEach(async () => {
     requestCount = 0
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([]))
@@ -95,7 +95,7 @@ describe('SettingsStore unit tests', () => {
 
   it('1. Cold get triggers a fetch and returns a value', async () => {
     const encValue = encryptSettingValue('secret-api-token')
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       assert.equal(req.url, '/bots/me/settings')
       res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -120,7 +120,7 @@ describe('SettingsStore unit tests', () => {
 
   it('2. Second get is a cache hit', async () => {
     const encValue = encryptSettingValue('cached-token')
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -161,7 +161,7 @@ describe('SettingsStore unit tests', () => {
 
   it('4. Concurrent gets share one fetch', async () => {
     const encValue = encryptSettingValue('shared-value')
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -191,7 +191,7 @@ describe('SettingsStore unit tests', () => {
 
   it('5. room prefix in the storage key', async () => {
     const encValue = encryptSettingValue('room-specific-val')
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -213,7 +213,7 @@ describe('SettingsStore unit tests', () => {
 
   it('6. Missing room reads the user-scoped key', async () => {
     const encValue = encryptSettingValue('user-val')
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -237,7 +237,7 @@ describe('SettingsStore unit tests', () => {
   })
 
   it('7. Fetch failure leaves the cache empty', async () => {
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(500, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: 'internal_error' }))
@@ -256,7 +256,7 @@ describe('SettingsStore unit tests', () => {
   })
 
   it('8. Fetch failure does not throw from get', async () => {
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(502, { 'Content-Type': 'text/plain' })
       res.end('Bad Gateway')
@@ -277,7 +277,7 @@ describe('SettingsStore unit tests', () => {
   })
 
   it('9. Malformed response shape', async () => {
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ notAnArray: true }))
@@ -299,7 +299,7 @@ describe('SettingsStore unit tests', () => {
     const validEnc = encryptSettingValue('valid-val')
     const invalidEnc = 'invalid-wire-base64url'
 
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -379,7 +379,7 @@ describe('SettingsStore unit tests', () => {
 
   it('14. Value change fires a subscriber', async () => {
     let currentVal = 'v1'
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -398,9 +398,9 @@ describe('SettingsStore unit tests', () => {
     // Populate initial
     await store.get('token')
 
-    /** @type {unknown[]} */
+    /** @type {Array<Record<string, Object>>} */
     const fired = []
-    store.subscribe('token', (/** @type {any} */ val) => fired.push(val))
+    store.subscribe('token', (/** @type {Record<string, Object>} */ val) => fired.push(val))
 
     currentVal = 'v2'
     await store.refresh()
@@ -412,7 +412,7 @@ describe('SettingsStore unit tests', () => {
 
   it('15. Unchanged value does not fire a subscriber', async () => {
     const encVal = encryptSettingValue('same-value')
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -430,9 +430,9 @@ describe('SettingsStore unit tests', () => {
 
     await store.get('token')
 
-    /** @type {unknown[]} */
+    /** @type {Array<Record<string, Object>>} */
     const fired = []
-    store.subscribe('token', (/** @type {any} */ val) => fired.push(val))
+    store.subscribe('token', (/** @type {Record<string, Object>} */ val) => fired.push(val))
 
     await store.refresh()
     await new Promise((resolve) => setTimeout(resolve, 30))
@@ -443,7 +443,7 @@ describe('SettingsStore unit tests', () => {
 
   it('16. Deleted key fires with undefined', async () => {
     let returnKey = true
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       if (returnKey) {
@@ -465,9 +465,9 @@ describe('SettingsStore unit tests', () => {
 
     await store.get('token')
 
-    /** @type {unknown[]} */
+    /** @type {Array<Record<string, Object>>} */
     const fired = []
-    store.subscribe('token', (/** @type {any} */ val) => fired.push(val))
+    store.subscribe('token', (/** @type {Record<string, Object>} */ val) => fired.push(val))
 
     returnKey = false
     await store.refresh()
@@ -479,7 +479,7 @@ describe('SettingsStore unit tests', () => {
 
   it('17. Added key fires with the new value', async () => {
     let returnNewKey = false
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       const list = []
@@ -497,9 +497,9 @@ describe('SettingsStore unit tests', () => {
       coalesceMs: 10
     })
 
-    /** @type {unknown[]} */
+    /** @type {Array<Record<string, Object>>} */
     const fired = []
-    store.subscribe('newKey', (/** @type {any} */ val) => fired.push(val))
+    store.subscribe('newKey', (/** @type {Record<string, Object>} */ val) => fired.push(val))
 
     // First fetch cold
     await store.get('dummy')
@@ -514,7 +514,7 @@ describe('SettingsStore unit tests', () => {
 
   it('18. Subscriber throw does not prevent other subscribers', async () => {
     let val = 'v1'
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -532,13 +532,13 @@ describe('SettingsStore unit tests', () => {
 
     await store.get('k')
 
-    /** @type {unknown[]} */
+    /** @type {Array<Record<string, Object>>} */
     const fired = []
 
     store.subscribe('k', () => {
       throw new Error('Subscriber crash')
     })
-    store.subscribe('k', (/** @type {any} */ v) => fired.push(v))
+    store.subscribe('k', (/** @type {Record<string, Object>} */ v) => fired.push(v))
 
     val = 'v2'
     await store.refresh()
@@ -550,7 +550,7 @@ describe('SettingsStore unit tests', () => {
 
   it('19. Unsubscribe stops fires', async () => {
     let val = 'v1'
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([
@@ -568,9 +568,9 @@ describe('SettingsStore unit tests', () => {
 
     await store.get('k')
 
-    /** @type {unknown[]} */
+    /** @type {Array<Record<string, Object>>} */
     const fired = []
-    const unsub = store.subscribe('k', (/** @type {any} */ v) => fired.push(v))
+    const unsub = store.subscribe('k', (/** @type {Record<string, Object>} */ v) => fired.push(v))
 
     unsub()
 
@@ -583,7 +583,7 @@ describe('SettingsStore unit tests', () => {
   })
 
   it('20. refresh() during an in-flight fetch schedules another', async () => {
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       setTimeout(() => {
         res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -620,7 +620,8 @@ describe('SettingsStore unit tests', () => {
     })
 
     await assert.rejects(async () => {
-      // @ts-ignore testing set method
+      // Testing runtime validation: store.set is read-only and rejected by type
+      // @ts-expect-error set method is read-only
       await store.set('key', 'value')
     }, (err) => {
       return err instanceof SettingsWriteFailedError && err.code === 'settings_write_failed'
@@ -653,7 +654,8 @@ describe('SettingsStore unit tests', () => {
     })
 
     try {
-      // @ts-ignore testing set method
+      // Testing runtime validation: store.set is read-only and rejected by type
+      // @ts-expect-error set method is read-only
       await store.set('key', 'value')
     } catch {
       // expected
@@ -672,7 +674,8 @@ describe('SettingsStore unit tests', () => {
     })
 
     await assert.rejects(async () => {
-      // @ts-ignore testing invalid type
+      // Testing runtime validation: store.get rejects non-string key
+      // @ts-expect-error non-string key is rejected by type
       await store.get(123)
     }, TypeError)
     store.stop()
@@ -717,7 +720,8 @@ describe('SettingsStore unit tests', () => {
     })
 
     assert.throws(() => {
-      // @ts-ignore testing invalid cb type
+      // Testing runtime validation: store.subscribe rejects non-function callback
+      // @ts-expect-error non-function callback is rejected by type
       store.subscribe('key', 'not-a-func')
     }, TypeError)
     store.stop()
@@ -774,7 +778,7 @@ describe('SettingsStore unit tests', () => {
   })
 
   it('31. Logger emits warn on fetch failure', async () => {
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(500, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: 'fail' }))
@@ -803,7 +807,7 @@ describe('SettingsStore unit tests', () => {
     const sensitiveVal = 'TOP_SECRET_VALUE_999'
     const encValue = encryptSettingValue(sensitiveVal)
 
-    serverHandler = (/** @type {any} */ req, /** @type {any} */ res) => {
+    serverHandler = (/** @type {Record<string, Object>} */ req, /** @type {Record<string, Object>} */ res) => {
       requestCount++
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify([

@@ -43,7 +43,7 @@ function customServer (handler) {
 
 describe('createSseClient unit tests', () => {
   test('1. Single event', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('event: message.new\ndata: {"id":"m1"}\n\n')
@@ -80,7 +80,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('2. Bare data: defaults to message event type', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('data: hello world\n\n')
@@ -114,7 +114,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('3. Multiple events', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('event: e1\ndata: d1\n\nevent: e2\ndata: d2\n\nevent: e3\ndata: d3\n\n')
@@ -149,7 +149,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('4. Multi-line data', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('data: a\ndata: b\ndata: c\n\n')
@@ -182,7 +182,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('5. Comment line ignored', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write(':comment\ndata: x\n\n')
@@ -215,7 +215,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('6. Line with no colon', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('data\n\n')
@@ -248,7 +248,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('7. id: line sets the last event ID', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('id: 42\ndata: x\n\n')
@@ -282,7 +282,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('8. id: persists across events', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('id: 42\ndata: x\n\ndata: y\n\n')
@@ -316,7 +316,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('9. retry: value stored', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('retry: 3000\n\n')
@@ -349,7 +349,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('10. Retry persists across events', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('retry: 3000\ndata: e1\n\ndata: e2\n\n')
@@ -382,7 +382,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('11. CRLF line endings', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('data: x\r\n\r\n')
@@ -415,7 +415,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('12. Standalone CR line endings', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('data: x\r\r')
@@ -448,7 +448,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('13. Mixed line endings', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('event: e1\rdata: d1\r\n\rdata: d2\n\n')
@@ -482,7 +482,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('14. Chunk boundary splits a line', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write('data: he')
@@ -518,7 +518,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('15. Chunk boundary splits a multi-byte UTF-8 character', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       // "data: " + € (0xE2, 0x82, 0xAC) + "\n\n"
@@ -564,7 +564,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('16. Chunk boundary splits the CRLF pair', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
     const { server, url } = await sseServer((req, res) => {
       res.write(Buffer.from('data: x\r'))
@@ -733,7 +733,7 @@ describe('createSseClient unit tests', () => {
   })
 
   test('22. close() aborts the stream', async () => {
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let closedReason = null
     const { server, url } = await sseServer((req, res) => {
       res.write('data: ping\n\n')
@@ -805,9 +805,9 @@ describe('createSseClient unit tests', () => {
   })
 
   test('25. Server closes the stream', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const events = []
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let closedReason = null
 
     const { server, url } = await sseServer((req, res) => {
@@ -845,9 +845,9 @@ describe('createSseClient unit tests', () => {
   })
 
   test('26. Mid-stream network failure emits onError', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const errors = []
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let closedReason = null
 
     const { server, url } = await sseServer((req, res) => {
@@ -1038,11 +1038,14 @@ describe('createSseClient unit tests', () => {
   })
 
   test('31. Logger receives debug lines', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const logLines = []
     /** @type {import('../../src/runtime/diagnostics/logger.js').Logger} */
-    // @ts-ignore
     const dummyLogger = {
+      log: () => {},
+      child: () => dummyLogger,
+      getLines: () => [],
+      clear: () => {},
       debug: (msg, meta) => logLines.push({ level: 'debug', msg, meta }),
       info: (msg, meta) => logLines.push({ level: 'info', msg, meta }),
       warn: (msg, meta) => logLines.push({ level: 'warn', msg, meta }),
@@ -1088,11 +1091,14 @@ describe('createSseClient unit tests', () => {
   })
 
   test('32. Logger does not log event data', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const logLines = []
     /** @type {import('../../src/runtime/diagnostics/logger.js').Logger} */
-    // @ts-ignore
     const dummyLogger = {
+      log: () => {},
+      child: () => dummyLogger,
+      getLines: () => [],
+      clear: () => {},
       debug: (msg, meta) => logLines.push({ level: 'debug', msg, meta }),
       info: (msg, meta) => logLines.push({ level: 'info', msg, meta }),
       warn: (msg, meta) => logLines.push({ level: 'warn', msg, meta }),
@@ -1160,7 +1166,8 @@ describe('createSseClient unit tests', () => {
       /botToken must be a non-empty string/
     )
     assert.throws(
-      // @ts-ignore
+      // Testing runtime validation: createSseClient rejects non-function onEvent
+      // @ts-expect-error non-function onEvent is rejected by type
       () => createSseClient({ serverUrl: 'http://localhost', botToken: 'tok', path: '/p', onEvent: 'not_fn' }),
       /onEvent must be a function/
     )

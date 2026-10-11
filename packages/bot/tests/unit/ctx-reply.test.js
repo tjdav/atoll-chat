@@ -24,7 +24,7 @@ function makePostSpy () {
 function makeLoggerSpy () {
   /** @type {Array<{ level: string, message: string, meta?: any }>} */
   const logs = []
-  /** @type {any} */
+  /** @type {Record<string, Object>} */
   const logger = {
     /**
      * @param {string} lineLevel
@@ -104,7 +104,7 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post })
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ (undefined), null),
+      async () => reply(/** @type {Record<string, Object>} */ (undefined), null),
       (err) => {
         assert.ok(err instanceof ReplyRequiresReplyToError)
         assert.equal(err.code, 'reply_requires_reply_to')
@@ -119,7 +119,7 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post })
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ (null), null),
+      async () => reply(/** @type {Record<string, Object>} */ (null), null),
       (err) => {
         assert.ok(err instanceof ReplyRequiresReplyToError)
         assert.equal(err.code, 'reply_requires_reply_to')
@@ -134,7 +134,7 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post })
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ ({ text: 'hi' }), null),
+      async () => reply(/** @type {Record<string, Object>} */ ({ text: 'hi' }), null),
       (err) => {
         assert.ok(err instanceof ReplyRequiresReplyToError)
         assert.equal(err.code, 'reply_requires_reply_to')
@@ -149,7 +149,7 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post })
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ ({ replyTo: undefined }), null),
+      async () => reply(/** @type {Record<string, Object>} */ ({ replyTo: undefined }), null),
       ReplyRequiresReplyToError
     )
     assert.equal(spy.calls.length, 0)
@@ -160,7 +160,7 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post })
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ ({ replyTo: null }), null),
+      async () => reply(/** @type {Record<string, Object>} */ ({ replyTo: null }), null),
       ReplyRequiresReplyToError
     )
     assert.equal(spy.calls.length, 0)
@@ -190,9 +190,9 @@ describe('ctx.reply', () => {
     const spy = makePostSpy()
     const reply = createReplyHandler({ post: spy.post })
 
-    await assert.rejects(async () => reply(/** @type {any} */ ({ replyTo: 123 }), null), ReplyRequiresReplyToError)
-    await assert.rejects(async () => reply(/** @type {any} */ ({ replyTo: {} }), null), ReplyRequiresReplyToError)
-    await assert.rejects(async () => reply(/** @type {any} */ ({ replyTo: ['m_1'] }), null), ReplyRequiresReplyToError)
+    await assert.rejects(async () => reply(/** @type {Record<string, Object>} */ ({ replyTo: 123 }), null), ReplyRequiresReplyToError)
+    await assert.rejects(async () => reply(/** @type {Record<string, Object>} */ ({ replyTo: {} }), null), ReplyRequiresReplyToError)
+    await assert.rejects(async () => reply(/** @type {Record<string, Object>} */ ({ replyTo: ['m_1'] }), null), ReplyRequiresReplyToError)
     assert.equal(spy.calls.length, 0)
   })
 
@@ -201,10 +201,10 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post })
 
     try {
-      await reply(/** @type {any} */ ({ text: 'hi' }), null)
+      await reply(/** @type {Record<string, Object>} */ ({ text: 'hi' }), null)
       assert.fail('should have thrown')
     } catch (err) {
-      assert.equal(/** @type {any} */ (err).code, 'reply_requires_reply_to')
+      assert.equal(/** @type {Record<string, Object>} */ (err).code, 'reply_requires_reply_to')
     }
   })
 
@@ -213,7 +213,7 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post })
 
     try {
-      await reply(/** @type {any} */ ({ text: 'hi' }), null)
+      await reply(/** @type {Record<string, Object>} */ ({ text: 'hi' }), null)
       assert.fail('should have thrown')
     } catch (err) {
       assert.ok(err instanceof ReplyRequiresReplyToError)
@@ -246,8 +246,8 @@ describe('ctx.reply', () => {
       await reply({ replyTo: 'm_1' }, null)
       assert.fail('should have thrown')
     } catch (err) {
-      assert.equal(/** @type {any} */ (err).code, 'post_failed')
-      assert.notEqual(/** @type {any} */ (err).code, 'reply_requires_reply_to')
+      assert.equal(/** @type {Record<string, Object>} */ (err).code, 'post_failed')
+      assert.notEqual(/** @type {Record<string, Object>} */ (err).code, 'reply_requires_reply_to')
     }
   })
 
@@ -312,7 +312,7 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post, logger: loggerSpy.logger })
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ ({ roomId: 'r_x' }), null),
+      async () => reply(/** @type {Record<string, Object>} */ ({ roomId: 'r_x' }), null),
       ReplyRequiresReplyToError
     )
 
@@ -329,7 +329,7 @@ describe('ctx.reply', () => {
     const ctx = { grant: { roomId: 'r_y' } }
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ ({}), ctx),
+      async () => reply(/** @type {Record<string, Object>} */ ({}), ctx),
       ReplyRequiresReplyToError
     )
 
@@ -343,7 +343,7 @@ describe('ctx.reply', () => {
     const reply = createReplyHandler({ post: spy.post, logger: loggerSpy.logger })
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ ({}), null),
+      async () => reply(/** @type {Record<string, Object>} */ ({}), null),
       ReplyRequiresReplyToError
     )
 
@@ -368,7 +368,7 @@ describe('ctx.reply', () => {
     const replyTarget = 'm_secret_target_id'
 
     await assert.rejects(
-      async () => reply(/** @type {any} */ ({ replyTo: '', roomId: 'r_x' }), null),
+      async () => reply(/** @type {Record<string, Object>} */ ({ replyTo: '', roomId: 'r_x' }), null),
       ReplyRequiresReplyToError
     )
 

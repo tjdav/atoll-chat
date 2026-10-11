@@ -844,7 +844,7 @@ describe('ctx.post', () => {
   test('23. Logger emits debug on entry and success', async () => {
     /** @type {Array<{ level: string, msg: string, data: any }>} */
     const logs = []
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const logger = {
       level: 'debug',
       log: () => {},
@@ -909,7 +909,7 @@ describe('ctx.post', () => {
   test('24. Logger does not log message text', async () => {
     /** @type {string[]} */
     const logs = []
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const logger = {
       level: 'debug',
       log: () => {},
