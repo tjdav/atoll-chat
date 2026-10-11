@@ -167,3 +167,119 @@ test('the primitive is registered under primitives.bot', async () => {
   assert.ok(Object.hasOwn(primitives.bot, 'send-local'))
   assert.ok(Object.hasOwn(primitives.bot, 'watch-pattern'))
 })
+
+test('config schema accepts an optional default field', () => {
+  assert.ok(Object.hasOwn(keyedStore.configSchema.properties, 'default'))
+})
+
+test('get mode passes a substituted default to children when the key misses', async () => {
+  const { child, calls } = createRecordingChild()
+  const handler = keyedStore.create(
+    {
+      key: 'notes:{{args.name}}',
+      mode: 'get',
+      default: { name: '{{args.name}}', value: '(not saved)' }
+    },
+    [child]
+  )
+  const { ctx } = createMockCtx()
+  await handler(ctx, { args: { name: 'missing' } })
+  assert.equal(calls.length, 1)
+  assert.deepEqual(calls[0], { name: 'missing', value: '(not saved)' })
+})
+
+test('get mode prefers the stored value over the default when the key hits', async () => {
+  const { child, calls } = createRecordingChild()
+  const handler = keyedStore.create(
+    {
+      key: 'k',
+      mode: 'get',
+      default: { value: 'fallback' }
+    },
+    [child]
+  )
+  const { ctx } = createMockCtx({ k: { value: 'stored' } })
+  await handler(ctx, {})
+  assert.equal(calls.length, 1)
+  assert.deepEqual(calls[0], { value: 'stored' })
+})
+
+test('get mode passes undefined when the key misses and no default is configured', async () => {
+  const { child, calls } = createRecordingChild()
+  const handler = keyedStore.create({ key: 'k', mode: 'get' }, [child])
+  const { ctx } = createMockCtx()
+  await handler(ctx, {})
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0], undefined)
+})
+
+test('a default with no template tokens passes through unchanged', async () => {
+  const { child, calls } = createRecordingChild()
+  const handler = keyedStore.create(
+    { key: 'k', mode: 'get', default: 'no note saved' },
+    [child]
+  )
+  const { ctx } = createMockCtx()
+  await handler(ctx, {})
+  assert.equal(calls[0], 'no note saved')
+})
+
+test('a default with a nested path resolves against the input', async () => {
+  const { child, calls } = createRecordingChild()
+  const handler = keyedStore.create(
+    {
+      key: 'k',
+      mode: 'get',
+      default: { name: '{{args.name}}', at: '{{args.at}}' }
+    },
+    [child]
+  )
+  const { ctx } = createMockCtx()
+  await handler(ctx, { args: { name: 'foo', at: '2026-01-01' } })
+  assert.deepEqual(calls[0], { name: 'foo', at: '2026-01-01' })
+})
+
+test('a default that resolves to an empty string is passed through', async () => {
+  const { child, calls } = createRecordingChild()
+  const handler = keyedStore.create(
+    { key: 'k', mode: 'get', default: '{{args.blank}}' },
+    [child]
+  )
+  const { ctx } = createMockCtx()
+  await handler(ctx, { args: { blank: '' } })
+  assert.equal(calls[0], '')
+})
+
+test('a default with an unresolvable path throws at dispatch time', async () => {
+  const { child } = createRecordingChild()
+  const handler = keyedStore.create(
+    { key: 'k', mode: 'get', default: '{{args.missing}}' },
+    [child]
+  )
+  const { ctx } = createMockCtx()
+  await assert.rejects(
+    () => handler(ctx, { args: {} }),
+    /path "args\.missing" is not resolvable/
+  )
+})
+
+test('set mode ignores the default field', async () => {
+  const handler = keyedStore.create(
+    { key: 'k', mode: 'set', value: 'x', default: 'ignored' },
+    []
+  )
+  const { ctx, store } = createMockCtx()
+  await handler(ctx, {})
+  assert.equal(store.get('k'), 'x')
+})
+
+test('the default is not written to storage', async () => {
+  const { child } = createRecordingChild()
+  const handler = keyedStore.create(
+    { key: 'k', mode: 'get', default: 'fallback' },
+    [child]
+  )
+  const { ctx, store } = createMockCtx()
+  await handler(ctx, {})
+  assert.equal(store.size, 0)
+})
