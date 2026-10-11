@@ -1,0 +1,36 @@
+{
+  "id": "with-commands",
+  "version": "1.0.0",
+  "label": "With Commands",
+  "description": "A recipe that declares a slash command and a message handler.",
+  "kind": "pure",
+  "capabilities": ["read_commands", "read_content", "post_message"],
+  "slots": [
+    { "name": "greeting", "type": "string", "question": "Greeting?", "default": "hi" }
+  ],
+  "handlers": {
+    "install": {
+      "id": "install-hook",
+      "primitive": "post-response",
+      "config": { "text": "{greeting}, ready." }
+    }
+  },
+  "commands": {
+    "greet": {
+      "id": "greet-command",
+      "primitive": "expose-command",
+      "config": {
+        "name": "greet",
+        "description": "Greet someone.",
+        "args": { "name": { "type": "string", "required": true } }
+      },
+      "children": [
+        {
+          "id": "greet-respond",
+          "primitive": "post-response",
+          "config": { "text": "Hello, {greeting}." }
+        }
+      ]
+    }
+  }
+}

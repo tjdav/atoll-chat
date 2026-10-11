@@ -241,6 +241,34 @@ export function validateRecipe (value) {
     }
   }
 
+  const COMMAND_NAME = /^[a-z][a-z0-9-]*$/
+  const commands = value.commands
+  if (commands !== undefined) {
+    if (!isPlainObject(commands)) {
+      errors.push('commands must be an object when provided')
+    } else {
+      for (const key of Object.keys(commands)) {
+        if (!COMMAND_NAME.test(key)) {
+          errors.push(`commands.${key}: command name must match ^[a-z][a-z0-9-]*$`)
+        }
+        const instance = commands[key]
+        if (isPlainObject(instance) && isPlainObject(instance.config)) {
+          if (instance.config.name !== key) {
+            errors.push(`commands.${key}: config.name must equal "${key}"`)
+          }
+        }
+        validateInstance(
+          instance,
+          `commands.${key}`,
+          resolvedTargets,
+          capabilityUnion,
+          instanceIds,
+          errors
+        )
+      }
+    }
+  }
+
   if (triggers !== undefined) {
     if (!Array.isArray(triggers)) {
       errors.push('triggers must be an array when provided')
