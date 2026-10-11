@@ -29,7 +29,8 @@ const definedTypes = [
   'OperatorBinding',
   'OperatorPolicy',
   'ConsentTier',
-  'TelemetryRecord'
+  'TelemetryRecord',
+  'TelemetrySink'
 ]
 
 export default [

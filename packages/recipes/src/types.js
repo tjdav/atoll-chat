@@ -266,20 +266,38 @@
  */
 
 /**
- * A single telemetry record, as persisted at consent tier 2.
+ * A telemetry record describing one call to the matcher. Fields that
+ * do not apply to a given match kind are omitted.
+ *
+ * The engine produces this record. The sink persists it as it sees
+ * fit. Fields describing the user's eventual response (`accepted`,
+ * `refused`, `abandoned`) and the bot's runtime outcome (`botRan`,
+ * `userFlagged`) are added by the instance later and are not part
+ * of the engine's record.
  * @typedef {object} TelemetryRecord
- * @property {string} requestId - The request identifier.
- * @property {string} intentText - The user's intent text.
- * @property {string} matchedRecipe - The matched recipe id.
- * @property {number} matchConfidence - Confidence score, 0 to 1.
+ * @property {string} requestId - Unique identifier for this call.
+ * @property {string} intentText - The user's intent text. Removed
+ *   at consent tier 1.
+ * @property {'match' | 'ambiguous' | 'refusal'} matchKind - The
+ *   kind of match result the engine produced.
+ * @property {string} [matchedRecipe] - The matched recipe id.
+ *   Present only when matchKind is 'match'.
+ * @property {number} [matchConfidence] - Confidence score, 0 to 1.
+ *   Present only when matchKind is 'match'.
  * @property {Candidate[]} candidates - The candidate list returned.
- * @property {string} outcome - One of 'accepted', 'refused',
- *   'abandoned'.
- * @property {boolean} botRan - Whether the built bot has run
- *   successfully since the build.
- * @property {boolean} userFlagged - Whether the user flagged the
- *   result as wrong.
+ *   For 'match' and 'ambiguous', this is the filtered candidate list.
+ *   For 'refusal', this is the suggestion list.
  * @property {string} engineVersion - The engine version that served
  *   the request.
- * @property {string} createdAt - ISO 8601 timestamp.
+ * @property {string} createdAt - ISO 8601 timestamp of the call.
+ */
+
+/**
+ * A telemetry sink. The engine hands it records; the sink decides
+ * what to persist and how. Sinks must be fast and must not throw.
+ * If a sink throws, the engine swallows the error so the request
+ * path is never affected.
+ * @typedef {object} TelemetrySink
+ * @property {(record: TelemetryRecord) => Promise<void> | void} write -
+ *   Persists a record.
  */
