@@ -70,6 +70,32 @@
   - **Cleanup Rule:** 24-hour retention for `bot_request_log` rows via periodic scheduler job.
 - **Link to report:** [verification/bot-request-idempotency/report.md](verification/bot-request-idempotency/report.md)
 
+## Bot Owner Local Messages Verification Fact (Phase 45)
+- **ID:** Phase 45 Bot Owner Local Messages
+- **Date:** 2026-10-11
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §5.6, §6.31, §8.8.12, §8.9, §12
+- **Verified Facts:**
+  - **Owner Target Endpoint Contract (`POST /bots/me/messages`):**
+    - Authenticated bot token required (`CallerIdentity::Bot`; user session tokens return 401 Unauthorized).
+    - `target: "owner"` mode processes requests without requiring `target_user_id` or `command_id` (ignored if present).
+    - Validates `result_type`: must be one of `local_message`, `toast`, or `panel`. `result_type = "none"` is rejected with 400 `invalid_result_type`.
+    - Validates `ciphertext`: required base64url string, non-empty, decoded length ≤ 64 KiB (400 `invalid_ciphertext` / 413 `ciphertext_too_large`).
+    - Validates `bot_result_pubkey`: required unpadded base64url string, exactly 32 bytes (400 `invalid_bot_result_pubkey`).
+    - Derives recipient user ID from `bot_accounts.owner_user_id` for the authenticated bot. Soft-deleted or missing bot returns 404 `bot_not_found`.
+    - Returns HTTP 204 No Content with `Cache-Control: no-store`.
+  - **Event Publishing & Durability:**
+    - Publishes non-durable `bot.local_message` event on `private-user-{owner_user_id}` with payload `{ bot_id, result_type, ciphertext, bot_result_pubkey }`.
+    - Does NOT publish on room channels, bot channels, or other user channels.
+    - Does NOT allocate a `user_seq`.
+  - **Rate Limiting & Idempotency:**
+    - Enforces `RATE_BOT_LOCAL_MESSAGE_PER_MIN` (default 60) per bot with key format `bot_local_message:{bot_id}:min:{boundary}`.
+    - Idempotency deduplication uses `ENDPOINT_BOT_LOCAL_MESSAGE` ("bot-local-message") in `bot_request_log`.
+    - Replaying a request with the same `request_id` returns 204 No Content with `"idempotent": true` without publishing duplicate events. Distinct endpoint constants prevent cross-target request_id collisions.
+  - **Ciphertext & Key Opacity:**
+    - Server treats `ciphertext` and `bot_result_pubkey` as opaque bytes without decryption or ECDH inspection. Ciphertext and key values are never written to server logs.
+- **Link to report:** [verification/bot-owner-local-messages/report.md](verification/bot-owner-local-messages/report.md)
+
 ## Bot Declarations Verification Fact (Phase 43)
 - **ID:** Phase 43 Bot Declarations
 - **Date:** 2026-10-10

@@ -358,7 +358,10 @@ async fn test_post_bot_command_result_happy_path() {
 
     assert_eq!(result_events.len(), 1);
     let event_json: Value = serde_json::from_slice(&result_events[0].body).unwrap();
-    assert_eq!(event_json["channel"], format!("private-user-{}", user_id));
+    assert_eq!(
+        event_json["channels"].as_array().unwrap()[0],
+        format!("private-user-{}", user_id)
+    );
 
     let inner_data: Value = serde_json::from_str(event_json["data"].as_str().unwrap()).unwrap();
     assert_eq!(inner_data["command_id"], command_id);
@@ -845,15 +848,14 @@ async fn test_post_bot_command_result_idempotency_and_rate_limit() {
     // 3. Cross-endpoint request_id conflict (use res_req_1 on bot-messages)
     let req_cross = Request::builder()
         .method("POST")
-        .uri(format!("/api/v1/rooms/{}/bot-messages", room_id))
-        .header(header::AUTHORIZATION, format!("Bearer {}", bot_token))
+        .uri(format!("/api/v1/rooms/{}/bot-commands", room_id))
+        .header(header::AUTHORIZATION, format!("Bearer {}", user_token))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "epoch": 0,
+                "bot_id": bot_id,
                 "ciphertext": URL_SAFE_NO_PAD.encode(b"msg"),
-                "content_type": "bot",
-                "signature": URL_SAFE_NO_PAD.encode([0u8; 64]),
+                "ephemeral_result_pubkey": valid_pubkey(),
                 "request_id": "res_req_1"
             })
             .to_string(),
