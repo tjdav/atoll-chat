@@ -376,3 +376,65 @@ test('emit produces valid JavaScript when commands, handlers, and triggers are a
   assert.ok(result.handlers)
   assert.ok(result.triggers)
 })
+
+test('emit includes a settings block when the composition has settings', () => {
+  const composition = simpleComposition()
+  composition.settings = {
+    greeting: {
+      label: 'Greeting',
+      type: 'text',
+      scope: 'user',
+      default: 'hello'
+    }
+  }
+  const code = emit(composition, standardOptions())
+  assert.match(code, /settings: \{/)
+  assert.match(code, /"greeting"/)
+  assert.match(code, /"Greeting"/)
+})
+
+test('emit omits settings when the composition has none', () => {
+  const code = emit(simpleComposition(), standardOptions())
+  assert.doesNotMatch(code, /settings:/)
+})
+
+test('emit produces valid JavaScript when settings, commands, handlers, and triggers are all present', () => {
+  const composition = simpleComposition()
+  composition.settings = {
+    greeting: { label: 'Greeting', type: 'text', default: 'hi' }
+  }
+  composition.commands = {
+    save: {
+      id: 'save-command',
+      primitive: 'expose-command',
+      config: { name: 'save' },
+      children: [{ id: 'save-respond', primitive: 'post-response', config: { text: 'ok' } }]
+    }
+  }
+  composition.triggers = [
+    { id: 'schedule', primitive: 'schedule-task', config: { name: 'daily', cron: '0 9 * * *' } }
+  ]
+  const code = emit(composition, standardOptions())
+
+  const encoded = Buffer.from(code, 'utf8').toString('base64')
+  const build = new Function(`
+    const defineBot = (config) => config
+    const asCommandDecl = (name, description, argsDecl, handler) => ({ name, description, argsDecl, handler })
+    const exposeCommand = { create: () => (() => {}) }
+    const postResponse = { create: () => (() => {}) }
+    const scheduleTask = { create: () => (() => {}) }
+    const src = Buffer.from('${encoded}', 'base64').toString('utf8')
+    const cleaned = src
+      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
+      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/recipes\\/primitives'/, '')
+      .replace('export default defineBot', 'return defineBot')
+    const fn = new Function('defineBot', 'asCommandDecl', 'exposeCommand', 'postResponse', 'scheduleTask', cleaned)
+    return fn(defineBot, asCommandDecl, exposeCommand, postResponse, scheduleTask)
+  `)
+  const result = build()
+  assert.ok(result)
+  assert.ok(result.settings)
+  assert.ok(result.commands)
+  assert.ok(result.handlers)
+  assert.ok(result.triggers)
+})
