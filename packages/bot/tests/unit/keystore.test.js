@@ -266,7 +266,7 @@ describe('Keystore unit tests', () => {
       resolvers: [dummyResolver(dummySecret)]
     })
 
-    const loaded = /** @type {Record<string, unknown>} */ (await keystore.load())
+    const loaded = /** @type {Record<string, Object>} */ (await keystore.load())
     const updatedPlaintext = { ...loaded, operator_session: 'new_session_xyz' }
     await keystore.save(updatedPlaintext)
 
@@ -274,7 +274,7 @@ describe('Keystore unit tests', () => {
       path: ksPath,
       resolvers: [dummyResolver(dummySecret)]
     })
-    const reloaded = /** @type {Record<string, unknown>} */ (await reloadedKeystore.load())
+    const reloaded = /** @type {Record<string, Object>} */ (await reloadedKeystore.load())
     assert.equal(reloaded['operator_session'], 'new_session_xyz')
   })
 

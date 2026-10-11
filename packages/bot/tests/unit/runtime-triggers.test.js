@@ -24,7 +24,7 @@ class FakeWebSocket {
   constructor (url) {
     this.url = url
     this.readyState = 0
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     this.sent = []
     /** @type {((event?: any) => void) | null} */
     this.onopen = null
@@ -295,7 +295,7 @@ async function sendHttpRequest (urlStr, method = 'POST', headers = {}, body = nu
         res.on('end', () => {
           const rawBuffer = Buffer.concat(chunks)
           const text = rawBuffer.toString('utf8')
-          /** @type {any} */
+          /** @type {Record<string, Object>} */
           let json = null
           if (res.headers['content-type']?.includes('application/json') && text.length > 0) {
             try {
@@ -481,9 +481,9 @@ describe('Runtime Triggers Unit Tests', () => {
     const server = await startApiServer()
     try {
       let webhookCalled = false
-      /** @type {any} */
+      /** @type {Record<string, Object>} */
       let receivedCtx = null
-      /** @type {any} */
+      /** @type {Record<string, Object>} */
       let receivedPayload = null
 
       const bot = makeBot(
@@ -530,9 +530,9 @@ describe('Runtime Triggers Unit Tests', () => {
     const server = await startApiServer()
     try {
       let scheduleCalled = false
-      /** @type {any} */
+      /** @type {Record<string, Object>} */
       let receivedCtx = null
-      /** @type {any} */
+      /** @type {Record<string, Object>} */
       let receivedPayload = null
 
       const bot = makeBot(
@@ -834,7 +834,7 @@ describe('Runtime Triggers Unit Tests', () => {
   test('14. makeBotCtx returns a ctx with grant: null and room: null for trigger invocations', async () => {
     const server = await startApiServer()
     try {
-      /** @type {any} */
+      /** @type {Record<string, Object>} */
       let receivedCtx = null
 
       const bot = makeBot(
@@ -876,7 +876,7 @@ describe('Runtime Triggers Unit Tests', () => {
   test('15. Webhook handler receives ctx.post bound to the runtime', async () => {
     const server = await startApiServer()
     try {
-      /** @type {any} */
+      /** @type {Record<string, Object>} */
       let postResult = null
 
       const bot = makeBot(
@@ -935,7 +935,7 @@ describe('Runtime Triggers Unit Tests', () => {
   test('16. Schedule handler receives ctx.fetch bound to the runtime', async () => {
     const server = await startApiServer()
     try {
-      /** @type {any} */
+      /** @type {Record<string, Object>} */
       let fetchResult = null
 
       const bot = makeBot(

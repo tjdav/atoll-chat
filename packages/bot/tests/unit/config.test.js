@@ -283,7 +283,7 @@ catch_up = true
     assert.equal(Object.isFrozen(config.diagnostics), true);
 
     assert.throws(() => {
-      const runtime = /** @type {{ logLevel: string }} */ (/** @type {unknown} */ (config.runtime));
+      const runtime = /** @type {{ logLevel: string }} */ (/** @type {Object} */ (config.runtime));
       runtime.logLevel = 'debug';
     }, TypeError);
   });

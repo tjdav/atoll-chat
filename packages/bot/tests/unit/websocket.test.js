@@ -86,7 +86,7 @@ class FakeWebSocket {
   }
 }
 
-/** @type {any} */
+/** @type {Record<string, Object>} */
 const WSImpl = FakeWebSocket
 
 describe('createWebSocketClient', () => {
@@ -101,16 +101,14 @@ describe('createWebSocketClient', () => {
   const dummyAuth = async (_socketId, _channelName) => ({ auth: 'test-auth-sig' })
 
   test('1. Factory validates socketUrl', () => {
-    // @ts-ignore
     assert.throws(() => createWebSocketClient({ socketUrl: '', appKey: 'key', authCallback: dummyAuth, WebSocketImpl: WSImpl }), /socketUrl must be a non-empty string/)
-    // @ts-ignore
     assert.throws(() => createWebSocketClient({ socketUrl: 'http://sockudo.local', appKey: 'key', authCallback: dummyAuth, WebSocketImpl: WSImpl }), /socketUrl must begin with ws:\/\/ or wss:\/\//)
   })
 
   test('2. Factory validates appKey and authCallback', () => {
-    // @ts-ignore
     assert.throws(() => createWebSocketClient({ socketUrl: 'ws://127.0.0.1:6001', appKey: '', authCallback: dummyAuth, WebSocketImpl: WSImpl }), /appKey must be a non-empty string/)
-    // @ts-ignore
+    // Testing runtime validation: createWebSocketClient rejects null authCallback
+    // @ts-expect-error null authCallback is rejected by type
     assert.throws(() => createWebSocketClient({ socketUrl: 'ws://127.0.0.1:6001', appKey: 'key', authCallback: null, WebSocketImpl: WSImpl }), /authCallback must be a function/)
   })
 
@@ -594,8 +592,7 @@ describe('createWebSocketClient', () => {
     })
 
     let closedCode
-    client.on('close', (payload) => {
-      // @ts-ignore
+    client.on('close', (/** @type {{ code?: number } | null | undefined} */ payload) => {
       closedCode = payload?.code
     })
 
@@ -621,7 +618,7 @@ describe('createWebSocketClient', () => {
       WebSocketImpl: WSImpl
     })
 
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let emittedErr
     client.on('error', (err) => { emittedErr = err })
 
@@ -657,7 +654,7 @@ describe('createWebSocketClient', () => {
       WebSocketImpl: WSImpl
     })
 
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let emittedErr
     client.on('error', (err) => { emittedErr = err })
 
@@ -722,7 +719,7 @@ describe('createWebSocketClient', () => {
       WebSocketImpl: WSImpl
     })
 
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let closePayload
     client.on('close', (payload) => { closePayload = payload })
 
@@ -837,7 +834,7 @@ describe('createWebSocketClient', () => {
   test('29. Logger receives debug lines for open, subscribe, close', async () => {
     /** @type {Array<{ msg: string, meta?: any }>} */
     const logs = []
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const logger = {
       /**
        * @param {string} msg - Message.
@@ -894,7 +891,7 @@ describe('createWebSocketClient', () => {
   test('30. Logger does not log message data', async () => {
     /** @type {Array<{ msg: string, meta?: any }>} */
     const logs = []
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const logger = {
       /**
        * @param {string} msg - Message.

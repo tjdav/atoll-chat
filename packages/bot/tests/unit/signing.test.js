@@ -216,7 +216,7 @@ describe('Ed25519 signing primitives & payload encoders', () => {
     }), /roomId must be a non-empty string/)
 
     assert.throws(() => encodeBotMessagePayload({
-      roomId: /** @type {any} */ (123),
+      roomId: /** @type {Record<string, Object>} */ (123),
       epoch: 1,
       contentType: 'bot',
       ciphertext: new Uint8Array(1)

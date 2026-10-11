@@ -243,11 +243,12 @@ describe('Diagnostics Capture Unit Tests', () => {
       botId: 'b_test'
     })
 
-    // @ts-ignore
+    // Testing runtime validation: recordLog accepts non-object input gracefully
+    // @ts-expect-error non-object log is rejected by type
     capture.recordLog('not an object')
-    // @ts-ignore
+    // @ts-expect-error null log is rejected by type
     capture.recordLog(null)
-    // @ts-ignore
+    // @ts-expect-error array log is rejected by type
     capture.recordLog([1, 2, 3])
 
     await capture.close()

@@ -371,7 +371,8 @@ describe('createTestCtx', () => {
 
     test('51. get returns null for a non-string roomId', async () => {
       const ctx = createTestCtx({ roomsList: [{ id: 'r_1', displayName: 'Room 1', avatar: null }] })
-      // @ts-ignore
+      // Testing runtime validation: get returns null for non-string roomId
+      // @ts-expect-error non-string roomId is rejected by type
       const res = await ctx.rooms.get(123)
       assert.equal(res, null)
     })

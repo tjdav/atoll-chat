@@ -33,7 +33,7 @@ void retriesType
 // A synthetic BotCtx<S> is constructed via cast. The runtime is not
 // exercised; only the type surface is.
 /** @type {BotCtx<typeof settings>} */
-const ctx = /** @type {any} */ ({})
+const ctx = /** @type {Record<string, Object>} */ ({})
 
 /** @type {Promise<string | undefined>} */
 const tokenPromise = ctx.settings.get('apiToken')

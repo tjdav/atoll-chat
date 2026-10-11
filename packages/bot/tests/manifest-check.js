@@ -27,7 +27,7 @@ export function parseManifest(content) {
   const batches = []
 
   let inArray = false
-  /** @type {any[]} */
+  /** @type {Array<Record<string, Object>>} */
   let arrayBuffer = []
   /** @type {string | null} */
   let arrayKey = null

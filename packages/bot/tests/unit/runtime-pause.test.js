@@ -547,7 +547,7 @@ test('5. A webhook after pause returns 503', async () => {
 
     // Call webhook via HTTP on the webhook server port
     // In makeTestDeps, config.webhook.port is set to 0. Retrieve the actual bound port from webhookServer.
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const runtimeUntyped = runtime
     const webhookPort = runtimeUntyped.webhookServer?.getBoundPort() ?? config.webhook.port
 

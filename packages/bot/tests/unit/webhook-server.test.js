@@ -107,7 +107,7 @@ async function startWebhookServer ({
       timeoutMs
     },
     triggers,
-    makeBotCtx: async (invocation) => (/** @type {any} */ ({
+    makeBotCtx: async (invocation) => (/** @type {Record<string, Object>} */ ({
       webhook: async (ctx, inv) => {
         if (handler) {
           await handler(ctx, inv)
@@ -264,9 +264,9 @@ describe('Webhook Trigger Server Unit Tests', () => {
       /** @type {string[]} */
       const logs = []
       const logger = {
-        debug: (/** @type {string} */ msg, /** @type {any} */ meta) => logs.push(JSON.stringify({ msg, meta })),
-        warn: (/** @type {string} */ msg, /** @type {any} */ meta) => logs.push(JSON.stringify({ msg, meta })),
-        error: (/** @type {string} */ msg, /** @type {any} */ meta) => logs.push(JSON.stringify({ msg, meta }))
+        debug: (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) => logs.push(JSON.stringify({ msg, meta })),
+        warn: (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) => logs.push(JSON.stringify({ msg, meta })),
+        error: (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) => logs.push(JSON.stringify({ msg, meta }))
       }
       const sig = hmacSha256Hex(sentinelSecret, sentinelBody)
       const { url, cleanup } = await startWebhookServer({

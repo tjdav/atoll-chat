@@ -114,7 +114,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test('2. Request path is POST /bots/me/messages', async () => {
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let recordedReq = null
     const { server, url } = await startServer((req, res) => {
       recordedReq = {
@@ -151,7 +151,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test('3. Request body shape', async () => {
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let recordedBody = null
     const { server, url } = await startServer((req, res) => {
       let body = ''
@@ -200,7 +200,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test('4. Ciphertext decodes to the correct plaintext', async () => {
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let recordedBody = null
     const { server, url } = await startServer((req, res) => {
       let body = ''
@@ -252,7 +252,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test("5. format: 'markdown' propagates", async () => {
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let recordedBody = null
     const { server, url } = await startServer((req, res) => {
       let body = ''
@@ -622,7 +622,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test('17. request_id is fresh per call', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const bodies = []
     const { server, url } = await startServer((req, res) => {
       let body = ''
@@ -663,7 +663,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test('18. Ephemeral public key is fresh per call', async () => {
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     const bodies = []
     const { server, url } = await startServer((req, res) => {
       let body = ''
@@ -704,7 +704,7 @@ test('ctx.sendLocal unit tests', async (t) => {
   })
 
   await t.test('19. Empty text is accepted', async () => {
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let recordedBody = null
     const { server, url } = await startServer((req, res) => {
       let body = ''
@@ -756,7 +756,7 @@ test('ctx.sendLocal unit tests', async (t) => {
 
   await t.test('20. Unicode text round-trips', async () => {
     const unicodeText = 'Hello 🚀 World! 🐙 日本語, Português, Español 🎉'
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let recordedBody = null
     const { server, url } = await startServer((req, res) => {
       let body = ''
@@ -805,7 +805,7 @@ test('ctx.sendLocal unit tests', async (t) => {
 
   await t.test('21. Long text round-trips', async () => {
     const longText = 'x'.repeat(10 * 1024)
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     let recordedBody = null
     const { server, url } = await startServer((req, res) => {
       let body = ''
