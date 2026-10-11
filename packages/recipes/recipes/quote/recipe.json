@@ -1,0 +1,59 @@
+{
+  "id": "quote",
+  "version": "1.0.0",
+  "label": "Quote",
+  "description": "Fetches a random quote from a JSON endpoint and replies privately to the invoker.",
+  "kind": "pure",
+  "capabilities": ["read_commands", "post_message"],
+  "slots": [
+    {
+      "name": "endpoint",
+      "type": "string",
+      "question": "Which JSON endpoint should the bot fetch quotes from?",
+      "default": "https://api.quotable.io/random",
+      "hint": "The endpoint must return JSON with a `content` string and an `author` string."
+    }
+  ],
+  "handlers": {
+    "install": {
+      "id": "install-hook",
+      "primitive": "post-response",
+      "config": { "text": "Quote is ready. Use /quote for a random quote." }
+    }
+  },
+  "commands": {
+    "quote": {
+      "id": "quote-cmd",
+      "primitive": "expose-command",
+      "config": {
+        "name": "quote",
+        "description": "Fetch a random quote."
+      },
+      "children": [
+        {
+          "id": "quote-fetch",
+          "primitive": "http-fetch",
+          "config": {
+            "url": "{endpoint}",
+            "responseMode": "json"
+          },
+          "children": [
+            {
+              "id": "quote-reply",
+              "primitive": "reply-local",
+              "config": {
+                "text": "\"{{content}}\" — {{author}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": [
+    "The endpoint must return JSON with a `content` string and an `author` string. Other shapes produce a template-resolution error.",
+    "The bot makes one outbound HTTP request per invocation. Operators are responsible for ensuring the endpoint is reachable from the runtime's network.",
+    "Responses are not cached. Every invocation fetches fresh.",
+    "The reply is private to the invoker. The bot has no public output mode for this command."
+  ]
+}
