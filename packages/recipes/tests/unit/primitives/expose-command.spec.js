@@ -149,10 +149,20 @@ test('handler does nothing when input has no args', async () => {
   assert.equal(calls.length, 0)
 })
 
-test('handler does nothing when args has no get method', async () => {
+test('handler calls children when args is a plain object', async () => {
   const { child, calls } = createRecordingChild()
   const handler = exposeCommand.create({ name: 'save' }, [child])
-  await handler(createMockCtx(), { args: { url: 'x' } })
+  const args = { url: 'https://example.com' }
+  await handler(createMockCtx(), { args })
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].args, args)
+  assert.equal(calls[0].command, 'save')
+})
+
+test('handler does nothing when args is null', async () => {
+  const { child, calls } = createRecordingChild()
+  const handler = exposeCommand.create({ name: 'save' }, [child])
+  await handler(createMockCtx(), { args: null })
   assert.equal(calls.length, 0)
 })
 

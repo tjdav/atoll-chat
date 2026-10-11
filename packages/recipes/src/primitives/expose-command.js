@@ -58,7 +58,7 @@ export const exposeCommand = {
 
     return async (ctx, input) => {
       const args = input && typeof input === 'object' ? input.args : undefined
-      if (!args || typeof args.get !== 'function') {
+      if (args === undefined || args === null) {
         return
       }
       const payload = { args, command: name }

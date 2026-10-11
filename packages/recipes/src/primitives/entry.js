@@ -21,23 +21,36 @@ export { queueForOperator } from './queue-for-operator.js'
 
 /**
  * Wraps a composed primitive handler in the bot SDK's CommandDecl
- * shape. Called by generated bot.js files. The returned handler
- * dispatches to the underlying primitive with `{ args, command }`
- * and then returns `{ type: 'none' }` so the SDK sees a valid
- * CommandResult.
+ * shape. Called by generated bot.js files.
+ *
+ * The SDK provides an ArgsReader — an object with a single `get`
+ * method. Children downstream use `{{args.name}}` path substitution,
+ * which requires a plain object. This function bridges the two: it
+ * reads each declared argument from the reader, builds a plain
+ * object, and passes that to the primitive's handler.
+ *
+ * The primitive handler dispatches to its children and returns
+ * nothing. The returned CommandDecl handler awaits it and returns
+ * `{ type: 'none' }` so the SDK sees a valid CommandResult.
  * @param {string} name - The command name.
  * @param {string | undefined} description - Human-readable
  *   description, or undefined.
- * @param {object} args - Argument declarations.
- * @param {Function} handler - The composed primitive handler, from
+ * @param {Record<string, unknown>} argsDecl - Argument declarations,
+ *   keyed by argument name.
+ * @param {Function} handler - The composed primitive handler from
  *   `exposeCommand.create(...)`.
  * @returns {object} A CommandDecl-shaped object.
  */
-export function asCommandDecl (name, description, args, handler) {
+export function asCommandDecl (name, description, argsDecl, handler) {
+  const declaredArgs = argsDecl ?? {}
   const decl = {
-    args: args ?? {},
+    args: declaredArgs,
     handler: async (ctx, argsReader) => {
-      await handler(ctx, { args: argsReader, command: name })
+      const argsObject = {}
+      for (const key of Object.keys(declaredArgs)) {
+        argsObject[key] = argsReader.get(key)
+      }
+      await handler(ctx, { args: argsObject, command: name })
       return { type: 'none' }
     }
   }
