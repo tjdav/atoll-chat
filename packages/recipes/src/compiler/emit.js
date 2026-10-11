@@ -226,24 +226,27 @@ export function emit (composition, options) {
 
   const slotsJson = json(composition.slots)
 
-  const botConfigLines = [
-    `  id: ${JSON.stringify(botId)},`,
-    `  apiVersion: ${JSON.stringify(apiVersion)},`,
-    `  hostApi: ${JSON.stringify(hostApi)},`,
-    `  label: ${JSON.stringify(label)},`,
-    `  capabilities: ${json(composition.capabilities)},`
+  const configFields = [
+    `id: ${JSON.stringify(botId)}`,
+    `apiVersion: ${JSON.stringify(apiVersion)}`,
+    `hostApi: ${JSON.stringify(hostApi)}`,
+    `label: ${JSON.stringify(label)}`,
+    `capabilities: ${json(composition.capabilities)}`
   ]
   if (avatar !== undefined) {
-    botConfigLines.push(`  avatar: ${json(avatar)},`)
+    configFields.push(`avatar: ${json(avatar)}`)
+  }
+  if (composition.settings !== undefined) {
+    configFields.push(`settings: ${json(composition.settings)}`)
   }
   if (commandsBlock !== null) {
-    botConfigLines.push('  commands,')
+    configFields.push('commands')
   }
-  const handlersLine = triggersBlock !== null ? '  handlers,' : '  handlers'
-  botConfigLines.push(handlersLine)
+  configFields.push('handlers')
   if (triggersBlock !== null) {
-    botConfigLines.push('  triggers')
+    configFields.push('triggers')
   }
+  const botConfigLines = configFields.map((field) => `  ${field}`)
 
   const output = [
     `// SPDX-License-Identifier: AGPL-3.0-or-later`,
@@ -257,7 +260,7 @@ export function emit (composition, options) {
     handlersBlock + (commandsBlock === null ? '' : `\n\n${commandsBlock}`) + (triggersBlock === null ? '' : `\n\n${triggersBlock}`),
     ``,
     `export default defineBot({`,
-    botConfigLines.join('\n'),
+    botConfigLines.join(',\n'),
     `})`,
     ``
   ].join('\n')
