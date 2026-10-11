@@ -205,6 +205,7 @@ files = [
     "bot_command_results",
     "bot_commands",
     "bot_declarations",
+    "bot_key_rotation",
     "bot_leaf_index",
     "bot_local_messages",
     "bot_request_log",
