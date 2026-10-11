@@ -175,7 +175,19 @@ test('the emitted script with commands parses as valid JavaScript', async () => 
   const encoded = Buffer.from(code, 'utf8').toString('base64')
   const build = new Function(`
     const defineBot = (config) => config
-    const asCommandDecl = (name, description, args, handler) => ({ name, description, args, handler })
+    const asCommandDecl = (name, description, argsDecl, handler) => ({
+      name,
+      description,
+      args: argsDecl,
+      handler: async (ctx, argsReader) => {
+        const argsObject = {}
+        for (const key of Object.keys(argsDecl ?? {})) {
+          argsObject[key] = argsReader.get(key)
+        }
+        await handler(ctx, { args: argsObject, command: name })
+        return { type: 'none' }
+      }
+    })
     const exposeCommand = { create: () => (() => {}) }
     const postResponse = { create: () => (() => {}) }
     const src = Buffer.from('${encoded}', 'base64').toString('utf8')
