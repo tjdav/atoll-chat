@@ -83,7 +83,9 @@ function loadEmittedBot (code) {
       const mode = config.mode === undefined ? 'set' : config.mode
       const keyConfig = config.key
       const valueConfig = config.value
+      const defaultValue = config.default
       const hasValue = Object.hasOwn(config, 'value')
+      const hasDefault = Object.hasOwn(config, 'default')
       return async (ctx, input) => {
         const resolvedKey = substitute(keyConfig, input)
         if (mode === 'set') {
@@ -92,9 +94,13 @@ function loadEmittedBot (code) {
           return undefined
         }
         const stored = store.get(resolvedKey)
+        let valueToPass = stored
+        if (stored === undefined && hasDefault) {
+          valueToPass = substitute(defaultValue, input)
+        }
         let lastResult
         for (const child of children ?? []) {
-          lastResult = await child(ctx, stored)
+          lastResult = await child(ctx, valueToPass)
         }
         return lastResult
       }
@@ -266,15 +272,32 @@ test('a save followed by a recall round-trips through the store', async () => {
   })
 })
 
-test('recalling a name that was never saved throws', async () => {
+test('recalling a name that was never saved returns a not-saved reply', async () => {
   const script = await build()
   const { config } = loadEmittedBot(script.code)
 
   const reader = makeReader({ name: 'never-saved' })
-  await assert.rejects(
-    () => config.commands.recall.handler({}, reader),
-    /path "name" is not resolvable/
-  )
+  const result = await config.commands.recall.handler({}, reader)
+
+  assert.deepEqual(result, {
+    type: 'local_message',
+    content: '"never-saved" = (not saved)'
+  })
+})
+
+test('recalling a saved name ignores the default and returns the stored value', async () => {
+  const script = await build()
+  const { config, store } = loadEmittedBot(script.code)
+
+  store.set('notes:saved', { name: 'saved', value: 'real value' })
+
+  const reader = makeReader({ name: 'saved' })
+  const result = await config.commands.recall.handler({}, reader)
+
+  assert.deepEqual(result, {
+    type: 'local_message',
+    content: '"saved" = real value'
+  })
 })
 
 test('saving under the same name overwrites the previous value', async () => {

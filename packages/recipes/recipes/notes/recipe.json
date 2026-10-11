@@ -65,7 +65,11 @@
           "primitive": "keyed-store",
           "config": {
             "mode": "get",
-            "key": "notes:{{args.name}}"
+            "key": "notes:{{args.name}}",
+            "default": {
+              "name": "{{args.name}}",
+              "value": "(not saved)"
+            }
           },
           "children": [
             {
@@ -82,7 +86,7 @@
   },
   "constraints": [
     "The pad is shared across the room. There is no per-user scoping.",
-    "Recalling a name that was never saved produces an error. There is no \"not found\" response.",
+    "Recalling a name that was never saved returns a private reply containing the name and the text \"(not saved)\".",
     "Values are stored as text. They are not parsed, evaluated, or type-checked.",
     "The pad lives in the bot's local storage. It is not synced across instances and is not backed up unless the operator backs it up."
   ]
