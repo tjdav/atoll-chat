@@ -1,0 +1,41 @@
+{
+  "id": "echo-command",
+  "version": "1.0.0",
+  "label": "Echo",
+  "description": "Repeats whatever text is passed to the /echo command.",
+  "kind": "pure",
+  "capabilities": ["read_commands", "post_message"],
+  "slots": [],
+  "handlers": {
+    "install": {
+      "id": "install-hook",
+      "primitive": "post-response",
+      "config": { "text": "Echo is ready. Use /echo to repeat a message." }
+    }
+  },
+  "commands": {
+    "echo": {
+      "id": "echo-cmd",
+      "primitive": "expose-command",
+      "config": {
+        "name": "echo",
+        "description": "Repeat a message in the room.",
+        "args": {
+          "text": { "type": "string", "required": true }
+        }
+      },
+      "children": [
+        {
+          "id": "echo-post",
+          "primitive": "post-response",
+          "config": { "text": "{{args.text}}" }
+        }
+      ]
+    }
+  },
+  "constraints": [
+    "The bot posts publicly in the room. It has no private output mode.",
+    "The bot does not attribute the echoed text to the invoker.",
+    "The /echo command takes no optional arguments and has no default text."
+  ]
+}
