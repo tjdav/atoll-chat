@@ -1,0 +1,89 @@
+{
+  "id": "notes",
+  "version": "1.0.0",
+  "label": "Notes",
+  "description": "A shared scratchpad for the room. Save short notes under a name and recall them later.",
+  "kind": "pure",
+  "capabilities": ["read_commands", "post_message"],
+  "slots": [],
+  "handlers": {
+    "install": {
+      "id": "install-hook",
+      "primitive": "post-response",
+      "config": {
+        "text": "Notes is ready. Notes are shared across the room. Use /save <name> <value> and /recall <name>."
+      }
+    }
+  },
+  "commands": {
+    "save": {
+      "id": "save-cmd",
+      "primitive": "expose-command",
+      "config": {
+        "name": "save",
+        "description": "Save a note under a name.",
+        "args": {
+          "name": { "type": "string", "required": true },
+          "value": { "type": "string", "required": true }
+        }
+      },
+      "children": [
+        {
+          "id": "save-store",
+          "primitive": "keyed-store",
+          "config": {
+            "mode": "set",
+            "key": "notes:{{args.name}}",
+            "value": {
+              "name": "{{args.name}}",
+              "value": "{{args.value}}"
+            }
+          }
+        },
+        {
+          "id": "save-reply",
+          "primitive": "reply-local",
+          "config": {
+            "text": "Saved \"{{args.name}}\" to the shared pad."
+          }
+        }
+      ]
+    },
+    "recall": {
+      "id": "recall-cmd",
+      "primitive": "expose-command",
+      "config": {
+        "name": "recall",
+        "description": "Recall a note by name.",
+        "args": {
+          "name": { "type": "string", "required": true }
+        }
+      },
+      "children": [
+        {
+          "id": "recall-store",
+          "primitive": "keyed-store",
+          "config": {
+            "mode": "get",
+            "key": "notes:{{args.name}}"
+          },
+          "children": [
+            {
+              "id": "recall-reply",
+              "primitive": "reply-local",
+              "config": {
+                "text": "\"{{name}}\" = {{value}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": [
+    "The pad is shared across the room. There is no per-user scoping.",
+    "Recalling a name that was never saved produces an error. There is no \"not found\" response.",
+    "Values are stored as text. They are not parsed, evaluated, or type-checked.",
+    "The pad lives in the bot's local storage. It is not synced across instances and is not backed up unless the operator backs it up."
+  ]
+}
