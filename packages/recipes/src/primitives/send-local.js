@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { substitute } from '../lib/substitute.js'
+
 /**
  * send-local sends a message visible only to the bot's owner. It is
  * used for private replies: the operator sees the output, no one
@@ -35,10 +37,16 @@ export const sendLocal = {
 
     /**
      * @param {any} ctx - The bot invocation context.
+     * @param {unknown} [input] - The handler input object.
      */
-    return async (ctx) => {
+    return async (ctx, input) => {
+      const resolvedText = substitute(text, input)
+      if (typeof resolvedText !== 'string' || resolvedText.length === 0) {
+        throw new Error('send-local: resolved text is empty')
+      }
+
       /** @type {{ text: string, format?: string }} */
-      const opts = { text }
+      const opts = { text: resolvedText }
       if (typeof format === 'string') {
         opts.format = format
       }

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { substitute } from '../lib/substitute.js'
+
 /**
  * post-response posts a text message into a room. It is the primary
  * output primitive. Every recipe that speaks to a room composes it.
@@ -39,18 +41,31 @@ export const postResponse = {
 
     /**
      * @param {any} ctx - The bot invocation context.
+     * @param {unknown} [input] - The handler input object.
      */
-    return async (ctx) => {
-      const targetRoomId = typeof overrideRoomId === 'string'
-        ? overrideRoomId
-        : ctx.room?.id
+    return async (ctx, input) => {
+      const resolvedText = substitute(text, input)
+      if (typeof resolvedText !== 'string' || resolvedText.length === 0) {
+        throw new Error('post-response: resolved text is empty')
+      }
+
+      let targetRoomId
+      if (typeof overrideRoomId === 'string') {
+        const resolvedRoomId = substitute(overrideRoomId, input)
+        if (typeof resolvedRoomId !== 'string' || resolvedRoomId.length === 0) {
+          throw new Error('post-response: resolved roomId is empty')
+        }
+        targetRoomId = resolvedRoomId
+      } else {
+        targetRoomId = ctx.room?.id
+      }
 
       if (typeof targetRoomId !== 'string') {
         throw new Error('post-response: no target room available')
       }
 
       await ctx.post({
-        text,
+        text: resolvedText,
         roomId: targetRoomId
       })
     }
