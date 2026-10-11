@@ -58,3 +58,23 @@
   - **Cross-Endpoint Conflict:** Reusing a `request_id` across different endpoints returns 409 `request_id_conflict`.
   - **Cleanup Rule:** 24-hour retention for `bot_request_log` rows via periodic scheduler job.
 - **Link to report:** [verification/bot-request-idempotency/report.md](verification/bot-request-idempotency/report.md)
+
+## Bot Declarations Verification Fact (Phase 43)
+- **ID:** Phase 43 Bot Declarations
+- **Date:** 2026-10-10
+- **Status:** Complete. Canonical.
+- **Spec / Amendment references:** V3 Spec §7.10, §8.8.1, §8.8.2, §8.8.3, §8.9, §14.3, §14.6, §14.8
+- **Verified Facts:**
+  - **Schema:** Added `declarations TEXT` column to `bot_accounts` in `server/migrations/0001_v2_schema.sql`.
+  - **Top-Level Validation Rules:** `validate_declarations_top_level` validates top-level JSON object shape: `schema_version` integer equal to `1` (400 `unsupported_schema_version` for other integers/missing), `commands` array, `settings` array. Total payload length bounded to 256 KiB (413 `declarations_too_large`). Unknown top-level fields are accepted and ignored. Inner contents of `commands` and `settings` are opaque.
+  - **`POST /bots` & `GET /bots/:id`:**
+    - `POST /bots` accepts optional `declarations`, validates shape, stores UTF-8 JSON string, and returns `declarations` object in response.
+    - `GET /bots/:id` returns parsed `declarations` JSON object or `null`.
+  - **`PATCH /bots/:id` & Event Fanout:**
+    - `PATCH /bots/:id` accepts `{ display_name, declarations }` using `double_option` deserialization to distinguish omitted fields from explicit `"declarations": null` (clearing column).
+    - Requires at least one field to update (400 `no_fields_to_update`).
+    - Applies value-level no-op guard skipping DB write, event publishing, and audit logging on unchanged declarations.
+    - On declaration change or clear: updates `bot_accounts.declarations`, publishes `bot.updated` carrying `changed: ["commands"]` on `private-bot-{bot_id}` (omitting `avatar_file_id`) and on each granted room channel (`room_bots WHERE bot_id = ? AND revoked_at IS NULL`, omitting `scopes` and `avatar_file_id`).
+    - Writes `bot.declaration_update` audit log entry with metadata `{"bot_id": bot_id, "room_id": null}`.
+  - **Opacity & GDPR:** Server never logs declarations content. GDPR export (`build_export`) includes owned bot accounts and declarations in `bot_accounts.json`. Account deletion (`anonymise_user`) cascades owned `bot_accounts` rows.
+- **Link to report:** [verification/bot-declarations/report.md](verification/bot-declarations/report.md)

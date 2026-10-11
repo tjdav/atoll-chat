@@ -304,6 +304,12 @@ None.
   - **Contract Highlights:** Implemented `bot_request_log` table and `idx_bot_request_log_ttl` index per §7.10, transaction-bound idempotency helpers (`check_or_reserve_request_id`, `record_response_code`, `validate_request_id`), `POST /rooms/:id/bot-messages` endpoint (bot token auth, room grant scope check, Ed25519 signature verification over length-prefixed big-endian bytes, epoch window check, `RATE_BOT_MESSAGE_PER_MIN` rate limit, durable `message.new` event publishing), updated `POST /rooms/:id/bot-commands` with optional `request_id` idempotency deduplication, cross-endpoint conflict detection returning 409 `request_id_conflict`, 24-hour cleanup job `BotRequestLogTtlJob` registered on shared scheduler, and 6 integration test cases passing under `bots` batch (`make -C server test-bots`).
   - **Batch:** `bots`
 
+- **Bot Declarations (Phase 43)**: done
+  - **Migration:** `server/migrations/0001_v2_schema.sql` (Added `declarations TEXT` column to `bot_accounts`).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-declarations/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/bots/declarations.rs`, `server/src/bots/mod.rs`, `server/src/routes/bots.rs`, `server/src/audit.rs`, `server/src/gdpr.rs`, `server/tests/bot_declarations.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `verification.md`.
+  - **Contract Highlights:** Implemented `validate_declarations_top_level` (validating schema_version 1, commands array, settings array, 256 KiB size cap, and opaque contents), `POST /bots` acceptance and storage of declarations, `GET /bots/:id` declarations response, `PATCH /bots/:id` with tri-state `double_option` deserialization, no-op guard, event publishing with `changed: ["commands"]` on `private-bot-{bot_id}` and granted room channels, `bot.declaration_update` audit logging without declarations contents, GDPR export inclusion in `bot_accounts.json`, and 3 integration tests passing under `bots` batch (`make -C server test-bots`).
+  - **Batch:** `bots`
+
 ## Summary
 - **Project Status:** Complete
 - **Total Verifications/Tasks Tracked:** 58

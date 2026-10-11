@@ -474,6 +474,7 @@ CREATE TABLE IF NOT EXISTS bot_accounts (
     bot_command_pubkey  TEXT NOT NULL,
     identity_pubkey     TEXT NOT NULL,
     owner_user_id       TEXT NOT NULL REFERENCES users(id),
+    declarations        TEXT,
     created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     disabled_at         DATETIME,
     deleted_at          DATETIME

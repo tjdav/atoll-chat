@@ -119,6 +119,7 @@ pub struct CreateBotReq {
     pub bot_command_pubkey: String,
     pub identity_pubkey: String,
     pub declared_scopes: Vec<String>,
+    pub declarations: Option<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -132,6 +133,7 @@ pub struct BotView {
     pub declared_scopes: Vec<String>,
     pub owner_user_id: String,
     pub created_at: String,
+    pub declarations: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bot_token: Option<String>,
 }
@@ -185,6 +187,17 @@ pub async fn create_bot(
         }
     }
 
+    if let Some(ref decl) = req.declarations {
+        crate::bots::validate_declarations_top_level(decl)?;
+    }
+
+    let decl_str = match req.declarations {
+        Some(ref decl) => {
+            Some(serde_json::to_string(decl).map_err(|e| ApiError::BadRequest(e.to_string()))?)
+        }
+        None => None,
+    };
+
     let bot_id = format!("b_{}", Ulid::new());
     let token_id = format!("bt_{}", Ulid::new());
     let (raw_token, token_hash) = generate_raw_token();
@@ -202,8 +215,8 @@ pub async fn create_bot(
 
     let created_at: String = sqlx::query_scalar(
         r#"
-        INSERT INTO bot_accounts (id, display_name, bot_identity_pubkey, bot_command_pubkey, identity_pubkey, owner_user_id)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO bot_accounts (id, display_name, bot_identity_pubkey, bot_command_pubkey, identity_pubkey, owner_user_id, declarations)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         RETURNING CAST(created_at AS TEXT)
         "#,
     )
@@ -213,6 +226,7 @@ pub async fn create_bot(
     .bind(&req.bot_command_pubkey)
     .bind(&req.identity_pubkey)
     .bind(&auth_user.user_id)
+    .bind(&decl_str)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| ApiError::Internal(e.into()))?;
@@ -263,6 +277,7 @@ pub async fn create_bot(
         declared_scopes: req.declared_scopes,
         owner_user_id: auth_user.user_id,
         created_at,
+        declarations: req.declarations,
         bot_token: Some(raw_token),
     };
 
@@ -283,7 +298,7 @@ pub async fn get_bot(
 
     let row = sqlx::query(
         r#"
-        SELECT id, display_name, avatar_file_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey, owner_user_id, CAST(created_at AS TEXT) AS created_at
+        SELECT id, display_name, avatar_file_id, bot_identity_pubkey, bot_command_pubkey, identity_pubkey, owner_user_id, declarations, CAST(created_at AS TEXT) AS created_at
         FROM bot_accounts
         WHERE id = ? AND deleted_at IS NULL
         "#,
@@ -311,6 +326,12 @@ pub async fn get_bot(
     .await
     .map_err(|e| ApiError::Internal(e.into()))?;
 
+    let decl_str: Option<String> = row.get("declarations");
+    let declarations: Option<serde_json::Value> = match decl_str {
+        Some(s) => serde_json::from_str(&s).ok(),
+        None => None,
+    };
+
     let view = BotView {
         bot_id,
         display_name: row.get("display_name"),
@@ -321,6 +342,7 @@ pub async fn get_bot(
         declared_scopes: scope_rows,
         owner_user_id,
         created_at: row.get("created_at"),
+        declarations,
         bot_token: None,
     };
 
@@ -332,9 +354,19 @@ pub async fn get_bot(
     Ok(response)
 }
 
+fn double_option<'de, D, T>(de: D) -> Result<Option<Option<T>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    serde::Deserialize::deserialize(de).map(Some)
+}
+
 #[derive(Deserialize)]
 pub struct PatchBotReq {
     pub display_name: Option<String>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub declarations: Option<Option<serde_json::Value>>,
 }
 
 pub async fn patch_bot(
@@ -346,7 +378,7 @@ pub async fn patch_bot(
     let caller = resolve_caller(&state.pool, &headers, &state).await?;
 
     let row = sqlx::query(
-        "SELECT owner_user_id, display_name FROM bot_accounts WHERE id = ? AND deleted_at IS NULL",
+        "SELECT owner_user_id, display_name, declarations FROM bot_accounts WHERE id = ? AND deleted_at IS NULL",
     )
     .bind(&bot_id)
     .fetch_optional(&state.pool)
@@ -363,6 +395,10 @@ pub async fn patch_bot(
         return Err(ApiError::Forbidden("forbidden".into()));
     }
 
+    if req.display_name.is_none() && req.declarations.is_none() {
+        return Err(ApiError::BadRequest("no_fields_to_update".into()));
+    }
+
     let mut changed = Vec::new();
 
     if let Some(ref new_name) = req.display_name {
@@ -371,23 +407,120 @@ pub async fn patch_bot(
             return Err(ApiError::BadRequest("invalid_display_name".into()));
         }
 
-        sqlx::query("UPDATE bot_accounts SET display_name = ? WHERE id = ?")
-            .bind(trimmed)
-            .bind(&bot_id)
-            .execute(&state.pool)
-            .await
-            .map_err(|e| ApiError::Internal(e.into()))?;
+        let existing_name: String = row.get("display_name");
+        if trimmed != existing_name {
+            sqlx::query("UPDATE bot_accounts SET display_name = ? WHERE id = ?")
+                .bind(trimmed)
+                .bind(&bot_id)
+                .execute(&state.pool)
+                .await
+                .map_err(|e| ApiError::Internal(e.into()))?;
 
-        changed.push("display_name".to_string());
+            changed.push("display_name".to_string());
+        }
     }
 
-    if !changed.is_empty() {
-        let update_event = json!({
+    if let Some(ref opt_decl) = req.declarations {
+        let existing_decl_str: Option<String> = row.get("declarations");
+        let existing_decl_val: Option<serde_json::Value> = existing_decl_str
+            .as_ref()
+            .and_then(|s| serde_json::from_str(s).ok());
+
+        match opt_decl {
+            None => {
+                if existing_decl_val.is_some() {
+                    sqlx::query("UPDATE bot_accounts SET declarations = NULL WHERE id = ?")
+                        .bind(&bot_id)
+                        .execute(&state.pool)
+                        .await
+                        .map_err(|e| ApiError::Internal(e.into()))?;
+
+                    changed.push("commands".to_string());
+                }
+            }
+            Some(new_decl) => {
+                crate::bots::validate_declarations_top_level(new_decl)?;
+
+                if existing_decl_val.as_ref() != Some(new_decl) {
+                    let serialized = serde_json::to_string(new_decl)
+                        .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+
+                    sqlx::query("UPDATE bot_accounts SET declarations = ? WHERE id = ?")
+                        .bind(&serialized)
+                        .bind(&bot_id)
+                        .execute(&state.pool)
+                        .await
+                        .map_err(|e| ApiError::Internal(e.into()))?;
+
+                    changed.push("commands".to_string());
+                }
+            }
+        }
+    }
+
+    if changed.contains(&"commands".to_string()) {
+        let bot_update_event = json!({
             "bot_id": bot_id,
-            "changed": changed
+            "changed": ["commands"]
         });
 
-        // Publish to private-bot-{bot_id}
+        let _ = Publisher::publish(
+            &state.publisher,
+            &format!("private-bot-{}", bot_id),
+            "bot.updated",
+            bot_update_event,
+        )
+        .await;
+
+        let room_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT room_id FROM room_bots WHERE bot_id = ? AND revoked_at IS NULL",
+        )
+        .bind(&bot_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+        for room_id in &room_ids {
+            let room_update_event = json!({
+                "room_id": room_id,
+                "bot_id": bot_id,
+                "changed": ["commands"]
+            });
+
+            let _ = Publisher::publish(
+                &state.publisher,
+                &format!("private-room-{}", room_id),
+                "bot.updated",
+                room_update_event,
+            )
+            .await;
+        }
+
+        let caller_id = match &caller {
+            CallerIdentity::User(u) => Some(u.user_id.as_str()),
+            CallerIdentity::Bot(b) => Some(b.owner_user_id.as_str()),
+        };
+
+        let _ = crate::audit::log(
+            &state.pool,
+            caller_id,
+            crate::audit::action::BOT_DECLARATION_UPDATE,
+            Some("bot"),
+            Some(&bot_id),
+            Some(json!({
+                "bot_id": bot_id,
+                "room_id": serde_json::Value::Null
+            })),
+        )
+        .await;
+    }
+
+    if changed.contains(&"display_name".to_string()) && !changed.contains(&"commands".to_string()) {
+        let update_event = json!({
+            "bot_id": bot_id,
+            "changed": ["display_name"]
+        });
+
         let _ = Publisher::publish(
             &state.publisher,
             &format!("private-bot-{}", bot_id),
@@ -396,7 +529,6 @@ pub async fn patch_bot(
         )
         .await;
 
-        // Publish to each granted room channel
         let room_ids: Vec<String> = sqlx::query_scalar(
             "SELECT room_id FROM room_bots WHERE bot_id = ? AND revoked_at IS NULL",
         )
