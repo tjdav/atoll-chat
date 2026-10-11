@@ -1,0 +1,16 @@
+{
+  "id": "echo",
+  "version": "1.0.0",
+  "label": "Echo",
+  "description": "A recipe that echoes back what it hears.",
+  "kind": "pure",
+  "capabilities": ["post_message"],
+  "slots": [],
+  "handlers": {
+    "install": {
+      "id": "echo-install",
+      "primitive": "post-response",
+      "config": { "text": "Echo is ready." }
+    }
+  }
+}
