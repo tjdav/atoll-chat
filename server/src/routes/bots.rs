@@ -664,6 +664,248 @@ pub async fn delete_bot(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
+#[derive(Deserialize)]
+pub struct PostBotMessagesReq {
+    pub target: String,
+    pub target_user_id: Option<String>,
+    pub command_id: Option<String>,
+    pub result_type: String,
+    pub ciphertext: Option<String>,
+    pub bot_result_pubkey: Option<String>,
+    pub request_id: Option<String>,
+}
+
+/// POST /bots/me/messages — Bot-originated user-channel message (§8.8.12)
+pub async fn post_bot_messages(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<PostBotMessagesReq>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+    let bot_ctx = match caller {
+        CallerIdentity::Bot(b) => b,
+        CallerIdentity::User(_) => return Err(ApiError::Unauthorized("unauthorized".into())),
+    };
+
+    let target_trimmed = req.target.trim();
+    if target_trimmed == "owner" {
+        return Err(ApiError::BadRequest("unsupported_target".into()));
+    }
+
+    if target_trimmed != "invoker" {
+        return Err(ApiError::BadRequest("invalid_target".into()));
+    }
+
+    // target: "invoker" flow
+    let target_user_id = match req.target_user_id.as_deref() {
+        Some(s) if !s.trim().is_empty() => s.trim(),
+        _ => return Err(ApiError::BadRequest("target_user_id_required".into())),
+    };
+
+    let command_id = match req.command_id.as_deref() {
+        Some(s) if !s.trim().is_empty() => s.trim(),
+        _ => return Err(ApiError::BadRequest("command_id_required".into())),
+    };
+
+    let result_type_trimmed = req.result_type.trim();
+    if !["local_message", "toast", "panel", "none"].contains(&result_type_trimmed) {
+        return Err(ApiError::BadRequest("invalid_result_type".into()));
+    }
+
+    let is_none_result = result_type_trimmed == "none";
+
+    let (ciphertext_trimmed, _decoded_ciphertext, bot_result_pubkey_trimmed) = if !is_none_result {
+        let ct_str = match req.ciphertext.as_deref() {
+            Some(s) if !s.trim().is_empty() => s.trim(),
+            _ => return Err(ApiError::BadRequest("invalid_ciphertext".into())),
+        };
+
+        let decoded_ct = match URL_SAFE_NO_PAD.decode(ct_str) {
+            Ok(bytes) if !bytes.is_empty() => bytes,
+            _ => return Err(ApiError::BadRequest("invalid_ciphertext".into())),
+        };
+
+        if decoded_ct.len() > 65536 {
+            return Err(ApiError::InternalCustom(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "ciphertext_too_large".into(),
+            ));
+        }
+
+        let pubkey_str = match req.bot_result_pubkey.as_deref() {
+            Some(s) if !s.trim().is_empty() => s.trim(),
+            _ => return Err(ApiError::BadRequest("invalid_bot_result_pubkey".into())),
+        };
+
+        let decoded_pk = match URL_SAFE_NO_PAD.decode(pubkey_str) {
+            Ok(bytes) if bytes.len() == 32 => bytes,
+            _ => return Err(ApiError::BadRequest("invalid_bot_result_pubkey".into())),
+        };
+        let _ = decoded_pk;
+
+        (Some(ct_str), Some(decoded_ct), Some(pubkey_str))
+    } else {
+        (None, None, None)
+    };
+
+    let request_id_trimmed = match req.request_id.as_deref() {
+        Some(s) => {
+            let trimmed = s.trim();
+            if !crate::bots::validate_request_id(trimmed) {
+                return Err(ApiError::BadRequest("invalid_request_id".into()));
+            }
+            Some(trimmed)
+        }
+        None => None,
+    };
+
+    // Check rate limit per (bot_id, user_id) BEFORE idempotency reservation
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::BotCommandResult {
+            bot_id: bot_ctx.bot_id.clone(),
+            user_id: target_user_id.to_string(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if let Some(req_id) = request_id_trimmed {
+        let outcome = crate::bots::check_or_reserve_request_id(
+            &mut tx,
+            &bot_ctx.bot_id,
+            req_id,
+            crate::bots::ENDPOINT_BOT_COMMAND_RESULT,
+        )
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+        match outcome {
+            crate::bots::IdempotencyOutcome::Duplicate { response_code } => {
+                let _ = tx.rollback().await;
+                let status = StatusCode::from_u16(response_code).unwrap_or(StatusCode::NO_CONTENT);
+                let resp = json!({
+                    "idempotent": true
+                });
+                let mut response = (status, Json(resp)).into_response();
+                response.headers_mut().insert(
+                    header::CACHE_CONTROL,
+                    header::HeaderValue::from_static("no-store"),
+                );
+                return Ok(response);
+            }
+            crate::bots::IdempotencyOutcome::Conflict => {
+                let _ = tx.rollback().await;
+                return Err(ApiError::Conflict("request_id_conflict".into()));
+            }
+            crate::bots::IdempotencyOutcome::Reserved => {}
+        }
+    }
+
+    // Query command row
+    #[allow(clippy::type_complexity)]
+    let cmd_row: Option<(String, String, String, Option<String>, Option<String>)> = sqlx::query_as(
+        r#"
+        SELECT bot_id, room_id, sender_user_id, CAST(acked_at AS TEXT), CAST(result_at AS TEXT)
+        FROM bot_commands
+        WHERE id = ?
+        "#,
+    )
+    .bind(command_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let (cmd_bot_id, room_id, sender_user_id, acked_at, result_at) = match cmd_row {
+        Some(r) => r,
+        None => {
+            let _ = tx.rollback().await;
+            return Err(ApiError::NotFound("command_not_found".into()));
+        }
+    };
+
+    if cmd_bot_id != bot_ctx.bot_id {
+        let _ = tx.rollback().await;
+        return Err(ApiError::Forbidden("forbidden".into()));
+    }
+
+    if sender_user_id != target_user_id {
+        let _ = tx.rollback().await;
+        return Err(ApiError::BadRequest("target_mismatch".into()));
+    }
+
+    if acked_at.is_none() {
+        let _ = tx.rollback().await;
+        return Err(ApiError::Conflict("command_not_acked".into()));
+    }
+
+    if result_at.is_some() {
+        let _ = tx.rollback().await;
+        return Err(ApiError::Conflict(
+            "command_result_already_delivered".into(),
+        ));
+    }
+
+    // Update command row
+    sqlx::query(
+        "UPDATE bot_commands SET result_at = CURRENT_TIMESTAMP, result_type = ? WHERE id = ?",
+    )
+    .bind(result_type_trimmed)
+    .bind(command_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if let Some(req_id) = request_id_trimmed {
+        crate::bots::record_response_code(&mut tx, &bot_ctx.bot_id, req_id, 204)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if !is_none_result {
+        let event_payload = json!({
+            "command_id": command_id,
+            "bot_id": bot_ctx.bot_id,
+            "room_id": room_id,
+            "result_type": result_type_trimmed,
+            "ciphertext": ciphertext_trimmed.unwrap_or(""),
+            "bot_result_pubkey": bot_result_pubkey_trimmed.unwrap_or(""),
+        });
+
+        let _ = Publisher::publish(
+            &state.publisher,
+            &format!("private-user-{}", sender_user_id),
+            "bot.command_result",
+            event_payload,
+        )
+        .await;
+    }
+
+    let mut response = StatusCode::NO_CONTENT.into_response();
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
 /// POST /bots/me/commands/:id/ack — Bot acknowledges a command (§8.8.15)
 pub async fn ack_bot_command(
     State(state): State<AppState>,

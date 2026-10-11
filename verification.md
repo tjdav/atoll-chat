@@ -11,7 +11,18 @@
     - Caller must be a member of `room_id` (404 `room_not_found` for non-members).
     - Bot must have an active grant in `room_id` (`revoked_at IS NULL`) with `read_commands` scope in `room_bot_scopes` (403 `bot_not_granted`).
     - Ciphertext must be non-empty unpadded base64url, decoded length ≤ 64 KiB (400 `invalid_ciphertext` / 413 `ciphertext_too_large`).
+    - `ephemeral_result_pubkey` required as 32-byte unpadded base64url string (400 `invalid_ephemeral_result_pubkey`). Stored as 32 raw bytes on `bot_commands`.
     - `request_id` validated as printable ASCII string (1..=64 chars) and echoed in response for client-side correlation.
+    - Publishes `bot.command_invoked` carrying `ephemeral_result_pubkey` on `private-bot-{bot_id}`.
+  - **Command Results Endpoint (`POST /bots/me/messages`):**
+    - Authenticated bot token required (`CallerIdentity::Bot`; user session tokens return 401).
+    - `target: "invoker"` supported (`target: "owner"` returns 400 `unsupported_target`).
+    - Validates `target_user_id`, `command_id`, `result_type` ("local_message" | "toast" | "panel" | "none").
+    - Verifies `command_id` exists (404 `command_not_found`), belongs to caller bot (403 `forbidden`), `sender_user_id == target_user_id` (400 `target_mismatch`), `acked_at IS NOT NULL` (409 `command_not_acked`), and `result_at IS NULL` (409 `command_result_already_delivered`).
+    - Sets `result_at = CURRENT_TIMESTAMP` and `result_type`.
+    - Short-circuits for `result_type = "none"` with 204 No Content without event publication.
+    - For other result types, validates `ciphertext` (<= 64 KiB) and `bot_result_pubkey` (32 bytes), publishes non-durable `bot.command_result` event on `private-user-{sender_user_id}` without `user_seq` allocation, and returns 204 No Content (`Cache-Control: no-store`).
+    - Enforces `RATE_BOT_COMMAND_RESULT_PER_MIN` (120/min) before idempotency check and `ENDPOINT_BOT_COMMAND_RESULT` deduplication.
     - Rate limit `RATE_BOT_COMMAND_PER_MIN` (default 60) enforced per `(bot_id, sender_user_id)`. Key format `bot_command:{bot_id}:{user_id}:min:{boundary}`.
     - Stores command row in `bot_commands` with `sender_client_id` derived from user session device binding.
     - Publishes durable `bot.command_invoked` on `private-bot-{bot_id}` carrying `{ command_id, room_id, sender_user_id, sender_client_id, ciphertext }`. Event payload does NOT include `command_name` or any decrypted content. Event is NOT published on room or user channels.

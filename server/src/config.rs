@@ -38,6 +38,8 @@ pub struct RateLimitConfig {
     pub rate_bot_token_issue_per_hour: u32,
     pub rate_bot_command_per_min: u32,
     pub rate_bot_message_per_min: u32,
+    pub rate_bot_command_result_per_min: u32,
+    pub rate_bot_local_message_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -573,6 +575,16 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(60);
 
+        let rate_bot_command_result_per_min = env::var("RATE_BOT_COMMAND_RESULT_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(120);
+
+        let rate_bot_local_message_per_min = env::var("RATE_BOT_LOCAL_MESSAGE_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(60);
+
         let bot_command_ttl_hours = env::var("BOT_COMMAND_TTL_HOURS")
             .ok()
             .and_then(|s| s.parse().ok())
@@ -614,6 +626,8 @@ impl Config {
             rate_bot_token_issue_per_hour,
             rate_bot_command_per_min,
             rate_bot_message_per_min,
+            rate_bot_command_result_per_min,
+            rate_bot_local_message_per_min,
         };
 
         let link_preview_proxy_enabled = env::var("LINK_PREVIEW_PROXY_ENABLED")
@@ -1490,6 +1504,8 @@ impl Config {
                 rate_bot_token_issue_per_hour: 20,
                 rate_bot_command_per_min: 60,
                 rate_bot_message_per_min: 60,
+                rate_bot_command_result_per_min: 120,
+                rate_bot_local_message_per_min: 60,
             },
             bot_command_ttl_hours: 24,
             link_preview_proxy_enabled: false,
