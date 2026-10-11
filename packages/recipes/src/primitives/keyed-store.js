@@ -23,7 +23,8 @@ export const keyedStore = {
     properties: {
       mode: { type: 'string', enum: ['set', 'get'], default: 'set' },
       key: { type: 'string', minLength: 1 },
-      value: {}
+      value: {},
+      default: {}
     },
     required: ['key'],
     additionalProperties: false
@@ -32,6 +33,8 @@ export const keyedStore = {
     const mode = config.mode === undefined ? 'set' : config.mode
     const key = config.key
     const value = config.value
+    const defaultValue = config.default
+    const hasDefault = Object.hasOwn(config, 'default')
 
     if (mode !== 'set' && mode !== 'get') {
       throw new Error('keyed-store: config.mode must be "set" or "get"')
@@ -61,8 +64,12 @@ export const keyedStore = {
       }
 
       const stored = await ctx.storage.get(resolvedKey)
+      let valueToPass = stored
+      if (stored === undefined && hasDefault) {
+        valueToPass = substitute(defaultValue, input)
+      }
       for (const child of children) {
-        await child(ctx, stored)
+        await child(ctx, valueToPass)
       }
     }
   }
