@@ -1,0 +1,35 @@
+{
+  "id": "keyword-alert",
+  "version": "1.0.0",
+  "label": "Keyword Alert",
+  "description": "Watches the room for a keyword and posts a brief alert when it appears.",
+  "kind": "pure",
+  "capabilities": ["read_content", "post_message"],
+  "slots": [
+    {
+      "name": "keyword",
+      "type": "string",
+      "question": "What word or phrase should the bot watch for?",
+      "default": "urgent",
+      "hint": "Interpreted as a regular expression. Use simple words unless you need pattern matching."
+    }
+  ],
+  "handlers": {
+    "message": {
+      "id": "watch-keyword",
+      "primitive": "watch-pattern",
+      "config": { "pattern": "{keyword}", "flags": "i" },
+      "children": [
+        {
+          "id": "post-alert",
+          "primitive": "post-response",
+          "config": { "text": "Keyword detected: {keyword}" }
+        }
+      ]
+    }
+  },
+  "constraints": [
+    "The keyword is treated as a regular expression, so regex metacharacters (., *, +, ?, etc.) have special meaning.",
+    "The bot posts in the room where it is installed. It does not direct-message the invoker."
+  ]
+}
