@@ -22,6 +22,7 @@ const definedTypes = [
   'MatcherConfig',
   'Matcher',
   'Authenticator',
+  'RateLimiter',
   'Instantiation',
   'Composition',
   'BotScript',

@@ -116,6 +116,18 @@ function buildContext (req, res, params, bodyText) {
     get responded () {
       return written
     },
+    /**
+     * Sets a response header. Has no effect once the response has
+     * been written.
+     * @param {string} name - The header name.
+     * @param {string} value - The header value.
+     * @returns {void}
+     */
+    setResponseHeader (name, value) {
+      if (!written) {
+        res.setHeader(name, value)
+      }
+    },
     json,
     /**
      * Writes the standard error shape.
