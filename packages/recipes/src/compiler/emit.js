@@ -71,6 +71,11 @@ function collectPrimitiveIds (composition) {
       walk(trigger)
     }
   }
+  if (composition.commands !== undefined) {
+    for (const key of Object.keys(composition.commands)) {
+      walk(composition.commands[key])
+    }
+  }
   return found
 }
 
@@ -99,6 +104,33 @@ function emitInstance (instance, indent) {
 }
 
 /**
+ * Emits the source for a single command. Produces a call to
+ * `asCommandDecl` that wraps the primitive's handler in the SDK's
+ * CommandDecl shape.
+ * @param {string} name - The command name.
+ * @param {PrimitiveInstance} instance - The command instance.
+ * @param {number} indent - The current indent level.
+ * @returns {string} The emitted source.
+ */
+function emitCommand (name, instance, indent) {
+  const pad = '  '.repeat(indent)
+  const one = '  '.repeat(indent + 1)
+  const config = instance.config
+  const description = config.description
+  const args = config.args === undefined ? {} : config.args
+
+  const handlerSource = emitInstance(instance, indent + 1)
+  const descArg = description === undefined ? 'undefined' : JSON.stringify(description)
+
+  return `${pad}${name.replace(/-/g, '_')}: asCommandDecl(\n` +
+    `${one}${JSON.stringify(name)},\n` +
+    `${one}${descArg},\n` +
+    `${one}${JSON.stringify(args)},\n` +
+    `${one}${handlerSource}\n` +
+    `${pad})`
+}
+
+/**
  * Emits a bot.js source string from a Composition and bot-level
  * options. The output is deterministic: same inputs, same string.
  * @param {Composition} composition - The composition to emit.
@@ -123,12 +155,6 @@ export function emit (composition, options) {
   }
   if (options === null || typeof options !== 'object') {
     throw new Error('emit: options must be an object')
-  }
-
-  if (composition.commands !== undefined && Object.keys(composition.commands).length > 0) {
-    throw new Error(
-      'emit: composition has commands; command emission is not implemented in this version'
-    )
   }
 
   const { botId, label } = options
@@ -165,11 +191,6 @@ export function emit (composition, options) {
     }
   }
 
-  const sortedIds = Array.from(ids).sort()
-  const importNames = sortedIds.map(toIdentifier)
-
-  const slotsJson = json(composition.slots)
-
   const handlerKeys = Object.keys(composition.handlers)
   const handlerEntries = handlerKeys.map((key) => {
     const source = emitInstance(composition.handlers[key], 1)
@@ -179,6 +200,15 @@ export function emit (composition, options) {
     ? 'const handlers = {}'
     : `const handlers = {\n${handlerEntries.join(',\n')}\n}`
 
+  const commandsBlock = (composition.commands === undefined || Object.keys(composition.commands).length === 0)
+    ? null
+    : (() => {
+        const entries = Object.keys(composition.commands).map((name) =>
+          emitCommand(name, composition.commands[name], 0)
+        )
+        return `const commands = {\n  ${entries.join(',\n  ')}\n}`
+      })()
+
   const triggersBlock = composition.triggers === undefined
     ? null
     : (() => {
@@ -186,6 +216,15 @@ export function emit (composition, options) {
         const padded = sources.map((s) => `  ${s}`).join(',\n')
         return `const triggers = [\n${padded}\n]`
       })()
+
+  const sortedIds = Array.from(ids).sort()
+  const importNames = sortedIds.map(toIdentifier)
+  if (commandsBlock !== null) {
+    importNames.push('asCommandDecl')
+    importNames.sort()
+  }
+
+  const slotsJson = json(composition.slots)
 
   const botConfigLines = [
     `  id: ${JSON.stringify(botId)},`,
@@ -196,6 +235,9 @@ export function emit (composition, options) {
   ]
   if (avatar !== undefined) {
     botConfigLines.push(`  avatar: ${json(avatar)},`)
+  }
+  if (commandsBlock !== null) {
+    botConfigLines.push('  commands,')
   }
   const handlersLine = triggersBlock !== null ? '  handlers,' : '  handlers'
   botConfigLines.push(handlersLine)
@@ -208,11 +250,11 @@ export function emit (composition, options) {
     `// Recipe: ${composition.recipeId}@${composition.recipeVersion}`,
     ``,
     `import { defineBot } from '@atoll/bot'`,
-    ...(sortedIds.length === 0 ? [] : [`import {\n${importNames.map((n) => `  ${n}`).join(',\n')}\n} from '@atoll/recipes/primitives'`]),
+    ...(importNames.length === 0 ? [] : [`import {\n${importNames.map((n) => `  ${n}`).join(',\n')}\n} from '@atoll/recipes/primitives'`]),
     ``,
     `const slots = ${slotsJson}`,
     ``,
-    handlersBlock + (triggersBlock === null ? '' : `\n\n${triggersBlock}`),
+    handlersBlock + (commandsBlock === null ? '' : `\n\n${commandsBlock}`) + (triggersBlock === null ? '' : `\n\n${triggersBlock}`),
     ``,
     `export default defineBot({`,
     botConfigLines.join('\n'),

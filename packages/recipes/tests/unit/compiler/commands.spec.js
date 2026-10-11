@@ -139,16 +139,59 @@ test('the composer omits commands when the recipe declares none', async () => {
   assert.equal(Object.hasOwn(composition, 'commands'), false)
 })
 
-test('the emitter throws when the composition carries commands', async () => {
+test('the emitter produces a commands block when the composition has commands', async () => {
   const composition = await compose(LIB, {
     recipeId: 'with-commands',
     recipeVersion: '1.0.0',
     slots: { greeting: 'hi' }
   })
-  assert.throws(
-    () => emit(composition, { botId: 'com.example.with-commands', label: 'With Commands' }),
-    /command emission is not implemented in this version/
-  )
+  const code = emit(composition, { botId: 'com.example.with-commands', label: 'With Commands' })
+  assert.match(code, /const commands = \{/)
+  assert.match(code, /asCommandDecl\(/)
+  assert.match(code, /"greet"/)
+  assert.match(code, /read_commands|post_message/)
+})
+
+test('the emitted command block carries the description and args', async () => {
+  const composition = await compose(LIB, {
+    recipeId: 'with-commands',
+    recipeVersion: '1.0.0',
+    slots: { greeting: 'hi' }
+  })
+  const code = emit(composition, { botId: 'com.example.with-commands', label: 'With Commands' })
+  assert.match(code, /"Greet someone\."/)
+  assert.match(code, /"name"/)
+  assert.match(code, /"required": true/)
+})
+
+test('the emitted script with commands parses as valid JavaScript', async () => {
+  const composition = await compose(LIB, {
+    recipeId: 'with-commands',
+    recipeVersion: '1.0.0',
+    slots: { greeting: 'hi' }
+  })
+  const code = emit(composition, { botId: 'com.example.with-commands', label: 'With Commands' })
+
+  const encoded = Buffer.from(code, 'utf8').toString('base64')
+  const build = new Function(`
+    const defineBot = (config) => config
+    const asCommandDecl = (name, description, args, handler) => ({ name, description, args, handler })
+    const exposeCommand = { create: () => (() => {}) }
+    const postResponse = { create: () => (() => {}) }
+    const src = Buffer.from('${encoded}', 'base64').toString('utf8')
+    const cleaned = src
+      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
+      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/recipes\\/primitives'/, '')
+      .replace('export default defineBot', 'return defineBot')
+    const fn = new Function('defineBot', 'asCommandDecl', 'exposeCommand', 'postResponse', cleaned)
+    return fn(defineBot, asCommandDecl, exposeCommand, postResponse)
+  `)
+  const result = build()
+  assert.ok(result)
+  assert.ok(result.commands)
+  assert.ok(result.commands.greet)
+  assert.equal(typeof result.commands.greet.handler, 'function')
+  assert.ok(result.handlers)
 })
 
 test('the emitter does not throw when the composition has no commands', async () => {

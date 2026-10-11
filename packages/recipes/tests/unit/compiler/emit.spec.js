@@ -291,3 +291,88 @@ test('emit output parses as valid JavaScript', () => {
   `)
   assert.ok(parsed)
 })
+
+test('emit produces a commands block when the composition has commands', () => {
+  const composition = simpleComposition()
+  composition.commands = {
+    save: {
+      id: 'save-command',
+      primitive: 'expose-command',
+      config: {
+        name: 'save',
+        description: 'Save an item.',
+        args: { url: { type: 'string', required: true } }
+      },
+      children: [
+        {
+          id: 'save-respond',
+          primitive: 'post-response',
+          config: { text: 'Saved.' }
+        }
+      ]
+    }
+  }
+  const code = emit(composition, standardOptions())
+  assert.match(code, /const commands = \{/)
+  assert.match(code, /asCommandDecl\(/)
+  assert.match(code, /"save"/)
+  assert.match(code, /"Save an item\."/)
+  assert.match(code, /"url"/)
+})
+
+test('emit imports asCommandDecl when commands are present', () => {
+  const composition = simpleComposition()
+  composition.commands = {
+    save: {
+      id: 'save-command',
+      primitive: 'expose-command',
+      config: { name: 'save' },
+      children: [{ id: 'save-respond', primitive: 'post-response', config: { text: 'ok' } }]
+    }
+  }
+  const code = emit(composition, standardOptions())
+  assert.match(code, /asCommandDecl/)
+})
+
+test('emit omits the commands block when no commands are present', () => {
+  const code = emit(simpleComposition(), standardOptions())
+  assert.doesNotMatch(code, /const commands = \{/)
+  assert.doesNotMatch(code, /asCommandDecl/)
+})
+
+test('emit produces valid JavaScript when commands, handlers, and triggers are all present', () => {
+  const composition = simpleComposition()
+  composition.commands = {
+    save: {
+      id: 'save-command',
+      primitive: 'expose-command',
+      config: { name: 'save', description: 'Save it.' },
+      children: [{ id: 'save-respond', primitive: 'post-response', config: { text: 'ok' } }]
+    }
+  }
+  composition.triggers = [
+    { id: 'schedule', primitive: 'schedule-task', config: { name: 'daily', cron: '0 9 * * *' } }
+  ]
+  const code = emit(composition, standardOptions())
+
+  const encoded = Buffer.from(code, 'utf8').toString('base64')
+  const build = new Function(`
+    const defineBot = (config) => config
+    const asCommandDecl = (name, description, args, handler) => ({ name, description, args, handler })
+    const exposeCommand = { create: () => (() => {}) }
+    const postResponse = { create: () => (() => {}) }
+    const scheduleTask = { create: () => (() => {}) }
+    const src = Buffer.from('${encoded}', 'base64').toString('utf8')
+    const cleaned = src
+      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
+      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/recipes\\/primitives'/, '')
+      .replace('export default defineBot', 'return defineBot')
+    const fn = new Function('defineBot', 'asCommandDecl', 'exposeCommand', 'postResponse', 'scheduleTask', cleaned)
+    return fn(defineBot, asCommandDecl, exposeCommand, postResponse, scheduleTask)
+  `)
+  const result = build()
+  assert.ok(result)
+  assert.ok(result.commands)
+  assert.ok(result.handlers)
+  assert.ok(result.triggers)
+})
