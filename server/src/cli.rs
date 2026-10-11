@@ -68,6 +68,12 @@ pub enum Command {
         command: KtCommand,
     },
 
+    /// Server config operator subcommands
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommand,
+    },
+
     /// Session Types operator subcommands
     SessionTypes {
         #[command(subcommand)]
@@ -120,6 +126,12 @@ pub enum ModelsCommand {
         #[arg(long, default_value_t = false)]
         force: bool,
     },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum ConfigCommand {
+    /// Print the server_config table (secrets masked)
+    Show,
 }
 
 #[derive(Subcommand, Debug)]
@@ -477,6 +489,47 @@ pub async fn run_kt_verify(from: Option<i64>) -> Result<i32, Box<dyn std::error:
 
     println!("{}", serde_json::to_string_pretty(&output)?);
     Ok(0)
+}
+
+pub async fn run_config_show() -> Result<(), Box<dyn std::error::Error>> {
+    use sqlx::Row;
+
+    let config = Config::from_env()?;
+    let pool = db::init_pool(&config).await?;
+
+    let rows =
+        sqlx::query("SELECT key, value, is_secret, created_at FROM server_config ORDER BY key ASC")
+            .fetch_all(&pool)
+            .await?;
+
+    println!(
+        "{:<25} {:<35} {:<10} {:<25}",
+        "KEY", "VALUE", "IS_SECRET", "CREATED_AT"
+    );
+    println!("{}", "-".repeat(97));
+
+    for row in rows {
+        let key: String = row.get("key");
+        let val: String = row.get("value");
+        let is_secret: i32 = row.get("is_secret");
+        let created_at: String = row.get("created_at");
+
+        let display_val = if is_secret == 1 {
+            "<redacted>".to_string()
+        } else {
+            val
+        };
+
+        println!(
+            "{:<25} {:<35} {:<10} {:<25}",
+            key,
+            display_val,
+            is_secret == 1,
+            created_at
+        );
+    }
+
+    Ok(())
 }
 
 pub fn run_session_types_validate(

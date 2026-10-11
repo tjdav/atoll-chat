@@ -43,12 +43,12 @@ async fn test_first_startup_generates_app_credentials() {
     assert!(!sockudo_cfg.app_secret.is_empty());
 
     let db_key: (String,) =
-        sqlx::query_as("SELECT value FROM instance_config WHERE key = 'sockudo_app_key'")
+        sqlx::query_as("SELECT value FROM server_config WHERE key = 'sockudo_app_key'")
             .fetch_one(&pool)
             .await
             .unwrap();
     let db_secret: (String,) =
-        sqlx::query_as("SELECT value FROM instance_config WHERE key = 'sockudo_app_secret'")
+        sqlx::query_as("SELECT value FROM server_config WHERE key = 'sockudo_app_secret'")
             .fetch_one(&pool)
             .await
             .unwrap();
@@ -86,7 +86,7 @@ async fn test_externally_configured_credentials_used_as_is() {
     assert_eq!(sockudo_cfg.app_secret, "fixed-secret");
 
     let db_rows: (i64,) =
-        sqlx::query_as("SELECT COUNT(*) FROM instance_config WHERE key LIKE 'sockudo_%'")
+        sqlx::query_as("SELECT COUNT(*) FROM server_config WHERE key LIKE 'sockudo_%'")
             .fetch_one(&pool)
             .await
             .unwrap();

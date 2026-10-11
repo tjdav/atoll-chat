@@ -33,7 +33,7 @@ async fn test_push_disabled_skips_generation() {
     assert!(keys.is_none());
 
     let count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM instance_config WHERE key LIKE 'push_vapid%'")
+        sqlx::query_scalar("SELECT COUNT(*) FROM server_config WHERE key LIKE 'push_vapid%'")
             .fetch_one(&pool)
             .await
             .expect("query failed");
@@ -65,16 +65,15 @@ async fn test_first_startup_generates_keys() {
     assert_eq!(priv_bytes.len(), 32);
 
     let stored_pub: String =
-        sqlx::query_scalar("SELECT value FROM instance_config WHERE key = 'push_vapid_public_key'")
+        sqlx::query_scalar("SELECT value FROM server_config WHERE key = 'push_vapid_public_key'")
             .fetch_one(&pool)
             .await
             .expect("fetch pub key");
-    let stored_priv: String = sqlx::query_scalar(
-        "SELECT value FROM instance_config WHERE key = 'push_vapid_private_key'",
-    )
-    .fetch_one(&pool)
-    .await
-    .expect("fetch priv key");
+    let stored_priv: String =
+        sqlx::query_scalar("SELECT value FROM server_config WHERE key = 'push_vapid_private_key'")
+            .fetch_one(&pool)
+            .await
+            .expect("fetch priv key");
 
     assert_eq!(stored_pub, keys.public_key);
     assert_eq!(stored_priv, keys.private_key);
@@ -121,7 +120,7 @@ async fn test_explicit_keys_used_as_is() {
     assert_eq!(keys.private_key, priv_b64);
 
     let count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM instance_config WHERE key LIKE 'push_vapid%'")
+        sqlx::query_scalar("SELECT COUNT(*) FROM server_config WHERE key LIKE 'push_vapid%'")
             .fetch_one(&pool)
             .await
             .expect("query count");

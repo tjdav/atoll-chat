@@ -319,7 +319,7 @@ async fn test_moderation_modes_discord_and_messenger() {
     app.clone().oneshot(req_add).await.unwrap();
 
     // Set moderation mode to discord
-    sqlx::query("INSERT INTO instance_config (key, value) VALUES ('moderation_mode', 'discord') ON CONFLICT(key) DO UPDATE SET value = 'discord'")
+    sqlx::query("INSERT INTO server_config (key, value, is_secret) VALUES ('moderation_mode', 'discord', 0) ON CONFLICT(key) DO UPDATE SET value = 'discord'")
         .execute(&pool)
         .await
         .unwrap();
@@ -350,7 +350,7 @@ async fn test_moderation_modes_discord_and_messenger() {
     assert_eq!(resp_patch_mod.status(), StatusCode::OK);
 
     // Set moderation mode to messenger
-    sqlx::query("UPDATE instance_config SET value = 'messenger' WHERE key = 'moderation_mode'")
+    sqlx::query("UPDATE server_config SET value = 'messenger' WHERE key = 'moderation_mode'")
         .execute(&pool)
         .await
         .unwrap();

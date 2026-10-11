@@ -53,19 +53,18 @@ impl SockudoConfig {
             (true, true) => {
                 let mut tx = pool.begin().await?;
 
-                let db_key: Option<(String,)> = sqlx::query_as(
-                    "SELECT value FROM instance_config WHERE key = 'sockudo_app_key'",
-                )
-                .fetch_optional(&mut *tx)
-                .await?;
+                let db_key: Option<(String,)> =
+                    sqlx::query_as("SELECT value FROM server_config WHERE key = 'sockudo_app_key'")
+                        .fetch_optional(&mut *tx)
+                        .await?;
                 let db_secret: Option<(String,)> = sqlx::query_as(
-                    "SELECT value FROM instance_config WHERE key = 'sockudo_app_secret'",
+                    "SELECT value FROM server_config WHERE key = 'sockudo_app_secret'",
                 )
                 .fetch_optional(&mut *tx)
                 .await?;
 
                 if let (Some((key,)), Some((secret,))) = (db_key, db_secret) {
-                    info!("sockudo: loaded app credentials from instance_config");
+                    info!("sockudo: loaded app credentials from server_config");
                     tx.commit().await?;
                     (key, secret)
                 } else {
@@ -78,7 +77,7 @@ impl SockudoConfig {
                     let gen_secret = URL_SAFE_NO_PAD.encode(secret_bytes);
 
                     sqlx::query(
-                        "INSERT INTO instance_config (key, value) VALUES ('sockudo_app_key', ?) \
+                        "INSERT INTO server_config (key, value, is_secret) VALUES ('sockudo_app_key', ?, 0) \
                          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                     )
                     .bind(&gen_key)
@@ -86,7 +85,7 @@ impl SockudoConfig {
                     .await?;
 
                     sqlx::query(
-                        "INSERT INTO instance_config (key, value) VALUES ('sockudo_app_secret', ?) \
+                        "INSERT INTO server_config (key, value, is_secret) VALUES ('sockudo_app_secret', ?, 1) \
                          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                     )
                     .bind(&gen_secret)
