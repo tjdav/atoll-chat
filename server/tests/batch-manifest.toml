@@ -204,6 +204,7 @@ files = [
     "bot_command_results",
     "bot_commands",
     "bot_declarations",
+    "bot_local_messages",
     "bot_request_log",
     "bot_settings",
     "bots",

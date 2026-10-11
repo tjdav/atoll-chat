@@ -316,10 +316,16 @@ None.
   - **Contract Highlights:** Updated `POST /rooms/:id/bot-commands` to accept, validate, and store 32-byte `ephemeral_result_pubkey` and include it in `bot.command_invoked` event. Implemented `POST /bots/me/messages` for `target: "invoker"` with command validation (`command_not_found`, `forbidden`, `target_mismatch`, `command_not_acked`, `command_result_already_delivered`), `RATE_BOT_COMMAND_RESULT_PER_MIN` rate limiting, idempotency deduplication with `ENDPOINT_BOT_COMMAND_RESULT`, non-durable `bot.command_result` event publication on `private-user-{sender_user_id}`, short-circuiting for `result_type = "none"`, and 4 integration test cases passing under `bots` batch (`make -C server test-bots`).
   - **Batch:** `bots`
 
+- **Bot Owner Local Messages (Phase 45)**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** Step 0 Empirical Report at `verification/bot-owner-local-messages/report.md`, `server/src/bots/idempotency.rs`, `server/src/bots/mod.rs`, `server/src/rate_limit.rs`, `server/src/routes/bots.rs`, `server/tests/bot_local_messages.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `verification.md`.
+  - **Contract Highlights:** Implemented `target: "owner"` mode for `POST /bots/me/messages`, validating `result_type` ("local_message" | "toast" | "panel"; rejecting "none"), non-empty base64url `ciphertext` capped at 64 KiB, and 32-byte base64url `bot_result_pubkey`. Enforced per-bot rate limit `RATE_BOT_LOCAL_MESSAGE_PER_MIN` (key `bot_local_message:{bot_id}:min:{boundary}`), idempotency deduplication with `ENDPOINT_BOT_LOCAL_MESSAGE`, owner lookup from `bot_accounts.owner_user_id`, non-durable `bot.local_message` event publication on `private-user-{owner_user_id}` without `user_seq` allocation, HTTP status 204 No Content with `Cache-Control: no-store`, and 7 integration test cases passing under `bots` batch (`make -C server test-bots`).
+  - **Batch:** `bots`
+
 ## Summary
 - **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 59
-- **Done:** 59
+- **Total Verifications/Tasks Tracked:** 60
+- **Done:** 60
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0
