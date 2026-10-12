@@ -1,0 +1,84 @@
+{
+  "id": "daily-reminder",
+  "version": "1.0.0",
+  "label": "Daily Reminder",
+  "description": "Posts a configurable message to a configured room on a cron schedule.",
+  "kind": "pure",
+  "capabilities": ["post_message"],
+  "slots": [
+    {
+      "name": "roomId",
+      "type": "string",
+      "question": "Which room should the reminder post in?",
+      "required": true,
+      "hint": "The room id. Copy it from the room's settings page."
+    },
+    {
+      "name": "cron",
+      "type": "string",
+      "question": "When should the reminder fire?",
+      "default": "0 9 * * *",
+      "hint": "Five-field cron expression. No seconds. No macros."
+    },
+    {
+      "name": "timezone",
+      "type": "string",
+      "question": "Which timezone should the schedule use?",
+      "default": "UTC",
+      "hint": "IANA timezone name, for example Europe/Madrid."
+    }
+  ],
+  "settings": {
+    "message": {
+      "label": "Reminder message",
+      "type": "text",
+      "scope": "user",
+      "default": "Daily check-in",
+      "hint": "The text posted on each fire. Change it any time from the bot's settings page."
+    }
+  },
+  "handlers": {
+    "install": {
+      "id": "install-hook",
+      "primitive": "post-response",
+      "config": {
+        "roomId": "{roomId}",
+        "text": "Daily Reminder is ready. It will post to this room on the configured schedule."
+      }
+    }
+  },
+  "triggers": [
+    {
+      "id": "reminder-trigger",
+      "primitive": "schedule-task",
+      "config": {
+        "name": "daily-reminder",
+        "cron": "{cron}",
+        "timezone": "{timezone}"
+      },
+      "children": [
+        {
+          "id": "read-message",
+          "primitive": "settings-read",
+          "config": { "key": "message" },
+          "children": [
+            {
+              "id": "post-reminder",
+              "primitive": "post-response",
+              "config": {
+                "roomId": "{roomId}",
+                "text": "{{.}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "constraints": [
+    "The room id is fixed at build time. Changing it requires rebuilding the bot.",
+    "The reminder posts to the same room regardless of where the bot is granted.",
+    "The message is a user-scoped setting. Changing it applies to every room the bot is granted in, but only the configured room receives the reminder.",
+    "The scheduler is the runtime's cron engine. Missed fires are skipped unless the operator enables catch-up in the runtime config."
+  ]
+}
