@@ -11,15 +11,21 @@ use utoipa::ToSchema;
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AttachmentView {
     pub id: String,
+    /// Optional room ID for room-scoped attachments, null for user-scoped attachments. See §7.7, §8.6.
     pub room_id: Option<String>,
     pub uploader_id: String,
     pub uploader_client_id: Option<String>,
     pub storage_backend: String,
     pub padded_size: i64,
+    /// Plaintext byte length before chunked C2SP encryption. See §7.7.
     pub plaintext_size: i64,
+    /// Encrypted byte length after C2SP chunked encryption. See §7.7.
     pub encrypted_size: i64,
+    /// Chunk size in bytes (16384 bytes). See §5.13, §7.7.
     pub chunk_size: i64,
+    /// Number of encrypted C2SP chunks. See §7.7.
     pub chunk_count: i64,
+    /// Hex-encoded nonce prefix for chunk counter derivation. See §7.7.
     pub nonce_prefix: String,
     pub base_counter: i64,
     pub content_type: String,

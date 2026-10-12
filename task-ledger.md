@@ -343,6 +343,9 @@ None.
 
 ## Developer Tooling
 
+- **OpenAPI Annotations — Messaging Endpoints**: done
+  - **Delivered:** `verification/openapi-annotate-messaging-endpoints/report.md`
+
 - **OpenAPI File Generation (utoipa, file-only)**: done
   - **Delivered:** `verification/openapi-file-generation/report.md`
   - **Summary:** Added `utoipa` dependency, OpenAPI doc generator struct `ApiDoc`, CLI subcommand `server openapi generate`, static artifact `docs/openapi.json`, and integration test suite `openapi_generation.rs`.

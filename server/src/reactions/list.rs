@@ -2,10 +2,11 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 use sqlx::{Row, SqlitePool};
+use utoipa::ToSchema;
 
 use super::ReactionError;
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, ToSchema)]
 pub struct ReactionSummary {
     pub reaction: String,
     pub count: i64,

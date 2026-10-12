@@ -7,20 +7,28 @@ use utoipa::{
 
 use crate::error::ErrorResponse;
 use crate::routes::{
-    attachments::UserAvatarUploadForm,
+    attachments::{
+        PresignRequest, PresignResponse, RoomAttachmentUploadForm, UserAvatarUploadForm,
+    },
     capabilities::{AltchaCapView, CapabilitiesResponse},
     devices::{DeviceResponse, ListDevicesResponse, UpdateDeviceNameRequest},
     health::HealthResponse,
     preferences::WritePreferenceRequest,
     push_subscriptions::{PushSubscriptionListResponse, RegisterSubscriptionBody},
+    reactions::{AddReactionInput, AddReactionResponse, ListReactionsResponse},
     read_state::WriteReadStateRequest,
     ready::ReadinessResponse,
+    room_messages::{
+        EditMessageRequest, EpochResponse, ListQuery, MessageCiphertextResponse,
+        SubmitMessageRequest,
+    },
     room_order::PatchRoomOrderRequest,
     sessions::{LogoutRequest, SessionListResponse, SessionResponseItem},
     users::{
         DeleteAccountRequest, PatchUserProfileRequest, UserLimitsResponse, UserLookupRequest,
         UserLookupResponse, UserProfileResponse,
     },
+    welcomes::{ConsumeWelcomeResponse, WelcomeDetailResponse, WelcomesListResponse},
 };
 use crate::starred::list::{ListStarredItemsResponse, StarredItemCursor};
 use crate::starred::write::StarRequest;
@@ -80,6 +88,17 @@ impl Modify for SecurityAddon {
         crate::routes::starred::post_star,
         crate::routes::starred::delete_star,
         crate::routes::attachments::upload_avatar,
+        crate::routes::room_messages::list,
+        crate::routes::room_messages::submit,
+        crate::routes::room_messages::edit,
+        crate::routes::room_messages::delete_message,
+        crate::routes::reactions::add,
+        crate::routes::reactions::remove,
+        crate::routes::attachments::upload,
+        crate::routes::attachments::download,
+        crate::routes::attachments::delete_attachment,
+        crate::routes::welcomes::list,
+        crate::routes::welcomes::get,
     ),
     components(
         schemas(
@@ -120,14 +139,35 @@ impl Modify for SecurityAddon {
             StarredItemCursor,
             crate::attachments::AttachmentView,
             UserAvatarUploadForm,
+            RoomAttachmentUploadForm,
+            PresignRequest,
+            PresignResponse,
             crate::sync::query::BotSettingSyncRow,
             crate::sync::query::SyncResponse,
+            crate::room_messages::RoomMessageView,
+            crate::room_messages::ListMessagesResult,
+            crate::room_messages::MessageCursor,
+            crate::room_messages::SubmitOutcome,
+            SubmitMessageRequest,
+            EditMessageRequest,
+            ListQuery,
+            EpochResponse,
+            MessageCiphertextResponse,
+            crate::reactions::list::ReactionSummary,
+            AddReactionInput,
+            AddReactionResponse,
+            ListReactionsResponse,
+            crate::welcomes::WelcomeView,
+            WelcomesListResponse,
+            WelcomeDetailResponse,
+            ConsumeWelcomeResponse,
         )
     ),
     modifiers(&SecurityAddon),
     tags(
         (name = "Public", description = "Public endpoints"),
-        (name = "User", description = "User endpoints")
+        (name = "User", description = "User endpoints"),
+        (name = "Messaging", description = "Messaging endpoints")
     )
 )]
 pub struct ApiDoc;
