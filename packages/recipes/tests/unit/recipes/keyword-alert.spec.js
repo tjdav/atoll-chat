@@ -6,29 +6,70 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 import { compile } from '../../../src/compiler/index.js'
-import { loadRecipeById } from '../../../src/recipe/library.js'
+import { loadRecipeById, scanLibrary } from '../../../src/recipe/library.js'
+import { loadEmittedBot } from './_helpers/load-emitted-bot.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const LIB_ROOT = join(HERE, '..', '..', '..', 'recipes')
 
 /**
- * Compiles the keyword-alert recipe with a test slot value.
- * @param {string} keyword - The keyword to substitute.
+ * Compiles the keyword-alert recipe with a test keyword.
+ * @param {string} [keyword] - Keyword override.
  * @returns {Promise<object>} The BotScript.
  */
-async function buildWith (keyword) {
+async function build (keyword) {
   return compile(
     LIB_ROOT,
     {
       recipeId: 'keyword-alert',
       recipeVersion: '1.0.0',
-      slots: { keyword }
+      slots: keyword === undefined ? {} : { keyword }
     },
-    {
-      botId: 'com.example.keyword-alert',
-      label: 'Keyword Alert'
-    }
+    { botId: 'com.example.keyword-alert', label: 'Keyword Alert' }
   )
+}
+
+/**
+ * Builds a synthetic message event.
+ * @param {string} plaintext - The message text.
+ * @returns {object} An event-shaped object.
+ */
+function makeEvent (plaintext) {
+  return {
+    id: 'e_1',
+    type: 'message.new',
+    roomId: 'r_default',
+    timestamp: '2026-01-01T00:00:00.000Z',
+    data: {
+      id: 'm_1',
+      senderUserId: 'u_1',
+      senderClientId: 'c_1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      plaintext,
+      attachments: [],
+      replyTo: null
+    }
+  }
+}
+
+/**
+ * Builds a synthetic observer-mode event with no plaintext.
+ * @returns {object} An event-shaped object.
+ */
+function makeObserverEvent () {
+  return {
+    id: 'e_2',
+    type: 'message.new',
+    roomId: 'r_default',
+    timestamp: '2026-01-01T00:00:00.000Z',
+    data: {
+      id: 'm_2',
+      senderUserId: 'u_1',
+      senderClientId: 'c_1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      sizeBytes: 512
+    }
+  }
 }
 
 test('the recipe is present in the library', async () => {
@@ -62,7 +103,7 @@ test('the recipe has a message handler using watch-pattern', async () => {
 })
 
 test('the recipe compiles without error', async () => {
-  const script = await buildWith('urgent')
+  const script = await build('urgent')
   assert.equal(typeof script.code, 'string')
   assert.equal(script.composition.recipeId, 'keyword-alert')
   assert.equal(script.composition.recipeVersion, '1.0.0')
@@ -70,44 +111,97 @@ test('the recipe compiles without error', async () => {
 })
 
 test('the slot value is substituted into the watch-pattern config', async () => {
-  const script = await buildWith('deadline')
+  const script = await build('deadline')
   const handler = script.composition.handlers.message
   assert.equal(handler.config.pattern, 'deadline')
   assert.equal(handler.config.flags, 'i')
 })
 
 test('the slot value is substituted into the child text', async () => {
-  const script = await buildWith('deadline')
+  const script = await build('deadline')
   const child = script.composition.handlers.message.children[0]
   assert.match(child.config.text, /deadline/)
 })
 
 test('the composition carries the recipe capabilities', async () => {
-  const script = await buildWith('urgent')
+  const script = await build('urgent')
   assert.ok(script.composition.capabilities.includes('read_content'))
   assert.ok(script.composition.capabilities.includes('post_message'))
 })
 
 test('the emitted code contains the primitives the recipe uses', async () => {
-  const script = await buildWith('urgent')
+  const script = await build('urgent')
   assert.match(script.code, /watchPattern\.create\(/)
   assert.match(script.code, /postResponse\.create\(/)
   assert.match(script.code, /Recipe: keyword-alert@1\.0\.0/)
   assert.match(script.code, /id: "com\.example\.keyword-alert"/)
+  assert.doesNotMatch(script.code, /const commands = \{/)
+  assert.doesNotMatch(script.code, /const triggers = \[/)
 })
 
 test('the emitted code carries the substituted slot value', async () => {
-  const script = await buildWith('deadline')
+  const script = await build('deadline')
   assert.match(script.code, /deadline/)
 })
 
-test('the emitted script parses as valid JavaScript when imports are stubbed', async () => {
-  const script = await buildWith('urgent')
+test('the emitted bot exposes the message handler as a function', async () => {
+  const script = await build('urgent')
+  const { config } = loadEmittedBot(script.code)
+  assert.ok(config.handlers)
+  assert.equal(typeof config.handlers.message, 'function')
+})
+
+test('a message containing the keyword posts the alert', async () => {
+  const script = await build('urgent')
+  const { config, ctx, posts } = loadEmittedBot(script.code)
+  await config.handlers.message(ctx, makeEvent('This is urgent, please look'))
+  assert.equal(posts.length, 1)
+  assert.equal(posts[0].text, 'Keyword detected: urgent')
+})
+
+test('matching is case-insensitive', async () => {
+  const script = await build('urgent')
+  const { config, ctx, posts } = loadEmittedBot(script.code)
+  await config.handlers.message(ctx, makeEvent('URGENT: server is down'))
+  assert.equal(posts.length, 1)
+  assert.match(posts[0].text, /urgent/)
+})
+
+test('a message without the keyword does not post', async () => {
+  const script = await build('urgent')
+  const { config, ctx, posts } = loadEmittedBot(script.code)
+  await config.handlers.message(ctx, makeEvent('nothing to see here'))
+  assert.equal(posts.length, 0)
+})
+
+test('observer-mode events with no plaintext are ignored', async () => {
+  const script = await build('urgent')
+  const { config, ctx, posts } = loadEmittedBot(script.code)
+  await config.handlers.message(ctx, makeObserverEvent())
+  assert.equal(posts.length, 0)
+})
+
+test('an event with no data is ignored', async () => {
+  const script = await build('urgent')
+  const { config, ctx, posts } = loadEmittedBot(script.code)
+  await config.handlers.message(ctx, { id: 'e_3', type: 'message.new' })
+  assert.equal(posts.length, 0)
+})
+
+test('an undefined input is ignored', async () => {
+  const script = await build('urgent')
+  const { config, ctx, posts } = loadEmittedBot(script.code)
+  await config.handlers.message(ctx, undefined)
+  assert.equal(posts.length, 0)
+})
+
+test('the emitted script parses as valid JavaScript when its imports are stubbed', async () => {
+  const script = await build('urgent')
   const encoded = Buffer.from(script.code, 'utf8').toString('base64')
-  const build = new Function(`
+  const buildFn = new Function(`
     const defineBot = (config) => config
-    const watchPattern = { create: () => ({}) }
-    const postResponse = { create: () => ({}) }
+    const watchPattern = { create: () => (() => {}) }
+    const postResponse = { create: () => (() => {}) }
     const src = Buffer.from('${encoded}', 'base64').toString('utf8')
     const cleaned = src
       .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
@@ -116,15 +210,21 @@ test('the emitted script parses as valid JavaScript when imports are stubbed', a
     const fn = new Function('defineBot', 'watchPattern', 'postResponse', cleaned)
     return fn(defineBot, watchPattern, postResponse)
   `)
-  const result = build()
+  const result = buildFn()
   assert.ok(result)
   assert.equal(result.id, 'com.example.keyword-alert')
-  assert.ok(Object.hasOwn(result, 'handlers'))
-  assert.ok(result.handlers.message)
 })
 
 test('the recipe compiles deterministically', async () => {
-  const first = await buildWith('urgent')
-  const second = await buildWith('urgent')
+  const first = await build('urgent')
+  const second = await build('urgent')
   assert.equal(first.code, second.code)
+})
+
+test('the library scans cleanly with keyword-alert present', async () => {
+  const { recipes, errors } = await scanLibrary(LIB_ROOT)
+  const ids = recipes.map((r) => r.id).sort()
+  assert.ok(ids.includes('keyword-alert'))
+  assert.ok(ids.includes('echo-command'))
+  assert.deepEqual(errors, [])
 })
