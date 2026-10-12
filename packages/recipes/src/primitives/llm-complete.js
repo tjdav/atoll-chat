@@ -170,9 +170,11 @@ export const llmComplete = {
         output = content
       }
 
+      let lastResult
       for (const child of children) {
-        await child(ctx, output)
+        lastResult = await child(ctx, output)
       }
+      return lastResult
     }
   }
 }

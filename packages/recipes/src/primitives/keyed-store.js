@@ -68,9 +68,11 @@ export const keyedStore = {
       if (stored === undefined && hasDefault) {
         valueToPass = substitute(defaultValue, input)
       }
+      let lastResult
       for (const child of children) {
-        await child(ctx, valueToPass)
+        lastResult = await child(ctx, valueToPass)
       }
+      return lastResult
     }
   }
 }

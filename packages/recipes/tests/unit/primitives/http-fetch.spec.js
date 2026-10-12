@@ -52,6 +52,22 @@ function createRecordingChild () {
   return { child, calls }
 }
 
+/**
+ * Builds a child handler that records its inputs and returns a
+ * configured value.
+ * @param {unknown} returnValue - The value to return.
+ * @returns {{ child: Function, calls: unknown[] }} The child and a
+ *   mutable array of its inputs.
+ */
+function createReturningChild (returnValue) {
+  const calls = []
+  const child = async (ctx, input) => {
+    calls.push(input)
+    return returnValue
+  }
+  return { child, calls }
+}
+
 test('http-fetch has the expected shape', () => {
   assert.equal(httpFetch.id, 'http-fetch')
   assert.deepEqual(httpFetch.targets, ['bot'])
@@ -254,4 +270,23 @@ test('the primitive is registered under primitives.bot', async () => {
   assert.ok(Object.hasOwn(primitives.bot, 'expose-command'))
   assert.ok(Object.hasOwn(primitives.bot, 'schedule-task'))
   assert.ok(Object.hasOwn(primitives.bot, 'webhook-receive'))
+})
+
+test('http-fetch returns undefined when children return nothing', async () => {
+  const response = createResponse({ body: '{}' })
+  const { ctx } = createMockCtx(response)
+  const { child } = createRecordingChild()
+  const handler = httpFetch.create({ url: 'https://x' }, [child])
+  const result = await handler(ctx, {})
+  assert.equal(result, undefined)
+})
+
+test('http-fetch returns the last child return value', async () => {
+  const response = createResponse({ body: '{}' })
+  const { ctx } = createMockCtx(response)
+  const first = createReturningChild('first')
+  const second = createReturningChild({ type: 'local_message', content: 'fetched' })
+  const handler = httpFetch.create({ url: 'https://x' }, [first.child, second.child])
+  const result = await handler(ctx, {})
+  assert.deepEqual(result, { type: 'local_message', content: 'fetched' })
 })

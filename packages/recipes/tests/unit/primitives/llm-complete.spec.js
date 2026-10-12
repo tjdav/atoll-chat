@@ -54,6 +54,22 @@ function createRecordingChild () {
 }
 
 /**
+ * Builds a child handler that records its inputs and returns a
+ * configured value.
+ * @param {unknown} returnValue - The value to return.
+ * @returns {{ child: Function, calls: unknown[] }} The child and a
+ *   mutable array of its inputs.
+ */
+function createReturningChild (returnValue) {
+  const calls = []
+  const child = async (ctx, input) => {
+    calls.push(input)
+    return returnValue
+  }
+  return { child, calls }
+}
+
+/**
  * Builds a minimal OpenAI-compatible completion response.
  * @param {string} content - The assistant content.
  * @returns {object} A completion response.
@@ -316,4 +332,29 @@ test('the primitive is registered under primitives.bot', async () => {
   assert.ok(Object.hasOwn(primitives.bot, 'settings-read'))
   assert.ok(Object.hasOwn(primitives.bot, 'settings-write'))
   assert.ok(Object.hasOwn(primitives.bot, 'transform'))
+})
+
+test('llm-complete returns undefined when children return nothing', async () => {
+  const response = createResponse({ body: completion('same') })
+  const { ctx } = createMockCtx(response)
+  const { child } = createRecordingChild()
+  const handler = llmComplete.create(
+    { baseUrl: 'https://x', model: 'm', userPrompt: 'hi' },
+    [child]
+  )
+  const result = await handler(ctx, {})
+  assert.equal(result, undefined)
+})
+
+test('llm-complete returns the last child return value', async () => {
+  const response = createResponse({ body: completion('same') })
+  const { ctx } = createMockCtx(response)
+  const first = createReturningChild('first')
+  const second = createReturningChild({ type: 'local_message', content: 'completed' })
+  const handler = llmComplete.create(
+    { baseUrl: 'https://x', model: 'm', userPrompt: 'hi' },
+    [first.child, second.child]
+  )
+  const result = await handler(ctx, {})
+  assert.deepEqual(result, { type: 'local_message', content: 'completed' })
 })

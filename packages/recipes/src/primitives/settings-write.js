@@ -88,9 +88,11 @@ export const settingsWrite = {
         await ctx.settings.set(resolvedKey, resolvedValue, { room: targetRoom })
       }
 
+      let lastResult
       for (const child of children) {
-        await child(ctx, input)
+        lastResult = await child(ctx, input)
       }
+      return lastResult
     }
   }
 }

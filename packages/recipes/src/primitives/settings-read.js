@@ -83,9 +83,11 @@ export const settingsRead = {
         value = await ctx.settings.get(resolvedKey, { room: targetRoom })
       }
 
+      let lastResult
       for (const child of children) {
-        await child(ctx, value)
+        lastResult = await child(ctx, value)
       }
+      return lastResult
     }
   }
 }
