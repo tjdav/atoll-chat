@@ -1,5 +1,16 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-046c Verification Fact
+- **Fix Subtest 18 Server Lifecycle Failure (`packages/bot/tests/unit/runtime-triggers.test.js`)**:
+  - **Diagnosis**: Subtest 18 exercises the `stop()`/`start()` restart cycle. During the second `start()`, `loggedLines` contains `"webhook server started"` log entries from both the first and second runs. The test helper `getWebhookPort(loggedLines)` iterated forward through `loggedLines` starting at index 0, returning `port1` (the first server's port) even after the second start. Connecting to `port1` (which was closed on `stop()`) produced `connect ECONNREFUSED 127.0.0.1:<port1>`.
+  - **Fix**: Updated `getWebhookPort(loggedLines)` in `packages/bot/tests/unit/runtime-triggers.test.js` to iterate `loggedLines` in reverse order (`for (let i = loggedLines.length - 1; i >= 0; i--)`), returning the port from the most recently started webhook server.
+  - **Verification Results**:
+    - `pnpm --filter @atoll/bot typecheck` passed cleanly.
+    - `pnpm --filter @atoll/bot lint` passed cleanly.
+    - `pnpm --filter @atoll/bot check-batches` passed cleanly.
+    - `pnpm --filter @atoll/bot build` passed cleanly.
+    - All 18 subtests in `runtime-triggers.test.js` passed (including subtests 15 and 18).
+
 ## Task B-046b Verification Fact
 - **Register KT Signer Response (`packages/bot/src/testing/create-test-runtime.js`)**:
   - Registered default `GET /api/v1/kt/user/u_signer` HTTP 200 response on `mockServer` when a synthetic signer is seeded during test runtime construction.

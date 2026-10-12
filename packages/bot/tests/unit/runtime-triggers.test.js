@@ -262,7 +262,8 @@ async function startApiServer (handlerOverrides = {}) {
 }
 
 function getWebhookPort (loggedLines) {
-  for (const line of loggedLines) {
+  for (let i = loggedLines.length - 1; i >= 0; i--) {
+    const line = loggedLines[i]
     try {
       const parsed = JSON.parse(line)
       if (parsed.msg === 'webhook server started') {
