@@ -5,32 +5,37 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::auth::AuthUser;
 use crate::bots::auth::CallerIdentity;
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::routes::bots::resolve_caller;
 use crate::signing::{encode_publisher_key_signing_input, verify_publisher_key_signature};
 use crate::AppState;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct PublisherKeyQuery {
     pub epoch: Option<u64>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct PublisherKeyResponse {
     pub room_id: String,
     pub epoch: u64,
     pub publisher_public_key: String,
     pub signer_user_id: String,
+    /// Ed25519 signature over room_id || epoch || publisher_public_key. Reference: §8.10.
+    #[schema(value_type = String, format = Binary)]
     pub signature: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct PublishPublisherKeyRequest {
     pub epoch: u64,
     pub publisher_public_key: String,
+    /// Ed25519 signature over room_id || epoch || publisher_public_key. Reference: §8.10.
+    #[schema(value_type = String, format = Binary)]
     pub signature: String,
 }
 
@@ -44,6 +49,25 @@ fn no_store_headers() -> HeaderMap {
 }
 
 /// GET /rooms/:id/publisher-key
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/publisher-key",
+    tag = "Bots",
+    summary = "Fetch publisher key",
+    description = "Fetch current or specific epoch publisher key for a room per §8.8.15. Auth: Room members.",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        PublisherKeyQuery
+    ),
+    responses(
+        (status = 200, description = "Publisher key details", body = PublisherKeyResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room or publisher key not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn get_publisher_key(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -114,6 +138,27 @@ pub async fn get_publisher_key(
 }
 
 /// POST /rooms/:id/publisher-key
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/publisher-key",
+    tag = "Bots",
+    summary = "Publish publisher key",
+    description = "Publish publisher key for the current epoch per §8.8.16. Auth: Human room members only (bots excluded). Signature verified per §8.10.",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = PublishPublisherKeyRequest,
+    responses(
+        (status = 200, description = "Publisher key published successfully", body = PublisherKeyResponse),
+        (status = 400, description = "Invalid request or signature", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (not a human member)", body = ErrorResponse),
+        (status = 409, description = "Epoch already published", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn publish_publisher_key(
     State(state): State<AppState>,
     headers: HeaderMap,

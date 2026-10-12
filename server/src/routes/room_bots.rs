@@ -20,6 +20,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
+use utoipa::ToSchema;
+
+use crate::error::ErrorResponse;
 
 async fn check_room_grant_auth(
     pool: &SqlitePool,
@@ -67,7 +70,7 @@ async fn check_room_grant_auth(
     Err(ApiError::Forbidden("forbidden".into()))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct RoomBotView {
     pub bot_id: String,
     pub display_name: String,
@@ -80,11 +83,30 @@ pub struct RoomBotView {
     pub granted_by: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ListRoomBotsResp {
     pub bots: Vec<RoomBotView>,
 }
 
+/// GET /rooms/:id/bots
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/bots",
+    tag = "Bots",
+    summary = "List room bots",
+    description = "List bots granted to a room per §8.8.6. Auth: Room members. Note: connected status is included ONLY if caller is the bot's owner.",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "List of room bots", body = ListRoomBotsResp),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn list_room_bots(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -164,12 +186,35 @@ pub async fn list_room_bots(
     Ok(response)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct GrantBotReq {
     pub bot_id: String,
     pub scopes: Vec<String>,
 }
 
+/// POST /rooms/:id/bots
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/bots",
+    tag = "Bots",
+    summary = "Grant bot to room",
+    description = "Grant a bot to a room per §8.8.7. Auth: Room owner / moderator. The room bot mode (write_only, observer, member) is derived automatically from the granted scope set per §7.10.",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = GrantBotReq,
+    responses(
+        (status = 201, description = "Bot granted to room", body = RoomBotView),
+        (status = 400, description = "Invalid scope or missing scope dependency", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 409, description = "Bot already granted or room bot limit reached", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn grant_bot(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -368,11 +413,34 @@ pub async fn grant_bot(
     Ok(response)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct PatchRoomBotReq {
     pub scopes: Vec<String>,
 }
 
+/// PATCH /rooms/:id/bots/:bot_id
+#[utoipa::path(
+    patch,
+    path = "/api/v1/rooms/{id}/bots/{bot_id}",
+    tag = "Bots",
+    summary = "Update room bot scopes",
+    description = "Update granted scopes for a bot in a room per §8.8.8. Auth: Room owner / moderator. Mode is re-derived automatically from the new scope set per §7.10.",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("bot_id" = String, Path, description = "Bot ID")
+    ),
+    request_body = PatchRoomBotReq,
+    responses(
+        (status = 200, description = "Room bot scopes updated", body = RoomBotView),
+        (status = 400, description = "Invalid scopes or dependency missing", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot grant not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn patch_room_bot(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -559,6 +627,27 @@ pub async fn patch_room_bot(
     Ok(response)
 }
 
+/// DELETE /rooms/:id/bots/:bot_id
+#[utoipa::path(
+    delete,
+    path = "/api/v1/rooms/{id}/bots/{bot_id}",
+    tag = "Bots",
+    summary = "Revoke room bot grant",
+    description = "Revoke a bot grant from a room per §8.8.9. Auth: Room owner / moderator.",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("bot_id" = String, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 204, description = "Bot grant revoked"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot grant not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn delete_room_bot(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -621,15 +710,19 @@ pub async fn delete_room_bot(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct PostBotCommandReq {
     pub bot_id: String,
+    /// Command plaintext encrypted via X25519 ECDH to bot_command_pubkey, base64url encoded. Reference: §6.31.
+    #[schema(value_type = String, format = Binary)]
     pub ciphertext: String,
+    /// Client's ephemeral X25519 public key for command result decryption, base64url encoded. Reference: §6.31.
+    #[schema(value_type = Option<String>, format = Binary)]
     pub ephemeral_result_pubkey: Option<String>,
     pub request_id: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct PostBotCommandResp {
     pub command_id: String,
     pub created_at: String,
@@ -639,6 +732,30 @@ pub struct PostBotCommandResp {
     pub idempotent: Option<bool>,
 }
 
+/// POST /rooms/:id/bot-commands
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/bot-commands",
+    tag = "Bots",
+    summary = "Send command to bot",
+    description = "User sends an encrypted command to a bot in a room per §8.8.11. Auth: Room member session token. Supports request_id idempotency.",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = PostBotCommandReq,
+    responses(
+        (status = 202, description = "Command accepted for delivery", body = PostBotCommandResp),
+        (status = 400, description = "Invalid ciphertext, pubkey, or request_id", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden or bot not granted read_commands scope", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+        (status = 409, description = "Request ID conflict across endpoints", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn post_bot_command(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -908,16 +1025,20 @@ pub async fn post_bot_command(
     Ok(response)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct PostBotMessageReq {
     pub epoch: i64,
+    /// Bot message ciphertext encrypted under current epoch publisher key, base64url encoded. Wire shape: ephemeral_pubkey (32) || nonce (12) || ciphertext || tag (16). Reference: §6.33, §8.8.10.
+    #[schema(value_type = String, format = Binary)]
     pub ciphertext: String,
     pub content_type: String,
+    /// Ed25519 signature over room_id || epoch || content_type || ciphertext. Reference: §8.10.
+    #[schema(value_type = String, format = Binary)]
     pub signature: String,
     pub request_id: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct PostBotMessageResp {
     pub message_id: String,
     pub created_at: String,
@@ -927,6 +1048,29 @@ pub struct PostBotMessageResp {
     pub idempotent: Option<bool>,
 }
 
+/// POST /rooms/:id/bot-messages
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/bot-messages",
+    tag = "Bots",
+    summary = "Bot posts a message",
+    description = "Bot posts an encrypted message to a room per §8.8.10. Auth: Bot token matching granted bot_id with post_message scope. Ed25519 signature verified per §8.10. Supports request_id idempotency.",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = PostBotMessageReq,
+    responses(
+        (status = 202, description = "Message accepted", body = PostBotMessageResp),
+        (status = 400, description = "Invalid content_type, ciphertext, signature, or epoch out of window", body = ErrorResponse),
+        (status = 401, description = "Unauthorized (requires bot token)", body = ErrorResponse),
+        (status = 403, description = "Forbidden (bot not granted post_message scope)", body = ErrorResponse),
+        (status = 409, description = "Request ID conflict", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn post_bot_message(
     State(state): State<AppState>,
     headers: HeaderMap,

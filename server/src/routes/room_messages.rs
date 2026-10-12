@@ -8,6 +8,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use utoipa::ToSchema;
 
 use crate::{
     audit,
@@ -36,28 +37,31 @@ pub struct SubmitMessageRequest {
     pub target_user_ids: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct EditMessageRequest {
+    /// Updated message ciphertext, base64url encoded
+    #[schema(value_type = Option<String>, format = Binary)]
     pub ciphertext: Option<String>,
     pub content_type: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ListQuery {
     pub since_epoch: Option<i64>,
     pub since_seq: Option<i64>,
     pub limit: Option<i64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct EpochResponse {
     pub epoch: i64,
     pub sequence: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MessageCiphertextResponse {
     pub id: String,
+    #[schema(value_type = String, format = Binary)]
     pub ciphertext: String,
 }
 

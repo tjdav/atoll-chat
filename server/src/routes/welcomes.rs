@@ -5,6 +5,7 @@ use axum::{
 use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::{
     auth::AuthUser,
@@ -13,23 +14,24 @@ use crate::{
     AppState,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct WelcomesListResponse {
     pub welcomes: Vec<WelcomeView>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct WelcomeDetailResponse {
     pub id: String,
     pub room_id: String,
     pub recipient_user_id: String,
     pub recipient_client_id: String,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub consumed: bool,
     pub welcome_data: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ConsumeWelcomeResponse {
     pub id: String,
     pub room_id: String,

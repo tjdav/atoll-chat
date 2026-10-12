@@ -1,5 +1,6 @@
 use crate::bots::CallerIdentity;
 use crate::error::ApiError;
+use crate::error::ErrorResponse;
 use crate::events::{ObserverKey, RoomEventEnvelope};
 use crate::rate_limit::{self, RateLimitKey};
 use crate::routes::bots::resolve_caller;
@@ -17,6 +18,27 @@ use std::convert::Infallible;
 use std::time::Duration;
 use tokio::sync::broadcast;
 
+/// GET /rooms/:id/observer-stream
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/observer-stream",
+    tag = "Bots",
+    summary = "Observer metadata SSE stream",
+    description = "Server-Sent Events (SSE) stream for observer bots per §8.8.13. Auth: Bot token with read_metadata scope. Emits event types: message.new (with size_bytes), message.edited, message.deleted, room.member_added, room.member_removed, room.updated. Ciphertext and non-metadata events are omitted. Reconnection via Last-Event-ID header; buffer overflow emits 'dropped' event with count.",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("Last-Event-ID" = Option<String>, Header, description = "Last received event ID for stream resumption")
+    ),
+    responses(
+        (status = 200, description = "SSE stream established", content_type = "text/event-stream", body = String),
+        (status = 401, description = "Unauthorized (requires bot token)", body = ErrorResponse),
+        (status = 403, description = "Forbidden (missing read_metadata scope grant)", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn observer_stream_handler(
     State(state): State<AppState>,
     headers: HeaderMap,

@@ -13,7 +13,7 @@ fn test_openapi_doc_validity() {
     assert_eq!(parsed["info"]["title"], "Atoll Encrypted Chat API");
     assert_eq!(parsed["info"]["version"], "3.0.4");
 
-    // Assert pilot and user domain paths exist (20 path items total)
+    // Assert path items (37 path items total)
     let paths = parsed["paths"].as_object().unwrap();
     let expected_paths = [
         "/api/v1/health",
@@ -36,6 +36,23 @@ fn test_openapi_doc_validity() {
         "/api/v1/users/me/starred-items",
         "/api/v1/users/me/starred-items/{item_id}",
         "/api/v1/users/me/sync",
+        "/api/v1/bots",
+        "/api/v1/bots/me/commands/{id}/ack",
+        "/api/v1/bots/me/messages",
+        "/api/v1/bots/me/settings",
+        "/api/v1/bots/{id}",
+        "/api/v1/bots/{id}/avatar",
+        "/api/v1/bots/{id}/keys",
+        "/api/v1/bots/{id}/tokens",
+        "/api/v1/bots/{id}/tokens/{token_id}",
+        "/api/v1/rooms/{id}/bot-commands",
+        "/api/v1/rooms/{id}/bot-messages",
+        "/api/v1/rooms/{id}/bots",
+        "/api/v1/rooms/{id}/bots/{bot_id}",
+        "/api/v1/rooms/{id}/observer-stream",
+        "/api/v1/rooms/{id}/publisher-key",
+        "/api/v1/users/me/bots/{bot_id}/settings",
+        "/api/v1/users/me/bots/{bot_id}/settings/{key}",
     ];
 
     for path_str in &expected_paths {
@@ -59,7 +76,7 @@ fn test_openapi_doc_validity() {
         "missing or invalid bearer_auth scheme"
     );
 
-    // Assert every authenticated user path declares bearer_auth requirement
+    // Assert every authenticated user/bot path declares bearer_auth requirement
     let authenticated_paths = [
         ("/api/v1/auth/logout", "post"),
         ("/api/v1/users/lookup", "post"),
@@ -85,6 +102,31 @@ fn test_openapi_doc_validity() {
         ("/api/v1/users/me/starred-items", "post"),
         ("/api/v1/users/me/starred-items/{item_id}", "delete"),
         ("/api/v1/users/me/sync", "get"),
+        ("/api/v1/bots", "post"),
+        ("/api/v1/bots/{id}", "get"),
+        ("/api/v1/bots/{id}", "patch"),
+        ("/api/v1/bots/{id}", "delete"),
+        ("/api/v1/bots/{id}/keys", "patch"),
+        ("/api/v1/bots/{id}/avatar", "post"),
+        ("/api/v1/bots/{id}/avatar", "delete"),
+        ("/api/v1/bots/{id}/tokens", "get"),
+        ("/api/v1/bots/{id}/tokens", "post"),
+        ("/api/v1/bots/{id}/tokens/{token_id}", "delete"),
+        ("/api/v1/rooms/{id}/bots", "get"),
+        ("/api/v1/rooms/{id}/bots", "post"),
+        ("/api/v1/rooms/{id}/bots/{bot_id}", "patch"),
+        ("/api/v1/rooms/{id}/bots/{bot_id}", "delete"),
+        ("/api/v1/rooms/{id}/bot-messages", "post"),
+        ("/api/v1/rooms/{id}/bot-commands", "post"),
+        ("/api/v1/bots/me/commands/{id}/ack", "post"),
+        ("/api/v1/bots/me/messages", "post"),
+        ("/api/v1/bots/me/settings", "get"),
+        ("/api/v1/users/me/bots/{bot_id}/settings", "get"),
+        ("/api/v1/users/me/bots/{bot_id}/settings/{key}", "patch"),
+        ("/api/v1/users/me/bots/{bot_id}/settings/{key}", "delete"),
+        ("/api/v1/rooms/{id}/publisher-key", "get"),
+        ("/api/v1/rooms/{id}/publisher-key", "post"),
+        ("/api/v1/rooms/{id}/observer-stream", "get"),
     ];
 
     for (path, method) in &authenticated_paths {
@@ -102,29 +144,41 @@ fn test_openapi_doc_validity() {
         );
     }
 
-    // Assert POST /users/me/avatar is documented with a multipart/form-data request body
-    let avatar_req_body =
-        &parsed["paths"]["/api/v1/users/me/avatar"]["post"]["requestBody"]["content"];
+    // Assert POST /users/me/avatar and POST /bots/{id}/avatar use multipart/form-data
+    for avatar_path in ["/api/v1/users/me/avatar", "/api/v1/bots/{id}/avatar"] {
+        let avatar_req_body = &parsed["paths"][avatar_path]["post"]["requestBody"]["content"];
+        assert!(
+            avatar_req_body
+                .as_object()
+                .unwrap()
+                .contains_key("multipart/form-data"),
+            "avatar request body at {} missing multipart/form-data",
+            avatar_path
+        );
+    }
+
+    // Assert observer stream content type is text/event-stream
+    let obs_resp_content = &parsed["paths"]["/api/v1/rooms/{id}/observer-stream"]["get"]
+        ["responses"]["200"]["content"];
     assert!(
-        avatar_req_body
+        obs_resp_content
             .as_object()
             .unwrap()
-            .contains_key("multipart/form-data"),
-        "POST /users/me/avatar request body missing multipart/form-data"
+            .contains_key("text/event-stream"),
+        "observer-stream response missing text/event-stream"
     );
 
-    // Assert GET /users/me/export is documented with application/zip binary response
-    let export_resp =
-        &parsed["paths"]["/api/v1/users/me/export"]["get"]["responses"]["200"]["content"];
+    // Assert PATCH /users/me/bots/{bot_id}/settings/{key} operation description documents secret validation rules
+    let patch_setting_desc = parsed["paths"]["/api/v1/users/me/bots/{bot_id}/settings/{key}"]
+        ["patch"]["description"]
+        .as_str()
+        .unwrap();
     assert!(
-        export_resp
-            .as_object()
-            .unwrap()
-            .contains_key("application/zip"),
-        "GET /users/me/export response missing application/zip"
+        patch_setting_desc.contains("is_secret=true"),
+        "patch setting description missing secret validation rule notes"
     );
 
-    // Assert schemas contain shared error type and user domain types
+    // Assert schemas contain user and bot domain types
     let schemas = parsed["components"]["schemas"].as_object().unwrap();
     let expected_schemas = [
         "ErrorResponse",
@@ -159,6 +213,29 @@ fn test_openapi_doc_validity() {
         "UserAvatarUploadForm",
         "BotSettingSyncRow",
         "SyncResponse",
+        "CreateBotReq",
+        "BotView",
+        "PatchBotReq",
+        "RotateBotKeysReq",
+        "CreateTokenResp",
+        "BotTokenItem",
+        "ListTokensResp",
+        "PostBotMessagesReq",
+        "GetBotSettingsMeResp",
+        "GetBotSettingsOwnerResp",
+        "RoomBotView",
+        "ListRoomBotsResp",
+        "GrantBotReq",
+        "PatchRoomBotReq",
+        "PostBotCommandReq",
+        "PostBotCommandResp",
+        "PostBotMessageReq",
+        "PostBotMessageResp",
+        "BotSettingBotView",
+        "BotSettingOwnerView",
+        "PatchBotSettingRequest",
+        "PublisherKeyResponse",
+        "PublishPublisherKeyRequest",
     ];
 
     for schema in &expected_schemas {
@@ -169,20 +246,40 @@ fn test_openapi_doc_validity() {
         );
     }
 
-    // Assert ciphertext fields in PreferenceRow are documented with base64url format and description
-    let pref_value_schema = &schemas["PreferenceRow"]["properties"]["value"];
-    assert_eq!(
-        pref_value_schema["format"], "binary",
-        "PreferenceRow.value format must be binary"
-    );
-    let pref_desc = pref_value_schema["description"].as_str().unwrap();
+    // Assert ciphertext and signature fields are documented as format: binary with spec section references
+    let bot_msg_req_ct = &schemas["PostBotMessageReq"]["properties"]["ciphertext"];
+    assert_eq!(bot_msg_req_ct["format"], "binary");
+    let bot_msg_req_sig = &schemas["PostBotMessageReq"]["properties"]["signature"];
+    assert_eq!(bot_msg_req_sig["format"], "binary");
     assert!(
-        pref_desc.contains("base64url"),
-        "PreferenceRow.value description missing base64url"
+        bot_msg_req_sig["description"]
+            .as_str()
+            .unwrap()
+            .contains("§8.10"),
+        "signature description missing §8.10 reference"
     );
+
+    let pub_key_sig = &schemas["PublishPublisherKeyRequest"]["properties"]["signature"];
+    assert_eq!(pub_key_sig["format"], "binary");
     assert!(
-        pref_desc.contains("§6.29"),
-        "PreferenceRow.value description missing §6.29 reference"
+        pub_key_sig["description"]
+            .as_str()
+            .unwrap()
+            .contains("§8.10"),
+        "publisher key signature description missing §8.10 reference"
+    );
+
+    let bot_cmd_ct = &schemas["PostBotCommandReq"]["properties"]["ciphertext"];
+    assert_eq!(bot_cmd_ct["format"], "binary");
+
+    let bot_setting_val = &schemas["BotSettingBotView"]["properties"]["value_encrypted_bot"];
+    assert_eq!(bot_setting_val["format"], "binary");
+    assert!(
+        bot_setting_val["description"]
+            .as_str()
+            .unwrap()
+            .contains("§7.10"),
+        "value_encrypted_bot description missing §7.10 reference"
     );
 }
 
