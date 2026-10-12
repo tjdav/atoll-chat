@@ -107,6 +107,8 @@ async fn setup_app_with_static_dir(static_dir: Option<&str>) -> axum::Router {
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),
+        room_events: server::events::RoomEventBroadcast::default(),
+        observer_cursors: server::events::ObserverCursorStore::default(),
     };
 
     server::build_app(state)

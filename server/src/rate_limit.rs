@@ -44,6 +44,7 @@ pub enum RateLimitKey {
     BotCommandResult { bot_id: String, user_id: String },
     BotLocalMessage { bot_id: String },
     BotKeyRotate { bot_id: String },
+    BotObserverStream { bot_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -494,6 +495,16 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_bot_key_rotate_per_hour,
+            )
+        }
+        RateLimitKey::BotObserverStream { bot_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("bot_observer_stream:{bot_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_bot_observer_stream_per_min,
             )
         }
     };

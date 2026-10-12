@@ -198,6 +198,8 @@ async fn setup_test_s3_app(presign_limit: u32, presign_ttl: u64) -> (Router, Sql
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),
+        room_events: server::events::RoomEventBroadcast::default(),
+        observer_cursors: server::events::ObserverCursorStore::default(),
     };
 
     let app = server::build_app(state);

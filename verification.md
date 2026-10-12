@@ -200,3 +200,34 @@
   - **Anonymization:**
     - `anonymise_user` in `gdpr.rs` explicitly anonymizes bot leaves for owned bots by updating `key_transparency_log.bot_id` to an `anon_<hex>` placeholder and inserting a bot account tombstone before deleting owned bot accounts, preserving leaves in the append-only audit log.
 - **Link to report:** [verification/kt-bot-leaf/report.md](verification/kt-bot-leaf/report.md)
+
+## Room Event Broadcast and Bot Observer Stream Verification Fact (Phase 31)
+- **ID:** Phase 31 Room Event Broadcast and Bot Observer Stream
+- **Date:** 2026-10-12
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §2.2, §5.6, §7.9, §8.8.13, §8.9, §12; Architecture Owner Decision 2026-10-12
+- **Verified Facts:**
+  - **In-Process Broadcast (`RoomEventBroadcast`):**
+    - `RoomEventBroadcast` (`server/src/events/broadcast.rs`) wraps a `tokio::sync::broadcast::Sender<RoomEventEnvelope>` with capacity 1024 (`ROOM_EVENT_BROADCAST_CAPACITY`).
+    - Stored directly on `AppState` (`room_events: RoomEventBroadcast`) by value without an `Arc` wrapper.
+    - Non-blocking `publish` ignores missing subscribers and buffer overflow.
+    - Integrated into `Publisher::publish` (`server/src/sockudo/publisher.rs`), mirroring `private-room-*` channel events to `RoomEventBroadcast` **before** Sockudo HTTP delivery.
+  - **Observer Stream Endpoint (`GET /rooms/:id/observer-stream`):**
+    - Authenticates bot tokens only (`CallerIdentity::Bot`; user session tokens return HTTP 401 `unauthorized`).
+    - Requires active grant in `room_bots` (`revoked_at IS NULL`) and `read_metadata` scope in `room_bot_scopes` (otherwise HTTP 403 `forbidden`).
+    - Enforces rate limit `RATE_BOT_OBSERVER_STREAM_PER_MIN` (default 10) with key format `bot_observer_stream:{bot_id}:min:{boundary}`.
+    - Sets response headers `Content-Type: text/event-stream`, `Cache-Control: no-store`, `X-Accel-Buffering: no`.
+  - **Event Allowlist & Metadata Projections:**
+    - Filters events strictly by allowlist: only `message.new`, `message.edited`, `message.deleted`, `room.member_added`, `room.member_removed`, and `room.updated` are emitted.
+    - `message.new` projects `{ id, sender_user_id, sender_client_id, created_at, size_bytes }` (where `size_bytes` is computed from raw ciphertext BLOB length).
+    - `message.edited` projects `{ id, edit_of, editor_user_id, edited_at }`.
+    - `message.deleted` projects `{ id }`.
+    - `room.updated` projects `{ room_id, retention_days, max_file_size_bytes, metadata_version }` and strictly excludes the `metadata` blob.
+    - Strips all ciphertext, `epoch`, `seq`, `reply_to`, `target_user_ids`, `bot_key_leaf_index`, and unallowed event types (`reaction.*`, `session.*`, `call.*`, `epoch.updated`, `mls.*`, `read.count`, `bot.*`).
+  - **Reconnection, Framing & Backpressure:**
+    - Emits monotonic `id` sequence per `(bot_id, room_id)` cursor. Resumes sequence from `Last-Event-ID` header on reconnect.
+    - Emits 30-second `:keepalive\n\n` comments via Axum `Sse::keep_alive`.
+    - Maps broadcast buffer overflow `RecvError::Lagged(n)` to SSE event `dropped` carrying `data: {"count": n}`.
+  - **In-Memory & Non-Persistence:**
+    - `ObserverCursorStore` is in-memory only with 5-minute TTL and 60-second pruner task. Cursors and stream events are never written to disk, SQLite, tracing logs, or metrics.
+- **Link to report:** [verification/observer-stream-implementation/report.md](verification/observer-stream-implementation/report.md)

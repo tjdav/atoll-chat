@@ -234,7 +234,11 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let sockudo_config = server::SockudoConfig::load_or_initialize(&pool, &config).await?;
-    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+    let room_events = server::events::RoomEventBroadcast::default();
+    let observer_cursors = server::events::ObserverCursorStore::default();
+    observer_cursors.spawn_pruner(std::time::Duration::from_secs(60));
+    let publisher =
+        Arc::new(server::Publisher::new(sockudo_config).with_room_events(room_events.clone()));
     let backup_lock = Arc::new(tokio::sync::Mutex::new(()));
     let oprf_rotation_lock = Arc::new(tokio::sync::Mutex::new(()));
 
@@ -349,6 +353,8 @@ async fn main() -> anyhow::Result<()> {
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
         bot_connection_state: server::bots::BotConnectionState::new(),
+        room_events,
+        observer_cursors,
     };
 
     // 7. Check bootstrap state

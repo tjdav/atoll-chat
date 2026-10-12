@@ -118,6 +118,8 @@ async fn setup_test_app(
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),
+        room_events: server::events::RoomEventBroadcast::default(),
+        observer_cursors: server::events::ObserverCursorStore::default(),
         bot_connection_state: server::bots::BotConnectionState::new(),
     };
 

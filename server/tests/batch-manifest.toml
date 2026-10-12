@@ -211,6 +211,7 @@ files = [
     "bot_request_log",
     "bot_settings",
     "bots",
+    "observer_stream",
     "room_bots",
 ]
 timeout_seconds = 60

@@ -335,10 +335,16 @@ None.
   - **Contract Highlights:** Implemented `PATCH /bots/:id/keys` handler matching §8.8.17 (owner session or bot token auth), `RateLimitKey::BotKeyRotate` rate limit (default 5/hour), requirement for all three 32-byte base64url keys, atomic transaction for KT leaf insertion via `append_bot_leaf`, `bot_accounts` pubkey update, and owner `user_seq` allocation, non-durable `bot.keys_rotated` event on bot channel and durable `bot.keys_rotated` event on user channel, `bot.key_rotate` audit logging without pubkey values, historical preservation of message `bot_key_leaf_index` and encrypted settings/commands, and 5 integration test cases passing under `bots` batch (`make -C server test-bots`).
   - **Batch:** `bots`
 
+- **Room Event Broadcast and Bot Observer Stream (Phase 31)**: done
+  - **Migration:** None (no schema changes).
+  - **Delivered:** Step 0 Empirical Report at `verification/observer-stream-implementation/report.md`, `server/src/events/broadcast.rs`, `server/src/events/mod.rs`, `server/src/routes/observer_stream.rs`, `server/src/sockudo/publisher.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/routes/mod.rs`, `server/src/lib.rs`, `server/src/main.rs`, `server/tests/observer_stream.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`, `verification.md`.
+  - **Contract Highlights:** Implemented `RoomEventBroadcast` in-process broadcast channel (bounded 1024 capacity), `ObserverCursorStore` in-memory cursor store (5-minute TTL, 60-second pruner), publisher integration mirroring `private-room-*` events before Sockudo HTTP calls, `GET /rooms/:id/observer-stream` SSE endpoint matching §8.8.13 (bot token auth, `read_metadata` scope check, `RATE_BOT_OBSERVER_STREAM_PER_MIN` rate limit), strict 6-event allowlist filter (`message.new`, `message.edited`, `message.deleted`, `room.member_added`, `room.member_removed`, `room.updated`), metadata projection stripping `ciphertext` and `metadata` blobs, `size_bytes` calculation, `Last-Event-ID` reconnection sequence, 30-second `:keepalive\n\n` comments, buffer lag mapping to `dropped { count: n }`, non-persistence invariants, and 6 unit/integration test cases in `server/tests/observer_stream.rs` passing under `bots` batch (`make -C server test-bots`). §11 Build Plan is 100% complete across all 47 phases.
+  - **Batch:** `bots`
+
 ## Summary
-- **Project Status:** Complete
-- **Total Verifications/Tasks Tracked:** 62
-- **Done:** 62
+- **Project Status:** Complete (All 47 build plan phases delivered)
+- **Total Verifications/Tasks Tracked:** 63
+- **Done:** 63
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

@@ -12,6 +12,7 @@ pub mod config_ops;
 pub mod db;
 pub mod devices;
 pub mod error;
+pub mod events;
 pub mod extensions_proxy;
 pub mod gdpr;
 pub mod identity;
@@ -67,6 +68,9 @@ pub use cleanup::{
     CleanupReport, Scheduler,
 };
 pub use config::Config;
+pub use events::{
+    ObserverCursor, ObserverCursorStore, ObserverKey, RoomEventBroadcast, RoomEventEnvelope,
+};
 pub use gdpr::{anonymise_user, build_export, DeletionSummary, GdprError};
 pub use invites::{
     create_invite, get_invite_by_id, list_invites, revoke_invite, validate_and_consume_invite,
@@ -130,6 +134,8 @@ pub struct AppState {
     pub call_occupancy: calls::CallOccupancyStore,
     pub extension_proxy_blocklist: Arc<extensions_proxy::blocklist::DomainBlocklistStore>,
     pub bot_connection_state: bots::BotConnectionState,
+    pub room_events: RoomEventBroadcast,
+    pub observer_cursors: events::ObserverCursorStore,
 }
 
 impl axum::extract::FromRef<AppState> for Arc<tokio::sync::Mutex<()>> {
@@ -225,6 +231,18 @@ impl axum::extract::FromRef<AppState> for Arc<models::ModelStore> {
 impl axum::extract::FromRef<AppState> for sessions::OccupancyStore {
     fn from_ref(state: &AppState) -> Self {
         state.occupancy.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for RoomEventBroadcast {
+    fn from_ref(state: &AppState) -> Self {
+        state.room_events.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for events::ObserverCursorStore {
+    fn from_ref(state: &AppState) -> Self {
+        state.observer_cursors.clone()
     }
 }
 
@@ -477,6 +495,10 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/bot-commands",
             post(routes::room_bots::post_bot_command),
+        )
+        .route(
+            "/rooms/{id}/observer-stream",
+            get(routes::observer_stream::observer_stream_handler),
         )
         .route(
             "/rooms/{id}/publisher-key",

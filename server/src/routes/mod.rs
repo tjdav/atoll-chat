@@ -14,6 +14,7 @@ pub mod key_transparency;
 pub mod link_preview;
 pub mod login;
 pub mod models;
+pub mod observer_stream;
 pub mod oprf;
 pub mod pending_removes;
 pub mod preferences;
