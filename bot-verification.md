@@ -1,5 +1,34 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-046a Verification Fact
+- **Diagnostic Triage of Full-Suite Batch Failures**:
+  - Analyzed and classified all six failing test batches: `runtime-triggers`, `runtime-rooms`, `runtime-pause`, `cli-run`, `cli-dev`, and `cli-sandbox`.
+  - Confirmed initial state (Case A): pre-test checks (`typecheck`, `lint`, `check-batches`, `build`) pass cleanly, and all six failing batches exist in `batch-manifest.toml`.
+  - Conducted individual isolation test runs for all six failing batches and captured full TAP output logs.
+  - Performed signal handler inventory across `packages/bot/tests/` confirming clean listener teardown in `afterEach`/`cleanup` hooks.
+  - Determined cross-batch interference status: 5 batches fail deterministically in isolation, while 1 batch (`runtime-rooms`) passes in isolation (31/31 pass) but takes ~50s due to accumulated SSE stream delays (~4.08s x 12 subtests).
+
+### Per-Batch Isolation Findings
+
+| Batch | Failing Subtests | Verbatim Error Pattern / Location | Isolated-pass? |
+|---|---|---|---|
+| `runtime-triggers` | 15, 18 | Subtest 15: `HTTP request failed (GET /kt/user/u_signer): status 404` at `runtime-triggers.test.js:876`. Subtest 18: `connect ECONNREFUSED 127.0.0.1:34117` at `runtime-triggers.test.js:1017`. Unhandled rejection causes infinite reconnect loop in `websocket.js:300` -> `RangeError: Maximum call stack size exceeded`. | No |
+| `runtime-rooms` | None (0/31 failed) | Passes all 31 subtests in isolation, but takes ~50s total because 12 SSE subtests each incur a ~4.08s reconnect/poll delay. | Yes |
+| `runtime-pause` | 3, 5, 9 | Subtest 3: `AssertionError: assert.ok(msgReq)` at `runtime-pause.test.js:433`. Subtest 5: `TypeError: fetch failed` at `runtime-pause.test.js:554`. Subtest 9: `AssertionError: 1 !== 0` at `runtime-pause.test.js:789`. Process hangs after tests finish. | No |
+| `cli-run` | Subtest 8 onwards | `cli-run.test.js` helper `writeBotFile` hardcodes `import { defineBot } from '${process.cwd()}/src/define-bot.js'`. When tests run from repo root `/app`, `process.cwd()` is `/app`, resolving to nonexistent `/app/src/define-bot.js`. `runCommand` fails to import, `'Ready.'` is never printed, and `runAndEmitSignal` loops forever in `while (!io.getStdout().includes('Ready.'))`. | No |
+| `cli-dev` | Subtest 7 | Subtest 7 ("7. A present keystore is loaded"): `TypeError: Cannot read properties of undefined (reading 'bot_id')` at `cli-dev.test.js:227`. | No |
+| `cli-sandbox` | Subtests 12-21, Subtest 24+ | Subtests 12-21 in `sandbox connect` fail with `AssertionError: 1 !== 0`. Process hangs after subtest 23 in `sandbox run`. | No |
+
+### Failure Grouping & Proposed Follow-Up Tasks
+
+| Group | Root Cause | Affected Batches | Proposed Task ID | Scope / Target Files |
+|---|---|---|---|---|
+| **Group A** | Hardcoded `process.cwd()` in CLI test fixture generators causing module import failures and infinite `while` loop hangs when executed from monorepo root | `cli-run`, `cli-sandbox` | **B-046b** | Update fixture generators in `cli-run.test.js` and `cli-sandbox.test.js` to resolve `src/define-bot.js` relative to package root instead of `process.cwd()`, and add timeout limits to `runAndEmitSignal` loops. |
+| **Group B** | Scrypt timing race condition in `cli-dev.test.js` | `cli-dev` | **B-046c** | Update subtest 7 in `cli-dev.test.js` to poll or await runtime construction instead of hardcoding `100ms` `setTimeout`, accommodating scrypt (~300-600ms) key derivation duration. |
+| **Group C** | Unregistered user Key Transparency mock endpoint, unhandled WebSocket connection error loop causing recursion stack overflow | `runtime-triggers` | **B-046d** | Register `GET /kt/user/:id` mock endpoint in `runtime-triggers.test.js` subtest 15, fix mock server lifecycle in subtest 18, and guard WebSocket transport/reconnect against recursive stack overflow on connection errors. |
+| **Group D** | Missing mock server response registrations for command result and webhook endpoints causing unhandled fetch rejections and open handles | `runtime-pause` | **B-046e** | Register mock handlers/responses for `POST /bots/me/messages` and webhook endpoints in `runtime-pause.test.js` subtests 3, 5, and 9. |
+| **Group E** | Accumulated SSE stream connection/polling timeouts consuming almost the entire 60s batch budget alone | `runtime-rooms` | **B-046f** | Optimize SSE test helper delays/intervals in `runtime-rooms.test.js` to reduce batch execution duration from 50s to <10s. |
+
 ## Task B-043c-6 Verification Fact
 - **Revised Suppression Policy (`src/`)**:
   - `@type {any}` and `@ts-ignore` are strictly prohibited.

@@ -6,10 +6,10 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 50
-- **Done:** 47
+- **Total Tasks:** 56
+- **Done:** 48
 - **In Progress:** 0
-- **Todo:** 3
+- **Todo:** 8
 
 ---
 
@@ -17,6 +17,12 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-046a | Diagnostic | done | B-043c-4 | Triage full-suite batch failures and produce diagnostic report |
+| B-046b | Testing | pending | B-036, B-042 | Fix hardcoded module paths and infinite while loops in CLI test runners (`cli-run.test.js`, `cli-sandbox.test.js`) |
+| B-046c | Testing | pending | B-041 | Fix scrypt load race condition in `cli-dev.test.js` |
+| B-046d | Testing | pending | B-018, B-029a | Fix mock endpoint registration, test cleanup, and WebSocket infinite reconnect recursion in `runtime-triggers` and runtime transport |
+| B-046e | Testing | pending | B-030 | Fix mock server responses and handle cleanup in `runtime-pause.test.js` |
+| B-046f | Testing | pending | B-029b | Optimize SSE test helper delays in `runtime-rooms.test.js` to reduce batch runtime from 50s to <10s |
 | B-043c-6 | Quality | done | B-043c-3 | Audit and clean suppressions in `packages/bot/src/` per revised policy |
 | B-043c-5 | Quality | done | B-043c-3 | Fix all 56 lint errors in `packages/bot/src/` |
 | B-043c-1 | Scaffolding | done | B-001 | Scope the strict type check to `src/` and add a relaxed test config |
