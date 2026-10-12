@@ -114,6 +114,8 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),
+        room_events: server::events::RoomEventBroadcast::default(),
+        observer_cursors: server::events::ObserverCursorStore::default(),
     };
 
     let app = server::build_app(state);

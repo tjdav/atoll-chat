@@ -1,3 +1,4 @@
+use crate::events::{RoomEventBroadcast, RoomEventEnvelope};
 use crate::sockudo::{SockudoConfig, SockudoError};
 use chrono::Utc;
 use hmac::{Hmac, Mac};
@@ -18,6 +19,7 @@ fn hmac_sha256_hex(secret: &str, data: &str) -> String {
 pub struct Publisher {
     config: SockudoConfig,
     client: reqwest::Client,
+    room_events: Option<RoomEventBroadcast>,
 }
 
 impl Publisher {
@@ -27,7 +29,24 @@ impl Publisher {
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
 
-        Self { config, client }
+        Self {
+            config,
+            client,
+            room_events: None,
+        }
+    }
+
+    pub fn with_room_events(mut self, room_events: RoomEventBroadcast) -> Self {
+        self.room_events = Some(room_events);
+        self
+    }
+
+    pub fn set_room_events(&mut self, room_events: RoomEventBroadcast) {
+        self.room_events = Some(room_events);
+    }
+
+    pub fn room_events(&self) -> Option<&RoomEventBroadcast> {
+        self.room_events.as_ref()
     }
 
     pub fn config(&self) -> &SockudoConfig {
@@ -54,6 +73,16 @@ impl Publisher {
         event: &str,
         data: serde_json::Value,
     ) -> Result<(), SockudoError> {
+        if let Some(room_id) = channel.strip_prefix("private-room-") {
+            if let Some(ref broadcast) = self.room_events {
+                broadcast.publish(RoomEventEnvelope {
+                    room_id: room_id.to_string(),
+                    event: event.to_string(),
+                    data: data.clone(),
+                });
+            }
+        }
+
         let mut data = data;
         if channel.starts_with("private-room-") {
             if let Some(obj) = data.as_object_mut() {

@@ -118,6 +118,8 @@ async fn setup_test_app() -> TestEnv {
         extension_proxy_blocklist: std::sync::Arc::new(
             server::extensions_proxy::blocklist::DomainBlocklistStore::new(Default::default()),
         ),
+        room_events: server::events::RoomEventBroadcast::default(),
+        observer_cursors: server::events::ObserverCursorStore::default(),
     };
 
     TestEnv { state, _dir: dir }

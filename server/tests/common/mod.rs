@@ -130,7 +130,10 @@ where
         },
         enable_client_events: true,
     };
-    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+    let room_events = server::events::RoomEventBroadcast::default();
+    let observer_cursors = server::events::ObserverCursorStore::default();
+    let publisher =
+        Arc::new(server::Publisher::new(sockudo_config).with_room_events(room_events.clone()));
 
     let vapid_keys = server::push::vapid::VapidKeys::load_or_generate(&pool, &config_arc)
         .await
@@ -230,6 +233,8 @@ where
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
         bot_connection_state: server::bots::BotConnectionState::new(),
+        room_events,
+        observer_cursors,
     };
 
     let app = server::build_app(state);
@@ -321,7 +326,10 @@ pub async fn setup_test_app_with_config(
         },
         enable_client_events: true,
     };
-    let publisher = Arc::new(server::Publisher::new(sockudo_config));
+    let room_events = server::events::RoomEventBroadcast::default();
+    let observer_cursors = server::events::ObserverCursorStore::default();
+    let publisher =
+        Arc::new(server::Publisher::new(sockudo_config).with_room_events(room_events.clone()));
 
     let vapid_keys = server::push::vapid::VapidKeys::load_or_generate(&pool, &config_arc)
         .await
@@ -420,6 +428,8 @@ pub async fn setup_test_app_with_config(
         call_occupancy: server::calls::CallOccupancyStore::new(),
         extension_proxy_blocklist,
         bot_connection_state: server::bots::BotConnectionState::new(),
+        room_events,
+        observer_cursors,
     };
 
     let app = server::build_app(state);

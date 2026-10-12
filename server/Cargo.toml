@@ -7,6 +7,7 @@ rust-version = "1.85"
 [dev-dependencies]
 tempfile = "3"
 wiremock = "0.6"
+http-body-util = "0.1"
 
 [dependencies]
 toml = "0.8"
@@ -44,6 +45,7 @@ clap = { version = "4", features = ["derive"] }
 p256 = { version = "0.13", features = ["ecdsa"] }
 web-push = "0.10"
 futures = "0.3"
+async-stream = "0.3"
 a2 = "0.10"
 jsonwebtoken = "9"
 yup-oauth2 = "11"
