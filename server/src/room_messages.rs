@@ -2,10 +2,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
+use utoipa::ToSchema;
 
 use crate::reactions::list::ReactionSummary;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct MessageCursor {
     pub epoch: i64,
     pub seq: i64,
@@ -18,14 +19,14 @@ pub struct ListMessagesQuery {
     pub limit: i64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct ListMessagesResult {
     pub messages: Vec<RoomMessageView>,
     pub next_cursor: Option<MessageCursor>,
     pub has_more: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct RoomMessageView {
     pub id: String,
     pub room_id: String,
@@ -35,14 +36,27 @@ pub struct RoomMessageView {
     pub epoch: i64,
     pub seq: i64,
     pub content_type: String,
+    /// MLS message envelope or bot ciphertext (base64url unpadded). Null on tombstones. See §6.4.
+    #[schema(value_type = Option<String>, format = Binary)]
+    pub ciphertext: Option<String>,
+    /// Nullable message ID this message replies to. See §7.6.
     pub reply_to: Option<String>,
+    /// Array of target user IDs for whisper messages, null for public messages. See §7.6.
     pub target_user_ids: Option<Vec<String>>,
+    /// Original message ID if this is an edit. See §7.6.
     pub edit_of: Option<String>,
+    /// Sequence number of edit if edit_of is present. See §7.6.
     pub edit_sequence: i64,
+    /// Active key transparency log leaf index for bot messages, null for user messages. See §7.6.
     pub bot_key_leaf_index: Option<i64>,
     pub read_by_count: i64,
+    /// Edit timestamp if edited. See §7.6.
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub edited_at: Option<DateTime<Utc>>,
+    /// Tombstone timestamp if deleted. See §14.5.
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub deleted_at: Option<DateTime<Utc>>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
     pub reactions: Vec<ReactionSummary>,
 }
@@ -56,16 +70,17 @@ pub struct EditRequest {
     pub content_type: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct EditResult {
     pub edit_id: String,
     pub original_id: String,
     pub edit_sequence: i64,
     pub epoch: i64,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 #[serde(untagged)]
 pub enum SubmitOutcome {
     Application {
@@ -75,13 +90,17 @@ pub enum SubmitOutcome {
         reply_to: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         target_user_ids: Option<Vec<String>>,
+        #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
         created_at: DateTime<Utc>,
     },
     Commit {
         message_id: String,
         new_epoch: i64,
         #[serde(skip_serializing_if = "Option::is_none")]
+        /// Transcript hash bytes for commits (base64url)
+        #[schema(value_type = Option<String>, format = Binary)]
         transcript_hash: Option<Vec<u8>>,
+        #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
         created_at: DateTime<Utc>,
     },
 }
@@ -405,7 +424,7 @@ pub async fn list_messages(
         Some(since) => {
             let rows = sqlx::query(
                 r#"
-                    SELECT id, room_id, sender_user_id, sender_bot_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, bot_key_leaf_index, edited_at, deleted_at, created_at
+                    SELECT id, room_id, sender_user_id, sender_bot_id, sender_client_id, epoch, seq, content_type, ciphertext, reply_to, target_user_ids, edit_of, edit_sequence, bot_key_leaf_index, edited_at, deleted_at, created_at
                 FROM room_messages
                 WHERE room_id = ?
                       AND (target_user_ids IS NULL OR sender_user_id = ? OR target_user_ids LIKE ?)
@@ -460,6 +479,8 @@ pub async fn list_messages(
                     };
 
                     let bot_key_leaf_index: Option<i64> = row.get("bot_key_leaf_index");
+                    let ciphertext_bytes: Option<Vec<u8>> = row.get("ciphertext");
+                    let ciphertext = ciphertext_bytes.map(|b| BASE64.encode(&b));
 
                     let reactions = reactions_map.get(&id).cloned().unwrap_or_default();
                     Some(RoomMessageView {
@@ -471,6 +492,7 @@ pub async fn list_messages(
                         epoch: row.get("epoch"),
                         seq: row.get("seq"),
                         content_type: row.get("content_type"),
+                        ciphertext,
                         reply_to: row.get("reply_to"),
                         target_user_ids,
                         edit_of: row.get("edit_of"),
@@ -494,7 +516,7 @@ pub async fn list_messages(
         None => {
             let rows = sqlx::query(
                 r#"
-                    SELECT id, room_id, sender_user_id, sender_bot_id, sender_client_id, epoch, seq, content_type, reply_to, target_user_ids, edit_of, edit_sequence, bot_key_leaf_index, edited_at, deleted_at, created_at
+                    SELECT id, room_id, sender_user_id, sender_bot_id, sender_client_id, epoch, seq, content_type, ciphertext, reply_to, target_user_ids, edit_of, edit_sequence, bot_key_leaf_index, edited_at, deleted_at, created_at
                 FROM room_messages
                 WHERE room_id = ?
                       AND (target_user_ids IS NULL OR sender_user_id = ? OR target_user_ids LIKE ?)
@@ -546,6 +568,8 @@ pub async fn list_messages(
                     };
 
                     let bot_key_leaf_index: Option<i64> = row.get("bot_key_leaf_index");
+                    let ciphertext_bytes: Option<Vec<u8>> = row.get("ciphertext");
+                    let ciphertext = ciphertext_bytes.map(|b| BASE64.encode(&b));
 
                     let reactions = reactions_map.get(&id).cloned().unwrap_or_default();
                     Some(RoomMessageView {
@@ -557,6 +581,7 @@ pub async fn list_messages(
                         epoch: row.get("epoch"),
                         seq: row.get("seq"),
                         content_type: row.get("content_type"),
+                        ciphertext,
                         reply_to: row.get("reply_to"),
                         target_user_ids,
                         edit_of: row.get("edit_of"),
@@ -850,6 +875,7 @@ pub async fn edit_message(
             epoch: original_epoch,
             seq: 0,
             content_type: final_content_type.to_string(),
+            ciphertext: Some(BASE64.encode(&req.new_ciphertext)),
             reply_to: orig_reply_to,
             target_user_ids: orig_target_user_ids,
             edit_of: Some(req.message_id),

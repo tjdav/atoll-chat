@@ -2,13 +2,15 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, ToSchema)]
 pub struct WelcomeView {
     pub id: String,
     pub room_id: String,
     pub recipient_user_id: String,
     pub recipient_client_id: String,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
     pub consumed: bool,
 }

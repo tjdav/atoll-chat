@@ -1,4 +1,13 @@
 
+## OpenAPI Annotations — Messaging Endpoints Verification Fact
+- **ID:** OpenAPI Annotations — Messaging Endpoints
+- **Date:** 2026-10-12
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §8.5, §8.5.1, §8.6, §8.7.1–§8.7.2
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/openapi-annotate-messaging-endpoints/report.md`.
+- **Link to report:** [verification/openapi-annotate-messaging-endpoints/report.md](verification/openapi-annotate-messaging-endpoints/report.md)
+
 ## OpenAPI Annotations — User Endpoints Verification Fact
 - **ID:** OpenAPI Annotations — User Endpoints
 - **Date:** 2026-10-12
