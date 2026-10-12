@@ -109,9 +109,11 @@ export async function followDiagFile ({ path, onLine, onError, fromStart = false
   let offset = 0
   let lineBuffer = ''
   let stopped = false
+  /** @type {import('node:fs').FSWatcher | null} */
   let fsWatcher = null
   let isReading = false
   let readQueued = false
+  /** @type {number | null} */
   let lastIno = null
 
   try {
