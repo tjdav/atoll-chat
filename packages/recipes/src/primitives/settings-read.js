@@ -21,7 +21,8 @@ export const settingsRead = {
     type: 'object',
     properties: {
       key: { type: 'string', minLength: 1 },
-      room: { type: 'string', minLength: 1 }
+      room: { type: 'string', minLength: 1 },
+      scope: { type: 'string', enum: ['user', 'room'] }
     },
     required: ['key'],
     additionalProperties: false
@@ -29,6 +30,7 @@ export const settingsRead = {
   create: (config, children) => {
     const key = config.key
     const room = config.room
+    const explicitScope = config.scope
 
     if (typeof key !== 'string' || key.length === 0) {
       throw new Error('settings-read: config.key is required')
@@ -38,6 +40,12 @@ export const settingsRead = {
         'settings-read: config.room must be a non-empty string when provided'
       )
     }
+    if (explicitScope !== undefined && explicitScope !== 'user' && explicitScope !== 'room') {
+      throw new Error('settings-read: config.scope must be "user" or "room"')
+    }
+    if (explicitScope === 'user' && room !== undefined) {
+      throw new Error('settings-read: config.room is not valid when scope is "user"')
+    }
     if (!Array.isArray(children)) {
       throw new Error('settings-read: children must be an array')
     }
@@ -46,6 +54,9 @@ export const settingsRead = {
     }
 
     const hasRoom = room !== undefined
+    const effectiveScope = explicitScope === undefined
+      ? (hasRoom ? 'room' : 'user')
+      : explicitScope
 
     return async (ctx, input) => {
       const resolvedKey = substitute(key, input)
@@ -53,18 +64,24 @@ export const settingsRead = {
         throw new Error('settings-read: resolved key is empty')
       }
 
-      const opts = {}
-      if (hasRoom) {
-        const resolvedRoom = substitute(room, input)
-        if (typeof resolvedRoom !== 'string' || resolvedRoom.length === 0) {
-          throw new Error('settings-read: resolved room is empty')
+      let value
+      if (effectiveScope === 'user') {
+        value = await ctx.settings.get(resolvedKey)
+      } else {
+        let targetRoom
+        if (hasRoom) {
+          targetRoom = substitute(room, input)
+          if (typeof targetRoom !== 'string' || targetRoom.length === 0) {
+            throw new Error('settings-read: resolved room is empty')
+          }
+        } else {
+          targetRoom = ctx.room?.id
+          if (typeof targetRoom !== 'string') {
+            throw new Error('settings-read: scope "room" requires a room, but none is available')
+          }
         }
-        opts.room = resolvedRoom
+        value = await ctx.settings.get(resolvedKey, { room: targetRoom })
       }
-
-      const value = Object.keys(opts).length === 0
-        ? await ctx.settings.get(resolvedKey)
-        : await ctx.settings.get(resolvedKey, opts)
 
       for (const child of children) {
         await child(ctx, value)
