@@ -1,0 +1,92 @@
+{
+  "id": "room-topic",
+  "version": "1.0.0",
+  "label": "Room Topic",
+  "description": "A per-room topic anyone can set and show.",
+  "kind": "pure",
+  "capabilities": ["read_commands", "post_message"],
+  "slots": [],
+  "settings": {
+    "topic": {
+      "label": "Room topic",
+      "type": "text",
+      "scope": "room",
+      "default": "No topic set.",
+      "hint": "The text shown by /topic-show. Set per room."
+    }
+  },
+  "handlers": {
+    "install": {
+      "id": "install-hook",
+      "primitive": "post-response",
+      "config": { "text": "Room Topic is ready. Use /topic <text> to set the topic and /topic-show to display it." }
+    }
+  },
+  "commands": {
+    "topic": {
+      "id": "topic-cmd",
+      "primitive": "expose-command",
+      "config": {
+        "name": "topic",
+        "description": "Set the room's topic.",
+        "args": {
+          "text": { "type": "string", "required": true }
+        }
+      },
+      "children": [
+        {
+          "id": "topic-write",
+          "primitive": "settings-write",
+          "config": {
+            "key": "topic",
+            "scope": "room",
+            "value": "{{args.text}}"
+          },
+          "children": [
+            {
+              "id": "topic-confirm",
+              "primitive": "reply-local",
+              "config": {
+                "text": "Topic updated for this room."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "topic-show": {
+      "id": "topic-show-cmd",
+      "primitive": "expose-command",
+      "config": {
+        "name": "topic-show",
+        "description": "Show the room's topic."
+      },
+      "children": [
+        {
+          "id": "topic-read",
+          "primitive": "settings-read",
+          "config": {
+            "key": "topic",
+            "scope": "room"
+          },
+          "children": [
+            {
+              "id": "topic-post",
+              "primitive": "post-response",
+              "config": {
+                "text": "{{.}}"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": [
+    "The topic is a room-scoped setting. Each room the bot is granted in has its own value.",
+    "Both commands require room context. /topic and /topic-show fail if invoked outside a room.",
+    "The install message is fixed. It does not read the topic.",
+    "The topic defaults to \"No topic set.\" when never configured for a room.",
+    "The topic is posted publicly by /topic-show. The confirmation for /topic is private to the invoker."
+  ]
+}
