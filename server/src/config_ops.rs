@@ -37,7 +37,7 @@ pub enum ConfigOpsError {
 }
 
 pub async fn get_config(pool: &SqlitePool) -> Result<InstanceConfig, ConfigOpsError> {
-    let rows = sqlx::query("SELECT key, value FROM instance_config")
+    let rows = sqlx::query("SELECT key, value FROM server_config")
         .fetch_all(pool)
         .await?;
 
@@ -121,17 +121,14 @@ pub async fn set_config(
 
     sqlx::query(
         r#"
-        INSERT INTO instance_config (key, value, updated_at, updated_by)
-        VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+        INSERT INTO server_config (key, value, is_secret)
+        VALUES (?, ?, 0)
         ON CONFLICT(key) DO UPDATE SET
-            value = excluded.value,
-            updated_at = CURRENT_TIMESTAMP,
-            updated_by = excluded.updated_by
+            value = excluded.value
         "#,
     )
     .bind(key)
     .bind(value)
-    .bind(actor_id)
     .execute(pool)
     .await?;
 
@@ -139,7 +136,7 @@ pub async fn set_config(
         pool,
         actor_id,
         audit::action::CONFIG_UPDATE,
-        Some("instance_config"),
+        Some("server_config"),
         Some(key),
         Some(serde_json::json!({ "key": key, "value": value })),
     )
@@ -153,7 +150,7 @@ pub async fn get_secret(pool: &SqlitePool, key: &str) -> Result<Option<String>, 
         return Err(ConfigOpsError::UnknownKey(key.to_string()));
     }
 
-    let row = sqlx::query("SELECT value FROM instance_config WHERE key = ?")
+    let row = sqlx::query("SELECT value FROM server_config WHERE key = ?")
         .bind(key)
         .fetch_optional(pool)
         .await?;
@@ -173,17 +170,14 @@ pub async fn set_secret(
 
     sqlx::query(
         r#"
-        INSERT INTO instance_config (key, value, updated_at, updated_by)
-        VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+        INSERT INTO server_config (key, value, is_secret)
+        VALUES (?, ?, 1)
         ON CONFLICT(key) DO UPDATE SET
-            value = excluded.value,
-            updated_at = CURRENT_TIMESTAMP,
-            updated_by = excluded.updated_by
+            value = excluded.value
         "#,
     )
     .bind(key)
     .bind(value)
-    .bind(actor_id)
     .execute(pool)
     .await?;
 
@@ -191,7 +185,7 @@ pub async fn set_secret(
         pool,
         actor_id,
         audit::action::SECRET_UPDATE,
-        Some("instance_config"),
+        Some("server_config"),
         Some(key),
         Some(serde_json::json!({ "key": key })),
     )

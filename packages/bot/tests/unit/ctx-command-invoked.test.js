@@ -27,11 +27,11 @@ function startServer (requestHandler) {
       req.on('data', (chunk) => { body += chunk })
       req.on('end', () => {
         try {
-          /** @type {any} */ (req).body = JSON.parse(body)
+          /** @type {Record<string, Object>} */ (req).body = JSON.parse(body)
         } catch {
-          /** @type {any} */ (req).body = body
+          /** @type {Record<string, Object>} */ (req).body = body
         }
-        /** @type {any} */
+        /** @type {Record<string, Object>} */
         const reqWithBody = req
         requests.push(reqWithBody)
         if (requestHandler) {
@@ -110,7 +110,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         botCommandPrivateKey: BOT_COMMAND_PRIVATE,
         bot,
         http,
-        makeBotCtx: async () => (/** @type {any} */ ({}))
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({}))
       })
 
       const { ciphertext } = buildCiphertext('ping')
@@ -150,7 +150,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         botCommandPrivateKey: BOT_COMMAND_PRIVATE,
         bot,
         http,
-        makeBotCtx: async () => (/** @type {any} */ ({}))
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({}))
       })
 
       const { ciphertext } = buildCiphertext('unknown')
@@ -194,7 +194,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         botCommandPrivateKey: BOT_COMMAND_PRIVATE,
         bot,
         http,
-        makeBotCtx: async () => (/** @type {any} */ ({}))
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({}))
       })
 
       const { ciphertext } = buildCiphertext('greet', {})
@@ -236,7 +236,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         botCommandPrivateKey: BOT_COMMAND_PRIVATE,
         bot,
         http,
-        makeBotCtx: async () => (/** @type {any} */ ({}))
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({}))
       })
 
       const { ciphertext } = buildCiphertext('boom')
@@ -281,7 +281,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         botCommandPrivateKey: BOT_COMMAND_PRIVATE,
         bot,
         http,
-        makeBotCtx: async () => (/** @type {any} */ ({})),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({})),
         handlerTimeoutMs: 50
       })
 
@@ -327,7 +327,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         botCommandPrivateKey: BOT_COMMAND_PRIVATE,
         bot,
         http,
-        makeBotCtx: async () => (/** @type {any} */ ({
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({
           post: async (opts) => {
             postCalled = true
             assert.equal(opts.roomId, 'r1')
@@ -370,7 +370,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         botCommandPrivateKey: BOT_COMMAND_PRIVATE,
         bot,
         http,
-        makeBotCtx: async () => (/** @type {any} */ ({}))
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({}))
       })
 
       await handler({
@@ -416,7 +416,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         bot,
         http,
         shutdownTracker,
-        makeBotCtx: async () => (/** @type {any} */ ({}))
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({}))
       })
 
       shutdownTracker.startShutdown()
@@ -472,7 +472,7 @@ describe('Command Invocation Handler Unit Tests', () => {
         bot,
         http,
         shutdownTracker,
-        makeBotCtx: async () => (/** @type {any} */ ({}))
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({}))
       })
 
       const { ciphertext } = buildCiphertext('ping')
@@ -494,7 +494,7 @@ describe('Command Invocation Handler Unit Tests', () => {
 describe('dispatchCommandResult Edge Cases', () => {
   it('Validates arguments and options', async () => {
     await assert.rejects(
-      async () => dispatchCommandResult(/** @type {any} */ (undefined)),
+      async () => dispatchCommandResult(/** @type {Record<string, Object>} */ (undefined)),
       /result must be an object/
     )
 
@@ -503,17 +503,17 @@ describe('dispatchCommandResult Edge Cases', () => {
         result: { type: 'room_message', content: 'test' },
         ephemeralResultPubkey: new Uint8Array(32),
         roomId: 'r1',
-        http: /** @type {any} */ ({})
+        http: /** @type {Record<string, Object>} */ ({})
       }),
       /ctx.post is required/
     )
 
     await assert.rejects(
       async () => dispatchCommandResult({
-        result: /** @type {any} */ ({ type: 'invalid_type' }),
+        result: /** @type {Record<string, Object>} */ ({ type: 'invalid_type' }),
         ephemeralResultPubkey: new Uint8Array(32),
         roomId: 'r1',
-        http: /** @type {any} */ ({})
+        http: /** @type {Record<string, Object>} */ ({})
       }),
       /Unknown result type/
     )

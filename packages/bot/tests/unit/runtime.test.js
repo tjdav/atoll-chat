@@ -24,7 +24,7 @@ class FakeWebSocket {
    */
   constructor (url) {
     this.url = url
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     this.sent = []
     this.readyState = 0
     /** @type {Record<string, Function[]>} */
@@ -123,7 +123,7 @@ class FakeWebSocket {
   }
 }
 
-/** @type {any} */
+/** @type {Record<string, Object>} */
 const WSImpl = FakeWebSocket
 
 /**
@@ -131,7 +131,7 @@ const WSImpl = FakeWebSocket
  * @param {string} tmpDir
  */
 function makeConfig (url, tmpDir) {
-  /** @type {any} */
+  /** @type {Record<string, Object>} */
   const cfg = {
     serverUrl: url,
     botToken: 'session-token',
@@ -159,7 +159,7 @@ function makeKeystoreData () {
  */
 function makeBot (overrides = {}) {
   const calls = { install: 0, uninstall: 0, grantUpdated: 0 }
-  /** @type {any} */
+  /** @type {Record<string, Object>} */
   let grantUpdatedArgs = null
 
   const bot = defineBot({
@@ -263,7 +263,7 @@ describe('Bot Runtime Unit Tests', () => {
   /** @type {Array<string>} */
   let loggedLines = []
   /** @type {import('../../src/runtime/diagnostics/logger.js').Logger} */
-  let logger = /** @type {any} */ (null)
+  let logger = /** @type {Record<string, Object>} */ (null)
 
   beforeEach(async () => {
     FakeWebSocket.instances = []
@@ -342,7 +342,7 @@ describe('Bot Runtime Unit Tests', () => {
       const config = makeConfig('http://127.0.0.1', tmpDir)
       const keystoreData = makeKeystoreData()
       assert.throws(
-        () => createRuntime({ bot: /** @type {any} */ (null), config, keystoreData, logger }),
+        () => createRuntime({ bot: /** @type {Record<string, Object>} */ (null), config, keystoreData, logger }),
         /bot must be an object with a config property/
       )
     })
@@ -747,7 +747,7 @@ describe('Bot Runtime Unit Tests', () => {
         const ctx = await runtime.makeBotCtx({ roomId: 'r_abc' })
         await assert.rejects(
           () => ctx.post({ text: 'test' }),
-          (err) => err instanceof PublisherKeyVerificationFailedError || (err && typeof err === 'object' && 'code' in err && err.code === 'publisher_key_verification_failed') || (err && typeof err === 'object' && 'cause' in err && /** @type {any} */ (err.cause) instanceof PublisherKeyVerificationFailedError)
+          (err) => err instanceof PublisherKeyVerificationFailedError || (err && typeof err === 'object' && 'code' in err && err.code === 'publisher_key_verification_failed') || (err && typeof err === 'object' && 'cause' in err && /** @type {Record<string, Object>} */ (err.cause) instanceof PublisherKeyVerificationFailedError)
         )
 
         const stopPromise = runtime.stop()

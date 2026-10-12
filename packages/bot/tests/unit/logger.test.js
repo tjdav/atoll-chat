@@ -225,7 +225,7 @@ describe('Logger unit tests', () => {
       sink: (line) => lines.push(line)
     })
 
-    /** @type {Record<string, unknown>} */
+    /** @type {Record<string, Object>} */
     const a = {}
     a.self = a
 

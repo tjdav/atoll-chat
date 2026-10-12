@@ -44,14 +44,13 @@ impl AltchaConfig {
         }
 
         let hmac_secret = if config.altcha_hmac_secret == "auto" {
-            let existing: Option<(String,)> = sqlx::query_as(
-                "SELECT value FROM instance_config WHERE key = 'altcha_hmac_secret'",
-            )
-            .fetch_optional(pool)
-            .await?;
+            let existing: Option<(String,)> =
+                sqlx::query_as("SELECT value FROM server_config WHERE key = 'altcha_hmac_secret'")
+                    .fetch_optional(pool)
+                    .await?;
 
             if let Some((secret,)) = existing {
-                info!("ALTCHA HMAC secret loaded from instance_config");
+                info!("ALTCHA HMAC secret loaded from server_config");
                 secret
             } else {
                 let mut bytes = [0u8; 32];
@@ -59,13 +58,13 @@ impl AltchaConfig {
                 let secret = hex::encode(bytes);
 
                 sqlx::query(
-                    "INSERT INTO instance_config (key, value) VALUES ('altcha_hmac_secret', ?)",
+                    "INSERT INTO server_config (key, value, is_secret) VALUES ('altcha_hmac_secret', ?, 1)",
                 )
                 .bind(&secret)
                 .execute(pool)
                 .await?;
 
-                info!("Generated and saved new ALTCHA HMAC secret to instance_config");
+                info!("Generated and saved new ALTCHA HMAC secret to server_config");
                 secret
             }
         } else {
@@ -126,9 +125,9 @@ pub async fn rotate_hmac_secret(
 
     sqlx::query(
         r#"
-        INSERT INTO instance_config (key, value, updated_at)
-        VALUES ('altcha_hmac_secret', ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        INSERT INTO server_config (key, value, is_secret)
+        VALUES ('altcha_hmac_secret', ?, 1)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
         "#,
     )
     .bind(&secret)

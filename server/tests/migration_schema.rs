@@ -175,7 +175,7 @@ async fn test_target_v2_schema_structural_matches_expectation() {
         "call_sessions",
         "room_sessions",
         "push_subscriptions",
-        "instance_config",
+        "server_config",
         "instance_limits",
         "audit_log",
         "rate_limits",
@@ -189,6 +189,15 @@ async fn test_target_v2_schema_structural_matches_expectation() {
             tbl
         );
     }
+
+    // Regression test: assert server_config exists and instance_config does NOT exist
+    let config_tables: Vec<String> = sqlx::query_scalar(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('server_config', 'instance_config')"
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(config_tables, vec!["server_config".to_string()]);
 
     // Verify key columns exist
     assert!(current_dump.contains("users|username_token|TEXT|1||0"));

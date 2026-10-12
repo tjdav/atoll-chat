@@ -496,9 +496,9 @@ describe('createHttpClient unit tests', () => {
   it('26. Logger emits retry lines', async () => {
     /** @type {Array<{ msg: string, meta: Record<string, unknown> }>} */
     const logs = []
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const dummyLogger = {
-      debug (/** @type {string} */ msg, /** @type {Record<string, unknown>} */ meta) { logs.push({ msg, meta }) },
+      debug (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) { logs.push({ msg, meta }) },
       info () {},
       warn () {},
       error () {}
@@ -542,9 +542,9 @@ describe('createHttpClient unit tests', () => {
   it('27. Logger strips query string', async () => {
     /** @type {Array<{ msg: string, meta: Record<string, unknown> }>} */
     const logs = []
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const dummyLogger = {
-      debug (/** @type {string} */ msg, /** @type {Record<string, unknown>} */ meta) { logs.push({ msg, meta }) },
+      debug (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) { logs.push({ msg, meta }) },
       info () {},
       warn () {},
       error () {}

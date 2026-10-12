@@ -68,11 +68,11 @@ function makeSleep (clock) {
 function makeMemoryStorage () {
   /** @type {Map<string, unknown>} */
   const map = new Map()
-  return /** @type {any} */ ({
+  return /** @type {Record<string, Object>} */ ({
     async get (/** @type {string} */ k) {
       return map.get(k)
     },
-    async set (/** @type {string} */ k, /** @type {unknown} */ v) {
+    async set (/** @type {string} */ k, /** @type {Object} */ v) {
       map.set(k, v)
     },
     async delete (/** @type {string} */ k) {
@@ -113,21 +113,21 @@ function makeStateStore (initialState = {}) {
 function makeLogger () {
   /** @type {{ level: string, msg: string, meta?: Record<string, unknown> }[]} */
   const logs = []
-  return /** @type {any} */ ({
+  return /** @type {Record<string, Object>} */ ({
     logs,
-    log (/** @type {string} */ level, /** @type {string} */ msg, /** @type {Record<string, unknown>} */ meta) {
+    log (/** @type {string} */ level, /** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) {
       logs.push({ level, msg, ...(meta ? { meta } : {}) })
     },
-    debug (/** @type {string} */ msg, /** @type {Record<string, unknown>} */ meta) {
+    debug (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) {
       logs.push({ level: 'debug', msg, ...(meta ? { meta } : {}) })
     },
-    info (/** @type {string} */ msg, /** @type {Record<string, unknown>} */ meta) {
+    info (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) {
       logs.push({ level: 'info', msg, ...(meta ? { meta } : {}) })
     },
-    warn (/** @type {string} */ msg, /** @type {Record<string, unknown>} */ meta) {
+    warn (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) {
       logs.push({ level: 'warn', msg, ...(meta ? { meta } : {}) })
     },
-    error (/** @type {string} */ msg, /** @type {Record<string, unknown>} */ meta) {
+    error (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) {
       logs.push({ level: 'error', msg, ...(meta ? { meta } : {}) })
     },
     level () {
@@ -222,7 +222,7 @@ describe('Cron Engine Unit Tests', () => {
     })
 
     test('15. Non-string throws', () => {
-      /** @type {any} */
+      /** @type {Record<string, Object>} */
       const invalid = 12345
       assert.throws(() => parseCron(invalid), /expression must be a string/)
     })
@@ -336,7 +336,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [],
-        makeBotCtx: async () => (/** @type {any} */ ({})),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({})),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
         sleep,
@@ -358,7 +358,7 @@ describe('Cron Engine Unit Tests', () => {
           { type: 'schedule', name: 'hourly', cron: '0 * * * *' },
           { type: 'schedule', name: 'daily', cron: '0 12 * * *' }
         ],
-        makeBotCtx: async () => (/** @type {any} */ ({})),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({})),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
         sleep,
@@ -389,7 +389,7 @@ describe('Cron Engine Unit Tests', () => {
           { type: 'schedule', name: 'bad', cron: 'bad expression' },
           { type: 'schedule', name: 'good', cron: '0 * * * *' }
         ],
-        makeBotCtx: async () => (/** @type {any} */ ({})),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({})),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
         sleep,
@@ -421,7 +421,7 @@ describe('Cron Engine Unit Tests', () => {
           { type: 'schedule', name: 'bad_tz', cron: '0 * * * *', timezone: 'Invalid/Timezone' },
           { type: 'schedule', name: 'good_tz', cron: '0 * * * *' }
         ],
-        makeBotCtx: async () => (/** @type {any} */ ({})),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({})),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
         sleep,
@@ -445,14 +445,14 @@ describe('Cron Engine Unit Tests', () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
 
-      /** @type {any[]} */
+      /** @type {Array<Record<string, Object>>} */
       const dispatches = []
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async (inv) =>
-          /** @type {any} */ ({
-            schedule: async (/** @type {any} */ _ctx, /** @type {any} */ payload) => {
+          /** @type {Record<string, Object>} */ ({
+            schedule: async (/** @type {Record<string, Object>} */ _ctx, /** @type {Record<string, Object>} */ payload) => {
               dispatches.push({ inv, payload })
             }
           }),
@@ -478,14 +478,14 @@ describe('Cron Engine Unit Tests', () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
 
-      /** @type {any[]} */
+      /** @type {Array<Record<string, Object>>} */
       const invocations = []
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async (inv) => {
           invocations.push(inv)
-          return /** @type {any} */ ({ schedule: async () => {} })
+          return /** @type {Record<string, Object>} */ ({ schedule: async () => {} })
         },
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
@@ -517,7 +517,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               fireCount++
             }
@@ -552,7 +552,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               fireCount++
               if (fireCount === 1) {
@@ -590,7 +590,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'slow', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               // Hang indefinitely
               await new Promise(() => {})
@@ -631,7 +631,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               fired = true
             }
@@ -660,7 +660,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
-        makeBotCtx: async () => (/** @type {any} */ ({ schedule: async () => {} })),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({ schedule: async () => {} })),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore,
         sleep,
@@ -690,7 +690,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               throw new Error('boom')
             }
@@ -725,7 +725,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               dispatches++
             }
@@ -752,7 +752,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: true },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               dispatches++
             }
@@ -776,14 +776,14 @@ describe('Cron Engine Unit Tests', () => {
         '_runtime:cron:hourly:last_fire': '2025-01-01T01:00:00.000Z'
       })
 
-      /** @type {any[]} */
+      /** @type {Array<Record<string, Object>>} */
       const caughtUp = []
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: true },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async (inv) => {
           caughtUp.push(inv)
-          return /** @type {any} */ ({ schedule: async () => {} })
+          return /** @type {Record<string, Object>} */ ({ schedule: async () => {} })
         },
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore,
@@ -820,7 +820,7 @@ describe('Cron Engine Unit Tests', () => {
         triggers: [{ type: 'schedule', name: 'minutely', cron: '* * * * *' }],
         makeBotCtx: async () => {
           dispatches++
-          return /** @type {any} */ ({ schedule: async () => {} })
+          return /** @type {Record<string, Object>} */ ({ schedule: async () => {} })
         },
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore,
@@ -851,7 +851,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: true },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
-        makeBotCtx: async () => (/** @type {any} */ ({ schedule: async () => {} })),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({ schedule: async () => {} })),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore,
         sleep,
@@ -884,7 +884,7 @@ describe('Cron Engine Unit Tests', () => {
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async (inv) => {
           ranIso.push(inv.scheduledAt)
-          return /** @type {any} */ ({ schedule: async () => {} })
+          return /** @type {Record<string, Object>} */ ({ schedule: async () => {} })
         },
         idempotency,
         stateStore,
@@ -911,7 +911,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               fired = true
             }
@@ -941,7 +941,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               await new Promise((r) => setTimeout(r, 50))
               handlerDone = true
@@ -972,7 +972,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
-        makeBotCtx: async () => (/** @type {any} */ ({})),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({})),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
         sleep,
@@ -993,7 +993,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               dispatches++
             }
@@ -1023,14 +1023,14 @@ describe('Cron Engine Unit Tests', () => {
       const clock = makeClock(Date.parse('2025-01-01T00:00:00.000Z'))
       const { sleep } = makeSleep(clock)
 
-      /** @type {any[]} */
+      /** @type {Array<Record<string, Object>>} */
       const dispatches = []
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'manual_trigger', cron: '0 0 1 1 *' }],
         makeBotCtx: async (inv) =>
-          /** @type {any} */ ({
-            schedule: async (/** @type {any} */ _ctx, /** @type {any} */ payload) => {
+          /** @type {Record<string, Object>} */ ({
+            schedule: async (/** @type {Record<string, Object>} */ _ctx, /** @type {Record<string, Object>} */ payload) => {
               dispatches.push({ inv, payload })
             }
           }),
@@ -1055,7 +1055,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'manual_trigger', cron: '0 0 1 1 *' }],
-        makeBotCtx: async () => (/** @type {any} */ ({})),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({})),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
         sleep,
@@ -1078,7 +1078,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'manual_trigger', cron: '0 0 1 1 *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               fired = true
             }
@@ -1102,7 +1102,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'slow_manual', cron: '0 0 1 1 *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               await new Promise((r) => setTimeout(r, 20))
               finished = true
@@ -1138,10 +1138,10 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
-        makeBotCtx: async () => (/** @type {any} */ ({ schedule: async () => { fired = true } })),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({ schedule: async () => { fired = true } })),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore,
-        pausePolicy: /** @type {any} */ (pausePolicy),
+        pausePolicy: /** @type {Record<string, Object>} */ (pausePolicy),
         sleep,
         now: clock.now
       })
@@ -1170,7 +1170,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
-        makeBotCtx: async () => (/** @type {any} */ ({
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({
           schedule: async () => {
             throw new Error('cron handler fail')
           }
@@ -1202,7 +1202,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
-        makeBotCtx: async () => (/** @type {any} */ ({ schedule: async () => {} })),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({ schedule: async () => {} })),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
         sleep,
@@ -1234,7 +1234,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'bad', cron: 'invalid' }],
-        makeBotCtx: async () => (/** @type {any} */ ({})),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({})),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore: makeStateStore(),
         sleep,
@@ -1260,7 +1260,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'failing', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => {
               throw new Error('handler failed error')
             }
@@ -1294,7 +1294,7 @@ describe('Cron Engine Unit Tests', () => {
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'secret_return', cron: '0 * * * *' }],
         makeBotCtx: async () =>
-          /** @type {any} */ ({
+          /** @type {Record<string, Object>} */ ({
             schedule: async () => ({ sensitive: 'classified' })
           }),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
@@ -1329,7 +1329,7 @@ describe('Cron Engine Unit Tests', () => {
       const engine = createCronEngine({
         config: { timezone: 'UTC', catchUp: false },
         triggers: [{ type: 'schedule', name: 'hourly', cron: '0 * * * *' }],
-        makeBotCtx: async () => (/** @type {any} */ ({ schedule: async () => { fired = true } })),
+        makeBotCtx: async () => (/** @type {Record<string, Object>} */ ({ schedule: async () => { fired = true } })),
         idempotency: new IdempotencyStore({ storage: makeMemoryStorage() }),
         stateStore,
         shutdownTracker,

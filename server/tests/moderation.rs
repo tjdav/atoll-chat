@@ -49,9 +49,9 @@ async fn create_test_user(
 async fn set_moderation_mode(pool: &SqlitePool, mode: &str) {
     sqlx::query(
         r#"
-        INSERT INTO instance_config (key, value, updated_at)
-        VALUES ('moderation_mode', ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+        INSERT INTO server_config (key, value, is_secret)
+        VALUES ('moderation_mode', ?, 0)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
         "#,
     )
     .bind(mode)

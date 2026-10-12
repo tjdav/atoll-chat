@@ -269,8 +269,8 @@ pub async fn create_room_session(
 
     let role = check_room_membership(pool, room_id, creator_id).await?;
 
-    let instance_config = config_ops::get_config(pool).await?;
-    if instance_config.moderation_mode == "discord" && role == "member" {
+    let server_config = config_ops::get_config(pool).await?;
+    if server_config.moderation_mode == "discord" && role == "member" {
         return Err(RoomSessionError::Forbidden);
     }
 
@@ -421,7 +421,7 @@ pub async fn patch_room_session(
     req: PatchRoomSessionRequest,
 ) -> Result<RoomSessionView, RoomSessionError> {
     let role = check_room_membership(pool, room_id, user_id).await?;
-    let instance_config = config_ops::get_config(pool).await?;
+    let server_config = config_ops::get_config(pool).await?;
 
     if req.metadata.is_none() && req.position.is_none() {
         return Err(RoomSessionError::NoChanges);
@@ -461,7 +461,7 @@ pub async fn patch_room_session(
 
     let is_authorized = user_id == created_by
         || role == "owner"
-        || (role == "moderator" && instance_config.moderation_mode == "discord");
+        || (role == "moderator" && server_config.moderation_mode == "discord");
 
     if !is_authorized {
         return Err(RoomSessionError::Forbidden);
@@ -600,7 +600,7 @@ pub async fn delete_room_session(
     user_id: &str,
 ) -> Result<(), RoomSessionError> {
     let role = check_room_membership(pool, room_id, user_id).await?;
-    let instance_config = config_ops::get_config(pool).await?;
+    let server_config = config_ops::get_config(pool).await?;
 
     let session_row: Option<(String, String)> = sqlx::query_as(
         "SELECT extension_id, created_by FROM room_sessions WHERE id = ? AND room_id = ?",
@@ -617,7 +617,7 @@ pub async fn delete_room_session(
 
     let is_authorized = user_id == created_by
         || role == "owner"
-        || (role == "moderator" && instance_config.moderation_mode == "discord");
+        || (role == "moderator" && server_config.moderation_mode == "discord");
 
     if !is_authorized {
         return Err(RoomSessionError::Forbidden);

@@ -66,7 +66,7 @@ describe('Diagnostic File Writer Unit Tests', () => {
     const writer = createDiagFileWriter({ path: diagPath, logger })
     await writer.append({ seq: 1 })
 
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const circularObj = { seq: 2 }
     circularObj.self = circularObj
 
@@ -85,7 +85,7 @@ describe('Diagnostic File Writer Unit Tests', () => {
     const writer = createDiagFileWriter({ path: diagPath, logger })
     await writer.append({ seq: 1 })
 
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const circularObj = { seq: 2 }
     circularObj.self = circularObj
     writer.append(circularObj) // intentionally not awaited immediately

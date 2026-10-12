@@ -113,8 +113,8 @@ function loadEmittedBot (code) {
     `
     const src = Buffer.from('${encoded}', 'base64').toString('utf8')
     const cleaned = src
-      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
-      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/recipes\\/primitives'/, '')
+      .replace(/import\\s*\\{[\\s\\S]*?\\}\\s*from\\s*['"]@atoll\\/bot['"]/, '')
+      .replace(/import\\s*\\{[\\s\\S]*?\\}\\s*from\\s*['"]@atoll\\/recipes\\/primitives['"]/, '')
       .replace('export default defineBot', 'return defineBot')
     const fn = new Function(
       'defineBot',

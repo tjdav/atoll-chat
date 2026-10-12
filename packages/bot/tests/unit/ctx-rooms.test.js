@@ -11,10 +11,10 @@ import { createRoomsStore } from '../../src/runtime/context/rooms.js'
 function makeSpyLogger () {
   /** @type {Array<{ msg: string, meta?: any }>} */
   const warnings = []
-  const logger = /** @type {unknown} */ ({
+  const logger = /** @type {Object} */ ({
     debug () {},
     info () {},
-    warn (/** @type {string} */ msg, /** @type {any} */ meta) {
+    warn (/** @type {string} */ msg, /** @type {Record<string, Object>} */ meta) {
       warnings.push({ msg, meta })
     },
     error () {}
@@ -58,7 +58,7 @@ describe('RoomsStore unit tests', () => {
 
   it('4. List skips entries without an id', async () => {
     const { logger, warnings } = makeSpyLogger()
-    const rawList = /** @type {any[]} */ ([
+    const rawList = /** @type {Array<Record<string, Object>>} */ ([
       { display_name: 'X' },
       { id: 'r_valid', display_name: 'Valid' }
     ])
@@ -73,7 +73,7 @@ describe('RoomsStore unit tests', () => {
 
   it('5. List skips entries with a non-string id', async () => {
     const { logger, warnings } = makeSpyLogger()
-    const rawList = /** @type {any[]} */ ([
+    const rawList = /** @type {Array<Record<string, Object>>} */ ([
       { id: 123, display_name: 'Numeric ID' },
       { id: '', display_name: 'Empty ID' },
       { id: 'r_ok', display_name: 'OK' }
@@ -95,7 +95,7 @@ describe('RoomsStore unit tests', () => {
 
   it('7. Non-array response returns [] and logs a warning', async () => {
     const { logger, warnings } = makeSpyLogger()
-    const store = createRoomsStore({ fetchRoomList: async () => /** @type {any} */ ({ error: 'bad shape' }), logger })
+    const store = createRoomsStore({ fetchRoomList: async () => /** @type {Record<string, Object>} */ ({ error: 'bad shape' }), logger })
     const rooms = await store.list()
 
     assert.deepEqual(rooms, [])
@@ -217,7 +217,7 @@ describe('RoomsStore unit tests', () => {
 
   it('17. Logger warns on non-array response', async () => {
     const { logger, warnings } = makeSpyLogger()
-    const store = createRoomsStore({ fetchRoomList: async () => /** @type {any} */ (null), logger })
+    const store = createRoomsStore({ fetchRoomList: async () => /** @type {Record<string, Object>} */ (null), logger })
     await store.list()
 
     assert.equal(warnings.length, 1)
@@ -227,7 +227,7 @@ describe('RoomsStore unit tests', () => {
   it('18. Logger warns on skipped entry', async () => {
     const { logger, warnings } = makeSpyLogger()
     const store = createRoomsStore({
-      fetchRoomList: async () => /** @type {any[]} */ ([
+      fetchRoomList: async () => /** @type {Array<Record<string, Object>>} */ ([
         { id: null },
         { id: 'r_valid' }
       ]),

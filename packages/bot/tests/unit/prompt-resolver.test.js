@@ -110,7 +110,7 @@ describe('Prompt resolver unit tests', () => {
   })
 
   it('7. Reader returns a non-string', async () => {
-    /** @type {any} */
+    /** @type {Record<string, Object>} */
     const reader = async () => null
     const resolver = promptResolver({ reader })
     const result = await resolver.resolve({

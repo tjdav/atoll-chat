@@ -281,7 +281,7 @@ async fn test_07_moderator_can_delete_in_discord_mode() {
 
     // Set moderation_mode to discord
     sqlx::query(
-        "INSERT INTO instance_config (key, value) VALUES ('moderation_mode', 'discord') ON CONFLICT(key) DO UPDATE SET value = 'discord'",
+        "INSERT INTO server_config (key, value, is_secret) VALUES ('moderation_mode', 'discord', 0) ON CONFLICT(key) DO UPDATE SET value = 'discord'",
     )
     .execute(&pool)
     .await

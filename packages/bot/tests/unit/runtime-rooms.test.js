@@ -20,7 +20,7 @@ class FakeWebSocket {
 
   constructor (url) {
     this.url = url
-    /** @type {any[]} */
+    /** @type {Array<Record<string, Object>>} */
     this.sent = []
     this.readyState = 0
     /** @type {Function | null} */
@@ -86,7 +86,7 @@ class FakeWebSocket {
   }
 }
 
-/** @type {any} */
+/** @type {Record<string, Object>} */
 const WSImpl = FakeWebSocket
 
 function makeConfig (url, tmpDir) {
