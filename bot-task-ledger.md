@@ -6,8 +6,8 @@ Track progress across Bot SDK implementation tasks.
 
 ## Summary
 
-- **Total Tasks:** 49
-- **Done:** 46
+- **Total Tasks:** 50
+- **Done:** 47
 - **In Progress:** 0
 - **Todo:** 3
 
@@ -17,6 +17,7 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-043c-6 | Quality | done | B-043c-3 | Audit and clean suppressions in `packages/bot/src/` per revised policy |
 | B-043c-5 | Quality | done | B-043c-3 | Fix all 56 lint errors in `packages/bot/src/` |
 | B-043c-1 | Scaffolding | done | B-001 | Scope the strict type check to `src/` and add a relaxed test config |
 | B-043c-2 | Testing | done | B-043c-1 | Audit and clean suppressions in tests per revised policy |

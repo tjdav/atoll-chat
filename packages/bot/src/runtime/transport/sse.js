@@ -255,7 +255,6 @@ export function createSseClient ({
 
     try {
       if (body) {
-        // @ts-ignore - ReadableStream in Node 22 is an AsyncIterable
         for await (const chunk of body) {
           if (closed || userAborted) {
             break

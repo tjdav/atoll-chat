@@ -157,8 +157,9 @@ export function createPostHandler ({
 
     const durationMs = Date.now() - startMs
 
-    /** @type {any} */
-    const responseBody = response.body
+    const responseBody =
+      /** @type {Record<string, unknown> | null} */
+      (response.body)
     if (!responseBody || typeof responseBody !== 'object' || typeof responseBody.id !== 'string') {
       const cause = new TypeError('server response did not include a valid string id')
       throw new PostFailedError('post succeeded but the server response did not include an id', { cause })

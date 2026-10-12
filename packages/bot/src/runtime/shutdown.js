@@ -63,7 +63,7 @@ export function createShutdownTracker (logger) {
 
       const snapshot = Array.from(inflight)
 
-      /** @type {any} */
+      /** @type {ReturnType<typeof globalThis.setTimeout> | null} */
       let timerId = null
 
       const allSettled = Promise.allSettled(snapshot).then(() => {

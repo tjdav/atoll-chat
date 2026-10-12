@@ -83,7 +83,7 @@ export function createSettingsStore ({
   /** @type {Promise<void> | null} */
   let refreshInFlight = null
 
-  /** @type {any} */
+  /** @type {ReturnType<typeof globalThis.setTimeout> | null} */
   let refreshTimer = null
 
   let refreshRequested = false
@@ -120,8 +120,9 @@ export function createSettingsStore ({
     }
 
     let rawList = response.body
-    /** @type {any} */
-    const listObj = rawList
+    const listObj =
+      /** @type {Record<string, unknown>} */
+      (rawList)
     if (
       rawList &&
       typeof rawList === 'object' &&

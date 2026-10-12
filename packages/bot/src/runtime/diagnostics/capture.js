@@ -76,8 +76,9 @@ export function createDiagnosticsCapture ({
 
     let resolvedBotId = botId ?? ''
     if (!resolvedBotId && typeof state === 'object' && state !== null && 'bot_id' in state) {
-      /** @type {any} */
-      const stateObj = state
+      const stateObj =
+        /** @type {Record<string, unknown>} */
+        (state)
       resolvedBotId = String(stateObj.bot_id)
     }
 
@@ -173,8 +174,9 @@ export function createDiagnosticsCapture ({
         continue
       }
 
-      /** @type {any} */
-      const valObj = val
+      const valObj =
+        /** @type {Record<string, unknown>} */
+        (val)
       const atStr = valObj.at
       if (typeof atStr !== 'string') {
         await storage.delete(key)

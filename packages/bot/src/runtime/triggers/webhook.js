@@ -363,8 +363,9 @@ export function createWebhookServer ({
     }
 
     // Handler dispatch
-    /** @type {any} */
-    const ctxUntyped = ctx
+    const ctxUntyped =
+      /** @type {Record<string, any>} */
+      (ctx)
     const handlerFn = onWebhook ?? ctxUntyped.webhook ?? ctxUntyped.handlers?.webhook ?? ctxUntyped.config?.handlers?.webhook
 
     const runHandler = () => (typeof handlerFn === 'function'
@@ -402,8 +403,9 @@ export function createWebhookServer ({
 
       if (guardResult.kind === 'failure') {
         await idempotency.remove(idempotencyKey)
-        /** @type {any} */
-        const errObj = guardResult.error
+        const errObj =
+          /** @type {Error & { isTimeout?: boolean }} */
+          (guardResult.error)
         const errorMsg = errObj instanceof Error ? errObj.message : String(errObj)
 
         if (errObj && errObj.isTimeout) {
@@ -454,8 +456,9 @@ export function createWebhookServer ({
         respondEmpty(res, 200)
       } catch (err) {
         await idempotency.remove(idempotencyKey)
-        /** @type {any} */
-        const errObj = err
+        const errObj =
+          /** @type {Error & { isTimeout?: boolean }} */
+          (err)
         const errorMsg = err instanceof Error ? err.message : String(err)
 
         if (errObj && errObj.isTimeout) {
@@ -629,8 +632,9 @@ function withTimeout (promise, ms) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       const err = new Error(`handler timed out after ${ms}ms`)
-      /** @type {any} */
-      const errorObj = err
+      const errorObj =
+        /** @type {Error & { isTimeout?: boolean }} */
+        (err)
       errorObj.isTimeout = true
       reject(err)
     }, ms)
