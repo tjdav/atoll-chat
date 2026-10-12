@@ -62,7 +62,7 @@ export class Keystore {
    * Loads and decrypts the keystore. Caches the resolved secret for
    * subsequent `save()` calls.
    *
-   * @returns {Promise<object>} The decrypted plaintext.
+   * @returns {Promise<Record<string, unknown>>} The decrypted plaintext.
    * @throws {KeystoreLockedError} When the file does not exist, no
    *   resolver returns a secret, or the secret is wrong (the tag does
    *   not verify).

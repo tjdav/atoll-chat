@@ -37,9 +37,9 @@ export const inspectCommand = {
     }
 
     const roomId = args[0]
-    const data = (state.data && typeof state.data === 'object')
-      ? /** @type {Record<string, any>} */ (state.data)
-      : {}
+    /** @type {Record<string, any>} */
+    const rawData = (state.data && typeof state.data === 'object') ? state.data : {}
+    const data = rawData
 
     let outputData = data
 

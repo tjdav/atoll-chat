@@ -32,7 +32,8 @@ export const tailCommand = {
     }
 
     /** @type {() => void} */
-    let resolveWait = () => {}
+    let resolveWait = () => {
+    }
     /** @type {Promise<void>} */
     const waitPromise = new Promise((resolve) => {
       resolveWait = resolve

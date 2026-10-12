@@ -55,7 +55,10 @@ export const devCommand = {
     const env = io.env ?? process.env
     let loadedConfig
     try {
-      loadedConfig = await loadConfig({ env, cwd })
+      loadedConfig = await loadConfig({
+        env,
+        cwd
+      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       throw new UserError(msg)
@@ -99,7 +102,10 @@ export const devCommand = {
         keychainResolver(),
         promptResolver()
       ]
-      const keystore = new Keystore({ path: config.keystorePath, resolvers })
+      const keystore = new Keystore({
+        path: config.keystorePath,
+        resolvers
+      })
       try {
         keystoreData = await keystore.load()
       } catch (err) {
@@ -159,7 +165,8 @@ export const devCommand = {
       }
       try {
         writeFileSync(diagPath, JSON.stringify(stateObj) + '\n')
-      } catch {}
+      } catch {
+      }
     }
 
     writeStateLine(currentBot.config.id)
@@ -171,7 +178,8 @@ export const devCommand = {
         io.stdout.write(line)
         try {
           appendFileSync(diagPath, line)
-        } catch {}
+        } catch {
+        }
       },
       dev: true
     })
@@ -229,10 +237,12 @@ export const devCommand = {
           }, 200)
         }
       })
-    } catch {}
+    } catch {
+    }
 
     /** @type {(code: number) => void} */
-    let resolveExit = () => {}
+    let resolveExit = () => {
+    }
     /** @type {Promise<number>} */
     const exitPromise = new Promise((resolve) => {
       resolveExit = resolve

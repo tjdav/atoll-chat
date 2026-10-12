@@ -32,8 +32,8 @@ function isUserActionable (err) {
   if (err instanceof KeystoreCorruptError) {
     return true
   }
-  if (typeof /** @type {any} */ (err).code === 'string') {
-    const code = /** @type {any} */ (err).code
+  if (err && typeof err === 'object' && 'code' in err && typeof err.code === 'string') {
+    const code = err.code
     if (
       code.startsWith('config_') ||
       code.startsWith('keystore_') ||
@@ -42,7 +42,7 @@ function isUserActionable (err) {
       return true
     }
   }
-  const msg = String(/** @type {any} */ (err).message ?? '')
+  const msg = String(('message' in err && typeof err.message === 'string') ? err.message : '')
   if (msg.includes('ECONNREFUSED')) {
     return true
   }
@@ -105,7 +105,10 @@ export const runCommand = {
     const env = io.env ?? process.env
     let config
     try {
-      config = await loadConfig({ env, cwd })
+      config = await loadConfig({
+        env,
+        cwd
+      })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       throw new UserError(msg)
@@ -123,7 +126,10 @@ export const runCommand = {
       promptResolver()
     ]
 
-    const keystore = new Keystore({ path: config.keystorePath, resolvers })
+    const keystore = new Keystore({
+      path: config.keystorePath,
+      resolvers
+    })
     let keystoreData
     try {
       keystoreData = await keystore.load()
@@ -168,7 +174,8 @@ export const runCommand = {
     }
 
     /** @type {(code: number) => void} */
-    let resolveExit = () => {}
+    let resolveExit = () => {
+    }
     /** @type {Promise<number>} */
     const exitPromise = new Promise((resolve) => {
       resolveExit = resolve

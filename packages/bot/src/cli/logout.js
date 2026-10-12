@@ -45,7 +45,7 @@ export const logoutCommand = {
     /** @type {Record<string, unknown>} */
     let plaintext
     try {
-      plaintext = /** @type {Record<string, unknown>} */ (await keystore.load())
+      plaintext = await keystore.load()
     } catch (err) {
       if (err instanceof KeystoreLockedError || err instanceof KeystoreCorruptError) {
         throw new UserError(err.message)

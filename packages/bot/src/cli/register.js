@@ -124,7 +124,9 @@ export const registerCommand = {
       throw new UserError(`register failed: ${msg}`)
     }
 
-    const body = /** @type {Record<string, any>} */ (res.body && typeof res.body === 'object' ? res.body : {})
+    /** @type {Record<string, any>} */
+    const rawResBody = (res.body && typeof res.body === 'object') ? res.body : {}
+    const body = rawResBody
 
     let botId = null
     if (typeof body.bot_id === 'string') {

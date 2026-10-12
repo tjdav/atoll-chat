@@ -878,7 +878,10 @@ export function createRuntime ({
     })
 
     const diagPath = `${config.keystorePath}.diag.jsonl`
-    diagFileWriter = createDiagFileWriter({ path: diagPath, logger: effectiveLogger })
+    diagFileWriter = createDiagFileWriter({
+      path: diagPath,
+      logger: effectiveLogger
+    })
     await diagFileWriter.truncate()
 
     /**

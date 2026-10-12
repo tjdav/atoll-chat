@@ -83,7 +83,8 @@ export async function readLatestState (path) {
 
     return null
   } finally {
-    await fileHandle.close().catch(() => {})
+    await fileHandle.close().catch(() => {
+    })
   }
 }
 
@@ -124,7 +125,7 @@ export async function followDiagFile ({ path, onLine, onError, fromStart = false
     } else {
       offset = fileStats.size
     }
-  } catch (err) {
+  } catch (_err) {
     if (fromStart) {
       offset = 0
     }
@@ -144,7 +145,7 @@ export async function followDiagFile ({ path, onLine, onError, fromStart = false
       let stats
       try {
         stats = await stat(path)
-      } catch (err) {
+      } catch (_err) {
         isReading = false
         if (readQueued) {
           readQueued = false
@@ -215,7 +216,8 @@ export async function followDiagFile ({ path, onLine, onError, fromStart = false
             }
           }
         } finally {
-          await fileHandle.close().catch(() => {})
+          await fileHandle.close().catch(() => {
+          })
         }
       }
     } catch (err) {
@@ -241,7 +243,8 @@ export async function followDiagFile ({ path, onLine, onError, fromStart = false
         return
       }
       if (eventType === 'rename' || eventType === 'change') {
-        readNewLines().catch(() => {})
+        readNewLines().catch(() => {
+        })
       }
     })
     fsWatcher.on('error', (err) => {
