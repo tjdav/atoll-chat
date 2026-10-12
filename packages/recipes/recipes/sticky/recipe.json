@@ -1,0 +1,55 @@
+{
+  "id": "sticky",
+  "version": "1.0.0",
+  "label": "Sticky",
+  "description": "Posts a message that the operator configures in the client's settings UI.",
+  "kind": "pure",
+  "capabilities": ["read_commands", "post_message"],
+  "slots": [],
+  "settings": {
+    "message": {
+      "label": "Message",
+      "type": "text",
+      "scope": "user",
+      "default": "Sticky is ready.",
+      "hint": "The text posted by /say. Change it any time from the bot's settings page."
+    }
+  },
+  "handlers": {
+    "install": {
+      "id": "install-hook",
+      "primitive": "post-response",
+      "config": { "text": "Sticky is ready. Use /say to post your configured message." }
+    }
+  },
+  "commands": {
+    "say": {
+      "id": "say-cmd",
+      "primitive": "expose-command",
+      "config": {
+        "name": "say",
+        "description": "Post the configured message to the room."
+      },
+      "children": [
+        {
+          "id": "read-message",
+          "primitive": "settings-read",
+          "config": { "key": "message" },
+          "children": [
+            {
+              "id": "post-message",
+              "primitive": "post-response",
+              "config": { "text": "{{.}}" }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "constraints": [
+    "The message is a user-scoped setting. It applies across every room the operator has granted the bot in.",
+    "The message is posted publicly. There is no private output mode.",
+    "The setting is declared on the recipe. The client renders a settings field for it in the operator's bot settings page.",
+    "The install message is fixed. It does not read the setting."
+  ]
+}
