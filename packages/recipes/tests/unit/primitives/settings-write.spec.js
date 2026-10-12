@@ -27,6 +27,25 @@ function createMockCtx () {
 }
 
 /**
+ * Builds a mock BotCtx with a room id and a recording write list.
+ * @param {string | null} roomId - The room id, or null.
+ * @returns {{ ctx: object, writes: object[] }} The mock context and
+ *   a mutable array of write calls.
+ */
+function createMockCtxWithRoom (roomId) {
+  const writes = []
+  const ctx = {
+    room: roomId === null ? null : { id: roomId, displayName: 'Room', memberCount: 1 },
+    settings: {
+      set: async (key, value, opts) => {
+        writes.push({ key, value, opts })
+      }
+    }
+  }
+  return { ctx, writes }
+}
+
+/**
  * Builds a child handler that records its inputs.
  * @returns {{ child: Function, calls: unknown[] }} The child and a
  *   mutable array of its inputs.
@@ -219,4 +238,62 @@ test('the primitive is registered under primitives.bot', async () => {
   assert.ok(Object.hasOwn(primitives.bot, 'webhook-receive'))
   assert.ok(Object.hasOwn(primitives.bot, 'http-fetch'))
   assert.ok(Object.hasOwn(primitives.bot, 'settings-read'))
+})
+
+test('config schema accepts an optional scope field', () => {
+  assert.ok(Object.hasOwn(settingsWrite.configSchema.properties, 'scope'))
+  assert.deepEqual(settingsWrite.configSchema.properties.scope.enum, ['user', 'room'])
+})
+
+test('create throws when scope is not user or room', () => {
+  assert.throws(
+    () => settingsWrite.create({ key: 'x', value: 'v', scope: 'global' }, []),
+    /config\.scope must be "user" or "room"/
+  )
+})
+
+test('create throws when scope is user and room is set', () => {
+  assert.throws(
+    () => settingsWrite.create({ key: 'x', value: 'v', scope: 'user', room: 'r_1' }, []),
+    /config\.room is not valid when scope is "user"/
+  )
+})
+
+test('scope room without room config uses ctx.room.id', async () => {
+  const handler = settingsWrite.create(
+    { key: 'welcome', scope: 'room', value: 'Hi' },
+    []
+  )
+  const { ctx, writes } = createMockCtxWithRoom('r_1')
+  await handler(ctx, {})
+  assert.equal(writes.length, 1)
+  assert.equal(writes[0].key, 'welcome')
+  assert.deepEqual(writes[0].opts, { room: 'r_1' })
+  assert.equal(writes[0].value, 'Hi')
+})
+
+test('scope room with an explicit room config uses the config', async () => {
+  const handler = settingsWrite.create(
+    { key: 'welcome', scope: 'room', room: 'r_override', value: 'Hi' },
+    []
+  )
+  const { ctx, writes } = createMockCtxWithRoom('r_1')
+  await handler(ctx, {})
+  assert.deepEqual(writes[0].opts, { room: 'r_override' })
+})
+
+test('scope room throws when ctx.room is null and no room is configured', async () => {
+  const handler = settingsWrite.create({ key: 'x', scope: 'room', value: 'v' }, [])
+  const { ctx } = createMockCtxWithRoom(null)
+  await assert.rejects(
+    () => handler(ctx, {}),
+    /scope "room" requires a room, but none is available/
+  )
+})
+
+test('scope user ignores ctx.room even when present', async () => {
+  const handler = settingsWrite.create({ key: 'x', scope: 'user', value: 'v' }, [])
+  const { ctx, writes } = createMockCtxWithRoom('r_1')
+  await handler(ctx, {})
+  assert.equal(writes[0].opts, undefined)
 })

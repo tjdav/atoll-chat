@@ -23,6 +23,7 @@ export const settingsWrite = {
     properties: {
       key: { type: 'string', minLength: 1 },
       room: { type: 'string', minLength: 1 },
+      scope: { type: 'string', enum: ['user', 'room'] },
       value: {}
     },
     required: ['key'],
@@ -31,6 +32,7 @@ export const settingsWrite = {
   create: (config, children) => {
     const key = config.key
     const room = config.room
+    const explicitScope = config.scope
     const value = config.value
     const hasValue = Object.hasOwn(config, 'value')
 
@@ -42,6 +44,12 @@ export const settingsWrite = {
         'settings-write: config.room must be a non-empty string when provided'
       )
     }
+    if (explicitScope !== undefined && explicitScope !== 'user' && explicitScope !== 'room') {
+      throw new Error('settings-write: config.scope must be "user" or "room"')
+    }
+    if (explicitScope === 'user' && room !== undefined) {
+      throw new Error('settings-write: config.room is not valid when scope is "user"')
+    }
     if (!hasValue) {
       throw new Error('settings-write: config.value is required')
     }
@@ -50,6 +58,9 @@ export const settingsWrite = {
     }
 
     const hasRoom = room !== undefined
+    const effectiveScope = explicitScope === undefined
+      ? (hasRoom ? 'room' : 'user')
+      : explicitScope
 
     return async (ctx, input) => {
       const resolvedKey = substitute(key, input)
@@ -59,14 +70,22 @@ export const settingsWrite = {
 
       const resolvedValue = substitute(value, input)
 
-      if (hasRoom) {
-        const resolvedRoom = substitute(room, input)
-        if (typeof resolvedRoom !== 'string' || resolvedRoom.length === 0) {
-          throw new Error('settings-write: resolved room is empty')
-        }
-        await ctx.settings.set(resolvedKey, resolvedValue, { room: resolvedRoom })
-      } else {
+      if (effectiveScope === 'user') {
         await ctx.settings.set(resolvedKey, resolvedValue)
+      } else {
+        let targetRoom
+        if (hasRoom) {
+          targetRoom = substitute(room, input)
+          if (typeof targetRoom !== 'string' || targetRoom.length === 0) {
+            throw new Error('settings-write: resolved room is empty')
+          }
+        } else {
+          targetRoom = ctx.room?.id
+          if (typeof targetRoom !== 'string') {
+            throw new Error('settings-write: scope "room" requires a room, but none is available')
+          }
+        }
+        await ctx.settings.set(resolvedKey, resolvedValue, { room: targetRoom })
       }
 
       for (const child of children) {
