@@ -19,7 +19,7 @@ Track progress across Bot SDK implementation tasks.
 |---|---|---|---|---|
 | B-043c-1 | Scaffolding | done | B-001 | Scope the strict type check to `src/` and add a relaxed test config |
 | B-043c-2 | Testing | done | B-043c-1 | Audit and clean suppressions in tests per revised policy |
-| B-043c-3 | Scaffolding | pending | B-043c-1 | Fix the source-file type errors properly |
+| B-043c-3 | Scaffolding | done | B-043c-1 | Fix the source-file type errors properly |
 | B-043c-4 | Verification | pending | B-043c-2, B-043c-3 | Verify clean canary and add the process note |
 | B-045 | Documentation | done | §1, §3, §4, §5, §6, §7, §13, §14 | Author the SDK README (`packages/bot/README.md`) and runnable example bot (`examples/echo-bot/`) |
 | B-044 | Testing | done | §13, §13.2, §13.3 | Implement the end-to-end smoke test suite (`smoke.test.js`) and fixture bot (`echo-bot.js`) exercising 26 scenarios |

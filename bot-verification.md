@@ -1,5 +1,15 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-043c-3 Verification Fact
+- **Fix Source-File Type Errors (`packages/bot/src/cli/dev.js`, `packages/bot/src/cli/diag-file.js`)**:
+  - Annotated `fsWatcher` in `dev.js` with `/** @type {import('node:fs').FSWatcher | null} */`.
+  - Annotated `fsWatcher` in `diag-file.js` with `/** @type {import('node:fs').FSWatcher | null} */` and `lastIno` with `/** @type {number | null} */`.
+  - Zero `@type {any}`, `@type {unknown}`, `@ts-ignore`, or `@ts-expect-error` suppressions introduced in `src/`.
+  - No changes made to `packages/bot/tests/`, `tsconfig*.json`, or `package.json`.
+  - `pnpm --filter @atoll/bot typecheck` exits 0 with empty output (0 errors).
+  - `pnpm --filter @atoll/bot check-batches` passed cleanly.
+  - `pnpm --filter @atoll/bot build` passed cleanly.
+
 ## Type-check scoping — amendment to B-001 §2.2
 The initial bot package layout (B-001 §2.2) included both `src/` and `tests/` in the strict type check. This was a design error: test code contains partial fakes, spy objects, and mock shapes that do not honestly satisfy the strict checker. Forcing them through it produced `@type {any}` suppressions (B-043a, B-043b), which defeat the checker's purpose.
 
