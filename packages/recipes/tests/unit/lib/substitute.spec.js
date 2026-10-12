@@ -75,3 +75,41 @@ test('does not mutate the input config', () => {
   substitute(config, input)
   assert.deepEqual(config, configCopy)
 })
+
+test('resolves {{.}} to the whole input', () => {
+  assert.equal(substitute('{{.}}', 'hello'), 'hello')
+})
+
+test('{{.}} preserves the input type when single-token', () => {
+  assert.equal(substitute('{{.}}', 42), 42)
+  assert.equal(substitute('{{.}}', true), true)
+  assert.equal(substitute('{{.}}', null), null)
+  assert.deepEqual(substitute('{{.}}', { a: 1 }), { a: 1 })
+  assert.deepEqual(substitute('{{.}}', [1, 2]), [1, 2])
+})
+
+test('{{.}} in a mixed string coerces to string', () => {
+  assert.equal(substitute('value: {{.}}', 'hello'), 'value: hello')
+  assert.equal(substitute('count: {{.}}', 7), 'count: 7')
+  assert.equal(substitute('[{{.}}]', true), '[true]')
+})
+
+test('{{.}} combined with other paths works', () => {
+  assert.equal(
+    substitute('name: {{name}}, raw: {{.}}', { name: 'Alice' }),
+    'name: Alice, raw: [object Object]'
+  )
+})
+
+test('{{.}} on undefined input returns undefined as a single token', () => {
+  assert.equal(substitute('{{.}}', undefined), undefined)
+})
+
+test('{{.}} on undefined input in a mixed string coerces to "undefined"', () => {
+  assert.equal(substitute('value: {{.}}', undefined), 'value: undefined')
+})
+
+test('{{.}} walks through nested config values', () => {
+  const config = { text: '{{.}}', meta: { inner: '{{.}}' } }
+  assert.deepEqual(substitute(config, 'x'), { text: 'x', meta: { inner: 'x' } })
+})
