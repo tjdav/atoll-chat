@@ -46,7 +46,7 @@ test-oprf:
 
 .PHONY: test-operations
 test-operations:
-	$(CARGO) test --test admin_rotate --test cleanup --test cli_migrate --test cli_rotate
+	$(CARGO) test --test admin_rotate --test cleanup --test cli_migrate --test cli_models --test cli_rotate --test migration_schema --test openapi_generation
 
 .PHONY: test-transport
 test-transport:
@@ -80,3 +80,8 @@ test-all: check-batches test-identity test-auth test-messaging test-storage test
 .PHONY: check-batches
 check-batches:
 	@bash scripts/check-test-batches.sh
+
+.PHONY: openapi-check
+openapi-check:
+	@$(CARGO) run --bin server -- openapi generate --out ../docs/openapi.json
+	@git diff --exit-code ../docs/openapi.json

@@ -24,7 +24,9 @@ pub struct ModelManifest {
     pub models: Vec<ModelEntry>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct VoiceMetadata {
     pub id: String,
     pub language: String,

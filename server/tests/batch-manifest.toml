@@ -125,6 +125,7 @@ files = [
     "cli_models",
     "cli_rotate",
     "migration_schema",
+    "openapi_generation",
 ]
 timeout_seconds = 60
 

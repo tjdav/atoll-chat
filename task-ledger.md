@@ -341,10 +341,16 @@ None.
   - **Contract Highlights:** Implemented `RoomEventBroadcast` in-process broadcast channel (bounded 1024 capacity), `ObserverCursorStore` in-memory cursor store (5-minute TTL, 60-second pruner), publisher integration mirroring `private-room-*` events before Sockudo HTTP calls, `GET /rooms/:id/observer-stream` SSE endpoint matching §8.8.13 (bot token auth, `read_metadata` scope check, `RATE_BOT_OBSERVER_STREAM_PER_MIN` rate limit), strict 6-event allowlist filter (`message.new`, `message.edited`, `message.deleted`, `room.member_added`, `room.member_removed`, `room.updated`), metadata projection stripping `ciphertext` and `metadata` blobs, `size_bytes` calculation, `Last-Event-ID` reconnection sequence, 30-second `:keepalive\n\n` comments, buffer lag mapping to `dropped { count: n }`, non-persistence invariants, and 6 unit/integration test cases in `server/tests/observer_stream.rs` passing under `bots` batch (`make -C server test-bots`). §11 Build Plan is 100% complete across all 47 phases.
   - **Batch:** `bots`
 
+## Developer Tooling
+
+- **OpenAPI File Generation (utoipa, file-only)**: in-progress
+  - **Delivered:** `verification/openapi-file-generation/report.md`
+  - **Summary:** Added `utoipa` dependency, OpenAPI doc generator struct `ApiDoc`, CLI subcommand `server openapi generate`, static artifact `docs/openapi.json`, and integration test suite `openapi_generation.rs`.
+
 ## Summary
-- **Project Status:** Complete (All 47 build plan phases delivered)
-- **Total Verifications/Tasks Tracked:** 63
+- **Project Status:** In-Progress (Developer Tooling track started)
+- **Total Verifications/Tasks Tracked:** 64
 - **Done:** 63
 - **Pending:** 0
-- **In-Progress:** 0
+- **In-Progress:** 1
 - **Mismatches:** 0
