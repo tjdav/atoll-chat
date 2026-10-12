@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
+import { createServer } from '../../../src/server/index.js'
 import { createEngineServer } from '../../../src/server/engine.js'
 import { createHashEmbedder } from '../../../src/matcher/embedder.js'
 import { createVectorIndex } from '../../../src/matcher/vector-index.js'
@@ -428,5 +429,142 @@ test('a disambiguator can be configured through the constructor', async () => {
   await res.text()
 
   assert.equal(typeof called, 'boolean')
+  await server.close()
+})
+
+test('createEngineServer does not register the LLM route by default', async () => {
+  const { server } = await createEngineServer(baseConfig())
+  const { port, host } = await server.listen(0)
+  const url = `http://${host}:${port}`
+  const res = await authedFetch(`${url}/v1/llm/complete`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] })
+  })
+  assert.equal(res.status, 404)
+  await server.close()
+})
+
+test('createEngineServer registers the LLM route when llmUpstreamUrl is set', async () => {
+  const upstreamCalls = []
+  const upstreamServer = createServer()
+  upstreamServer.addRoute('POST', '/v1/chat/completions', async (ctx) => {
+    upstreamCalls.push({ body: ctx.body })
+    ctx.json(200, { choices: [{ message: { content: 'hi from upstream' } }] })
+  })
+  const upstreamAddr = await upstreamServer.listen(0)
+  const upstreamUrl = `http://${upstreamAddr.host}:${upstreamAddr.port}/v1/chat/completions`
+
+  const { server } = await createEngineServer(baseConfig({
+    llmUpstreamUrl: upstreamUrl,
+    llmApiKey: 'test-key'
+  }))
+  const { port, host } = await server.listen(0)
+  const url = `http://${host}:${port}`
+
+  const res = await authedFetch(`${url}/v1/llm/complete`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] })
+  })
+
+  assert.equal(res.status, 200)
+  const data = await res.json()
+  assert.deepEqual(data, { choices: [{ message: { content: 'hi from upstream' } }] })
+  assert.equal(upstreamCalls.length, 1)
+  assert.deepEqual(upstreamCalls[0].body.messages, [{ role: 'user', content: 'hi' }])
+
+  await server.close()
+  await upstreamServer.close()
+})
+
+test('createEngineServer throws when llmUpstreamUrl is set without llmApiKey', async () => {
+  await assert.rejects(
+    () => createEngineServer(baseConfig({ llmUpstreamUrl: 'https://x.example.com/complete' })),
+    /config\.llmApiKey is required when config\.llmUpstreamUrl is set/
+  )
+})
+
+test('createEngineServer throws when llmApiKey is set without llmUpstreamUrl', async () => {
+  await assert.rejects(
+    () => createEngineServer(baseConfig({ llmApiKey: 'test-key' })),
+    /config\.llmApiKey is not valid without config\.llmUpstreamUrl/
+  )
+})
+
+test('createEngineServer throws when llmUpstreamUrl is not a non-empty string', async () => {
+  await assert.rejects(
+    () => createEngineServer(baseConfig({ llmUpstreamUrl: '' })),
+    /config\.llmUpstreamUrl must be a non-empty string when provided/
+  )
+})
+
+test('createEngineServer throws when llmModel is not a non-empty string', async () => {
+  await assert.rejects(
+    () => createEngineServer(baseConfig({
+      llmUpstreamUrl: 'https://x.example.com/complete',
+      llmApiKey: 'test-key',
+      llmModel: 42
+    })),
+    /config\.llmModel must be a non-empty string when provided/
+  )
+})
+
+test('createEngineServer throws when publicUrl is not a non-empty string', async () => {
+  await assert.rejects(
+    () => createEngineServer(baseConfig({ publicUrl: '' })),
+    /config\.publicUrl must be a non-empty string when provided/
+  )
+})
+
+test('createEngineServer with llmUpstreamUrl and publicUrl accepts a compile request', async () => {
+  const { server } = await createEngineServer(baseConfig({
+    llmUpstreamUrl: 'https://x.example.com/complete',
+    llmApiKey: 'test-key',
+    publicUrl: 'https://engine.example.com'
+  }))
+  const { port, host } = await server.listen(0)
+  const url = `http://${host}:${port}`
+
+  const res = await authedFetch(`${url}/v1/compile`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      recipeId: 'echo',
+      recipeVersion: '1.0.0',
+      slots: { greeting: 'hi' },
+      botId: 'com.example.echo',
+      label: 'Echo'
+    })
+  })
+
+  assert.equal(res.status, 200)
+  const data = await res.json()
+  assert.equal(typeof data.code, 'string')
+  await server.close()
+})
+
+test('createEngineServer normalizes a trailing slash in publicUrl', async () => {
+  const { server } = await createEngineServer(baseConfig({
+    llmUpstreamUrl: 'https://x.example.com/complete',
+    llmApiKey: 'test-key',
+    publicUrl: 'https://engine.example.com/'
+  }))
+  const { port, host } = await server.listen(0)
+  const url = `http://${host}:${port}`
+
+  const res = await authedFetch(`${url}/v1/compile`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      recipeId: 'echo',
+      recipeVersion: '1.0.0',
+      slots: { greeting: 'hi' },
+      botId: 'com.example.echo',
+      label: 'Echo'
+    })
+  })
+
+  assert.equal(res.status, 200)
   await server.close()
 })

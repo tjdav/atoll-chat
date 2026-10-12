@@ -7,6 +7,7 @@ import { createTelemetryServer, createTelemetry } from './telemetry.js'
 import { registerMatchRoute } from './routes/match.js'
 import { registerCompileRoute } from './routes/compile.js'
 import { registerReadRoutes } from './routes/read.js'
+import { registerLlmRoute } from './routes/llm.js'
 import { createMatcher } from '../matcher/pipeline.js'
 import { scanLibrary } from '../recipe/library.js'
 
@@ -72,6 +73,20 @@ async function populateIndex (index, embedder, recipes) {
  * @param {TelemetrySink} [config.sink] - The telemetry sink. When
  *   omitted, telemetry is disabled.
  * @param {string[]} [config.exemptPaths] - Paths exempt from auth.
+ * @param {string} [config.llmUpstreamUrl] - When set, the LLM proxy
+ *   route is registered and forwards to this URL. `llmApiKey` is
+ *   then required.
+ * @param {string} [config.llmApiKey] - The bearer token sent to the
+ *   LLM upstream. Required when `llmUpstreamUrl` is set. Ignored
+ *   otherwise.
+ * @param {string} [config.llmModel] - When set, the LLM proxy
+ *   overrides the body's `model` on every request. Ignored when
+ *   `llmUpstreamUrl` is not set.
+ * @param {string} [config.publicUrl] - The engine's externally
+ *   visible base URL. When set, the compile route is configured
+ *   with `llmProxyUrl: <publicUrl>/v1/llm/complete` so recipes using
+ *   `llm-complete` get the URL injected at compile time. Ignored
+ *   when `llmUpstreamUrl` is not set.
  * @returns {Promise<{ server: object, matcher: Matcher, library: object[] }>} The wired server and its dependencies.
  * @throws {Error} When the configuration is malformed.
  */
@@ -105,6 +120,27 @@ export async function createEngineServer (config) {
   }
   if (index === null || typeof index !== 'object') {
     throw new Error('createEngineServer: config.index must be an object')
+  }
+
+  const llmUpstreamUrl = config.llmUpstreamUrl
+  const llmApiKey = config.llmApiKey
+  const llmModel = config.llmModel
+  const publicUrl = config.publicUrl
+
+  if (llmUpstreamUrl !== undefined && (typeof llmUpstreamUrl !== 'string' || llmUpstreamUrl.length === 0)) {
+    throw new Error('createEngineServer: config.llmUpstreamUrl must be a non-empty string when provided')
+  }
+  if (llmUpstreamUrl !== undefined && (typeof llmApiKey !== 'string' || llmApiKey.length === 0)) {
+    throw new Error('createEngineServer: config.llmApiKey is required when config.llmUpstreamUrl is set')
+  }
+  if (llmUpstreamUrl === undefined && llmApiKey !== undefined) {
+    throw new Error('createEngineServer: config.llmApiKey is not valid without config.llmUpstreamUrl')
+  }
+  if (llmModel !== undefined && (typeof llmModel !== 'string' || llmModel.length === 0)) {
+    throw new Error('createEngineServer: config.llmModel must be a non-empty string when provided')
+  }
+  if (publicUrl !== undefined && (typeof publicUrl !== 'string' || publicUrl.length === 0)) {
+    throw new Error('createEngineServer: config.publicUrl must be a non-empty string when provided')
   }
 
   const rateLimitConfig = config.rateLimit === undefined
@@ -150,8 +186,23 @@ export async function createEngineServer (config) {
     })
   }
 
+  if (llmUpstreamUrl !== undefined) {
+    const llmDeps = {
+      upstreamUrl: llmUpstreamUrl,
+      apiKey: llmApiKey
+    }
+    if (llmModel !== undefined) {
+      llmDeps.model = llmModel
+    }
+    registerLlmRoute(layer, llmDeps)
+  }
+
   registerMatchRoute(layer, { matcher })
-  registerCompileRoute(layer, { rootDir })
+  const compileDeps = { rootDir }
+  if (llmUpstreamUrl !== undefined && publicUrl !== undefined) {
+    compileDeps.llmProxyUrl = `${publicUrl.replace(/\/$/, '')}/v1/llm/complete`
+  }
+  registerCompileRoute(layer, compileDeps)
   registerReadRoutes(layer, { rootDir, version })
 
   return { server: layer, matcher, library: scan.recipes }
