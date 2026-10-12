@@ -1,6 +1,6 @@
 use crate::auth::AuthUser;
 use crate::devices;
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::rate_limit::{self, RateLimitKey};
 use crate::sync::device_names::{self, DeviceStateRow, WriteRequest};
 use crate::AppState;
@@ -10,24 +10,50 @@ use axum::{
     Json,
 };
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct DeviceResponse {
     pub id: String,
     pub client_id: String,
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = Option<String>, format = Binary)]
     pub encrypted_device_name: Option<String>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub last_seen: Option<DateTime<Utc>>,
     pub is_current: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ListDevicesResponse {
     pub devices: Vec<DeviceResponse>,
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateDeviceNameRequest {
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = String, format = Binary)]
+    pub encrypted_device_name: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me/devices",
+    tag = "User",
+    summary = "List registered devices",
+    description = "Lists all registered devices for the current user (Server Spec v3.0.4 §8.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Devices listed successfully", body = ListDevicesResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    )
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -52,6 +78,30 @@ pub async fn list(
     Ok(Json(ListDevicesResponse { devices: items }))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/users/me/devices/{id}",
+    tag = "User",
+    summary = "Update device encrypted name",
+    description = "Updates the encrypted name for a target device owned by the user (Server Spec v3.0.4 §8.2, §8.2.8).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target device ID")
+    ),
+    request_body(
+        content = UpdateDeviceNameRequest,
+        description = "Encrypted device name update"
+    ),
+    responses(
+        (status = 200, description = "Device name updated successfully", body = DeviceStateRow),
+        (status = 400, description = "Bad request / missing or invalid encrypted name", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Device not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn update_name(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -129,6 +179,25 @@ pub async fn update_name(
     Ok((headers, Json(row)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/me/devices/{id}",
+    tag = "User",
+    summary = "Revoke device",
+    description = "Revokes a registered device for the current user (Server Spec v3.0.4 §8.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target device ID to revoke")
+    ),
+    responses(
+        (status = 204, description = "Device revoked successfully"),
+        (status = 400, description = "Cannot revoke current device", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Device not found", body = ErrorResponse)
+    )
+)]
 pub async fn revoke(
     State(state): State<AppState>,
     auth: AuthUser,

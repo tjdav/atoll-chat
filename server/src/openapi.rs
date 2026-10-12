@@ -1,13 +1,49 @@
 use std::fs;
 use std::path::Path;
-use utoipa::OpenApi;
-
-use crate::routes::{
-    capabilities::{AltchaCapView, CapabilitiesResponse},
-    health::HealthResponse,
-    ready::ReadinessResponse,
-    users::{UserLimitsResponse, UserProfileResponse},
+use utoipa::{
+    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+    Modify, OpenApi,
 };
+
+use crate::error::ErrorResponse;
+use crate::routes::{
+    attachments::UserAvatarUploadForm,
+    capabilities::{AltchaCapView, CapabilitiesResponse},
+    devices::{DeviceResponse, ListDevicesResponse, UpdateDeviceNameRequest},
+    health::HealthResponse,
+    preferences::WritePreferenceRequest,
+    push_subscriptions::{PushSubscriptionListResponse, RegisterSubscriptionBody},
+    read_state::WriteReadStateRequest,
+    ready::ReadinessResponse,
+    room_order::PatchRoomOrderRequest,
+    sessions::{LogoutRequest, SessionListResponse, SessionResponseItem},
+    users::{
+        DeleteAccountRequest, PatchUserProfileRequest, UserLimitsResponse, UserLookupRequest,
+        UserLookupResponse, UserProfileResponse,
+    },
+};
+use crate::starred::list::{ListStarredItemsResponse, StarredItemCursor};
+use crate::starred::write::StarRequest;
+use crate::starred::StarredItemView;
+
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "bearer_auth",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("session_token")
+                        .description(Some("Session token Bearer authentication"))
+                        .build(),
+                ),
+            );
+        }
+    }
+}
 
 #[derive(OpenApi)]
 #[openapi(
@@ -20,7 +56,30 @@ use crate::routes::{
         crate::routes::health::handler,
         crate::routes::ready::handler,
         crate::routes::capabilities::handler,
+        crate::routes::sessions::logout,
         crate::routes::users::get_me,
+        crate::routes::users::patch_me,
+        crate::routes::users::delete_me,
+        crate::routes::users::export_me,
+        crate::routes::users::lookup_user,
+        crate::routes::devices::list,
+        crate::routes::devices::update_name,
+        crate::routes::devices::revoke,
+        crate::routes::sessions::list,
+        crate::routes::sessions::revoke,
+        crate::routes::push_subscriptions::register,
+        crate::routes::push_subscriptions::list,
+        crate::routes::push_subscriptions::revoke,
+        crate::routes::sync::get_sync,
+        crate::routes::read_state::write,
+        crate::routes::room_order::patch_room_order,
+        crate::routes::preferences::get,
+        crate::routes::preferences::write,
+        crate::routes::preferences::delete,
+        crate::routes::starred::get_starred_items,
+        crate::routes::starred::post_star,
+        crate::routes::starred::delete_star,
+        crate::routes::attachments::upload_avatar,
     ),
     components(
         schemas(
@@ -33,8 +92,39 @@ use crate::routes::{
             crate::models::VoiceMetadata,
             UserProfileResponse,
             UserLimitsResponse,
+            ErrorResponse,
+            UserLookupRequest,
+            UserLookupResponse,
+            PatchUserProfileRequest,
+            DeleteAccountRequest,
+            DeviceResponse,
+            ListDevicesResponse,
+            UpdateDeviceNameRequest,
+            crate::sync::device_names::DeviceStateRow,
+            SessionResponseItem,
+            SessionListResponse,
+            LogoutRequest,
+            RegisterSubscriptionBody,
+            PushSubscriptionListResponse,
+            crate::push::subscriptions::PushSubscriptionView,
+            WriteReadStateRequest,
+            crate::sync::read_state::ReadStateRow,
+            PatchRoomOrderRequest,
+            crate::sync::room_order::RoomOrderSyncState,
+            WritePreferenceRequest,
+            crate::sync::preferences::PreferenceRow,
+            ListStarredItemsResponse,
+            StarRequest,
+            StarredItemView,
+            crate::starred::StarredItemRow,
+            StarredItemCursor,
+            crate::attachments::AttachmentView,
+            UserAvatarUploadForm,
+            crate::sync::query::BotSettingSyncRow,
+            crate::sync::query::SyncResponse,
         )
     ),
+    modifiers(&SecurityAddon),
     tags(
         (name = "Public", description = "Public endpoints"),
         (name = "User", description = "User endpoints")

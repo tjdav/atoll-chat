@@ -13,19 +13,177 @@ fn test_openapi_doc_validity() {
     assert_eq!(parsed["info"]["title"], "Atoll Encrypted Chat API");
     assert_eq!(parsed["info"]["version"], "3.0.4");
 
-    // Assert pilot paths exist
+    // Assert pilot and user domain paths exist (20 path items total)
     let paths = parsed["paths"].as_object().unwrap();
-    assert!(paths.contains_key("/api/v1/health"), "missing /health path");
-    assert!(paths.contains_key("/api/v1/ready"), "missing /ready path");
+    let expected_paths = [
+        "/api/v1/health",
+        "/api/v1/ready",
+        "/api/v1/capabilities",
+        "/api/v1/auth/logout",
+        "/api/v1/users/lookup",
+        "/api/v1/users/me",
+        "/api/v1/users/me/avatar",
+        "/api/v1/users/me/devices",
+        "/api/v1/users/me/devices/{id}",
+        "/api/v1/users/me/export",
+        "/api/v1/users/me/preferences/{key}",
+        "/api/v1/users/me/push-subscriptions",
+        "/api/v1/users/me/push-subscriptions/{id}",
+        "/api/v1/users/me/read-state",
+        "/api/v1/users/me/room-order",
+        "/api/v1/users/me/sessions",
+        "/api/v1/users/me/sessions/{id}",
+        "/api/v1/users/me/starred-items",
+        "/api/v1/users/me/starred-items/{item_id}",
+        "/api/v1/users/me/sync",
+    ];
+
+    for path_str in &expected_paths {
+        assert!(
+            paths.contains_key(*path_str),
+            "missing expected path {}",
+            path_str
+        );
+    }
+    assert_eq!(
+        paths.len(),
+        expected_paths.len(),
+        "expected exactly {} path items",
+        expected_paths.len()
+    );
+
+    // Assert bearer security scheme exists in components
+    let security_schemes = &parsed["components"]["securitySchemes"];
+    assert_eq!(
+        security_schemes["bearer_auth"]["scheme"], "bearer",
+        "missing or invalid bearer_auth scheme"
+    );
+
+    // Assert every authenticated user path declares bearer_auth requirement
+    let authenticated_paths = [
+        ("/api/v1/auth/logout", "post"),
+        ("/api/v1/users/lookup", "post"),
+        ("/api/v1/users/me", "get"),
+        ("/api/v1/users/me", "patch"),
+        ("/api/v1/users/me", "delete"),
+        ("/api/v1/users/me/avatar", "post"),
+        ("/api/v1/users/me/devices", "get"),
+        ("/api/v1/users/me/devices/{id}", "patch"),
+        ("/api/v1/users/me/devices/{id}", "delete"),
+        ("/api/v1/users/me/export", "get"),
+        ("/api/v1/users/me/preferences/{key}", "get"),
+        ("/api/v1/users/me/preferences/{key}", "patch"),
+        ("/api/v1/users/me/preferences/{key}", "delete"),
+        ("/api/v1/users/me/push-subscriptions", "get"),
+        ("/api/v1/users/me/push-subscriptions", "post"),
+        ("/api/v1/users/me/push-subscriptions/{id}", "delete"),
+        ("/api/v1/users/me/read-state", "post"),
+        ("/api/v1/users/me/room-order", "patch"),
+        ("/api/v1/users/me/sessions", "get"),
+        ("/api/v1/users/me/sessions/{id}", "delete"),
+        ("/api/v1/users/me/starred-items", "get"),
+        ("/api/v1/users/me/starred-items", "post"),
+        ("/api/v1/users/me/starred-items/{item_id}", "delete"),
+        ("/api/v1/users/me/sync", "get"),
+    ];
+
+    for (path, method) in &authenticated_paths {
+        let op = &parsed["paths"][path][method];
+        let sec = op["security"]
+            .as_array()
+            .unwrap_or_else(|| panic!("security array missing for {} {}", method, path));
+        let has_bearer = sec
+            .iter()
+            .any(|item| item.as_object().unwrap().contains_key("bearer_auth"));
+        assert!(
+            has_bearer,
+            "missing bearer_auth requirement for {} {}",
+            method, path
+        );
+    }
+
+    // Assert POST /users/me/avatar is documented with a multipart/form-data request body
+    let avatar_req_body =
+        &parsed["paths"]["/api/v1/users/me/avatar"]["post"]["requestBody"]["content"];
     assert!(
-        paths.contains_key("/api/v1/capabilities"),
-        "missing /capabilities path"
+        avatar_req_body
+            .as_object()
+            .unwrap()
+            .contains_key("multipart/form-data"),
+        "POST /users/me/avatar request body missing multipart/form-data"
+    );
+
+    // Assert GET /users/me/export is documented with application/zip binary response
+    let export_resp =
+        &parsed["paths"]["/api/v1/users/me/export"]["get"]["responses"]["200"]["content"];
+    assert!(
+        export_resp
+            .as_object()
+            .unwrap()
+            .contains_key("application/zip"),
+        "GET /users/me/export response missing application/zip"
+    );
+
+    // Assert schemas contain shared error type and user domain types
+    let schemas = parsed["components"]["schemas"].as_object().unwrap();
+    let expected_schemas = [
+        "ErrorResponse",
+        "UserProfileResponse",
+        "UserLimitsResponse",
+        "UserLookupRequest",
+        "UserLookupResponse",
+        "PatchUserProfileRequest",
+        "DeleteAccountRequest",
+        "DeviceResponse",
+        "ListDevicesResponse",
+        "UpdateDeviceNameRequest",
+        "DeviceStateRow",
+        "SessionResponseItem",
+        "SessionListResponse",
+        "LogoutRequest",
+        "RegisterSubscriptionBody",
+        "PushSubscriptionListResponse",
+        "PushSubscriptionView",
+        "WriteReadStateRequest",
+        "ReadStateRow",
+        "PatchRoomOrderRequest",
+        "RoomOrderSyncState",
+        "WritePreferenceRequest",
+        "PreferenceRow",
+        "ListStarredItemsResponse",
+        "StarRequest",
+        "StarredItemView",
+        "StarredItemRow",
+        "StarredItemCursor",
+        "AttachmentView",
+        "UserAvatarUploadForm",
+        "BotSettingSyncRow",
+        "SyncResponse",
+    ];
+
+    for schema in &expected_schemas {
+        assert!(
+            schemas.contains_key(*schema),
+            "missing expected schema {}",
+            schema
+        );
+    }
+
+    // Assert ciphertext fields in PreferenceRow are documented with base64url format and description
+    let pref_value_schema = &schemas["PreferenceRow"]["properties"]["value"];
+    assert_eq!(
+        pref_value_schema["format"], "binary",
+        "PreferenceRow.value format must be binary"
+    );
+    let pref_desc = pref_value_schema["description"].as_str().unwrap();
+    assert!(
+        pref_desc.contains("base64url"),
+        "PreferenceRow.value description missing base64url"
     );
     assert!(
-        paths.contains_key("/api/v1/users/me"),
-        "missing /users/me path"
+        pref_desc.contains("§6.29"),
+        "PreferenceRow.value description missing §6.29 reference"
     );
-    assert_eq!(paths.len(), 4, "expected exactly 4 pilot paths");
 }
 
 #[test]

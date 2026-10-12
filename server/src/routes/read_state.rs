@@ -7,18 +7,41 @@ use serde::Deserialize;
 
 use crate::{
     auth::AuthUser,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     rate_limit::{self, RateLimitKey},
     sync::read_state::{self, ReadStateError, ReadStateRow, WriteRequest},
     AppState,
 };
 
-#[derive(Debug, Deserialize)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct WriteReadStateRequest {
     pub room_id: Option<String>,
     pub last_read_message_id: Option<String>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/me/read-state",
+    tag = "User",
+    summary = "Update room read state",
+    description = "Updates the user's read state cursor for a specified room (Server Spec v3.0.4 §8.2, §8.2.5).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = WriteReadStateRequest,
+        description = "Read state cursor update"
+    ),
+    responses(
+        (status = 200, description = "Read state updated successfully", body = ReadStateRow),
+        (status = 400, description = "Bad request / missing field or invalid message ID", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room or message not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn write(
     State(state): State<AppState>,
     auth: AuthUser,

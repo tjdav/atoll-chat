@@ -3,8 +3,9 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use utoipa::ToSchema;
 
 use crate::{
     auth::AuthUser,
@@ -12,8 +13,14 @@ use crate::{
     AppState,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PushSubscriptionListResponse {
+    pub subscriptions: Vec<PushSubscriptionView>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RegisterSubscriptionBody {
+    #[schema(example = "web")]
     pub platform: String,
     pub endpoint: Option<String>,
     pub p256dh: Option<String>,
@@ -24,6 +31,28 @@ pub struct RegisterSubscriptionBody {
     pub device_id: Option<String>,
 }
 
+use crate::error::ErrorResponse;
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/me/push-subscriptions",
+    tag = "User",
+    summary = "Register push subscription",
+    description = "Registers or updates a push notification subscription for the user (Server Spec v3.0.4 §8.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = RegisterSubscriptionBody,
+        description = "Push subscription parameters"
+    ),
+    responses(
+        (status = 201, description = "Push subscription registered", body = PushSubscriptionView),
+        (status = 400, description = "Invalid platform or missing field", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 501, description = "Push notifications disabled", body = ErrorResponse)
+    )
+)]
 pub async fn register(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -76,6 +105,21 @@ pub async fn register(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me/push-subscriptions",
+    tag = "User",
+    summary = "List push subscriptions",
+    description = "Lists all active push subscriptions for the current user (Server Spec v3.0.4 §8.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Push subscriptions listed", body = PushSubscriptionListResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 501, description = "Push notifications disabled", body = ErrorResponse)
+    )
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -96,6 +140,25 @@ pub async fn list(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/me/push-subscriptions/{id}",
+    tag = "User",
+    summary = "Revoke push subscription",
+    description = "Revokes a specific push subscription for the current user (Server Spec v3.0.4 §8.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Push subscription ID to revoke")
+    ),
+    responses(
+        (status = 204, description = "Push subscription revoked successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Subscription not found", body = ErrorResponse),
+        (status = 501, description = "Push notifications disabled", body = ErrorResponse)
+    )
+)]
 pub async fn revoke(
     State(state): State<AppState>,
     auth_user: AuthUser,

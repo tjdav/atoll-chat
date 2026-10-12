@@ -4,19 +4,39 @@ use axum::{
     Json,
 };
 use serde::Deserialize;
+use utoipa::IntoParams;
 
 use crate::{
     auth::AuthUser,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     sync::{self, SyncQuery, SyncResponse},
     AppState,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct GetSyncQuery {
+    #[param(example = 0)]
     pub since_seq: Option<i64>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me/sync",
+    tag = "User",
+    summary = "Synchronize user state",
+    description = "Fetches user-scoped state updates since a given sequence cursor (Server Spec v3.0.4 §8.2, §8.2.4).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        GetSyncQuery
+    ),
+    responses(
+        (status = 200, description = "State synchronized successfully", body = SyncResponse),
+        (status = 400, description = "Invalid since_seq parameter", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    )
+)]
 pub async fn get_sync(
     State(state): State<AppState>,
     auth: AuthUser,

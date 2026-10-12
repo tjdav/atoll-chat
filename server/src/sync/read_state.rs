@@ -5,12 +5,16 @@ use sqlx::{Row, SqlitePool};
 use crate::sockudo::Publisher;
 use crate::sync::{self, publish_user_event, UserEventEnvelope};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct ReadStateRow {
     pub room_id: String,
     pub last_read_message_id: Option<String>,
     pub user_seq: i64,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub updated_at: DateTime<Utc>,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub deleted_at: Option<DateTime<Utc>>,
 }
 

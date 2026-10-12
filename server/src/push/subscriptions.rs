@@ -24,13 +24,17 @@ pub struct PushSubscription {
     pub revoked_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, ToSchema)]
 pub struct PushSubscriptionView {
     pub id: String,
     pub platform: String,
     pub browser_id: Option<String>,
     pub device_id: Option<String>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub last_used_at: Option<DateTime<Utc>>,
 }
 

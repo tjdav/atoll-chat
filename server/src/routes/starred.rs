@@ -1,7 +1,9 @@
 use crate::auth::AuthUser;
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::rate_limit::{self, RateLimitKey};
-use crate::starred::list::{list_starred_items, ListStarError, ListStarQuery};
+use crate::starred::list::{
+    list_starred_items, ListStarError, ListStarQuery, ListStarredItemsResponse,
+};
 use crate::starred::write::{star_item, unstar_item, StarError, StarRequest};
 use crate::starred::StarredItemView;
 use crate::AppState;
@@ -10,12 +12,36 @@ use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use axum::Json;
 use serde::Deserialize;
+use utoipa::IntoParams;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct UnstarQuery {
     pub item_type: Option<String>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/me/starred-items",
+    tag = "User",
+    summary = "Star an item",
+    description = "Stars a message, attachment, or link item (Server Spec v3.0.4 §8.2, §8.2.9).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = StarRequest,
+        description = "Star request parameters"
+    ),
+    responses(
+        (status = 200, description = "Item already starred", body = StarredItemView),
+        (status = 201, description = "Item starred successfully", body = StarredItemView),
+        (status = 400, description = "Invalid item type", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room or starred item not found", body = ErrorResponse),
+        (status = 409, description = "Starred items limit reached", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn post_star(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -62,6 +88,27 @@ pub async fn post_star(
     Ok((status, headers, Json(view)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/me/starred-items/{item_id}",
+    tag = "User",
+    summary = "Unstar an item",
+    description = "Removes a star from an item (Server Spec v3.0.4 §8.2, §8.2.9).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("item_id" = String, Path, description = "Target item ID to unstar"),
+        UnstarQuery
+    ),
+    responses(
+        (status = 204, description = "Item unstarred successfully"),
+        (status = 400, description = "Invalid item type", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Starred item not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn delete_star(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -107,6 +154,24 @@ pub async fn delete_star(
     Ok((axum::http::StatusCode::NO_CONTENT, headers))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me/starred-items",
+    tag = "User",
+    summary = "List starred items",
+    description = "Lists starred items with optional type, room, limit, and cursor filtering (Server Spec v3.0.4 §8.2, §8.2.9).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ListStarQuery
+    ),
+    responses(
+        (status = 200, description = "Starred items listed successfully", body = ListStarredItemsResponse),
+        (status = 400, description = "Invalid item type or invalid cursor", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    )
+)]
 pub async fn get_starred_items(
     State(state): State<AppState>,
     auth: AuthUser,

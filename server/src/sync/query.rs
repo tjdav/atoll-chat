@@ -19,6 +19,7 @@ use crate::sync::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
+use utoipa::ToSchema;
 
 pub struct SyncQuery {
     pub user_id: String,
@@ -26,16 +27,18 @@ pub struct SyncQuery {
     pub retention_days: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BotSettingSyncRow {
     pub bot_id: String,
     pub key: String,
     pub is_secret: bool,
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = Option<String>, format = Binary)]
     pub value_encrypted_client: Option<String>,
     pub user_seq: i64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct SyncResponse {
     pub read_state: Vec<ReadStateRow>,
     pub user_preferences: Vec<PreferenceRow>,

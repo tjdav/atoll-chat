@@ -16,8 +16,19 @@ use axum::{
     Json,
 };
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use serde_json::json;
 use tracing::error;
+use utoipa::ToSchema;
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ErrorResponse {
+    pub error: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<serde_json::Value>,
+}
 
 #[derive(Debug)]
 #[allow(dead_code)]

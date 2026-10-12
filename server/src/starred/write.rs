@@ -21,7 +21,9 @@ pub enum StarError {
     LimitReached,
 }
 
-#[derive(Debug, Deserialize)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct StarRequest {
     pub item_id: String,
     pub item_type: String,

@@ -1,4 +1,18 @@
 
+## OpenAPI Annotations — User Endpoints Verification Fact
+- **ID:** OpenAPI Annotations — User Endpoints
+- **Date:** 2026-10-12
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §8.2, §8.2.1-§8.2.9
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/openapi-annotate-user-endpoints/report.md`.
+  - **Coverage Scope:** 22 user domain handlers across `/auth/logout`, `/users/me`, `/users/lookup`, `/users/me/devices`, `/users/me/sessions`, `/users/me/push-subscriptions`, `/users/me/sync`, `/users/me/read-state`, `/users/me/room-order`, `/users/me/preferences`, `/users/me/starred-items`, and `/users/me/avatar` (20 route path keys, 27 total operations).
+  - **Security Scheme:** `bearer_auth` SecurityScheme defined in `ApiDoc` and attached to all authenticated user endpoints.
+  - **Opaque Ciphertext Annotations:** Preference value, encrypted display name, encrypted device name, and bot setting client value annotated with `format = Binary` and `base64url` §6.29 descriptions.
+  - **Multipart & Binary Export:** `POST /users/me/avatar` annotated with `UserAvatarUploadForm` `multipart/form-data` schema; `GET /users/me/export` annotated with `application/zip` binary stream response.
+  - **Shared Error Response:** Standard `ErrorResponse` schema created in `server/src/error.rs` and referenced across error status codes.
+- **Link to report:** [verification/openapi-annotate-user-endpoints/report.md](verification/openapi-annotate-user-endpoints/report.md)
+
 ## OpenAPI File Generation Verification Fact
 - **ID:** OpenAPI File Generation Scaffold
 - **Date:** 2026-10-12
