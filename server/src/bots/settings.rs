@@ -8,23 +8,29 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{Row, SqlitePool};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BotSettingBotView {
     pub key: String,
+    /// Client-encrypted bot setting value for bot, base64url encoded. Wire shape: ephemeral_pubkey (32) || nonce (12) || ciphertext || tag (16). Reference: §7.10, §8.8.14.
+    #[schema(value_type = String, format = Binary)]
     pub value_encrypted_bot: String,
     pub is_secret: bool,
     pub user_seq: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct BotSettingOwnerView {
     pub key: String,
+    /// Client-encrypted bot setting value for operator, base64url encoded. NULL for secret settings. Reference: §6.29, §8.8.14.
+    #[schema(value_type = Option<String>, format = Binary)]
     pub value_encrypted_client: Option<String>,
     pub is_secret: bool,
     pub user_seq: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct PatchBotSettingRequest {
     pub is_secret: bool,
     pub value_encrypted_bot: String,

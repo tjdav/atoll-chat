@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
+use utoipa::ToSchema;
 
 use crate::attachments::{self, AttachmentError, AttachmentView, UploadRequest};
 use crate::auth::AuthUser;
@@ -281,15 +282,16 @@ pub async fn download(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct PresignRequest {
     #[serde(default)]
     pub expires_in_seconds: Option<u64>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct PresignResponse {
     pub url: String,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub expires_at: DateTime<Utc>,
 }
 

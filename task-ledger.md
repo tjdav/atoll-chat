@@ -354,10 +354,14 @@ None.
   - **Delivered:** `verification/openapi-annotate-user-endpoints/report.md`, `server/src/openapi.rs`, `server/src/error.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
   - **Summary:** Annotated complete user endpoint domain (22 handlers, 20 route path keys, 27 operations total). Introduced `bearer_auth` Http Bearer security scheme, `ErrorResponse` schema, `UserAvatarUploadForm` multipart schema, `application/zip` binary export response, and base64url ciphertext annotations across user preferences, device names, and bot settings. Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
 
+- **OpenAPI Annotations — Bots Endpoints**: done
+  - **Delivered:** `verification/openapi-annotate-bots-endpoints/report.md`, `server/src/openapi.rs`, `server/src/routes/bots.rs`, `server/src/routes/room_bots.rs`, `server/src/routes/publisher_keys.rs`, `server/src/routes/observer_stream.rs`, `server/src/bots/settings.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Annotated complete bots endpoint domain (25 handlers across bot account CRUD, avatar, tokens, room grants, bot messages/commands, settings, publisher keys, and observer stream SSE; 37 path items total). Implemented missing `GET /bots/:id/tokens` handler and route per §8.8.19. Derived `ToSchema` and `IntoParams` across bot DTOs, annotated binary ciphertext and signature fields with spec references (§6.31, §6.33, §7.10, §8.10), and documented observer stream SSE (`text/event-stream`). Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
+
 ## Summary
 - **Project Status:** In-Progress (Developer Tooling track active)
-- **Total Verifications/Tasks Tracked:** 65
-- **Done:** 65
+- **Total Verifications/Tasks Tracked:** 66
+- **Done:** 66
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use utoipa::ToSchema;
 
 use crate::{
     audit,
@@ -22,14 +23,14 @@ use crate::{
     AppState,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct AddReactionInput {
     pub reaction: Option<String>,
     pub sender_client_id: Option<String>,
     pub client_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AddReactionResponse {
     pub id: String,
     pub room_id: String,
@@ -39,7 +40,7 @@ pub struct AddReactionResponse {
     pub created_at: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ListReactionsResponse {
     pub message_id: String,
     pub reactions: Vec<ReactionSummary>,

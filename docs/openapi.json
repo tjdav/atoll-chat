@@ -56,6 +56,963 @@
         ]
       }
     },
+    "/api/v1/bots": {
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Create bot account",
+        "description": "Create a new headless bot account per §8.8.1. Auth: User session only (bot tokens cannot create bots). Returns bot details and initial bot token.",
+        "operationId": "create_bot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBotReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Bot created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid display_name, pubkey, or scope requirements",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/me/commands/{id}/ack": {
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Acknowledge bot command",
+        "description": "Bot acknowledges receipt of a command per §8.8.21. Prevents command TTL expiry. Auth: Bot token matching target bot.",
+        "operationId": "ack_bot_command",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Command ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Command acknowledged"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Command not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/me/messages": {
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Bot user-channel message (invoker or owner)",
+        "description": "Bot sends command result to invoker (target: 'invoker') or local message to owner (target: 'owner') per §8.8.12. Auth: Bot token only.",
+        "operationId": "post_bot_messages",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostBotMessagesReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Message delivered"
+          },
+          "400": {
+            "description": "Invalid request or missing fields",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized (requires bot token)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Command or bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Command not acked, result already delivered, or request ID conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/me/settings": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Bot reads own settings",
+        "description": "Bot fetches its own configured settings per §8.8.14. Auth: Bot token only. Returned value_encrypted_bot encodes ephemeral_pubkey (32) || nonce (12) || ciphertext || tag (16).",
+        "operationId": "get_bot_settings_me",
+        "responses": {
+          "200": {
+            "description": "Bot settings list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetBotSettingsMeResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized (requires bot token)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/{id}": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Get bot account",
+        "description": "Fetch bot account record including declared scopes and declarations per §8.8.2. Auth: Bot owner user session or bot token matching id.",
+        "operationId": "get_bot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bot account details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (not owner or bot self)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Delete bot account",
+        "description": "Delete a bot account per §8.8. Auth: Bot owner user session or bot token matching id.",
+        "operationId": "delete_bot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Bot deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Update bot account",
+        "description": "Update bot account display name or declarations per §8.8.3. Auth: Bot owner user session or bot token matching id.",
+        "operationId": "patch_bot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchBotReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Bot account updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid display_name or top-level declarations shape",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/{id}/avatar": {
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Upload bot avatar",
+        "description": "Upload or replace bot avatar image per §8.8.4. Auth: Bot owner or bot token. Body is multipart/form-data with file field.",
+        "operationId": "upload_bot_avatar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UserAvatarUploadForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Avatar uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File size exceeds effective max limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Delete bot avatar",
+        "description": "Remove bot avatar image per §8.8.5. Auth: Bot owner or bot token.",
+        "operationId": "delete_bot_avatar",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Avatar removed"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/{id}/keys": {
+      "patch": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Rotate bot keys",
+        "description": "Rotate bot identity, command, and MLS keys per §8.8.17. Auth: Bot owner session or bot token matching id. All three 32-byte public keys are required (partial rotation returns 400 partial_rotation_not_supported). Appends leaf to Key Transparency log.",
+        "operationId": "rotate_bot_keys",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateBotKeysReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Keys rotated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Partial rotation or invalid key encoding",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/{id}/tokens": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "List bot tokens",
+        "description": "List tokens issued for a bot per §8.8.19. Auth: Bot owner session or bot token matching id. Token secret values are not returned.",
+        "operationId": "get_bot_tokens",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of bot tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListTokensResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Issue bot token",
+        "description": "Issue a new token for a bot per §8.8.18. Auth: Bot owner session or bot token matching id. Token value shown once.",
+        "operationId": "create_token",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Token issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateTokenResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/{id}/tokens/{token_id}": {
+      "delete": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Revoke bot token",
+        "description": "Revoke a bot token per §8.8.20. Auth: Bot owner session or bot token matching id.",
+        "operationId": "delete_token",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token_id",
+            "in": "path",
+            "description": "Token ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Token revoked"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot or token not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/capabilities": {
       "get": {
         "tags": [
@@ -130,6 +1087,768 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/rooms/{id}/bot-commands": {
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Send command to bot",
+        "description": "User sends an encrypted command to a bot in a room per §8.8.11. Auth: Room member session token. Supports request_id idempotency.",
+        "operationId": "post_bot_command",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostBotCommandReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Command accepted for delivery",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostBotCommandResp"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ciphertext, pubkey, or request_id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden or bot not granted read_commands scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request ID conflict across endpoints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/bot-messages": {
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Bot posts a message",
+        "description": "Bot posts an encrypted message to a room per §8.8.10. Auth: Bot token matching granted bot_id with post_message scope. Ed25519 signature verified per §8.10. Supports request_id idempotency.",
+        "operationId": "post_bot_message",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostBotMessageReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Message accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostBotMessageResp"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid content_type, ciphertext, signature, or epoch out of window",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized (requires bot token)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (bot not granted post_message scope)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Request ID conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/bots": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "List room bots",
+        "description": "List bots granted to a room per §8.8.6. Auth: Room members. Note: connected status is included ONLY if caller is the bot's owner.",
+        "operationId": "list_room_bots",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of room bots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRoomBotsResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Grant bot to room",
+        "description": "Grant a bot to a room per §8.8.7. Auth: Room owner / moderator. The room bot mode (write_only, observer, member) is derived automatically from the granted scope set per §7.10.",
+        "operationId": "grant_bot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantBotReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Bot granted to room",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomBotView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope or missing scope dependency",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Bot already granted or room bot limit reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/bots/{bot_id}": {
+      "delete": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Revoke room bot grant",
+        "description": "Revoke a bot grant from a room per §8.8.9. Auth: Room owner / moderator.",
+        "operationId": "delete_room_bot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Bot grant revoked"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot grant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Update room bot scopes",
+        "description": "Update granted scopes for a bot in a room per §8.8.8. Auth: Room owner / moderator. Mode is re-derived automatically from the new scope set per §7.10.",
+        "operationId": "patch_room_bot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchRoomBotReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Room bot scopes updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomBotView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scopes or dependency missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot grant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/observer-stream": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Observer metadata SSE stream",
+        "description": "Server-Sent Events (SSE) stream for observer bots per §8.8.13. Auth: Bot token with read_metadata scope. Emits event types: message.new (with size_bytes), message.edited, message.deleted, room.member_added, room.member_removed, room.updated. Ciphertext and non-metadata events are omitted. Reconnection via Last-Event-ID header; buffer overflow emits 'dropped' event with count.",
+        "operationId": "observer_stream_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "description": "Last received event ID for stream resumption",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE stream established",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized (requires bot token)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (missing read_metadata scope grant)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/publisher-key": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Fetch publisher key",
+        "description": "Fetch current or specific epoch publisher key for a room per §8.8.15. Auth: Room members.",
+        "operationId": "get_publisher_key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "epoch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Publisher key details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublisherKeyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or publisher key not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Publish publisher key",
+        "description": "Publish publisher key for the current epoch per §8.8.16. Auth: Human room members only (bots excluded). Signature verified per §8.10.",
+        "operationId": "publish_publisher_key",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishPublisherKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Publisher key published successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublisherKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or signature",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (not a human member)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Epoch already published",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
       }
     },
     "/api/v1/users/lookup": {
@@ -427,6 +2146,239 @@
           },
           "415": {
             "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/bots/{bot_id}/settings": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Operator reads bot settings",
+        "description": "Operator fetches settings for an owned bot per §8.8.14. Auth: Bot owner user session. Secret setting client values return NULL.",
+        "operationId": "get_bot_settings_owner",
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bot settings list for operator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetBotSettingsOwnerResp"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (not bot owner)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/bots/{bot_id}/settings/{key}": {
+      "delete": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Operator deletes bot setting",
+        "description": "Operator deletes a bot setting per §8.8.14. Auth: Bot owner user session.",
+        "operationId": "delete_bot_setting_owner",
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Setting key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Setting deleted"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot or setting not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Operator writes bot setting",
+        "description": "Operator writes or updates a bot setting per §8.8.14. Auth: Bot owner user session. Validates secret table rules: is_secret=true requires value_encrypted_bot and forbids value_encrypted_client; is_secret=false requires both.",
+        "operationId": "patch_bot_setting_owner",
+        "parameters": [
+          {
+            "name": "bot_id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Setting key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchBotSettingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Setting saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotSettingOwnerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid setting key, client ciphertext missing/forbidden, or payload too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -1720,11 +3672,13 @@
           },
           "chunk_count": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Number of encrypted C2SP chunks. See §7.7."
           },
           "chunk_size": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Chunk size in bytes (16384 bytes). See §5.13, §7.7."
           },
           "content_type": {
             "type": "string"
@@ -1735,13 +3689,15 @@
           },
           "encrypted_size": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Encrypted byte length after C2SP chunked encryption. See §7.7."
           },
           "id": {
             "type": "string"
           },
           "nonce_prefix": {
-            "type": "string"
+            "type": "string",
+            "description": "Hex-encoded nonce prefix for chunk counter derivation. See §7.7."
           },
           "padded_size": {
             "type": "integer",
@@ -1749,13 +3705,15 @@
           },
           "plaintext_size": {
             "type": "integer",
-            "format": "int64"
+            "format": "int64",
+            "description": "Plaintext byte length before chunked C2SP encryption. See §7.7."
           },
           "room_id": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Optional room ID for room-scoped attachments, null for user-scoped attachments. See §7.7, §8.6."
           },
           "storage_backend": {
             "type": "string"
@@ -1768,6 +3726,60 @@
           },
           "uploader_id": {
             "type": "string"
+          }
+        }
+      },
+      "BotSettingBotView": {
+        "type": "object",
+        "required": [
+          "key",
+          "value_encrypted_bot",
+          "is_secret",
+          "user_seq"
+        ],
+        "properties": {
+          "is_secret": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "value_encrypted_bot": {
+            "type": "string",
+            "format": "binary",
+            "description": "Client-encrypted bot setting value for bot, base64url encoded. Wire shape: ephemeral_pubkey (32) || nonce (12) || ciphertext || tag (16). Reference: §7.10, §8.8.14."
+          }
+        }
+      },
+      "BotSettingOwnerView": {
+        "type": "object",
+        "required": [
+          "key",
+          "is_secret",
+          "user_seq"
+        ],
+        "properties": {
+          "is_secret": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "value_encrypted_client": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Client-encrypted bot setting value for operator, base64url encoded. NULL for secret settings. Reference: §6.29, §8.8.14."
           }
         }
       },
@@ -1800,6 +3812,88 @@
             ],
             "format": "binary",
             "description": "base64url ciphertext; see §6.29"
+          }
+        }
+      },
+      "BotTokenItem": {
+        "type": "object",
+        "required": [
+          "token_id",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revoked_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "token_id": {
+            "type": "string"
+          }
+        }
+      },
+      "BotView": {
+        "type": "object",
+        "required": [
+          "bot_id",
+          "display_name",
+          "bot_identity_pubkey",
+          "bot_command_pubkey",
+          "identity_pubkey",
+          "declared_scopes",
+          "owner_user_id",
+          "created_at"
+        ],
+        "properties": {
+          "avatar_file_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bot_command_pubkey": {
+            "type": "string"
+          },
+          "bot_id": {
+            "type": "string"
+          },
+          "bot_identity_pubkey": {
+            "type": "string"
+          },
+          "bot_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "declarations": {},
+          "declared_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "identity_pubkey": {
+            "type": "string"
+          },
+          "owner_user_id": {
+            "type": "string"
           }
         }
       },
@@ -2018,6 +4112,52 @@
           }
         }
       },
+      "CreateBotReq": {
+        "type": "object",
+        "required": [
+          "display_name",
+          "bot_identity_pubkey",
+          "bot_command_pubkey",
+          "identity_pubkey",
+          "declared_scopes"
+        ],
+        "properties": {
+          "bot_command_pubkey": {
+            "type": "string"
+          },
+          "bot_identity_pubkey": {
+            "type": "string"
+          },
+          "declarations": {},
+          "declared_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "identity_pubkey": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateTokenResp": {
+        "type": "object",
+        "required": [
+          "token_id",
+          "bot_token"
+        ],
+        "properties": {
+          "bot_token": {
+            "type": "string"
+          },
+          "token_id": {
+            "type": "string"
+          }
+        }
+      },
       "DeleteAccountRequest": {
         "type": "object",
         "required": [
@@ -2121,6 +4261,52 @@
           }
         }
       },
+      "GetBotSettingsMeResp": {
+        "type": "object",
+        "required": [
+          "settings"
+        ],
+        "properties": {
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BotSettingBotView"
+            }
+          }
+        }
+      },
+      "GetBotSettingsOwnerResp": {
+        "type": "object",
+        "required": [
+          "settings"
+        ],
+        "properties": {
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BotSettingOwnerView"
+            }
+          }
+        }
+      },
+      "GrantBotReq": {
+        "type": "object",
+        "required": [
+          "bot_id",
+          "scopes"
+        ],
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "required": [
@@ -2142,6 +4328,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DeviceResponse"
+            }
+          }
+        }
+      },
+      "ListRoomBotsResp": {
+        "type": "object",
+        "required": [
+          "bots"
+        ],
+        "properties": {
+          "bots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoomBotView"
             }
           }
         }
@@ -2170,11 +4370,78 @@
           }
         }
       },
+      "ListTokensResp": {
+        "type": "object",
+        "required": [
+          "tokens"
+        ],
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BotTokenItem"
+            }
+          }
+        }
+      },
       "LogoutRequest": {
         "type": "object",
         "properties": {
           "all_sessions": {
             "type": "boolean"
+          }
+        }
+      },
+      "PatchBotReq": {
+        "type": "object",
+        "properties": {
+          "declarations": {},
+          "display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchBotSettingRequest": {
+        "type": "object",
+        "required": [
+          "is_secret",
+          "value_encrypted_bot"
+        ],
+        "properties": {
+          "ephemeral_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_secret": {
+            "type": "boolean"
+          },
+          "value_encrypted_bot": {
+            "type": "string"
+          },
+          "value_encrypted_client": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchRoomBotReq": {
+        "type": "object",
+        "required": [
+          "scopes"
+        ],
+        "properties": {
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2213,6 +4480,174 @@
           }
         }
       },
+      "PostBotCommandReq": {
+        "type": "object",
+        "required": [
+          "bot_id",
+          "ciphertext"
+        ],
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "ciphertext": {
+            "type": "string",
+            "format": "binary",
+            "description": "Command plaintext encrypted via X25519 ECDH to bot_command_pubkey, base64url encoded. Reference: §6.31."
+          },
+          "ephemeral_result_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Client's ephemeral X25519 public key for command result decryption, base64url encoded. Reference: §6.31."
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PostBotCommandResp": {
+        "type": "object",
+        "required": [
+          "command_id",
+          "created_at"
+        ],
+        "properties": {
+          "command_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "idempotent": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PostBotMessageReq": {
+        "type": "object",
+        "required": [
+          "epoch",
+          "ciphertext",
+          "content_type",
+          "signature"
+        ],
+        "properties": {
+          "ciphertext": {
+            "type": "string",
+            "format": "binary",
+            "description": "Bot message ciphertext encrypted under current epoch publisher key, base64url encoded. Wire shape: ephemeral_pubkey (32) || nonce (12) || ciphertext || tag (16). Reference: §6.33, §8.8.10."
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "epoch": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signature": {
+            "type": "string",
+            "format": "binary",
+            "description": "Ed25519 signature over room_id || epoch || content_type || ciphertext. Reference: §8.10."
+          }
+        }
+      },
+      "PostBotMessageResp": {
+        "type": "object",
+        "required": [
+          "message_id",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "idempotent": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "message_id": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PostBotMessagesReq": {
+        "type": "object",
+        "required": [
+          "target",
+          "result_type"
+        ],
+        "properties": {
+          "bot_result_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Bot result X25519 public key, base64url encoded. Reference: §6.31, §8.8.12."
+          },
+          "ciphertext": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Result ciphertext, base64url encoded. Reference: §6.31, §8.8.12."
+          },
+          "command_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "result_type": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "PreferenceRow": {
         "type": "object",
         "required": [
@@ -2232,6 +4667,89 @@
             "type": "string",
             "format": "binary",
             "description": "base64url ciphertext; see §6.29"
+          }
+        }
+      },
+      "PresignRequest": {
+        "type": "object",
+        "properties": {
+          "expires_in_seconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "PresignResponse": {
+        "type": "object",
+        "required": [
+          "url",
+          "expires_at"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "PublishPublisherKeyRequest": {
+        "type": "object",
+        "required": [
+          "epoch",
+          "publisher_public_key",
+          "signature"
+        ],
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "publisher_public_key": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string",
+            "format": "binary",
+            "description": "Ed25519 signature over room_id || epoch || publisher_public_key. Reference: §8.10."
+          }
+        }
+      },
+      "PublisherKeyResponse": {
+        "type": "object",
+        "required": [
+          "room_id",
+          "epoch",
+          "publisher_public_key",
+          "signer_user_id",
+          "signature"
+        ],
+        "properties": {
+          "epoch": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "publisher_public_key": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string",
+            "format": "binary",
+            "description": "Ed25519 signature over room_id || epoch || publisher_public_key. Reference: §8.10."
+          },
+          "signer_user_id": {
+            "type": "string"
           }
         }
       },
@@ -2397,6 +4915,52 @@
           }
         }
       },
+      "RoomBotView": {
+        "type": "object",
+        "required": [
+          "bot_id",
+          "display_name",
+          "mode",
+          "scopes",
+          "granted_at",
+          "granted_by"
+        ],
+        "properties": {
+          "avatar_file_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bot_id": {
+            "type": "string"
+          },
+          "connected": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "granted_at": {
+            "type": "string"
+          },
+          "granted_by": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "RoomOrderSyncState": {
         "type": "object",
         "required": [
@@ -2413,6 +4977,29 @@
           "user_seq": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "RotateBotKeysReq": {
+        "type": "object",
+        "properties": {
+          "bot_command_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bot_identity_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identity_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -2959,6 +5546,14 @@
     {
       "name": "User",
       "description": "User endpoints"
+    },
+    {
+      "name": "Messaging",
+      "description": "Messaging endpoints"
+    },
+    {
+      "name": "Bots",
+      "description": "Bot account management, room grants, settings, commands, and publisher keys"
     }
   ]
 }

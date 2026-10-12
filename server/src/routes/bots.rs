@@ -1,12 +1,14 @@
 use crate::allocate_user_seq;
-use crate::attachments;
+use crate::attachments::{self, AttachmentView};
 use crate::auth::AuthUser;
+use crate::bots::settings::{BotSettingBotView, BotSettingOwnerView, PatchBotSettingRequest};
 use crate::bots::{validate_bot_token, validate_scopes, CallerIdentity};
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::rate_limit::{self, RateLimitKey};
 use crate::rooms::{queue_pending_mls_remove_batch, MlsTarget};
 use crate::routes::attachments::{
     get_effective_user_file_size_limit, parse_multipart_strict_single_file, AttachmentRouteError,
+    UserAvatarUploadForm,
 };
 use crate::sockudo::Publisher;
 use crate::AppState;
@@ -25,6 +27,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
+use utoipa::ToSchema;
 
 pub async fn resolve_caller(
     pool: &SqlitePool,
@@ -112,7 +115,7 @@ pub fn generate_raw_token() -> (String, String) {
     (raw, hash)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct CreateBotReq {
     pub display_name: String,
     pub bot_identity_pubkey: String,
@@ -122,7 +125,7 @@ pub struct CreateBotReq {
     pub declarations: Option<serde_json::Value>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct BotView {
     pub bot_id: String,
     pub display_name: String,
@@ -138,6 +141,24 @@ pub struct BotView {
     pub bot_token: Option<String>,
 }
 
+/// POST /bots
+#[utoipa::path(
+    post,
+    path = "/api/v1/bots",
+    tag = "Bots",
+    summary = "Create bot account",
+    description = "Create a new headless bot account per §8.8.1. Auth: User session only (bot tokens cannot create bots). Returns bot details and initial bot token.",
+    request_body = CreateBotReq,
+    responses(
+        (status = 201, description = "Bot created successfully", body = BotView),
+        (status = 400, description = "Invalid display_name, pubkey, or scope requirements", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn create_bot(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -298,6 +319,26 @@ pub async fn create_bot(
     Ok(response)
 }
 
+/// GET /bots/:id
+#[utoipa::path(
+    get,
+    path = "/api/v1/bots/{id}",
+    tag = "Bots",
+    summary = "Get bot account",
+    description = "Fetch bot account record including declared scopes and declarations per §8.8.2. Auth: Bot owner user session or bot token matching id.",
+    params(
+        ("id" = String, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 200, description = "Bot account details", body = BotView),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (not owner or bot self)", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn get_bot(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -371,13 +412,35 @@ where
     serde::Deserialize::deserialize(de).map(Some)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct PatchBotReq {
     pub display_name: Option<String>,
     #[serde(default, deserialize_with = "double_option")]
     pub declarations: Option<Option<serde_json::Value>>,
 }
 
+/// PATCH /bots/:id
+#[utoipa::path(
+    patch,
+    path = "/api/v1/bots/{id}",
+    tag = "Bots",
+    summary = "Update bot account",
+    description = "Update bot account display name or declarations per §8.8.3. Auth: Bot owner user session or bot token matching id.",
+    params(
+        ("id" = String, Path, description = "Bot ID")
+    ),
+    request_body = PatchBotReq,
+    responses(
+        (status = 200, description = "Bot account updated", body = BotView),
+        (status = 400, description = "Invalid display_name or top-level declarations shape", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn patch_bot(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -561,6 +624,26 @@ pub async fn patch_bot(
     get_bot(State(state), headers, Path(bot_id)).await
 }
 
+/// DELETE /bots/:id
+#[utoipa::path(
+    delete,
+    path = "/api/v1/bots/{id}",
+    tag = "Bots",
+    summary = "Delete bot account",
+    description = "Delete a bot account per §8.8. Auth: Bot owner user session or bot token matching id.",
+    params(
+        ("id" = String, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 204, description = "Bot deleted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn delete_bot(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -673,18 +756,42 @@ pub async fn delete_bot(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct PostBotMessagesReq {
     pub target: String,
     pub target_user_id: Option<String>,
     pub command_id: Option<String>,
     pub result_type: String,
+    /// Result ciphertext, base64url encoded. Reference: §6.31, §8.8.12.
+    #[schema(value_type = Option<String>, format = Binary)]
     pub ciphertext: Option<String>,
+    /// Bot result X25519 public key, base64url encoded. Reference: §6.31, §8.8.12.
+    #[schema(value_type = Option<String>, format = Binary)]
     pub bot_result_pubkey: Option<String>,
     pub request_id: Option<String>,
 }
 
 /// POST /bots/me/messages — Bot-originated user-channel message (§8.8.12)
+#[utoipa::path(
+    post,
+    path = "/api/v1/bots/me/messages",
+    tag = "Bots",
+    summary = "Bot user-channel message (invoker or owner)",
+    description = "Bot sends command result to invoker (target: 'invoker') or local message to owner (target: 'owner') per §8.8.12. Auth: Bot token only.",
+    request_body = PostBotMessagesReq,
+    responses(
+        (status = 204, description = "Message delivered"),
+        (status = 400, description = "Invalid request or missing fields", body = ErrorResponse),
+        (status = 401, description = "Unauthorized (requires bot token)", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Command or bot not found", body = ErrorResponse),
+        (status = 409, description = "Command not acked, result already delivered, or request ID conflict", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn post_bot_messages(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1061,7 +1168,26 @@ pub async fn post_bot_messages(
     Ok(response)
 }
 
-/// POST /bots/me/commands/:id/ack — Bot acknowledges a command (§8.8.15)
+/// POST /bots/me/commands/:id/ack — Bot acknowledges a command (§8.8.21)
+#[utoipa::path(
+    post,
+    path = "/api/v1/bots/me/commands/{id}/ack",
+    tag = "Bots",
+    summary = "Acknowledge bot command",
+    description = "Bot acknowledges receipt of a command per §8.8.21. Prevents command TTL expiry. Auth: Bot token matching target bot.",
+    params(
+        ("id" = String, Path, description = "Command ID")
+    ),
+    responses(
+        (status = 204, description = "Command acknowledged"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Command not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn ack_bot_command(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1105,7 +1231,32 @@ pub async fn ack_bot_command(
     Ok(response)
 }
 
-/// GET /bots/me/settings — bot reads its own settings (§8.8.10)
+#[derive(Serialize, ToSchema)]
+pub struct GetBotSettingsMeResp {
+    pub settings: Vec<BotSettingBotView>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct GetBotSettingsOwnerResp {
+    pub settings: Vec<BotSettingOwnerView>,
+}
+
+/// GET /bots/me/settings — bot reads its own settings (§8.8.14)
+#[utoipa::path(
+    get,
+    path = "/api/v1/bots/me/settings",
+    tag = "Bots",
+    summary = "Bot reads own settings",
+    description = "Bot fetches its own configured settings per §8.8.14. Auth: Bot token only. Returned value_encrypted_bot encodes ephemeral_pubkey (32) || nonce (12) || ciphertext || tag (16).",
+    responses(
+        (status = 200, description = "Bot settings list", body = GetBotSettingsMeResp),
+        (status = 401, description = "Unauthorized (requires bot token)", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn get_bot_settings_me(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1119,7 +1270,8 @@ pub async fn get_bot_settings_me(
     let settings =
         crate::bots::settings::get_bot_settings_for_bot(&state.pool, &bot_ctx.bot_id).await?;
 
-    let mut res = Json(json!({ "settings": settings })).into_response();
+    let resp = GetBotSettingsMeResp { settings };
+    let mut res = (StatusCode::OK, Json(resp)).into_response();
     res.headers_mut().insert(
         header::CACHE_CONTROL,
         header::HeaderValue::from_static("no-store"),
@@ -1127,7 +1279,26 @@ pub async fn get_bot_settings_me(
     Ok(res)
 }
 
-/// GET /users/me/bots/:bot_id/settings — operator reads a bot's settings (§8.8.11)
+/// GET /users/me/bots/:bot_id/settings — operator reads a bot's settings (§8.8.14)
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me/bots/{bot_id}/settings",
+    tag = "Bots",
+    summary = "Operator reads bot settings",
+    description = "Operator fetches settings for an owned bot per §8.8.14. Auth: Bot owner user session. Secret setting client values return NULL.",
+    params(
+        ("bot_id" = String, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 200, description = "Bot settings list for operator", body = GetBotSettingsOwnerResp),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (not bot owner)", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn get_bot_settings_owner(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -1137,7 +1308,8 @@ pub async fn get_bot_settings_owner(
 
     let settings = crate::bots::settings::get_bot_settings_for_owner(&state.pool, &bot_id).await?;
 
-    let mut res = Json(json!({ "settings": settings })).into_response();
+    let resp = GetBotSettingsOwnerResp { settings };
+    let mut res = (StatusCode::OK, Json(resp)).into_response();
     res.headers_mut().insert(
         header::CACHE_CONTROL,
         header::HeaderValue::from_static("no-store"),
@@ -1145,7 +1317,29 @@ pub async fn get_bot_settings_owner(
     Ok(res)
 }
 
-/// PATCH /users/me/bots/:bot_id/settings/:key — operator writes a bot setting (§8.8.11)
+/// PATCH /users/me/bots/:bot_id/settings/:key — operator writes a bot setting (§8.8.14)
+#[utoipa::path(
+    patch,
+    path = "/api/v1/users/me/bots/{bot_id}/settings/{key}",
+    tag = "Bots",
+    summary = "Operator writes bot setting",
+    description = "Operator writes or updates a bot setting per §8.8.14. Auth: Bot owner user session. Validates secret table rules: is_secret=true requires value_encrypted_bot and forbids value_encrypted_client; is_secret=false requires both.",
+    params(
+        ("bot_id" = String, Path, description = "Bot ID"),
+        ("key" = String, Path, description = "Setting key")
+    ),
+    request_body = PatchBotSettingRequest,
+    responses(
+        (status = 200, description = "Setting saved", body = BotSettingOwnerView),
+        (status = 400, description = "Invalid setting key, client ciphertext missing/forbidden, or payload too large", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn patch_bot_setting_owner(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -1173,7 +1367,27 @@ pub async fn patch_bot_setting_owner(
     Ok(res)
 }
 
-/// DELETE /users/me/bots/:bot_id/settings/:key — operator deletes a bot setting (§8.8.11)
+/// DELETE /users/me/bots/:bot_id/settings/:key — operator deletes a bot setting (§8.8.14)
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/me/bots/{bot_id}/settings/{key}",
+    tag = "Bots",
+    summary = "Operator deletes bot setting",
+    description = "Operator deletes a bot setting per §8.8.14. Auth: Bot owner user session.",
+    params(
+        ("bot_id" = String, Path, description = "Bot ID"),
+        ("key" = String, Path, description = "Setting key")
+    ),
+    responses(
+        (status = 204, description = "Setting deleted"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot or setting not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn delete_bot_setting_owner(
     State(state): State<AppState>,
     auth_user: AuthUser,
@@ -1198,6 +1412,30 @@ pub async fn delete_bot_setting_owner(
     Ok(res)
 }
 
+/// POST /bots/:id/avatar
+#[utoipa::path(
+    post,
+    path = "/api/v1/bots/{id}/avatar",
+    tag = "Bots",
+    summary = "Upload bot avatar",
+    description = "Upload or replace bot avatar image per §8.8.4. Auth: Bot owner or bot token. Body is multipart/form-data with file field.",
+    params(
+        ("id" = String, Path, description = "Bot ID")
+    ),
+    request_body(content = UserAvatarUploadForm, content_type = "multipart/form-data"),
+    responses(
+        (status = 201, description = "Avatar uploaded successfully", body = AttachmentView),
+        (status = 400, description = "Missing or invalid file", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+        (status = 413, description = "File size exceeds effective max limit", body = ErrorResponse),
+        (status = 415, description = "Unsupported media type", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn upload_bot_avatar(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1305,6 +1543,26 @@ pub async fn upload_bot_avatar(
     Ok((StatusCode::CREATED, res_headers, Json(view)).into_response())
 }
 
+/// DELETE /bots/:id/avatar
+#[utoipa::path(
+    delete,
+    path = "/api/v1/bots/{id}/avatar",
+    tag = "Bots",
+    summary = "Delete bot avatar",
+    description = "Remove bot avatar image per §8.8.5. Auth: Bot owner or bot token.",
+    params(
+        ("id" = String, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 204, description = "Avatar removed"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn delete_bot_avatar(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1368,12 +1626,122 @@ pub async fn delete_bot_avatar(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct CreateTokenResp {
     pub token_id: String,
     pub bot_token: String,
 }
 
+#[derive(Serialize, ToSchema)]
+pub struct BotTokenItem {
+    pub token_id: String,
+    pub created_at: String,
+    pub last_used_at: Option<String>,
+    pub revoked_at: Option<String>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ListTokensResp {
+    pub tokens: Vec<BotTokenItem>,
+}
+
+/// GET /bots/:id/tokens
+#[utoipa::path(
+    get,
+    path = "/api/v1/bots/{id}/tokens",
+    tag = "Bots",
+    summary = "List bot tokens",
+    description = "List tokens issued for a bot per §8.8.19. Auth: Bot owner session or bot token matching id. Token secret values are not returned.",
+    params(
+        ("id" = String, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 200, description = "List of bot tokens", body = ListTokensResp),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
+pub async fn get_bot_tokens(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(bot_id): Path<String>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+
+    let row =
+        sqlx::query("SELECT owner_user_id FROM bot_accounts WHERE id = ? AND deleted_at IS NULL")
+            .bind(&bot_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Err(ApiError::NotFound("bot_not_found".into())),
+    };
+
+    let owner_user_id: String = row.get("owner_user_id");
+    if !caller.is_owner_or_bot(&bot_id, &owner_user_id) {
+        return Err(ApiError::Forbidden("forbidden".into()));
+    }
+
+    let rows = sqlx::query(
+        r#"
+        SELECT id, CAST(created_at AS TEXT) AS created_at, CAST(last_used_at AS TEXT) AS last_used_at, CAST(revoked_at AS TEXT) AS revoked_at
+        FROM bot_tokens
+        WHERE bot_id = ?
+        ORDER BY created_at DESC
+        "#,
+    )
+    .bind(&bot_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let tokens = rows
+        .into_iter()
+        .map(|r| BotTokenItem {
+            token_id: r.get("id"),
+            created_at: r.get("created_at"),
+            last_used_at: r.get("last_used_at"),
+            revoked_at: r.get("revoked_at"),
+        })
+        .collect();
+
+    let resp = ListTokensResp { tokens };
+    let mut response = (StatusCode::OK, Json(resp)).into_response();
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
+/// POST /bots/:id/tokens
+#[utoipa::path(
+    post,
+    path = "/api/v1/bots/{id}/tokens",
+    tag = "Bots",
+    summary = "Issue bot token",
+    description = "Issue a new token for a bot per §8.8.18. Auth: Bot owner session or bot token matching id. Token value shown once.",
+    params(
+        ("id" = String, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 201, description = "Token issued", body = CreateTokenResp),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn create_token(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1439,13 +1807,36 @@ pub async fn create_token(
     Ok(response)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct RotateBotKeysReq {
     pub bot_identity_pubkey: Option<String>,
     pub bot_command_pubkey: Option<String>,
     pub identity_pubkey: Option<String>,
 }
 
+/// PATCH /bots/:id/keys
+#[utoipa::path(
+    patch,
+    path = "/api/v1/bots/{id}/keys",
+    tag = "Bots",
+    summary = "Rotate bot keys",
+    description = "Rotate bot identity, command, and MLS keys per §8.8.17. Auth: Bot owner session or bot token matching id. All three 32-byte public keys are required (partial rotation returns 400 partial_rotation_not_supported). Appends leaf to Key Transparency log.",
+    params(
+        ("id" = String, Path, description = "Bot ID")
+    ),
+    request_body = RotateBotKeysReq,
+    responses(
+        (status = 200, description = "Keys rotated successfully", body = BotView),
+        (status = 400, description = "Partial rotation or invalid key encoding", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot not found", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn rotate_bot_keys(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1611,6 +2002,27 @@ pub async fn rotate_bot_keys(
     get_bot(State(state), headers, Path(bot_id)).await
 }
 
+/// DELETE /bots/:id/tokens/:token_id
+#[utoipa::path(
+    delete,
+    path = "/api/v1/bots/{id}/tokens/{token_id}",
+    tag = "Bots",
+    summary = "Revoke bot token",
+    description = "Revoke a bot token per §8.8.20. Auth: Bot owner session or bot token matching id.",
+    params(
+        ("id" = String, Path, description = "Bot ID"),
+        ("token_id" = String, Path, description = "Token ID")
+    ),
+    responses(
+        (status = 204, description = "Token revoked"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Bot or token not found", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn delete_token(
     State(state): State<AppState>,
     headers: HeaderMap,

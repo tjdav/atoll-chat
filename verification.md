@@ -1,4 +1,15 @@
 
+## OpenAPI Annotations — Bots Endpoints Verification Fact
+- **ID:** OpenAPI Annotations — Bots Endpoints
+- **Date:** 2026-10-12
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §8.8, §8.8.1-§8.8.21, §8.10, §6.31, §6.33, §7.10
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/openapi-annotate-bots-endpoints/report.md`.
+  - **Single Pass Decision:** Covered the complete bots domain in one pass to prevent schema duplication across tasks.
+  - **Coverage Scope:** 25 endpoints covering bot account CRUD, avatar, tokens, room grants, bot messages, bot commands, command ack, local messages, bot settings, publisher keys, and observer stream SSE.
+- **Link to report:** [verification/openapi-annotate-bots-endpoints/report.md](verification/openapi-annotate-bots-endpoints/report.md)
+
 ## OpenAPI Annotations — Messaging Endpoints Verification Fact
 - **ID:** OpenAPI Annotations — Messaging Endpoints
 - **Date:** 2026-10-12
