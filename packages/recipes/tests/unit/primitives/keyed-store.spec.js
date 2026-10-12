@@ -37,6 +37,22 @@ function createRecordingChild () {
   return { child, calls }
 }
 
+/**
+ * Builds a child handler that records its inputs and returns a
+ * configured value.
+ * @param {unknown} returnValue - The value to return.
+ * @returns {{ child: Function, calls: unknown[] }} The child and a
+ *   mutable array of its inputs.
+ */
+function createReturningChild (returnValue) {
+  const calls = []
+  const child = async (ctx, input) => {
+    calls.push(input)
+    return returnValue
+  }
+  return { child, calls }
+}
+
 test('keyed-store has the expected shape', () => {
   assert.equal(keyedStore.id, 'keyed-store')
   assert.deepEqual(keyedStore.targets, ['bot'])
@@ -282,4 +298,21 @@ test('the default is not written to storage', async () => {
   const { ctx, store } = createMockCtx()
   await handler(ctx, {})
   assert.equal(store.size, 0)
+})
+
+test('get mode returns undefined when children return nothing', async () => {
+  const { child } = createRecordingChild()
+  const handler = keyedStore.create({ key: 'k', mode: 'get' }, [child])
+  const { ctx } = createMockCtx({ k: 'stored' })
+  const result = await handler(ctx, {})
+  assert.equal(result, undefined)
+})
+
+test('get mode returns the last child return value', async () => {
+  const first = createReturningChild('first')
+  const second = createReturningChild({ type: 'local_message', content: 'hi' })
+  const handler = keyedStore.create({ key: 'k', mode: 'get' }, [first.child, second.child])
+  const { ctx } = createMockCtx({ k: 'stored' })
+  const result = await handler(ctx, {})
+  assert.deepEqual(result, { type: 'local_message', content: 'hi' })
 })

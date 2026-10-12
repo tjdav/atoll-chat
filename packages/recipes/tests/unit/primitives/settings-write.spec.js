@@ -58,6 +58,22 @@ function createRecordingChild () {
   return { child, calls }
 }
 
+/**
+ * Builds a child handler that records its inputs and returns a
+ * configured value.
+ * @param {unknown} returnValue - The value to return.
+ * @returns {{ child: Function, calls: unknown[] }} The child and a
+ *   mutable array of its inputs.
+ */
+function createReturningChild (returnValue) {
+  const calls = []
+  const child = async (ctx, input) => {
+    calls.push(input)
+    return returnValue
+  }
+  return { child, calls }
+}
+
 test('settings-write has the expected shape', () => {
   assert.equal(settingsWrite.id, 'settings-write')
   assert.deepEqual(settingsWrite.targets, ['bot'])
@@ -296,4 +312,21 @@ test('scope user ignores ctx.room even when present', async () => {
   const { ctx, writes } = createMockCtxWithRoom('r_1')
   await handler(ctx, {})
   assert.equal(writes[0].opts, undefined)
+})
+
+test('settings-write returns undefined when children return nothing', async () => {
+  const { child } = createRecordingChild()
+  const handler = settingsWrite.create({ key: 'k', value: 'v' }, [child])
+  const { ctx } = createMockCtx()
+  const result = await handler(ctx, {})
+  assert.equal(result, undefined)
+})
+
+test('settings-write returns the last child return value', async () => {
+  const first = createReturningChild('first')
+  const second = createReturningChild({ type: 'local_message', content: 'written' })
+  const handler = settingsWrite.create({ key: 'k', value: 'v' }, [first.child, second.child])
+  const { ctx } = createMockCtx()
+  const result = await handler(ctx, {})
+  assert.deepEqual(result, { type: 'local_message', content: 'written' })
 })

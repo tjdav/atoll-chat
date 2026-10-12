@@ -76,9 +76,11 @@ export const transform = {
         output = readPath(input, path)
       }
 
+      let lastResult
       for (const child of children) {
-        await child(ctx, output)
+        lastResult = await child(ctx, output)
       }
+      return lastResult
     }
   }
 }

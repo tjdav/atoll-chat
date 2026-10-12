@@ -67,6 +67,22 @@ function createRecordingChild () {
   return { child, calls }
 }
 
+/**
+ * Builds a child handler that records its inputs and returns a
+ * configured value.
+ * @param {unknown} returnValue - The value to return.
+ * @returns {{ child: Function, calls: unknown[] }} The child and a
+ *   mutable array of its inputs.
+ */
+function createReturningChild (returnValue) {
+  const calls = []
+  const child = async (ctx, input) => {
+    calls.push(input)
+    return returnValue
+  }
+  return { child, calls }
+}
+
 test('settings-read has the expected shape', () => {
   assert.equal(settingsRead.id, 'settings-read')
   assert.deepEqual(settingsRead.targets, ['bot'])
@@ -294,4 +310,21 @@ test('no scope with a room config defaults to room scope', async () => {
   await handler(ctx, {})
   assert.deepEqual(reads[0].opts, { room: 'r_1' })
   assert.equal(calls[0], 'Room')
+})
+
+test('settings-read returns undefined when children return nothing', async () => {
+  const { child } = createRecordingChild()
+  const handler = settingsRead.create({ key: 'greeting' }, [child])
+  const { ctx } = createMockCtx({ greeting: 'hello' })
+  const result = await handler(ctx, {})
+  assert.equal(result, undefined)
+})
+
+test('settings-read returns the last child return value', async () => {
+  const first = createReturningChild('first')
+  const second = createReturningChild({ type: 'local_message', content: 'read' })
+  const handler = settingsRead.create({ key: 'greeting' }, [first.child, second.child])
+  const { ctx } = createMockCtx({ greeting: 'hello' })
+  const result = await handler(ctx, {})
+  assert.deepEqual(result, { type: 'local_message', content: 'read' })
 })
