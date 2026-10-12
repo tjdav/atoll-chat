@@ -1,5 +1,17 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-046b Verification Fact
+- **Register KT Signer Response (`packages/bot/src/testing/create-test-runtime.js`)**:
+  - Registered default `GET /api/v1/kt/user/u_signer` HTTP 200 response on `mockServer` when a synthetic signer is seeded during test runtime construction.
+  - Returned full Key Transparency payload schema: `{ user_id: 'u_signer', leaf_index: 0, identity_pubkey: base64urlOf(signerPublicKey), inclusion_proof: [], tree_head: { tree_size: 1, root_hash: '' }, auditor_signatures: [] }`.
+  - Added unit test 47 in `packages/bot/tests/unit/create-test-runtime.test.js` asserting endpoint registration and payload schema.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+  - `pnpm --filter @atoll/bot test:batch create-test-runtime` passed (48 tests passing, status 0).
+
 ## Task B-043c-6 Verification Fact
 - **Revised Suppression Policy (`src/`)**:
   - `@type {any}` and `@ts-ignore` are strictly prohibited.

@@ -135,9 +135,17 @@ export async function createTestRuntime (bot, options = {}) {
   const signerKeypair = generateEd25519Keypair()
   const signerUserId = 'u_signer'
   mockServer.setResponse('GET', '/api/v1/kt/user/u_signer', {
+    status: 200,
     body: {
       user_id: signerUserId,
-      identity_pubkey: Buffer.from(signerKeypair.publicKey).toString('base64url')
+      leaf_index: 0,
+      identity_pubkey: Buffer.from(signerKeypair.publicKey).toString('base64url'),
+      inclusion_proof: [],
+      tree_head: {
+        tree_size: 1,
+        root_hash: ''
+      },
+      auditor_signatures: []
     }
   })
 
