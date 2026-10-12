@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
 
 import { compile } from '../../../src/compiler/index.js'
 import { loadRecipeById, scanLibrary } from '../../../src/recipe/library.js'
-import { substitute } from '../../../src/lib/substitute.js'
+import { loadEmittedBot } from './_helpers/load-emitted-bot.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const LIB_ROOT = join(HERE, '..', '..', '..', 'recipes')
@@ -29,110 +29,6 @@ async function build (slots) {
     },
     { botId: 'com.example.daily-reminder', label: 'Daily Reminder' }
   )
-}
-
-/**
- * Loads the emitted bot.js source against stubbed primitives. The
- * `settingsRead` stub returns the value for the requested key from
- * the provided settings map.
- *
- * @param {string} code - The emitted bot.js source.
- * @param {Record<string, unknown>} settingsMap - Setting key → value.
- * @returns {{ config: object, posts: object[], fires: object[] }} The
- *   bot config, a record of post calls, and a record of fires.
- */
-function loadEmittedBot (code, settingsMap) {
-  const posts = []
-  const fires = []
-
-  const defineBot = (config) => config
-
-  const postResponse = {
-    create (config, children) {
-      const text = config.text
-      const roomIdConfig = config.roomId
-      return async (ctx, input) => {
-        const resolvedText = substitute(text, input)
-        if (typeof resolvedText !== 'string' || resolvedText.length === 0) {
-          throw new Error('post-response: resolved text is empty')
-        }
-        let targetRoomId
-        if (typeof roomIdConfig === 'string') {
-          const resolved = substitute(roomIdConfig, input)
-          if (typeof resolved !== 'string' || resolved.length === 0) {
-            throw new Error('post-response: resolved roomId is empty')
-          }
-          targetRoomId = resolved
-        } else if (ctx.room && typeof ctx.room.id === 'string') {
-          targetRoomId = ctx.room.id
-        } else {
-          throw new Error('post-response: no target room available')
-        }
-        posts.push({ text: resolvedText, roomId: targetRoomId })
-        for (const child of children ?? []) {
-          await child(ctx, input)
-        }
-        return undefined
-      }
-    }
-  }
-
-  const settingsRead = {
-    create (config, children) {
-      const key = config.key
-      return async (ctx, input) => {
-        const value = settingsMap[key]
-        let lastResult
-        for (const child of children ?? []) {
-          lastResult = await child(ctx, value)
-        }
-        return lastResult
-      }
-    }
-  }
-
-  const scheduleTask = {
-    create (config, children) {
-      const name = config.name
-      return async (ctx, input) => {
-        const firedAt = input && typeof input === 'object' && typeof input.firedAt === 'string'
-          ? input.firedAt
-          : new Date().toISOString()
-        fires.push({ name, firedAt })
-        let lastResult
-        for (const child of children ?? []) {
-          lastResult = await child(ctx, { name, firedAt })
-        }
-        return lastResult
-      }
-    }
-  }
-
-  const encoded = Buffer.from(code, 'utf8').toString('base64')
-  const buildFn = new Function(
-    'defineBot',
-    'postResponse',
-    'settingsRead',
-    'scheduleTask',
-    `
-    const src = Buffer.from('${encoded}', 'base64').toString('utf8')
-    const cleaned = src
-      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
-      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/recipes\\/primitives'/, '')
-      .replace('export default defineBot', 'return defineBot')
-    const fn = new Function(
-      'defineBot',
-      'postResponse',
-      'settingsRead',
-      'scheduleTask',
-      cleaned
-    )
-    return fn(defineBot, postResponse, settingsRead, scheduleTask)
-  `
-  )
-
-  const config = buildFn(defineBot, postResponse, settingsRead, scheduleTask)
-  return { config, posts, fires }
 }
 
 test('the recipe is present in the library and validates', async () => {
@@ -249,22 +145,26 @@ test('the emitted code contains the settings and handlers', async () => {
 
 test('the emitted bot config carries the settings', async () => {
   const script = await build()
-  const { config } = loadEmittedBot(script.code, {})
+  const { config } = loadEmittedBot(script.code)
   assert.ok(config.settings)
   assert.ok(config.settings.message)
 })
 
+test('the emitted bot exposes the trigger as a function', async () => {
+  const script = await build()
+  const { config } = loadEmittedBot(script.code)
+  assert.ok(Array.isArray(config.triggers))
+  assert.equal(config.triggers.length, 1)
+  assert.equal(typeof config.triggers[0], 'function')
+})
+
 test('a schedule fire posts the configured message to the configured room', async () => {
   const script = await build()
-  const { config, posts, fires } = loadEmittedBot(script.code, { message: 'Standup in 15' })
-
+  const { config, ctx, posts } = loadEmittedBot(script.code, {
+    settings: { message: 'Standup in 15' }
+  })
   const firedAt = '2026-01-15T09:00:00.000Z'
-  await config.triggers[0]({}, { firedAt })
-
-  assert.equal(fires.length, 1)
-  assert.equal(fires[0].name, 'daily-reminder')
-  assert.equal(fires[0].firedAt, firedAt)
-
+  await config.triggers[0](ctx, { firedAt })
   assert.equal(posts.length, 1)
   assert.equal(posts[0].text, 'Standup in 15')
   assert.equal(posts[0].roomId, TEST_ROOM)
@@ -272,12 +172,12 @@ test('a schedule fire posts the configured message to the configured room', asyn
 
 test('the schedule handler uses the setting value at fire time, not at build time', async () => {
   const script = await build()
-  const settingsMap = { message: 'First' }
-  const { config, posts } = loadEmittedBot(script.code, settingsMap)
+  const options = { settings: { message: 'First' } }
+  const { config, ctx, posts, settings } = loadEmittedBot(script.code, options)
 
-  await config.triggers[0]({}, { firedAt: '2026-01-15T09:00:00.000Z' })
-  settingsMap.message = 'Second'
-  await config.triggers[0]({}, { firedAt: '2026-01-16T09:00:00.000Z' })
+  await config.triggers[0](ctx, { firedAt: '2026-01-15T09:00:00.000Z' })
+  settings.set('message', 'Second')
+  await config.triggers[0](ctx, { firedAt: '2026-01-16T09:00:00.000Z' })
 
   assert.equal(posts.length, 2)
   assert.equal(posts[0].text, 'First')
@@ -286,24 +186,35 @@ test('the schedule handler uses the setting value at fire time, not at build tim
 
 test('the schedule handler ignores its input when resolving the message', async () => {
   const script = await build()
-  const { config, posts } = loadEmittedBot(script.code, { message: 'Configured' })
-  await config.triggers[0]({}, { name: 'ignored', firedAt: '2026-01-15T09:00:00.000Z' })
+  const { config, ctx, posts } = loadEmittedBot(script.code, {
+    settings: { message: 'Configured' }
+  })
+  await config.triggers[0](ctx, { name: 'ignored', firedAt: '2026-01-15T09:00:00.000Z' })
   assert.equal(posts[0].text, 'Configured')
 })
 
 test('the schedule handler throws when the setting value is empty', async () => {
   const script = await build()
-  const { config } = loadEmittedBot(script.code, { message: '' })
+  const { config, ctx } = loadEmittedBot(script.code, { settings: { message: '' } })
   await assert.rejects(
-    () => config.triggers[0]({}, { firedAt: '2026-01-15T09:00:00.000Z' }),
+    () => config.triggers[0](ctx, { firedAt: '2026-01-15T09:00:00.000Z' }),
+    /resolved text is empty/
+  )
+})
+
+test('the schedule handler throws when the setting is undefined', async () => {
+  const script = await build()
+  const { config, ctx } = loadEmittedBot(script.code)
+  await assert.rejects(
+    () => config.triggers[0](ctx, { firedAt: '2026-01-15T09:00:00.000Z' }),
     /resolved text is empty/
   )
 })
 
 test('the install handler posts to the configured room', async () => {
   const script = await build()
-  const { config, posts } = loadEmittedBot(script.code, {})
-  await config.handlers.install({}, {})
+  const { config, ctx, posts } = loadEmittedBot(script.code)
+  await config.handlers.install(ctx, {})
   assert.equal(posts.length, 1)
   assert.equal(posts[0].roomId, TEST_ROOM)
   assert.match(posts[0].text, /Daily Reminder is ready/)
