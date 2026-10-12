@@ -93,6 +93,7 @@ function buildOptions (body) {
  * @param {object} server - The server created by `createServer`.
  * @param {object} deps - The endpoint's dependencies.
  * @param {string} deps.rootDir - The recipe library root directory.
+ * @param {string} [deps.llmProxyUrl] - Optional LLM proxy URL to pass to compiler.
  * @returns {void}
  * @throws {Error} When server or deps are malformed.
  */
@@ -109,8 +110,11 @@ export function registerCompileRoute (server, deps) {
   if (typeof deps.rootDir !== 'string' || deps.rootDir.length === 0) {
     throw new Error('registerCompileRoute: deps.rootDir must be a non-empty string')
   }
+  if (deps.llmProxyUrl !== undefined && (typeof deps.llmProxyUrl !== 'string' || deps.llmProxyUrl.length === 0)) {
+    throw new Error('registerCompileRoute: deps.llmProxyUrl must be a non-empty string when provided')
+  }
 
-  const { rootDir } = deps
+  const { rootDir, llmProxyUrl } = deps
 
   server.addRoute('POST', '/v1/compile', async (ctx) => {
     const validationError = validateBody(ctx.body)
@@ -121,6 +125,9 @@ export function registerCompileRoute (server, deps) {
 
     const instantiation = buildInstantiation(ctx.body)
     const options = buildOptions(ctx.body)
+    if (llmProxyUrl !== undefined) {
+      options.llmProxyUrl = llmProxyUrl
+    }
 
     let script
     try {

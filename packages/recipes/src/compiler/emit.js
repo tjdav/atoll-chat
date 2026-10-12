@@ -80,14 +80,40 @@ function collectPrimitiveIds (composition) {
 }
 
 /**
+ * Returns the config to emit for a primitive instance, with the LLM
+ * proxy URL injected when applicable.
+ *
+ * Injection applies only to `llm-complete` instances whose config has
+ * no `baseUrl`. A recipe that sets its own `baseUrl` keeps it.
+ * @param {PrimitiveInstance} instance - The primitive instance.
+ * @param {string | undefined} llmProxyUrl - The engine's LLM proxy
+ *   URL, or undefined when the engine has no proxy configured.
+ * @returns {object} The config to emit.
+ */
+function resolveEmittedConfig (instance, llmProxyUrl) {
+  const config = instance.config
+  if (llmProxyUrl === undefined) {
+    return config
+  }
+  if (instance.primitive !== 'llm-complete') {
+    return config
+  }
+  if (Object.hasOwn(config, 'baseUrl')) {
+    return config
+  }
+  return { ...config, baseUrl: llmProxyUrl }
+}
+
+/**
  * Emits the source for a single primitive instance, recursively.
  * @param {PrimitiveInstance} instance - The instance.
  * @param {number} indent - The current indent level.
+ * @param {string | undefined} [llmProxyUrl] - Optional LLM proxy URL.
  * @returns {string} The emitted source.
  */
-function emitInstance (instance, indent) {
+function emitInstance (instance, indent, llmProxyUrl) {
   const name = toIdentifier(instance.primitive)
-  const config = json(instance.config)
+  const config = json(resolveEmittedConfig(instance, llmProxyUrl))
 
   const children = instance.children === undefined ? [] : instance.children
   let childrenBlock = '[]'
@@ -95,7 +121,7 @@ function emitInstance (instance, indent) {
     const pad = '  '.repeat(indent + 1)
     const closing = '  '.repeat(indent)
     const childSources = children.map(
-      (child) => emitInstance(child, indent + 1)
+      (child) => emitInstance(child, indent + 1, llmProxyUrl)
     )
     childrenBlock = `[\n${pad}${childSources.join(`,\n${pad}`)}\n${closing}]`
   }
@@ -110,16 +136,17 @@ function emitInstance (instance, indent) {
  * @param {string} name - The command name.
  * @param {PrimitiveInstance} instance - The command instance.
  * @param {number} indent - The current indent level.
+ * @param {string | undefined} [llmProxyUrl] - Optional LLM proxy URL.
  * @returns {string} The emitted source.
  */
-function emitCommand (name, instance, indent) {
+function emitCommand (name, instance, indent, llmProxyUrl) {
   const pad = '  '.repeat(indent)
   const one = '  '.repeat(indent + 1)
   const config = instance.config
   const description = config.description
   const args = config.args === undefined ? {} : config.args
 
-  const handlerSource = emitInstance(instance, indent + 1)
+  const handlerSource = emitInstance(instance, indent + 1, llmProxyUrl)
   const descArg = description === undefined ? 'undefined' : JSON.stringify(description)
 
   return `${pad}${name.replace(/-/g, '_')}: asCommandDecl(\n` +
@@ -144,6 +171,9 @@ function emitCommand (name, instance, indent) {
  *   to '^1.0'.
  * @param {{ fileId?: string, emoji?: string }} [options.avatar] -
  *   Optional avatar.
+ * @param {string} [options.llmProxyUrl] - The engine's LLM proxy
+ *   URL. When set, injected into `llm-complete` instances whose
+ *   config has no `baseUrl`.
  * @returns {string} The emitted bot.js source.
  * @throws {Error} When the composition or options are malformed, or
  *   when a primitive referenced by the composition is not
@@ -161,6 +191,7 @@ export function emit (composition, options) {
   const apiVersion = options.apiVersion === undefined ? '1.0.0' : options.apiVersion
   const hostApi = options.hostApi === undefined ? '^1.0' : options.hostApi
   const avatar = options.avatar
+  const llmProxyUrl = options.llmProxyUrl
 
   if (typeof botId !== 'string' || botId.length === 0) {
     throw new Error('emit: options.botId must be a non-empty string')
@@ -179,6 +210,9 @@ export function emit (composition, options) {
       throw new Error('emit: options.avatar must be a plain object')
     }
   }
+  if (llmProxyUrl !== undefined && (typeof llmProxyUrl !== 'string' || llmProxyUrl.length === 0)) {
+    throw new Error('emit: options.llmProxyUrl must be a non-empty string when provided')
+  }
 
   const target = composition.target
   const ids = collectPrimitiveIds(composition)
@@ -193,7 +227,7 @@ export function emit (composition, options) {
 
   const handlerKeys = Object.keys(composition.handlers)
   const handlerEntries = handlerKeys.map((key) => {
-    const source = emitInstance(composition.handlers[key], 1)
+    const source = emitInstance(composition.handlers[key], 1, llmProxyUrl)
     return `  ${key}: ${source}`
   })
   const handlersBlock = handlerEntries.length === 0
@@ -204,7 +238,7 @@ export function emit (composition, options) {
     ? null
     : (() => {
         const entries = Object.keys(composition.commands).map((name) =>
-          emitCommand(name, composition.commands[name], 0)
+          emitCommand(name, composition.commands[name], 0, llmProxyUrl)
         )
         return `const commands = {\n  ${entries.join(',\n  ')}\n}`
       })()
@@ -212,7 +246,7 @@ export function emit (composition, options) {
   const triggersBlock = composition.triggers === undefined
     ? null
     : (() => {
-        const sources = composition.triggers.map((t) => emitInstance(t, 0))
+        const sources = composition.triggers.map((t) => emitInstance(t, 0, llmProxyUrl))
         const padded = sources.map((s) => `  ${s}`).join(',\n')
         return `const triggers = [\n${padded}\n]`
       })()

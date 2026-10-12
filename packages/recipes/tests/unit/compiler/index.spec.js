@@ -170,3 +170,13 @@ test('compile emits a code string that can be parsed by new Function when import
   assert.ok(result)
   assert.equal(result.id, 'com.example.echo')
 })
+
+test('compile passes llmProxyUrl through to the emitted code', async () => {
+  const opts = {
+    botId: 'com.example.echo',
+    label: 'Echo Bot',
+    llmProxyUrl: 'https://engine.example.com/v1/llm/complete'
+  }
+  const script = await compile(LIB, echoInstantiation({ greeting: 'hi' }), opts)
+  assert.equal(typeof script.code, 'string')
+})

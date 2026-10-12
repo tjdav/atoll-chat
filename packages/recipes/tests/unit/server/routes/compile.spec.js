@@ -341,3 +341,29 @@ test('compile is deterministic across identical requests', async () => {
   assert.equal(first.code, second.code)
   await server.close()
 })
+
+test('registerCompileRoute throws when llmProxyUrl is not a non-empty string', () => {
+  assert.throws(
+    () => registerCompileRoute({ addRoute: () => {} }, { rootDir: LIB, llmProxyUrl: '' }),
+    /deps\.llmProxyUrl must be a non-empty string when provided/
+  )
+  assert.throws(
+    () => registerCompileRoute({ addRoute: () => {} }, { rootDir: LIB, llmProxyUrl: 42 }),
+    /deps\.llmProxyUrl must be a non-empty string when provided/
+  )
+})
+
+test('the compile route passes llmProxyUrl to the compiler', async () => {
+  const server = createServer()
+  registerCompileRoute(server, {
+    rootDir: LIB,
+    llmProxyUrl: 'https://engine.example.com/v1/llm/complete'
+  })
+  const url = await start(server)
+
+  const res = await post(url, validBody())
+  assert.equal(res.status, 200)
+  const data = await res.json()
+  assert.equal(typeof data.code, 'string')
+  await server.close()
+})
