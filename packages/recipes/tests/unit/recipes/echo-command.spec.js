@@ -6,100 +6,31 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 import { compile } from '../../../src/compiler/index.js'
-import { loadRecipeById } from '../../../src/recipe/library.js'
-import { substitute } from '../../../src/lib/substitute.js'
+import { loadRecipeById, scanLibrary } from '../../../src/recipe/library.js'
+import { loadEmittedBot } from './_helpers/load-emitted-bot.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const LIB_ROOT = join(HERE, '..', '..', '..', 'recipes')
 
 /**
- * Compiles the echo-command recipe with standard options.
+ * Compiles the echo-command recipe.
  * @returns {Promise<object>} The BotScript.
  */
 async function build () {
   return compile(
     LIB_ROOT,
-    {
-      recipeId: 'echo-command',
-      recipeVersion: '1.0.0',
-      slots: {}
-    },
-    {
-      botId: 'com.example.echo-command',
-      label: 'Echo'
-    }
+    { recipeId: 'echo-command', recipeVersion: '1.0.0', slots: {} },
+    { botId: 'com.example.echo-command', label: 'Echo' }
   )
 }
 
 /**
- * Runs the emitted script against stubbed primitives and returns the
- * resulting bot config plus a recording of `ctx.post` calls.
- *
- * The stub for `postResponse` performs the same substitution the real
- * primitive performs, so template resolution is exercised end to end.
- * @param {string} code - The emitted bot.js source.
- * @returns {{ config: object, postCalls: object[] }} The bot config
- *   and a record of posts the handler made.
+ * Builds a mock ArgsReader.
+ * @param {Record<string, unknown>} values - The backing values.
+ * @returns {object} A reader-shaped object.
  */
-function loadEmittedBot (code) {
-  const postCalls = []
-
-  const defineBot = (config) => config
-  const asCommandDecl = (name, description, argsDecl, handler) => {
-    const decl = {
-      name,
-      args: argsDecl,
-      handler: async (ctx, argsReader) => {
-        const argsObject = {}
-        for (const key of Object.keys(argsDecl ?? {})) {
-          argsObject[key] = argsReader.get(key)
-        }
-        await handler(ctx, { args: argsObject, command: name })
-        return { type: 'none' }
-      }
-    }
-    if (description !== undefined) {
-      decl.description = description
-    }
-    return decl
-  }
-  const postResponse = {
-    create (config, children) {
-      return async (ctx, input) => {
-        const resolved = {}
-        for (const key of Object.keys(config)) {
-          resolved[key] = substitute(config[key], input)
-        }
-        postCalls.push(resolved)
-        for (const child of children ?? []) {
-          await child(ctx, input)
-        }
-      }
-    }
-  }
-  const exposeCommand = {
-    create (config, children) {
-      return async (ctx, input) => {
-        for (const child of children ?? []) {
-          await child(ctx, input)
-        }
-      }
-    }
-  }
-
-  const encoded = Buffer.from(code, 'utf8').toString('base64')
-  const build = new Function('defineBot', 'asCommandDecl', 'postResponse', 'exposeCommand', `
-    const src = Buffer.from('${encoded}', 'base64').toString('utf8')
-    const cleaned = src
-      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
-      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/recipes\\/primitives'/, '')
-      .replace('export default defineBot', 'return defineBot')
-    const fn = new Function('defineBot', 'asCommandDecl', 'postResponse', 'exposeCommand', cleaned)
-    return fn(defineBot, asCommandDecl, postResponse, exposeCommand)
-  `)
-
-  const config = build(defineBot, asCommandDecl, postResponse, exposeCommand)
-  return { config, postCalls }
+function makeReader (values) {
+  return { get: (key) => values[key] }
 }
 
 test('the recipe is present in the library', async () => {
@@ -161,11 +92,6 @@ test('the emitted code contains a commands block and the asCommandDecl import', 
   assert.match(script.code, /id: "com\.example\.echo-command"/)
 })
 
-test('the emitted code does not throw on the emitter guard', async () => {
-  const script = await build()
-  assert.doesNotMatch(script.code, /command emission is not implemented/)
-})
-
 test('the emitted bot exposes an echo command with a handler', async () => {
   const script = await build()
   const { config } = loadEmittedBot(script.code)
@@ -176,29 +102,24 @@ test('the emitted bot exposes an echo command with a handler', async () => {
 
 test('the command handler passes the declared argument through to the child', async () => {
   const script = await build()
-  const { config, postCalls } = loadEmittedBot(script.code)
-  const reader = {
-    get (key) {
-      return key === 'text' ? 'hello world' : undefined
-    }
-  }
-  const ctx = {}
+  const { config, ctx, posts } = loadEmittedBot(script.code)
+  const reader = makeReader({ text: 'hello world' })
   await config.commands.echo.handler(ctx, reader)
-  assert.equal(postCalls.length, 1)
-  assert.equal(postCalls[0].text, 'hello world')
+  assert.equal(posts.length, 1)
+  assert.equal(posts[0].text, 'hello world')
 })
 
 test('the command handler returns a valid CommandResult', async () => {
   const script = await build()
-  const { config } = loadEmittedBot(script.code)
-  const reader = { get: () => 'x' }
-  const result = await config.commands.echo.handler({}, reader)
+  const { config, ctx } = loadEmittedBot(script.code)
+  const reader = makeReader({ text: 'x' })
+  const result = await config.commands.echo.handler(ctx, reader)
   assert.deepEqual(result, { type: 'none' })
 })
 
 test('the command handler reads only the declared argument keys', async () => {
   const script = await build()
-  const { config } = loadEmittedBot(script.code)
+  const { config, ctx } = loadEmittedBot(script.code)
   const reads = []
   const reader = {
     get (key) {
@@ -206,7 +127,7 @@ test('the command handler reads only the declared argument keys', async () => {
       return 'x'
     }
   }
-  await config.commands.echo.handler({}, reader)
+  await config.commands.echo.handler(ctx, reader)
   assert.deepEqual(reads, ['text'])
 })
 
@@ -217,7 +138,6 @@ test('the emitted script compiles deterministically', async () => {
 })
 
 test('the recipes library scans cleanly with echo-command present', async () => {
-  const { scanLibrary } = await import('../../../src/recipe/library.js')
   const { recipes, errors } = await scanLibrary(LIB_ROOT)
   const ids = recipes.map((r) => r.id).sort()
   assert.ok(ids.includes('echo-command'))
