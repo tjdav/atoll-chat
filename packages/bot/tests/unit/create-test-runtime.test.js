@@ -969,4 +969,38 @@ test('createTestRuntime Unit Tests', async (t) => {
       await runtime.close()
     }
   })
+
+  await t.test('47. registers the KT signer endpoint on the mock server', async () => {
+    /** @type {Record<string, any> | null} */
+    let ktRes = null
+    const bot = makeBot({
+      handlers: {
+        message: async (ctx) => {
+          const res = await ctx.fetch('http://mock/api/v1/kt/user/u_signer')
+          ktRes = {
+            status: res.status,
+            body: await res.json()
+          }
+        }
+      }
+    })
+    const runtime = await createTestRuntime(bot, {
+      grants: [
+        { roomId: 'r_alpha', mode: 'write_only', scopes: ['post_message'] }
+      ]
+    })
+    try {
+      await runtime.inject({
+        type: 'message',
+        payload: { roomId: 'r_alpha' }
+      })
+      assert.ok(ktRes)
+      assert.equal(ktRes.status, 200)
+      assert.equal(ktRes.body.user_id, 'u_signer')
+      assert.equal(typeof ktRes.body.identity_pubkey, 'string')
+      assert.equal(ktRes.body.leaf_index, 0)
+    } finally {
+      await runtime.close()
+    }
+  })
 })
