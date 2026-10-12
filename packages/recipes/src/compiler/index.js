@@ -25,6 +25,9 @@ import { emit } from './emit.js'
  * @param {string} [options.hostApi] - The host API range.
  * @param {{ fileId?: string, emoji?: string }} [options.avatar] -
  *   Optional avatar.
+ * @param {string} [options.llmProxyUrl] - The engine's LLM proxy
+ *   URL. When set, injected into `llm-complete` instances whose
+ *   config has no `baseUrl`.
  * @returns {Promise<BotScript>} The compiled script and its source
  *   composition.
  * @throws {Error} When composition or emission fails.

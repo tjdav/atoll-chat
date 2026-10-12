@@ -438,3 +438,100 @@ test('emit produces valid JavaScript when settings, commands, handlers, and trig
   assert.ok(result.handlers)
   assert.ok(result.triggers)
 })
+
+test('emit injects baseUrl for llm-complete when llmProxyUrl is set', () => {
+  const composition = simpleComposition()
+  composition.handlers.ask = {
+    id: 'ask-hook',
+    primitive: 'llm-complete',
+    config: {
+      model: 'test-model',
+      userPrompt: 'Hello.'
+    }
+  }
+  const code = emit(composition, {
+    ...standardOptions(),
+    llmProxyUrl: 'https://engine.example.com/v1/llm/complete'
+  })
+  assert.match(code, /llmComplete\.create\(/)
+  assert.match(code, /"baseUrl": "https:\/\/engine\.example\.com\/v1\/llm\/complete"/)
+})
+
+test('emit does not inject baseUrl when the recipe already sets it', () => {
+  const composition = simpleComposition()
+  composition.handlers.ask = {
+    id: 'ask-hook',
+    primitive: 'llm-complete',
+    config: {
+      baseUrl: 'https://custom.example.com/llm',
+      model: 'test-model',
+      userPrompt: 'Hello.'
+    }
+  }
+  const code = emit(composition, {
+    ...standardOptions(),
+    llmProxyUrl: 'https://engine.example.com/v1/llm/complete'
+  })
+  assert.match(code, /"baseUrl": "https:\/\/custom\.example\.com\/llm"/)
+  assert.doesNotMatch(code, /engine\.example\.com/)
+})
+
+test('emit does not inject baseUrl when llmProxyUrl is not set', () => {
+  const composition = simpleComposition()
+  composition.handlers.ask = {
+    id: 'ask-hook',
+    primitive: 'llm-complete',
+    config: {
+      baseUrl: 'https://provided.example.com/llm',
+      model: 'test-model',
+      userPrompt: 'Hello.'
+    }
+  }
+  const code = emit(composition, standardOptions())
+  assert.match(code, /"baseUrl": "https:\/\/provided\.example\.com\/llm"/)
+})
+
+test('emit injects baseUrl into llm-complete instances nested as children', () => {
+  const composition = simpleComposition()
+  composition.commands = {
+    ask: {
+      id: 'ask-cmd',
+      primitive: 'expose-command',
+      config: { name: 'ask' },
+      children: [
+        {
+          id: 'ask-inner',
+          primitive: 'llm-complete',
+          config: {
+            model: 'test-model',
+            userPrompt: '{{args.q}}'
+          }
+        }
+      ]
+    }
+  }
+  const code = emit(composition, {
+    ...standardOptions(),
+    llmProxyUrl: 'https://engine.example.com/v1/llm/complete'
+  })
+  assert.match(code, /"baseUrl": "https:\/\/engine\.example\.com\/v1\/llm\/complete"/)
+})
+
+test('emit throws when llmProxyUrl is not a non-empty string', () => {
+  assert.throws(
+    () => emit(simpleComposition(), { ...standardOptions(), llmProxyUrl: '' }),
+    /options\.llmProxyUrl must be a non-empty string when provided/
+  )
+  assert.throws(
+    () => emit(simpleComposition(), { ...standardOptions(), llmProxyUrl: 42 }),
+    /options\.llmProxyUrl must be a non-empty string when provided/
+  )
+})
+
+test('emit leaves other primitives untouched when llmProxyUrl is set', () => {
+  const code = emit(simpleComposition(), {
+    ...standardOptions(),
+    llmProxyUrl: 'https://engine.example.com/v1/llm/complete'
+  })
+  assert.doesNotMatch(code, /"baseUrl": "https:\/\/engine\.example\.com/)
+})
