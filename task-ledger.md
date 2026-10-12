@@ -343,14 +343,18 @@ None.
 
 ## Developer Tooling
 
-- **OpenAPI File Generation (utoipa, file-only)**: in-progress
+- **OpenAPI File Generation (utoipa, file-only)**: done
   - **Delivered:** `verification/openapi-file-generation/report.md`
   - **Summary:** Added `utoipa` dependency, OpenAPI doc generator struct `ApiDoc`, CLI subcommand `server openapi generate`, static artifact `docs/openapi.json`, and integration test suite `openapi_generation.rs`.
 
+- **OpenAPI Annotations — User Endpoints**: done
+  - **Delivered:** `verification/openapi-annotate-user-endpoints/report.md`, `server/src/openapi.rs`, `server/src/error.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Annotated complete user endpoint domain (22 handlers, 20 route path keys, 27 operations total). Introduced `bearer_auth` Http Bearer security scheme, `ErrorResponse` schema, `UserAvatarUploadForm` multipart schema, `application/zip` binary export response, and base64url ciphertext annotations across user preferences, device names, and bot settings. Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
+
 ## Summary
-- **Project Status:** In-Progress (Developer Tooling track started)
-- **Total Verifications/Tasks Tracked:** 64
-- **Done:** 63
+- **Project Status:** In-Progress (Developer Tooling track active)
+- **Total Verifications/Tasks Tracked:** 65
+- **Done:** 65
 - **Pending:** 0
-- **In-Progress:** 1
+- **In-Progress:** 0
 - **Mismatches:** 0

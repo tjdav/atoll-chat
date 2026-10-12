@@ -1,6 +1,6 @@
 use crate::audit;
 use crate::auth::AuthUser;
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::gdpr;
 use crate::identity::{validate_encrypted_display, validate_token};
 use crate::limits;
@@ -16,18 +16,57 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Row;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UserLookupRequest {
     pub lookup_token: Option<String>,
     pub username_token: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserLookupResponse {
     pub user_id: String,
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = Option<String>, format = Binary)]
     pub encrypted_display: Option<String>,
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct PatchUserProfileRequest {
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = Option<String>, format = Binary)]
+    pub encrypted_display: Option<String>,
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = Option<String>, format = Binary)]
+    pub profile: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct DeleteAccountRequest {
+    #[schema(example = "DELETE")]
+    pub confirm: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/lookup",
+    tag = "User",
+    summary = "Lookup user by token",
+    description = "Queries a user by their one-way derived lookup token (Server Spec v3.0.4 §8.2, §8.2.3).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = UserLookupRequest,
+        description = "Lookup token query"
+    ),
+    responses(
+        (status = 200, description = "User found", body = UserLookupResponse),
+        (status = 400, description = "Bad request / missing or invalid token", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "User not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn lookup_user(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -187,6 +226,25 @@ pub async fn get_me(
     }))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/users/me",
+    tag = "User",
+    summary = "Update current user profile",
+    description = "Updates the authenticated user's encrypted display name and/or profile payload (Server Spec v3.0.4 §8.2, §8.2.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = PatchUserProfileRequest,
+        description = "Encrypted profile updates"
+    ),
+    responses(
+        (status = 200, description = "User profile updated successfully", body = UserProfileResponse),
+        (status = 400, description = "Bad request / invalid payload or immutable field", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    )
+)]
 pub async fn patch_me(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -291,6 +349,27 @@ pub async fn patch_me(
     get_me(State(state), auth).await
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/me",
+    tag = "User",
+    summary = "Delete user account",
+    description = "Anonymizes and soft-deletes the current user's account and associated data (Server Spec v3.0.4 §8.2). Requires fresh session and confirmation.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = DeleteAccountRequest,
+        description = "Account deletion confirmation ('DELETE')"
+    ),
+    responses(
+        (status = 204, description = "Account deleted successfully"),
+        (status = 400, description = "Confirmation required or invalid confirmation", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Fresh session required", body = ErrorResponse),
+        (status = 409, description = "Last owner cannot delete account", body = ErrorResponse)
+    )
+)]
 pub async fn delete_me(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -363,6 +442,21 @@ pub async fn delete_me(
     Ok(axum::http::StatusCode::NO_CONTENT.into_response())
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me/export",
+    tag = "User",
+    summary = "Export user data",
+    description = "Generates and streams a ZIP archive containing the user's exported data (Server Spec v3.0.4 §8.2, §14.3).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Data export generated successfully", content_type = "application/zip", body = inline(String)),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn export_me(
     State(state): State<AppState>,
     auth: AuthUser,

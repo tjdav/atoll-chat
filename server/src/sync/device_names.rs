@@ -6,12 +6,18 @@ use crate::identity;
 use crate::sockudo::Publisher;
 use crate::sync::{self, publish_user_event, UserEventEnvelope};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct DeviceStateRow {
     pub device_id: String,
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = String, format = Binary)]
     pub encrypted_device_name: String,
     pub user_seq: i64,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub updated_at: DateTime<Utc>,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub deleted_at: Option<DateTime<Utc>>,
 }
 

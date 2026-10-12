@@ -5,7 +5,9 @@ use std::collections::HashSet;
 use crate::sockudo::Publisher;
 use crate::sync::{self, publish_user_event, UserEventEnvelope};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct RoomOrderSyncState {
     pub room_ids: Vec<String>,
     pub user_seq: i64,

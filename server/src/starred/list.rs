@@ -15,7 +15,9 @@ pub enum ListStarError {
     InvalidCursor,
 }
 
-#[derive(Debug, Deserialize)]
+use utoipa::{IntoParams, ToSchema};
+
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct ListStarQuery {
     pub r#type: Option<String>,
     pub room_id: Option<String>,
@@ -24,16 +26,17 @@ pub struct ListStarQuery {
     pub include_deleted: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct StarredItemCursor {
     pub user_id: String,
     pub last_item_id: String,
     pub last_item_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub last_starred_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ListStarredItemsResponse {
     pub items: Vec<StarredItemView>,
     pub next_cursor: Option<String>,

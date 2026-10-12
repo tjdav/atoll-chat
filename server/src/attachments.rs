@@ -6,8 +6,9 @@ use sqlx::SqlitePool;
 use crate::config::Config;
 use crate::limits::{InstanceLimits, ServerHardMax};
 use crate::storage::{Storage, StorageError};
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AttachmentView {
     pub id: String,
     pub room_id: Option<String>,
@@ -22,6 +23,7 @@ pub struct AttachmentView {
     pub nonce_prefix: String,
     pub base_counter: i64,
     pub content_type: String,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 

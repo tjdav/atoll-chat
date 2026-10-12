@@ -386,6 +386,45 @@ async fn get_effective_file_size_limit(
     Ok(effective as u64)
 }
 
+use crate::error::ErrorResponse;
+
+#[derive(utoipa::ToSchema)]
+pub struct UserAvatarUploadForm {
+    #[schema(format = Binary, value_type = String)]
+    pub file: Vec<u8>,
+    pub claimed_id: String,
+    pub plaintext_size: i64,
+    pub encrypted_size: i64,
+    pub chunk_size: i64,
+    pub chunk_count: i64,
+    pub nonce_prefix: String,
+    pub base_counter: i64,
+    pub content_type: Option<String>,
+    pub uploader_client_id: Option<String>,
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/me/avatar",
+    tag = "User",
+    summary = "Upload user avatar",
+    description = "Uploads a user avatar image as a multipart/form-data payload (Server Spec v3.0.4 §8.2, §8.2.7).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = UserAvatarUploadForm,
+        content_type = "multipart/form-data",
+        description = "Multipart avatar file and manifest metadata"
+    ),
+    responses(
+        (status = 201, description = "Avatar uploaded successfully", body = AttachmentView),
+        (status = 400, description = "Bad request / missing file or invalid manifest", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 413, description = "File too large", body = ErrorResponse),
+        (status = 415, description = "Unsupported media type", body = ErrorResponse)
+    )
+)]
 pub async fn upload_avatar(
     State(pool): State<SqlitePool>,
     State(storage): State<Arc<dyn Storage>>,

@@ -3,10 +3,19 @@ use axum::{
     http::{header, HeaderMap, HeaderValue, StatusCode},
     Json,
 };
+use serde::Deserialize;
+use utoipa::ToSchema;
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct WritePreferenceRequest {
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = String, format = Binary)]
+    pub value: String,
+}
 
 use crate::{
     auth::AuthUser,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     rate_limit::{self, RateLimitKey},
     sync::preferences::{
         self, validate_key_syntax, DeleteOutcome, PreferenceRow, PreferencesError, WriteRequest,
@@ -14,6 +23,26 @@ use crate::{
     AppState,
 };
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me/preferences/{key}",
+    tag = "User",
+    summary = "Get encrypted preference",
+    description = "Retrieves an encrypted preference value by key (Server Spec v3.0.4 §8.2, §8.2.8).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("key" = String, Path, description = "Preference key")
+    ),
+    responses(
+        (status = 200, description = "Preference retrieved successfully", body = PreferenceRow),
+        (status = 400, description = "Invalid key syntax", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Preference not found or reserved key", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn get(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -55,6 +84,30 @@ pub async fn get(
     Ok((headers, Json(row)))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/users/me/preferences/{key}",
+    tag = "User",
+    summary = "Set encrypted preference",
+    description = "Sets or updates an encrypted preference value (Server Spec v3.0.4 §8.2, §8.2.8).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("key" = String, Path, description = "Preference key")
+    ),
+    request_body(
+        content = WritePreferenceRequest,
+        description = "Encrypted preference value"
+    ),
+    responses(
+        (status = 200, description = "Preference saved successfully", body = PreferenceRow),
+        (status = 400, description = "Invalid key, invalid value, or reserved key", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 413, description = "Value exceeds byte cap limit", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn write(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -129,6 +182,26 @@ pub async fn write(
     Ok((headers, Json(row)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/me/preferences/{key}",
+    tag = "User",
+    summary = "Delete encrypted preference",
+    description = "Deletes an encrypted preference by key (Server Spec v3.0.4 §8.2, §8.2.8).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("key" = String, Path, description = "Preference key to delete")
+    ),
+    responses(
+        (status = 204, description = "Preference deleted successfully"),
+        (status = 400, description = "Invalid key syntax or reserved key", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Preference not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn delete(
     State(state): State<AppState>,
     auth: AuthUser,

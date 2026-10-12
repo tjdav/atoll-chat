@@ -9,6 +9,53 @@
     "version": "3.0.4"
   },
   "paths": {
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Logout session",
+        "description": "Revokes current session (or all sessions if all_sessions is true) (Server Spec v3.0.4 §8.2).",
+        "operationId": "logout",
+        "requestBody": {
+          "description": "Logout options",
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LogoutRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Logged out successfully"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/capabilities": {
       "get": {
         "tags": [
@@ -85,6 +132,84 @@
         }
       }
     },
+    "/api/v1/users/lookup": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Lookup user by token",
+        "description": "Queries a user by their one-way derived lookup token (Server Spec v3.0.4 §8.2, §8.2.3).",
+        "operationId": "lookup_user",
+        "requestBody": {
+          "description": "Lookup token query",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLookupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "User found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserLookupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / missing or invalid token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "tags": [
@@ -106,6 +231,1439 @@
           },
           "401": {
             "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Delete user account",
+        "description": "Anonymizes and soft-deletes the current user's account and associated data (Server Spec v3.0.4 §8.2). Requires fresh session and confirmation.",
+        "operationId": "delete_me",
+        "requestBody": {
+          "description": "Account deletion confirmation ('DELETE')",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Account deleted successfully"
+          },
+          "400": {
+            "description": "Confirmation required or invalid confirmation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Fresh session required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Last owner cannot delete account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update current user profile",
+        "description": "Updates the authenticated user's encrypted display name and/or profile payload (Server Spec v3.0.4 §8.2, §8.2.2).",
+        "operationId": "patch_me",
+        "requestBody": {
+          "description": "Encrypted profile updates",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchUserProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "User profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / invalid payload or immutable field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/avatar": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Upload user avatar",
+        "description": "Uploads a user avatar image as a multipart/form-data payload (Server Spec v3.0.4 §8.2, §8.2.7).",
+        "operationId": "upload_avatar",
+        "requestBody": {
+          "description": "Multipart avatar file and manifest metadata",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UserAvatarUploadForm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Avatar uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / missing file or invalid manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported media type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/devices": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List registered devices",
+        "description": "Lists all registered devices for the current user (Server Spec v3.0.4 §8.2).",
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "Devices listed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListDevicesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/devices/{id}": {
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Revoke device",
+        "description": "Revokes a registered device for the current user (Server Spec v3.0.4 §8.2).",
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Target device ID to revoke",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Device revoked successfully"
+          },
+          "400": {
+            "description": "Cannot revoke current device",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update device encrypted name",
+        "description": "Updates the encrypted name for a target device owned by the user (Server Spec v3.0.4 §8.2, §8.2.8).",
+        "operationId": "update_name",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Target device ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Encrypted device name update",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDeviceNameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Device name updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceStateRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / missing or invalid encrypted name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/export": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Export user data",
+        "description": "Generates and streams a ZIP archive containing the user's exported data (Server Spec v3.0.4 §8.2, §14.3).",
+        "operationId": "export_me",
+        "responses": {
+          "200": {
+            "description": "Data export generated successfully",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/preferences/{key}": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get encrypted preference",
+        "description": "Retrieves an encrypted preference value by key (Server Spec v3.0.4 §8.2, §8.2.8).",
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Preference key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Preference retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key syntax",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Preference not found or reserved key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Delete encrypted preference",
+        "description": "Deletes an encrypted preference by key (Server Spec v3.0.4 §8.2, §8.2.8).",
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Preference key to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Preference deleted successfully"
+          },
+          "400": {
+            "description": "Invalid key syntax or reserved key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Preference not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Set encrypted preference",
+        "description": "Sets or updates an encrypted preference value (Server Spec v3.0.4 §8.2, §8.2.8).",
+        "operationId": "write",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Preference key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Encrypted preference value",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritePreferenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Preference saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key, invalid value, or reserved key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Value exceeds byte cap limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/push-subscriptions": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List push subscriptions",
+        "description": "Lists all active push subscriptions for the current user (Server Spec v3.0.4 §8.2).",
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "Push subscriptions listed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Push notifications disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Register push subscription",
+        "description": "Registers or updates a push notification subscription for the user (Server Spec v3.0.4 §8.2).",
+        "operationId": "register",
+        "requestBody": {
+          "description": "Push subscription parameters",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterSubscriptionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Push subscription registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushSubscriptionView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid platform or missing field",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Push notifications disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/push-subscriptions/{id}": {
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Revoke push subscription",
+        "description": "Revokes a specific push subscription for the current user (Server Spec v3.0.4 §8.2).",
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Push subscription ID to revoke",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Push subscription revoked successfully"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Push notifications disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/read-state": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update room read state",
+        "description": "Updates the user's read state cursor for a specified room (Server Spec v3.0.4 §8.2, §8.2.5).",
+        "operationId": "write",
+        "requestBody": {
+          "description": "Read state cursor update",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteReadStateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Read state updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadStateRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request / missing field or invalid message ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or message not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/room-order": {
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update room display order",
+        "description": "Updates the ordered list of room IDs for sidebar display (Server Spec v3.0.4 §8.2, §8.2.6).",
+        "operationId": "patch_room_order",
+        "requestBody": {
+          "description": "Ordered list of room IDs",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchRoomOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Room order updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomOrderSyncState"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid room_ids or limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a member of one or more specified rooms",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/sessions": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List active user sessions",
+        "description": "Lists all active session tokens for the current user (Server Spec v3.0.4 §8.2).",
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "Sessions listed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/sessions/{id}": {
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Revoke session",
+        "description": "Revokes a specific session token for the current user (Server Spec v3.0.4 §8.2).",
+        "operationId": "revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Session ID to revoke",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Session revoked successfully"
+          },
+          "400": {
+            "description": "Cannot revoke current session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/starred-items": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List starred items",
+        "description": "Lists starred items with optional type, room, limit, and cursor filtering (Server Spec v3.0.4 §8.2, §8.2.9).",
+        "operationId": "get_starred_items",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "room_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "include_deleted",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Starred items listed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListStarredItemsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid item type or invalid cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Star an item",
+        "description": "Stars a message, attachment, or link item (Server Spec v3.0.4 §8.2, §8.2.9).",
+        "operationId": "post_star",
+        "requestBody": {
+          "description": "Star request parameters",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Item already starred",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StarredItemView"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Item starred successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StarredItemView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid item type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or starred item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Starred items limit reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/starred-items/{item_id}": {
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Unstar an item",
+        "description": "Removes a star from an item (Server Spec v3.0.4 §8.2, §8.2.9).",
+        "operationId": "delete_star",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "description": "Target item ID to unstar",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "item_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Item unstarred successfully"
+          },
+          "400": {
+            "description": "Invalid item type",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Starred item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/users/me/sync": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Synchronize user state",
+        "description": "Fetches user-scoped state updates since a given sequence cursor (Server Spec v3.0.4 §8.2, §8.2.4).",
+        "operationId": "get_sync",
+        "parameters": [
+          {
+            "name": "since_seq",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            },
+            "example": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "State synchronized successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid since_seq parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -136,6 +1694,112 @@
           },
           "enabled": {
             "type": "boolean"
+          }
+        }
+      },
+      "AttachmentView": {
+        "type": "object",
+        "required": [
+          "id",
+          "uploader_id",
+          "storage_backend",
+          "padded_size",
+          "plaintext_size",
+          "encrypted_size",
+          "chunk_size",
+          "chunk_count",
+          "nonce_prefix",
+          "base_counter",
+          "content_type",
+          "created_at"
+        ],
+        "properties": {
+          "base_counter": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "chunk_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "chunk_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "encrypted_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "id": {
+            "type": "string"
+          },
+          "nonce_prefix": {
+            "type": "string"
+          },
+          "padded_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "plaintext_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "room_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "storage_backend": {
+            "type": "string"
+          },
+          "uploader_client_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uploader_id": {
+            "type": "string"
+          }
+        }
+      },
+      "BotSettingSyncRow": {
+        "type": "object",
+        "required": [
+          "bot_id",
+          "key",
+          "is_secret",
+          "user_seq"
+        ],
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "is_secret": {
+            "type": "boolean"
+          },
+          "key": {
+            "type": "string"
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "value_encrypted_client": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
           }
         }
       },
@@ -354,6 +2018,109 @@
           }
         }
       },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "required": [
+          "confirm"
+        ],
+        "properties": {
+          "confirm": {
+            "type": "string",
+            "example": "DELETE"
+          }
+        }
+      },
+      "DeviceResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "client_id",
+          "created_at",
+          "is_current"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "encrypted_device_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_current": {
+            "type": "boolean"
+          },
+          "last_seen": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          }
+        }
+      },
+      "DeviceStateRow": {
+        "type": "object",
+        "required": [
+          "device_id",
+          "encrypted_device_name",
+          "user_seq",
+          "updated_at"
+        ],
+        "properties": {
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "device_id": {
+            "type": "string"
+          },
+          "encrypted_device_name": {
+            "type": "string",
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
+          },
+          "updated_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "details": {},
+          "error": {
+            "type": "string"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "required": [
@@ -362,6 +2129,196 @@
         "properties": {
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "ListDevicesResponse": {
+        "type": "object",
+        "required": [
+          "devices"
+        ],
+        "properties": {
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceResponse"
+            }
+          }
+        }
+      },
+      "ListStarredItemsResponse": {
+        "type": "object",
+        "required": [
+          "items",
+          "has_more"
+        ],
+        "properties": {
+          "has_more": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StarredItemView"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LogoutRequest": {
+        "type": "object",
+        "properties": {
+          "all_sessions": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PatchRoomOrderRequest": {
+        "type": "object",
+        "required": [
+          "room_ids"
+        ],
+        "properties": {
+          "room_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PatchUserProfileRequest": {
+        "type": "object",
+        "properties": {
+          "encrypted_display": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
+          }
+        }
+      },
+      "PreferenceRow": {
+        "type": "object",
+        "required": [
+          "key",
+          "value",
+          "user_seq"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "value": {
+            "type": "string",
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
+          }
+        }
+      },
+      "PushSubscriptionListResponse": {
+        "type": "object",
+        "required": [
+          "subscriptions"
+        ],
+        "properties": {
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PushSubscriptionView"
+            }
+          }
+        }
+      },
+      "PushSubscriptionView": {
+        "type": "object",
+        "required": [
+          "id",
+          "platform",
+          "created_at"
+        ],
+        "properties": {
+          "browser_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "device_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_used_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "platform": {
+            "type": "string"
+          }
+        }
+      },
+      "ReadStateRow": {
+        "type": "object",
+        "required": [
+          "room_id",
+          "user_seq",
+          "updated_at"
+        ],
+        "properties": {
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "last_read_message_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -386,6 +2343,131 @@
           }
         }
       },
+      "RegisterSubscriptionBody": {
+        "type": "object",
+        "required": [
+          "platform"
+        ],
+        "properties": {
+          "auth": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "browser_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "device_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "endpoint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "p256dh": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "platform": {
+            "type": "string",
+            "example": "web"
+          },
+          "push_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "user_agent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RoomOrderSyncState": {
+        "type": "object",
+        "required": [
+          "room_ids",
+          "user_seq"
+        ],
+        "properties": {
+          "room_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SessionListResponse": {
+        "type": "object",
+        "required": [
+          "sessions"
+        ],
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionResponseItem"
+            }
+          }
+        }
+      },
+      "SessionResponseItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "created_at",
+          "expires_at",
+          "is_current"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "device_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_current": {
+            "type": "boolean"
+          },
+          "last_seen_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          }
+        }
+      },
       "SessionTypeCapView": {
         "type": "object",
         "required": [
@@ -404,6 +2486,188 @@
           },
           "type": {
             "type": "string"
+          }
+        }
+      },
+      "StarRequest": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "item_type",
+          "room_id"
+        ],
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          }
+        }
+      },
+      "StarredItemCursor": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "last_item_id",
+          "last_item_type"
+        ],
+        "properties": {
+          "last_item_id": {
+            "type": "string"
+          },
+          "last_item_type": {
+            "type": "string"
+          },
+          "last_starred_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        }
+      },
+      "StarredItemRow": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "item_id",
+          "item_type",
+          "room_id",
+          "user_seq",
+          "starred_at"
+        ],
+        "properties": {
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "starred_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "StarredItemView": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "item_type",
+          "room_id",
+          "starred_at",
+          "user_seq"
+        ],
+        "properties": {
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "item_id": {
+            "type": "string"
+          },
+          "item_type": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "starred_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "user_seq": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "SyncResponse": {
+        "type": "object",
+        "required": [
+          "read_state",
+          "user_preferences",
+          "device_state",
+          "starred_items",
+          "bot_settings",
+          "max_seq",
+          "full_resync_required"
+        ],
+        "properties": {
+          "bot_settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BotSettingSyncRow"
+            }
+          },
+          "device_state": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeviceStateRow"
+            }
+          },
+          "full_resync_required": {
+            "type": "boolean"
+          },
+          "max_seq": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "read_state": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadStateRow"
+            }
+          },
+          "room_order": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RoomOrderSyncState"
+              }
+            ]
+          },
+          "starred_items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StarredItemRow"
+            }
+          },
+          "user_preferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreferenceRow"
+            }
           }
         }
       },
@@ -444,6 +2708,76 @@
           }
         }
       },
+      "UpdateDeviceNameRequest": {
+        "type": "object",
+        "required": [
+          "encrypted_device_name"
+        ],
+        "properties": {
+          "encrypted_device_name": {
+            "type": "string",
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
+          }
+        }
+      },
+      "UserAvatarUploadForm": {
+        "type": "object",
+        "required": [
+          "file",
+          "claimed_id",
+          "plaintext_size",
+          "encrypted_size",
+          "chunk_size",
+          "chunk_count",
+          "nonce_prefix",
+          "base_counter"
+        ],
+        "properties": {
+          "base_counter": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "chunk_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "chunk_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "claimed_id": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "encrypted_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary"
+          },
+          "nonce_prefix": {
+            "type": "string"
+          },
+          "plaintext_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploader_client_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "UserLimitsResponse": {
         "type": "object",
         "required": [
@@ -454,6 +2788,42 @@
             "type": "integer",
             "format": "int64",
             "minimum": 0
+          }
+        }
+      },
+      "UserLookupRequest": {
+        "type": "object",
+        "properties": {
+          "lookup_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UserLookupResponse": {
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "properties": {
+          "encrypted_display": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
+          },
+          "user_id": {
+            "type": "string"
           }
         }
       },
@@ -540,6 +2910,44 @@
             "type": "string"
           }
         }
+      },
+      "WritePreferenceRequest": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "format": "binary",
+            "description": "base64url ciphertext; see §6.29"
+          }
+        }
+      },
+      "WriteReadStateRequest": {
+        "type": "object",
+        "properties": {
+          "last_read_message_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "room_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearer_auth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "session_token",
+        "description": "Session token Bearer authentication"
       }
     }
   },

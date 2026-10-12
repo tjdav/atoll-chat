@@ -1,5 +1,5 @@
 use crate::auth::AuthUser;
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::session;
 use crate::AppState;
 use axum::{
@@ -9,28 +9,46 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct SessionResponseItem {
     pub id: String,
     pub device_id: Option<String>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub expires_at: DateTime<Utc>,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub last_seen_at: Option<DateTime<Utc>>,
     pub is_current: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct SessionListResponse {
     pub sessions: Vec<SessionResponseItem>,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, ToSchema)]
 pub struct LogoutRequest {
     #[serde(default)]
     pub all_sessions: bool,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me/sessions",
+    tag = "User",
+    summary = "List active user sessions",
+    description = "Lists all active session tokens for the current user (Server Spec v3.0.4 §8.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Sessions listed successfully", body = SessionListResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    )
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -52,6 +70,25 @@ pub async fn list(
     Ok(Json(SessionListResponse { sessions: items }))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/me/sessions/{id}",
+    tag = "User",
+    summary = "Revoke session",
+    description = "Revokes a specific session token for the current user (Server Spec v3.0.4 §8.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Session ID to revoke")
+    ),
+    responses(
+        (status = 204, description = "Session revoked successfully"),
+        (status = 400, description = "Cannot revoke current session", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Session not found", body = ErrorResponse)
+    )
+)]
 pub async fn revoke(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -72,6 +109,24 @@ pub async fn revoke(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/logout",
+    tag = "User",
+    summary = "Logout session",
+    description = "Revokes current session (or all sessions if all_sessions is true) (Server Spec v3.0.4 §8.2).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = Option<LogoutRequest>,
+        description = "Logout options"
+    ),
+    responses(
+        (status = 204, description = "Logged out successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    )
+)]
 pub async fn logout(
     State(state): State<AppState>,
     auth: AuthUser,

@@ -18,9 +18,13 @@ fn get_key_regex() -> &'static Regex {
     KEY_REGEX.get_or_init(|| Regex::new(KEY_PATTERN).expect("KEY_PATTERN regex should compile"))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct PreferenceRow {
     pub key: String,
+    /// base64url ciphertext; see §6.29
+    #[schema(value_type = String, format = Binary)]
     pub value: String,
     pub user_seq: i64,
 }

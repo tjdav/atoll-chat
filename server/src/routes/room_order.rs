@@ -7,17 +7,39 @@ use serde::Deserialize;
 
 use crate::{
     auth::AuthUser,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     limits,
     sync::{self, RoomOrderError, RoomOrderSyncState},
     AppState,
 };
 
-#[derive(Debug, Deserialize)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct PatchRoomOrderRequest {
     pub room_ids: Vec<String>,
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/users/me/room-order",
+    tag = "User",
+    summary = "Update room display order",
+    description = "Updates the ordered list of room IDs for sidebar display (Server Spec v3.0.4 §8.2, §8.2.6).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body(
+        content = PatchRoomOrderRequest,
+        description = "Ordered list of room IDs"
+    ),
+    responses(
+        (status = 200, description = "Room order updated successfully", body = RoomOrderSyncState),
+        (status = 400, description = "Invalid room_ids or limit exceeded", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Not a member of one or more specified rooms", body = ErrorResponse)
+    )
+)]
 pub async fn patch_room_order(
     State(state): State<AppState>,
     auth: AuthUser,
