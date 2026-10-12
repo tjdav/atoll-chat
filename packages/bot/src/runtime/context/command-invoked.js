@@ -264,8 +264,9 @@ export function createCommandInvocationHandler ({
           content: `The bot is paused and cannot process /${parsed.command_name} right now.`
         }
       } else if (guardResult.kind === 'failure') {
-        /** @type {any} */
-        const errObj = guardResult.error
+        const errObj =
+          /** @type {Error & { isTimeout?: boolean }} */
+          (guardResult.error)
         const errorMsg = errObj instanceof Error ? errObj.message : String(errObj)
         if (errObj && errObj.isTimeout) {
           result = {
@@ -293,8 +294,9 @@ export function createCommandInvocationHandler ({
           ? await shutdownTracker.track(runHandler)
           : await runHandler()
       } catch (err) {
-        /** @type {any} */
-        const errObj = err
+        const errObj =
+          /** @type {Error & { isTimeout?: boolean }} */
+          (err)
         const errorMsg = err instanceof Error ? err.message : String(err)
         if (errObj.isTimeout) {
           result = {
@@ -418,8 +420,9 @@ export async function dispatchCommandResult (params) {
       break
     }
     default: {
-      /** @type {any} */
-      const untypedResult = result
+      const untypedResult =
+        /** @type {CommandResult} */
+        (result)
       throw new Error(`Unknown result type '${untypedResult.type}'`)
     }
   }
@@ -539,13 +542,16 @@ function buildArgsReader (argDecls, values) {
     }
   }
 
-  return {
+  /** @type {ArgsReader<Record<string, ArgDecl>>} */
+  const reader = {
     get (name) {
-      /** @type {any} */
-      const val = values[name]
+      const val =
+        /** @type {ArgOf<ArgDecl>} */
+        (values[name])
       return val
     }
   }
+  return reader
 }
 
 /**
@@ -565,8 +571,9 @@ function buildArgsReader (argDecls, values) {
  */
 async function safeDispatchResult (params) {
   try {
-    /** @type {any} */
-    const dispatchParams = params
+    const dispatchParams =
+      /** @type {Parameters<typeof dispatchCommandResult>[0]} */
+      (params)
     await dispatchCommandResult(dispatchParams)
     params.logger?.debug('command result dispatched', {
       meta: {
@@ -615,8 +622,9 @@ function withTimeout (promise, ms) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       const err = new Error(`handler timed out after ${ms}ms`)
-      /** @type {any} */
-      const errorObj = err
+      const errorObj =
+        /** @type {Error & { isTimeout?: boolean }} */
+        (err)
       errorObj.isTimeout = true
       reject(err)
     }, ms)

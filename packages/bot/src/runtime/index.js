@@ -436,7 +436,6 @@ export function createRuntime ({
       return
     }
 
-    /** @type {any} */
     let raw = rawData
     if (typeof rawData === 'string') {
       try {
@@ -450,7 +449,9 @@ export function createRuntime ({
     const sub = subscriptions.get(roomId)
     const isSse = sub?.kind === 'sse'
 
-    const eventId = (raw && typeof raw === 'object' && typeof raw.id === 'string') ? raw.id : crypto.randomUUID()
+    /** @type {Record<string, any>} */
+    const rawObj = raw && typeof raw === 'object' ? raw : {}
+    const eventId = typeof rawObj.id === 'string' ? rawObj.id : crypto.randomUUID()
     const timestamp = new Date().toISOString()
 
     let eventObj
@@ -462,7 +463,7 @@ export function createRuntime ({
           roomId,
           timestamp,
           data: {
-            id: raw?.id ?? eventId
+            id: rawObj.id ?? eventId
           }
         }
       } else if (isSse) {
@@ -472,11 +473,11 @@ export function createRuntime ({
           roomId,
           timestamp,
           data: {
-            id: raw?.id ?? eventId,
-            senderUserId: raw?.sender_user_id,
-            senderClientId: raw?.sender_client_id,
-            createdAt: raw?.created_at,
-            sizeBytes: raw?.size_bytes
+            id: rawObj.id ?? eventId,
+            senderUserId: rawObj.sender_user_id,
+            senderClientId: rawObj.sender_client_id,
+            createdAt: rawObj.created_at,
+            sizeBytes: rawObj.size_bytes
           }
         }
       } else {
@@ -487,13 +488,13 @@ export function createRuntime ({
           roomId,
           timestamp,
           data: {
-            id: raw?.id ?? eventId,
-            senderUserId: raw?.sender_id ?? raw?.sender_user_id ?? null,
-            senderClientId: raw?.sender_client_id ?? null,
-            createdAt: raw?.created_at ?? null,
+            id: rawObj.id ?? eventId,
+            senderUserId: rawObj.sender_id ?? rawObj.sender_user_id ?? null,
+            senderClientId: rawObj.sender_client_id ?? null,
+            createdAt: rawObj.created_at ?? null,
             plaintext: null,
             attachments: [],
-            replyTo: raw?.reply_to ?? null
+            replyTo: rawObj.reply_to ?? null
           }
         }
       }
@@ -514,7 +515,7 @@ export function createRuntime ({
       signal: lifecycleController.signal
     })
 
-    /** @type {any} */
+    /** @type {Record<string, Function> | undefined} */
     const handlers = bot.config.handlers
     const handler = isMessageEvent
       ? handlers?.message
@@ -590,22 +591,34 @@ export function createRuntime ({
     /** @type {Capability[] | null} */
     let grantScopes = null
     if (grant && roomId) {
-      /** @type {any} */
-      const untypedGrant = grant
-      grantMode = untypedGrant.mode
-      grantScopes = untypedGrant.scopes
+      const untypedGrant =
+        /** @type {Record<string, unknown>} */
+        (grant)
+      const modeVal =
+        /** @type {Mode} */
+        (untypedGrant.mode)
+      grantMode = modeVal
+      const scopesVal =
+        /** @type {Capability[]} */
+        (untypedGrant.scopes)
+      grantScopes = scopesVal
     }
 
-    /** @type {any} */
-    const typedSettingsStore = settingsStore
-    /** @type {any} */
-    const typedStorageStore = storageStore
-    /** @type {any} */
-    const typedRoomsStore = roomsStore
-    /** @type {any} */
-    const typedFetchMethod = fetchMethod
-    /** @type {any} */
-    const typedFetchUserUrlMethod = fetchUserUrlMethod
+    const typedSettingsStore =
+      /** @type {SettingsStore<any>} */
+      (settingsStore)
+    const typedStorageStore =
+      /** @type {StorageStore} */
+      (storageStore)
+    const typedRoomsStore =
+      /** @type {RoomsStore} */
+      (roomsStore)
+    const typedFetchMethod =
+      /** @type {(url: string, opts?: RequestInit) => Promise<Response>} */
+      (fetchMethod)
+    const typedFetchUserUrlMethod =
+      /** @type {(url: string, opts?: RequestInit) => Promise<Response>} */
+      (fetchUserUrlMethod)
 
     /** @type {BotCtx} */
     const ctx = {
@@ -676,7 +689,6 @@ export function createRuntime ({
       }
     })
 
-    /** @type {any} */
     let data = rawData
     if (typeof rawData === 'string') {
       try {
@@ -690,7 +702,10 @@ export function createRuntime ({
       switch (eventName) {
         case 'bot.command_invoked': {
           if (commandHandler) {
-            await commandHandler(data)
+            const cmdEvent =
+              /** @type {import('./context/command-invoked.js').CommandInvokedEvent} */
+              (data)
+            await commandHandler(cmdEvent)
           }
           break
         }
@@ -707,16 +722,18 @@ export function createRuntime ({
           break
         }
         case 'bot.grant_updated': {
-          if (data && typeof data === 'object' && typeof data.room_id === 'string') {
-            const roomId = data.room_id
+          /** @type {Record<string, any>} */
+          const dataObj = data && typeof data === 'object' ? data : {}
+          if (typeof dataObj.room_id === 'string') {
+            const roomId = dataObj.room_id
             const oldMode = grants.get(roomId)?.mode ?? null
             let newMode = ''
-            if (typeof data.new_mode === 'string') {
-              newMode = data.new_mode
-            } else if (typeof data.mode === 'string') {
-              newMode = data.mode
+            if (typeof dataObj.new_mode === 'string') {
+              newMode = dataObj.new_mode
+            } else if (typeof dataObj.mode === 'string') {
+              newMode = dataObj.mode
             }
-            const scopes = Array.isArray(data.scopes) ? data.scopes : []
+            const scopes = Array.isArray(dataObj.scopes) ? dataObj.scopes : []
             grants.set(roomId, {
               mode: newMode,
               scopes
@@ -735,14 +752,19 @@ export function createRuntime ({
 
             const ctx = await makeBotCtx({ roomId })
             if (typeof bot.config.handlers?.grantUpdated === 'function') {
-              await bot.config.handlers.grantUpdated(ctx, data)
+              const grantPayload =
+                /** @type {Parameters<NonNullable<typeof bot.config.handlers.grantUpdated>>[1]} */
+                (data)
+              await bot.config.handlers.grantUpdated(ctx, grantPayload)
             }
           }
           break
         }
         case 'bot.revoked': {
-          if (data && typeof data === 'object' && typeof data.room_id === 'string') {
-            const roomId = data.room_id
+          /** @type {Record<string, any>} */
+          const dataObj = data && typeof data === 'object' ? data : {}
+          if (typeof dataObj.room_id === 'string') {
+            const roomId = dataObj.room_id
             grants.delete(roomId)
             await unsubscribeRoom(roomId)
           }
@@ -767,12 +789,14 @@ export function createRuntime ({
         }
         case 'room.publisher_key_updated': {
           if (publisherKeys && data && typeof data === 'object') {
+            /** @type {Record<string, any>} */
+            const dataObj = data
             const mapped = {
-              roomId: data.room_id,
-              epoch: data.epoch,
-              publisherPublicKey: decodeBase64url(data.publisher_public_key),
-              signerUserId: data.signer_user_id,
-              signature: decodeBase64url(data.signature)
+              roomId: dataObj.room_id,
+              epoch: dataObj.epoch,
+              publisherPublicKey: decodeBase64url(dataObj.publisher_public_key),
+              signerUserId: dataObj.signer_user_id,
+              signature: decodeBase64url(dataObj.signature)
             }
             publisherKeys.recordPublication(mapped)
           }
@@ -837,8 +861,9 @@ export function createRuntime ({
 
     // Fetch capabilities
     const capRes = await rootHttp.request('GET', '/capabilities')
-    /** @type {any} */
-    const capBody = capRes.body
+    const capBody =
+      /** @type {{ sockudo_url: string, sockudo_app_key: string, sockudo_auth_endpoint: string } | null} */
+      (capRes.body)
     if (
       !capBody ||
       typeof capBody !== 'object' ||
@@ -851,8 +876,9 @@ export function createRuntime ({
 
     // Fetch bot metadata
     const botRes = await apiHttp.request('GET', `/bots/${botId}`)
-    /** @type {any} */
-    const botBody = botRes.body
+    const botBody =
+      /** @type {Record<string, unknown> | null} */
+      (botRes.body)
     if (!botBody || typeof botBody !== 'object') {
       throw new Error('Bot metadata response is malformed')
     }
@@ -930,8 +956,9 @@ export function createRuntime ({
     publisherKeys = new PublisherKeyCache({
       lookupSignerPubkey: async (userId) => {
         const ktRes = await apiHttp.request('GET', `/kt/user/${userId}`)
-        /** @type {any} */
-        const ktBody = ktRes.body
+        const ktBody =
+          /** @type {Record<string, unknown> | null} */
+          (ktRes.body)
         if (!ktBody || typeof ktBody.identity_pubkey !== 'string') {
           throw new Error(`Key transparency lookup failed for user ${userId}`)
         }
@@ -976,8 +1003,9 @@ export function createRuntime ({
     fetchMethod = fetchMethods.fetch
     fetchUserUrlMethod = fetchMethods.fetchUserUrl
 
-    /** @type {any} */
-    const makeBotCtxUntyped = makeBotCtx
+    const makeBotCtxUntyped =
+      /** @type {(invocation?: any) => Promise<BotCtx<any>>} */
+      (makeBotCtx)
 
     // Command invocation handler
     commandHandler = createCommandInvocationHandler({
@@ -1002,8 +1030,9 @@ export function createRuntime ({
             channel_name: channelName
           }
         })
-        /** @type {any} */
-        const authBody = authRes.body
+        const authBody =
+          /** @type {{ auth: string, channel_data?: string }} */
+          (authRes.body)
         return authBody
       },
       WebSocketImpl,
@@ -1011,8 +1040,9 @@ export function createRuntime ({
     })
 
     ws.on('error', (err) => {
-      /** @type {any} */
-      const untypedErr = err
+      const untypedErr =
+        /** @type {Error & { message?: string }} */
+        (err)
       logger.error('websocket error', { meta: { error: untypedErr?.message ?? String(untypedErr) } })
     })
 
@@ -1084,14 +1114,16 @@ export function createRuntime ({
       await ws.connect()
       reconnectController.start()
 
-      /** @type {any[]} */
+      /** @type {TriggerDecl[]} */
       const triggersList = bot.config.triggers ?? []
-      const webhookTriggers = triggersList.filter((t) => t.type === 'webhook')
-      const scheduleTriggers = triggersList.filter((t) => t.type === 'schedule')
+      const webhookTriggers =
+        /** @type {WebhookTrigger[]} */
+        (triggersList.filter((t) => t.type === 'webhook'))
+      const scheduleTriggers =
+        /** @type {ScheduleTrigger[]} */
+        (triggersList.filter((t) => t.type === 'schedule'))
 
-      /** @type {any} */
       const typedWebhookTriggers = webhookTriggers
-      /** @type {any} */
       const typedScheduleTriggers = scheduleTriggers
 
       if (webhookTriggers.length > 0) {

@@ -117,7 +117,7 @@ export function createHttpClient ({
       reqHeaders['Authorization'] = `Bearer ${botToken}`
 
       // Serialize body
-      /** @type {any} */
+      /** @type {string | Uint8Array | null} */
       let serializedBody = null
       if (isPlainObjectOrArray(opts.body)) {
         serializedBody = JSON.stringify(opts.body)
@@ -145,7 +145,9 @@ export function createHttpClient ({
           res = await fetchImpl(url, {
             method: uppercaseMethod,
             headers: reqHeaders,
-            body: serializedBody,
+            body:
+              /** @type {NonNullable<RequestInit['body']>} */
+              (serializedBody),
             signal: controller.signal
           })
         } catch (fetchErr) {

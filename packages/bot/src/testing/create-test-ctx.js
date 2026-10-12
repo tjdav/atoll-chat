@@ -78,8 +78,7 @@ export function createTestCtx (overrides = {}) {
 
   let messageCounter = 1
 
-  /** @type {TestCtx<S>} */
-  // @ts-ignore
+  /** @type {Partial<TestCtx<S>>} */
   const ctx = {
     bot,
     grant,
@@ -187,7 +186,6 @@ export function createTestCtx (overrides = {}) {
     return key
   }
 
-  // @ts-ignore
   ctx.settings = {
     /**
      * @param {string} key - Setting key.
@@ -305,5 +303,9 @@ export function createTestCtx (overrides = {}) {
     }
   }
 
-  return ctx
+  /** @type {TestCtx<S>} */
+  const result =
+    /** @type {TestCtx<S>} */
+    (ctx)
+  return result
 }

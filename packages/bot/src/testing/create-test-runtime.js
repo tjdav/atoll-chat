@@ -201,7 +201,7 @@ export async function createTestRuntime (bot, options = {}) {
   const botCommandPublicKey = new Uint8Array(botCommandSpki.subarray(12))
 
   // In-memory Stores
-  /** @type {any} */
+  /** @type {Partial<SettingsStore<any>>} */
   const settingsStore = {
     /**
      * @param {string} key - Key to look up.
@@ -240,7 +240,7 @@ export async function createTestRuntime (bot, options = {}) {
     }
   }
 
-  /** @type {any} */
+  /** @type {Partial<StorageStore>} */
   const storageStore = {
     /**
      * @param {string} key - Key.
@@ -269,7 +269,7 @@ export async function createTestRuntime (bot, options = {}) {
     }
   }
 
-  /** @type {any} */
+  /** @type {Partial<RoomsStore>} */
   const roomsStore = {
     async list () {
       return [...roomsList]
@@ -369,7 +369,7 @@ export async function createTestRuntime (bot, options = {}) {
     const room = roomId ? roomsList.find((r) => r.id === roomId) ?? null : null
     const signal = invocation?.signal ?? new AbortController().signal
 
-    /** @type {any} */
+    /** @type {Partial<BotCtx<any>>} */
     const ctx = {
       bot: {
         id: botId,
@@ -383,9 +383,15 @@ export async function createTestRuntime (bot, options = {}) {
       grant,
       room,
       event: invocation?.event ?? null,
-      settings: settingsStore,
-      storage: storageStore,
-      rooms: roomsStore,
+      settings:
+        /** @type {SettingsStore<any>} */
+        (settingsStore),
+      storage:
+        /** @type {StorageStore} */
+        (storageStore),
+      rooms:
+        /** @type {RoomsStore} */
+        (roomsStore),
       log: () => {
       },
       fetch: fetchMethods.fetch,
@@ -398,18 +404,27 @@ export async function createTestRuntime (bot, options = {}) {
 
     /** @param {any} opts - Post options. */
     ctx.post = function (opts) {
-      return postHandler(opts, ctx)
+      const bCtx =
+        /** @type {BotCtx<any>} */
+        (ctx)
+      return postHandler(opts, bCtx)
     }
     /** @param {any} opts - Reply options. */
     ctx.reply = function (opts) {
-      return replyHandler(opts, ctx)
+      const bCtx =
+        /** @type {BotCtx<any>} */
+        (ctx)
+      return replyHandler(opts, bCtx)
     }
     /** @param {any} opts - SendLocal options. */
     ctx.sendLocal = function (opts) {
       return sendLocalHandler(opts)
     }
 
-    return ctx
+    const resCtx =
+      /** @type {BotCtx<any>} */
+      (ctx)
+    return resCtx
   }
 
   // Schedule Triggers State

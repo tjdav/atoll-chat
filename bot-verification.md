@@ -1,5 +1,26 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-043c-6 Verification Fact
+- **Revised Suppression Policy (`src/`)**:
+  - `@type {any}` and `@ts-ignore` are strictly prohibited.
+  - `@ts-expect-error` is allowed ONLY when documenting a deliberate type violation with an explanatory comment on the preceding line.
+  - `@type {unknown}` is prohibited from being introduced.
+- **Audit and Clean Suppressions (`packages/bot/src/`)**:
+  - Audited all 44 suppressions across 14 files under `packages/bot/src/`.
+  - Replaced all `@type {any}` and `@ts-ignore` annotations with clean, precise JSDoc type annotations, generic parameters, and multiline JSDoc type casts.
+  - Zero suppressions (`@type {any}`, `@ts-ignore`, or `@ts-expect-error`) remain in `packages/bot/src/`.
+  - Zero `@type {unknown}` was introduced.
+- **Verification Results**:
+  - `grep -rnE '@type \{any\}|@ts-ignore' packages/bot/src` -> 0 occurrences (OK).
+  - `grep -rn '@ts-expect-error' packages/bot/src` -> 0 occurrences.
+  - `git diff packages/bot/src/ | grep '@type {unknown}'` -> 0 occurrences (OK).
+  - `pnpm --filter @atoll/bot lint` passed cleanly (0 errors).
+  - `pnpm --filter @atoll/bot check-batches` passed cleanly.
+  - `pnpm --filter @atoll/bot typecheck` passed cleanly (0 TS errors).
+  - `pnpm --filter @atoll/bot build` passed cleanly.
+  - No test files under `packages/bot/tests/` were modified.
+  - No `tsconfig*.json`, `package.json`, or `eslint.config.js` were modified.
+
 ## Task B-043c-5 Verification Fact
 - **Fix Src Lint Errors (`packages/bot/src/`)**:
   - Added `AbortController` and `ReadableStream` to `definedTypes` in `eslint.config.js` to resolve `jsdoc/no-undefined-types` errors in `src/runtime/transport/sse.js`.

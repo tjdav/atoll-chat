@@ -22,7 +22,7 @@ export const HOST_API_VERSION = '1.0'
 export function defineBot (config) {
   validateConfig(config)
   const bot =
-    /** @type {any} */
+    /** @type {Bot<S, C, T>} */
     ({ config })
   return bot
 }

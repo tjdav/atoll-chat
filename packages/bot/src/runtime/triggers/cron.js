@@ -495,8 +495,9 @@ export function createCronEngine ({
       return
     }
 
-    /** @type {any} */
-    const ctxUntyped = ctx
+    const ctxUntyped =
+      /** @type {Record<string, any>} */
+      (ctx)
     const handlerFn = onSchedule ?? ctxUntyped.schedule ?? ctxUntyped.handlers?.schedule ?? ctxUntyped.config?.handlers?.schedule
 
     const runHandler = () => (typeof handlerFn === 'function'
@@ -797,8 +798,9 @@ export function createCronEngine ({
       }
 
       const ctx = await makeBotCtx(invocation)
-      /** @type {any} */
-      const ctxUntyped = ctx
+      const ctxUntyped =
+        /** @type {Record<string, any>} */
+        (ctx)
       const handlerFn = onSchedule ?? ctxUntyped.schedule ?? ctxUntyped.handlers?.schedule ?? ctxUntyped.config?.handlers?.schedule
 
       const runHandler = () => (typeof handlerFn === 'function'
