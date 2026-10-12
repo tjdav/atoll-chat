@@ -1,4 +1,17 @@
 
+## OpenAPI File Generation Verification Fact
+- **ID:** OpenAPI File Generation Scaffold
+- **Date:** 2026-10-12
+- **Status:** In-Progress. Canonical.
+- **Spec / Decision references:** V3 Spec §8.1, §8.2
+- **Verified Facts:**
+  - **utoipa Version:** `utoipa = { version = "5.3" }` compatible with Axum 0.8 / standard OpenApi derive.
+  - **Output Path:** Default `docs/openapi.json`.
+  - **CLI Subcommand:** `server openapi generate [--out <path>]`.
+  - **Pilot Endpoint List:** `GET /health`, `GET /ready`, `GET /capabilities`, `GET /users/me`.
+  - **Staleness Check:** Makefile target `openapi-check` in `server/Makefile`.
+- **Link to report:** [verification/openapi-file-generation/report.md](verification/openapi-file-generation/report.md)
+
 ## Bot Key Rotation Verification Fact (Phase 38)
 - **ID:** Phase 38 Bot Key Rotation
 - **Date:** 2026-10-12

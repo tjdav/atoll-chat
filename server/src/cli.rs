@@ -85,6 +85,22 @@ pub enum Command {
         #[command(subcommand)]
         command: ModelsCommand,
     },
+
+    /// OpenAPI schema generator operator subcommands
+    Openapi {
+        #[command(subcommand)]
+        command: OpenapiCommand,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum OpenapiCommand {
+    /// Generate OpenAPI specification JSON file
+    Generate {
+        /// Output file path
+        #[arg(long, default_value = "docs/openapi.json")]
+        out: PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]

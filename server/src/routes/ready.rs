@@ -8,13 +8,25 @@ use axum::{
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::time::Duration;
+use utoipa::ToSchema;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ReadinessResponse {
     pub status: String,
     pub checks: BTreeMap<String, String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/ready",
+    tag = "Public",
+    summary = "Readiness check",
+    description = "Server readiness check endpoint verifying DB, OPRF key, and Sockudo (Server Spec v3.0.4 §8.1).",
+    responses(
+        (status = 200, description = "Server is ready", body = ReadinessResponse),
+        (status = 530, description = "Server is not ready", body = ReadinessResponse)
+    )
+)]
 pub async fn handler(State(state): State<AppState>) -> Response {
     let mut checks = BTreeMap::new();
     let mut is_ready = true;

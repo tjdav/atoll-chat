@@ -25,6 +25,7 @@ pub mod login;
 pub mod middleware;
 pub mod models;
 pub mod opaque;
+pub mod openapi;
 pub mod oprf;
 pub mod permission_check;
 pub mod permissions;

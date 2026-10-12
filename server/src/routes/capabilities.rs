@@ -1,6 +1,7 @@
 use axum::{extract::State, response::IntoResponse, Json};
 use serde::Serialize;
 use std::env;
+use utoipa::ToSchema;
 
 use crate::models::TtsCapabilityModelView;
 use crate::sessions::SessionTypeCapView;
@@ -13,14 +14,14 @@ fn construct_base_url(app_url: Option<&str>, path_suffix: &str) -> String {
     format!("{}{}", base, path_suffix)
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct AltchaCapView {
     pub enabled: bool,
     pub algorithm: String,
     pub cost: u32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct CapabilitiesResponse {
     pub version: String,
     pub calling: bool,
@@ -67,6 +68,16 @@ pub struct CapabilitiesResponse {
     pub extension_proxy_key: Option<String>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/capabilities",
+    tag = "Public",
+    summary = "Feature advertisement",
+    description = "Server capabilities and configuration advertisement endpoint (Server Spec v3.0.4 §8.1).",
+    responses(
+        (status = 200, description = "Capabilities retrieved successfully", body = CapabilitiesResponse)
+    )
+)]
 pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
     let safety_number_mode = env::var("SAFETY_NUMBER_MODE").unwrap_or_else(|_| "warn".to_string());
     let moderation_mode = env::var("MODERATION_MODE").unwrap_or_else(|_| "messenger".to_string());

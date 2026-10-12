@@ -1,0 +1,556 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Atoll Encrypted Chat API",
+    "description": "OpenAPI specification for the Atoll server API. Derived from code annotations. Source of truth remains Server Spec v3.0.4.",
+    "license": {
+      "name": ""
+    },
+    "version": "3.0.4"
+  },
+  "paths": {
+    "/api/v1/capabilities": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Feature advertisement",
+        "description": "Server capabilities and configuration advertisement endpoint (Server Spec v3.0.4 §8.1).",
+        "operationId": "handler",
+        "responses": {
+          "200": {
+            "description": "Capabilities retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitiesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Health check",
+        "description": "Server liveness check endpoint (Server Spec v3.0.4 §8.1).",
+        "operationId": "handler",
+        "responses": {
+          "200": {
+            "description": "Server is live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ready": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Readiness check",
+        "description": "Server readiness check endpoint verifying DB, OPRF key, and Sockudo (Server Spec v3.0.4 §8.1).",
+        "operationId": "handler",
+        "responses": {
+          "200": {
+            "description": "Server is ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "530": {
+            "description": "Server is not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Current user profile",
+        "description": "Fetches the current authenticated user's profile and limits (Server Spec v3.0.4 §8.2, §8.2.1).",
+        "operationId": "get_me",
+        "responses": {
+          "200": {
+            "description": "User profile retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AltchaCapView": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "algorithm",
+          "cost"
+        ],
+        "properties": {
+          "algorithm": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CapabilitiesResponse": {
+        "type": "object",
+        "required": [
+          "version",
+          "calling",
+          "call_max_participants",
+          "sessions_enabled",
+          "max_sessions_per_room",
+          "max_session_participants",
+          "session_types",
+          "model_hosting_enabled",
+          "model_hosting_mode",
+          "stt_models_base_url",
+          "stt_default_model",
+          "tts_models_base_url",
+          "tts_default_model",
+          "tts_models",
+          "websocket_url",
+          "sockudo_app_key",
+          "sockudo_channel_prefix",
+          "altcha",
+          "storage_backend",
+          "storage_presign_supported",
+          "storage_presign_max_ttl_seconds",
+          "attachment_format",
+          "attachment_chunk_size",
+          "attachment_bucket_sizes",
+          "attachment_accept_ranges",
+          "username_oprf_enabled",
+          "oprf_suite",
+          "key_transparency_enabled",
+          "link_preview_proxy_enabled",
+          "safety_number_mode",
+          "moderation_mode",
+          "edit_window_seconds",
+          "reactions_per_message",
+          "sync_event_retention_days",
+          "threading_enabled",
+          "starred_items_per_user",
+          "preferences_max_encrypted_bytes",
+          "extension_proxy_enabled",
+          "extension_proxy_max_request_bytes",
+          "extension_proxy_max_response_bytes",
+          "extension_proxy_supports_streaming"
+        ],
+        "properties": {
+          "altcha": {
+            "$ref": "#/components/schemas/AltchaCapView"
+          },
+          "attachment_accept_ranges": {
+            "type": "boolean"
+          },
+          "attachment_bucket_sizes": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          },
+          "attachment_chunk_size": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "attachment_format": {
+            "type": "string"
+          },
+          "call_max_participants": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "calling": {
+            "type": "boolean"
+          },
+          "edit_window_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "extension_proxy_enabled": {
+            "type": "boolean"
+          },
+          "extension_proxy_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "extension_proxy_max_request_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "extension_proxy_max_response_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "extension_proxy_supports_streaming": {
+            "type": "boolean"
+          },
+          "key_transparency_enabled": {
+            "type": "boolean"
+          },
+          "link_preview_proxy_enabled": {
+            "type": "boolean"
+          },
+          "max_session_participants": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "max_sessions_per_room": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "model_hosting_enabled": {
+            "type": "boolean"
+          },
+          "model_hosting_mode": {
+            "type": "string"
+          },
+          "moderation_mode": {
+            "type": "string"
+          },
+          "oprf_suite": {
+            "type": "string"
+          },
+          "preferences_max_encrypted_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "push_vapid_public_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reactions_per_message": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "safety_number_mode": {
+            "type": "string"
+          },
+          "session_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionTypeCapView"
+            }
+          },
+          "sessions_enabled": {
+            "type": "boolean"
+          },
+          "sockudo_app_key": {
+            "type": "string"
+          },
+          "sockudo_channel_prefix": {
+            "type": "string"
+          },
+          "starred_items_per_user": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "storage_backend": {
+            "type": "string"
+          },
+          "storage_presign_max_ttl_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "storage_presign_supported": {
+            "type": "boolean"
+          },
+          "stt_default_model": {
+            "type": "string"
+          },
+          "stt_models_base_url": {
+            "type": "string"
+          },
+          "sync_event_retention_days": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "threading_enabled": {
+            "type": "boolean"
+          },
+          "tts_default_model": {
+            "type": "string"
+          },
+          "tts_models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TtsCapabilityModelView"
+            }
+          },
+          "tts_models_base_url": {
+            "type": "string"
+          },
+          "username_oprf_enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string"
+          },
+          "websocket_url": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "checks"
+        ],
+        "properties": {
+          "checks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "SessionTypeCapView": {
+        "type": "object",
+        "required": [
+          "extension_id",
+          "type",
+          "max_participants"
+        ],
+        "properties": {
+          "extension_id": {
+            "type": "string"
+          },
+          "max_participants": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "TtsCapabilityModelView": {
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "size_bytes",
+          "languages",
+          "voices"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "voices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VoiceMetadata"
+            }
+          }
+        }
+      },
+      "UserLimitsResponse": {
+        "type": "object",
+        "required": [
+          "max_file_size_bytes"
+        ],
+        "properties": {
+          "max_file_size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "UserProfileResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "username_token",
+          "profile_version",
+          "roles",
+          "limits",
+          "is_owner",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "encrypted_display": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "identity_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "is_owner": {
+            "type": "boolean"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/UserLimitsResponse"
+          },
+          "max_file_size_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "profile_version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "username_token": {
+            "type": "string"
+          }
+        }
+      },
+      "VoiceMetadata": {
+        "type": "object",
+        "required": [
+          "id",
+          "language",
+          "gender"
+        ],
+        "properties": {
+          "gender": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Public",
+      "description": "Public endpoints"
+    },
+    {
+      "name": "User",
+      "description": "User endpoints"
+    }
+  ]
+}

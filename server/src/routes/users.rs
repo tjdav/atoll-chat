@@ -90,12 +90,14 @@ pub async fn lookup_user(
     }
 }
 
-#[derive(Serialize)]
+use utoipa::ToSchema;
+
+#[derive(Serialize, ToSchema)]
 pub struct UserLimitsResponse {
     pub max_file_size_bytes: u64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct UserProfileResponse {
     pub id: String,
     pub username_token: String,
@@ -107,9 +109,24 @@ pub struct UserProfileResponse {
     pub roles: Vec<String>,
     pub limits: UserLimitsResponse,
     pub is_owner: bool,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/me",
+    tag = "User",
+    summary = "Current user profile",
+    description = "Fetches the current authenticated user's profile and limits (Server Spec v3.0.4 §8.2, §8.2.1).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "User profile retrieved successfully", body = UserProfileResponse),
+        (status = 401, description = "Unauthorized")
+    )
+)]
 pub async fn get_me(
     State(state): State<AppState>,
     auth: AuthUser,

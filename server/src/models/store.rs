@@ -21,7 +21,9 @@ const FAILURE_CACHE_TTL: Duration = Duration::from_secs(30);
 type FailureCacheKey = (String, u32, String);
 type FailureCache = Arc<RwLock<HashMap<FailureCacheKey, Instant>>>;
 
-#[derive(Debug, Clone, Serialize)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct TtsCapabilityModelView {
     pub id: String,
     pub version: u32,

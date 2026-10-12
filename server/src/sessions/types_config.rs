@@ -18,7 +18,9 @@ pub struct SessionType {
     pub max_per_room: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct SessionTypeCapView {
     pub extension_id: String,
     pub r#type: String,

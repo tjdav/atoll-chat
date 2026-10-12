@@ -161,6 +161,15 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         },
+        Command::Openapi { command } => match command {
+            server::cli::OpenapiCommand::Generate { out } => {
+                if let Err(e) = server::openapi::generate_openapi_file(&out) {
+                    eprintln!("Error: {}", e);
+                    std::process::exit(1);
+                }
+                return Ok(());
+            }
+        },
     }
 
     // 3. Load Config

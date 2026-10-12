@@ -1,4 +1,7 @@
 use tempfile::TempDir;
+use tokio::sync::Mutex;
+
+static TEST_MUTEX: Mutex<()> = Mutex::const_new(());
 
 #[tokio::test]
 async fn test_single_migration_file_exists() {
@@ -24,6 +27,7 @@ async fn test_single_migration_file_exists() {
 
 #[tokio::test]
 async fn test_clean_migration_run_and_idempotency() {
+    let _guard = TEST_MUTEX.lock().await;
     let tmp_dir = TempDir::new().unwrap();
     let db_path = tmp_dir.path().join("app.db").to_str().unwrap().to_string();
 
@@ -51,6 +55,7 @@ async fn test_clean_migration_run_and_idempotency() {
 
 #[tokio::test]
 async fn test_foreign_keys_enforced() {
+    let _guard = TEST_MUTEX.lock().await;
     let tmp_dir = TempDir::new().unwrap();
     let db_path = tmp_dir.path().join("app.db").to_str().unwrap().to_string();
 
@@ -79,6 +84,7 @@ async fn test_foreign_keys_enforced() {
 
 #[tokio::test]
 async fn test_role_seed_integrity() {
+    let _guard = TEST_MUTEX.lock().await;
     let tmp_dir = TempDir::new().unwrap();
     let db_path = tmp_dir.path().join("app.db").to_str().unwrap().to_string();
 
@@ -101,6 +107,7 @@ async fn test_role_seed_integrity() {
 
 #[tokio::test]
 async fn test_target_v2_schema_structural_matches_expectation() {
+    let _guard = TEST_MUTEX.lock().await;
     let tmp_dir = TempDir::new().unwrap();
     let db_path = tmp_dir.path().join("app.db").to_str().unwrap().to_string();
 
