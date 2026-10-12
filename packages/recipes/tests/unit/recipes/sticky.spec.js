@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
 
 import { compile } from '../../../src/compiler/index.js'
 import { loadRecipeById, scanLibrary } from '../../../src/recipe/library.js'
-import { substitute } from '../../../src/lib/substitute.js'
+import { loadEmittedBot } from './_helpers/load-emitted-bot.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const LIB_ROOT = join(HERE, '..', '..', '..', 'recipes')
@@ -22,110 +22,6 @@ async function build () {
     { recipeId: 'sticky', recipeVersion: '1.0.0', slots: {} },
     { botId: 'com.example.sticky', label: 'Sticky' }
   )
-}
-
-/**
- * Loads the emitted bot.js source against stubbed primitives.
- * @param {string} code - The emitted bot.js source.
- * @param {Record<string, unknown>} settingsMap - Setting key → value.
- * @returns {{ config: object, posts: object[], settingReads: string[] }} The bot config, a record of post calls, and a record of settings keys read.
- */
-function loadEmittedBot (code, settingsMap) {
-  const posts = []
-  const settingReads = []
-
-  const defineBot = (config) => config
-
-  const asCommandDecl = (name, description, argsDecl, handler) => {
-    const decl = {
-      name,
-      args: argsDecl,
-      handler: async (ctx, argsReader) => {
-        const argsObject = {}
-        for (const key of Object.keys(argsDecl ?? {})) {
-          argsObject[key] = argsReader.get(key)
-        }
-        const result = await handler(ctx, { args: argsObject, command: name })
-        if (result === undefined) {
-          return { type: 'none' }
-        }
-        return result
-      }
-    }
-    if (description !== undefined) {
-      decl.description = description
-    }
-    return decl
-  }
-
-  const postResponse = {
-    create (config, children) {
-      const text = config.text
-      return async (ctx, input) => {
-        const resolvedText = substitute(text, input)
-        if (typeof resolvedText !== 'string' || resolvedText.length === 0) {
-          throw new Error('post-response: resolved text is empty')
-        }
-        const opts = { text: resolvedText }
-        if (typeof config.roomId === 'string') {
-          opts.roomId = substitute(config.roomId, input)
-        }
-        posts.push(opts)
-        for (const child of children ?? []) {
-          await child(ctx, input)
-        }
-        return undefined
-      }
-    }
-  }
-
-  const settingsRead = {
-    create (config, children) {
-      const key = config.key
-      return async (ctx, input) => {
-        settingReads.push(key)
-        const value = settingsMap[key]
-        let lastResult
-        for (const child of children ?? []) {
-          lastResult = await child(ctx, value)
-        }
-        return lastResult
-      }
-    }
-  }
-
-  const exposeCommand = {
-    create (config, children) {
-      return async (ctx, input) => {
-        let lastResult
-        for (const child of children ?? []) {
-          lastResult = await child(ctx, input)
-        }
-        return lastResult
-      }
-    }
-  }
-
-  const encoded = Buffer.from(code, 'utf8').toString('base64')
-  const buildFn = new Function('defineBot', 'asCommandDecl', 'postResponse', 'settingsRead', 'exposeCommand', `
-    const src = Buffer.from('${encoded}', 'base64').toString('utf8')
-    const cleaned = src
-      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/bot'/, '')
-      .replace(/import \\{[\\s\\S]*?\\} from '@atoll\\/recipes\\/primitives'/, '')
-      .replace('export default defineBot', 'return defineBot')
-    const fn = new Function(
-      'defineBot',
-      'asCommandDecl',
-      'postResponse',
-      'settingsRead',
-      'exposeCommand',
-      cleaned
-    )
-    return fn(defineBot, asCommandDecl, postResponse, settingsRead, exposeCommand)
-  `)
-
-  const config = buildFn(defineBot, asCommandDecl, postResponse, settingsRead, exposeCommand)
-  return { config, posts, settingReads }
 }
 
 /**
@@ -212,7 +108,7 @@ test('the emitted code contains the expected primitives', async () => {
 
 test('the emitted bot config carries the settings', async () => {
   const script = await build()
-  const { config } = loadEmittedBot(script.code, {})
+  const { config } = loadEmittedBot(script.code)
   assert.ok(config.settings)
   assert.ok(config.settings.message)
   assert.equal(config.settings.message.type, 'text')
@@ -220,7 +116,7 @@ test('the emitted bot config carries the settings', async () => {
 
 test('the emitted bot exposes the say command with a handler', async () => {
   const script = await build()
-  const { config } = loadEmittedBot(script.code, { message: 'Hello world' })
+  const { config } = loadEmittedBot(script.code, { settings: { message: 'Hello world' } })
   assert.ok(config.commands.say)
   assert.equal(typeof config.commands.say.handler, 'function')
   assert.equal(config.commands.say.description, 'Post the configured message to the room.')
@@ -228,46 +124,50 @@ test('the emitted bot exposes the say command with a handler', async () => {
 
 test('the say command posts the configured message', async () => {
   const script = await build()
-  const { config, posts } = loadEmittedBot(script.code, { message: 'Deploy day!' })
-
-  const result = await config.commands.say.handler({}, makeReader({}))
-
+  const { config, ctx, posts } = loadEmittedBot(script.code, {
+    settings: { message: 'Deploy day!' }
+  })
+  const result = await config.commands.say.handler(ctx, makeReader({}))
   assert.equal(posts.length, 1)
   assert.equal(posts[0].text, 'Deploy day!')
   assert.deepEqual(result, { type: 'none' })
 })
 
-test('the say command reads the message setting', async () => {
+test('the say command reads only the message setting', async () => {
   const script = await build()
-  const { config, settingReads } = loadEmittedBot(script.code, { message: 'x' })
-  await config.commands.say.handler({}, makeReader({}))
-  assert.deepEqual(settingReads, ['message'])
+  const { config, ctx } = loadEmittedBot(script.code, { settings: { message: 'x' } })
+  const reads = []
+  const originalGet = ctx.settings.get
+  ctx.settings.get = async (key, opts) => {
+    reads.push(key)
+    return originalGet.call(ctx.settings, key, opts)
+  }
+  await config.commands.say.handler(ctx, makeReader({}))
+  assert.deepEqual(reads, ['message'])
 })
 
 test('the say command throws when the setting value is empty', async () => {
   const script = await build()
-  const { config } = loadEmittedBot(script.code, { message: '' })
-
+  const { config, ctx } = loadEmittedBot(script.code, { settings: { message: '' } })
   await assert.rejects(
-    () => config.commands.say.handler({}, makeReader({})),
+    () => config.commands.say.handler(ctx, makeReader({})),
     /resolved text is empty/
   )
 })
 
 test('the say command throws when the setting is undefined', async () => {
   const script = await build()
-  const { config } = loadEmittedBot(script.code, {})
-
+  const { config, ctx } = loadEmittedBot(script.code)
   await assert.rejects(
-    () => config.commands.say.handler({}, makeReader({})),
+    () => config.commands.say.handler(ctx, makeReader({})),
     /resolved text is empty/
   )
 })
 
 test('the install handler posts a fixed public message', async () => {
   const script = await build()
-  const { config, posts } = loadEmittedBot(script.code, { message: 'Hello' })
-  await config.handlers.install({}, {})
+  const { config, ctx, posts } = loadEmittedBot(script.code, { settings: { message: 'Hello' } })
+  await config.handlers.install(ctx, {})
   assert.equal(posts.length, 1)
   assert.match(posts[0].text, /Sticky is ready/)
   assert.doesNotMatch(posts[0].text, /Hello/)
