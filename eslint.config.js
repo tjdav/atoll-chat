@@ -125,6 +125,7 @@ export default [
         'error',
         {
           definedTypes: [
+            'AbortController',
             'AbortSignal',
             'Blob',
             'Buffer',
@@ -141,7 +142,10 @@ export default [
             'HTMLImageElement',
             'Node',
             'NodeJS',
+            'ReadableStream',
+            'Request',
             'RequestInit',
+            'URL',
             'Response',
             'S',
             'Capability',

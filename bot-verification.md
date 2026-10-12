@@ -1,5 +1,17 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-043c-5 Verification Fact
+- **Fix Src Lint Errors (`packages/bot/src/`)**:
+  - Added `AbortController` and `ReadableStream` to `definedTypes` in `eslint.config.js` to resolve `jsdoc/no-undefined-types` errors in `src/runtime/transport/sse.js`.
+  - Added `Request`, `RequestInit`, and `URL` to `definedTypes` in `eslint.config.js` for JSDoc annotations in `src/testing/create-test-runtime.js`.
+  - Resolved stylistic issues (`@stylistic/js/object-property-newline`, `@stylistic/js/curly-newline`), moved inline comments above code lines (`no-inline-comments`), renamed unused error variables in catch blocks (`_err`), and added missing JSDoc `@param` descriptions.
+  - Zero `// eslint-disable` comments or `@ts-ignore`/`@ts-expect-error`/`@type {any}` suppressions were introduced in `src/`.
+  - No test files under `packages/bot/tests/` were touched.
+  - `pnpm --filter @atoll/bot lint` exits 0 with empty output (0 errors).
+  - `pnpm --filter @atoll/bot typecheck` exits 0 with empty output (0 errors).
+  - `pnpm --filter @atoll/bot check-batches` passed cleanly.
+  - `pnpm --filter @atoll/bot build` passed cleanly.
+
 ## Task B-043c-3 Verification Fact
 - **Fix Source-File Type Errors (`packages/bot/src/cli/dev.js`, `packages/bot/src/cli/diag-file.js`)**:
   - Annotated `fsWatcher` in `dev.js` with `/** @type {import('node:fs').FSWatcher | null} */`.

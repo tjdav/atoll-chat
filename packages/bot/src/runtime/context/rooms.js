@@ -68,7 +68,9 @@ export function createRoomsStore ({ fetchRoomList, logger }) {
           })
           continue
         }
-        result.push(mapRoom(/** @type {RawRoom} */ (entry)))
+        /** @type {RawRoom} */
+        const rawEntry = entry
+        result.push(mapRoom(rawEntry))
       }
 
       return result

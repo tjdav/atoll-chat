@@ -35,9 +35,15 @@ function generateEd25519Keypair () {
   const seed = new Uint8Array(crypto.randomBytes(32))
   const keyObj = keyObjectFromSeed(seed)
   const pubKeyObj = crypto.createPublicKey(keyObj)
-  const spki = pubKeyObj.export({ type: 'spki', format: 'der' })
+  const spki = pubKeyObj.export({
+    type: 'spki',
+    format: 'der'
+  })
   const pubKey = new Uint8Array(spki.subarray(12))
-  return { privateKey: seed, publicKey: pubKey }
+  return {
+    privateKey: seed,
+    publicKey: pubKey
+  }
 }
 
 /**
@@ -50,7 +56,7 @@ function generateEd25519Keypair () {
  * used beyond what the mock server and the caller provide.
  *
  * @param {any} bot - The bot handle from `defineBot`.
- * @param {object} [options]
+ * @param {object} [options] - Options for the test runtime.
  * @param {{ roomId: string, mode: 'write_only' | 'observer' | 'member',
  *   scopes: string[] }[]} [options.grants=[]] - Initial grants.
  * @param {Record<string, any>} [options.keystoreData] - A synthetic keystore plaintext.
@@ -86,7 +92,10 @@ export async function createTestRuntime (bot, options = {}) {
     const seed = Buffer.from(keystoreData.bot_identity_private, 'base64url')
     const keyObj = keyObjectFromSeed(seed)
     const pubKeyObj = crypto.createPublicKey(keyObj)
-    const spki = pubKeyObj.export({ type: 'spki', format: 'der' })
+    const spki = pubKeyObj.export({
+      type: 'spki',
+      format: 'der'
+    })
     botIdentityPubkey = new Uint8Array(spki.subarray(12))
   }
 
@@ -185,15 +194,18 @@ export async function createTestRuntime (bot, options = {}) {
   const botCommandPrivBytes = Buffer.from(String(keystoreData.bot_command_private), 'base64url')
   const botCommandPrivKo = keyObjectFromX25519Private(botCommandPrivBytes)
   const botCommandPubKo = crypto.createPublicKey(botCommandPrivKo)
-  const botCommandSpki = botCommandPubKo.export({ type: 'spki', format: 'der' })
+  const botCommandSpki = botCommandPubKo.export({
+    type: 'spki',
+    format: 'der'
+  })
   const botCommandPublicKey = new Uint8Array(botCommandSpki.subarray(12))
 
   // In-memory Stores
   /** @type {any} */
   const settingsStore = {
     /**
-     * @param {string} key - Key.
-     * @param {any} [opts] - Options.
+     * @param {string} key - Key to look up.
+     * @param {any} [opts] - Lookup options.
      * @returns {Promise<any>}
      */
     async get (key, opts) {
@@ -202,9 +214,9 @@ export async function createTestRuntime (bot, options = {}) {
       return settings.get(storageKey)
     },
     /**
-     * @param {string} key - Key.
-     * @param {any} value - Value.
-     * @param {any} [opts] - Options.
+     * @param {string} key - Key to set.
+     * @param {any} value - Value to set.
+     * @param {any} [opts] - Lookup options.
      * @returns {Promise<void>}
      */
     async set (key, value, opts) {
@@ -213,8 +225,8 @@ export async function createTestRuntime (bot, options = {}) {
       settings.set(storageKey, value)
     },
     /**
-     * @param {string} key - Key.
-     * @param {any} [opts] - Options.
+     * @param {string} key - Key to delete.
+     * @param {any} [opts] - Lookup options.
      * @returns {Promise<void>}
      */
     async delete (key, opts) {
@@ -223,7 +235,8 @@ export async function createTestRuntime (bot, options = {}) {
       settings.delete(storageKey)
     },
     subscribe () {
-      return () => {}
+      return () => {
+      }
     }
   }
 
@@ -304,8 +317,12 @@ export async function createTestRuntime (bot, options = {}) {
     })
 
     const defaultFetch = options.fetchImpl ?? globalThis.fetch
-    /** @type {any} */
-    const customFetch = async (/** @type {any} */ url, /** @type {any} */ opts) => {
+    /**
+     * @param {string | URL | Request} url - Target URL.
+     * @param {RequestInit} [opts] - Fetch options.
+     * @returns {Promise<Response>}
+     */
+    const customFetch = async (url, opts) => {
       let targetUrl = typeof url === 'string' ? url : String(url)
       if (typeof url === 'string') {
         try {
@@ -358,7 +375,10 @@ export async function createTestRuntime (bot, options = {}) {
         id: botId,
         label: bot.config.label,
         ownerUserId,
-        avatar: { fileId: null, emoji: bot.config.avatar?.emoji ?? null }
+        avatar: {
+          fileId: null,
+          emoji: bot.config.avatar?.emoji ?? null
+        }
       },
       grant,
       room,
@@ -366,7 +386,8 @@ export async function createTestRuntime (bot, options = {}) {
       settings: settingsStore,
       storage: storageStore,
       rooms: roomsStore,
-      log: () => {},
+      log: () => {
+      },
       fetch: fetchMethods.fetch,
       fetchUserUrl: fetchMethods.fetchUserUrl,
       signal,
@@ -375,12 +396,18 @@ export async function createTestRuntime (bot, options = {}) {
       }
     }
 
-    /** @param {any} opts */
-    ctx.post = (opts) => postHandler(opts, ctx)
-    /** @param {any} opts */
-    ctx.reply = (opts) => replyHandler(opts, ctx)
-    /** @param {any} opts */
-    ctx.sendLocal = (opts) => sendLocalHandler(opts)
+    /** @param {any} opts - Post options. */
+    ctx.post = function (opts) {
+      return postHandler(opts, ctx)
+    }
+    /** @param {any} opts - Reply options. */
+    ctx.reply = function (opts) {
+      return replyHandler(opts, ctx)
+    }
+    /** @param {any} opts - SendLocal options. */
+    ctx.sendLocal = function (opts) {
+      return sendLocalHandler(opts)
+    }
 
     return ctx
   }
@@ -418,7 +445,10 @@ export async function createTestRuntime (bot, options = {}) {
   const runtime = {
     async inject (event) {
       if (!event || typeof event !== 'object' || typeof event.type !== 'string') {
-        return { ok: false, error: new Error('Invalid event') }
+        return {
+          ok: false,
+          error: new Error('Invalid event')
+        }
       }
 
       try {
@@ -519,10 +549,16 @@ export async function createTestRuntime (bot, options = {}) {
             return { ok: true }
           }
           default:
-            return { ok: false, error: new Error(`Unknown event type '${event.type}'`) }
+            return {
+              ok: false,
+              error: new Error(`Unknown event type '${event.type}'`)
+            }
         }
       } catch (err) {
-        return { ok: false, error: err instanceof Error ? err : new Error(String(err)) }
+        return {
+          ok: false,
+          error: err instanceof Error ? err : new Error(String(err))
+        }
       }
     },
 
@@ -541,7 +577,13 @@ export async function createTestRuntime (bot, options = {}) {
 
     async fireSchedule (name) {
       const triggers = Array.isArray(bot.config?.triggers) ? bot.config.triggers : []
-      const trigger = triggers.find((/** @type {any} */ t) => t && t.type === 'schedule' && t.name === name)
+      const trigger = triggers.find(
+        /**
+         * @param {Record<string, unknown>} t - Trigger object.
+         * @returns {boolean}
+         */
+        (t) => Boolean(t && t.type === 'schedule' && t.name === name)
+      )
       if (!trigger) {
         throw new Error(`Schedule trigger '${name}' not found`)
       }
@@ -615,8 +657,7 @@ export async function createTestRuntime (bot, options = {}) {
     },
 
     simulateResponse (path, response, method = '*') {
-      const ms = /** @type {any} */ (mockServer)
-      if (!ms) {
+      if (!mockServer) {
         return
       }
       const normalizedPath = path.startsWith('/') ? path : '/' + path
@@ -627,7 +668,7 @@ export async function createTestRuntime (bot, options = {}) {
       const methods = method === '*' ? ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] : [method]
       for (const p of paths) {
         for (const m of methods) {
-          ms.setResponse(m, p, response)
+          mockServer.setResponse(m, p, response)
         }
       }
     },
@@ -637,7 +678,7 @@ export async function createTestRuntime (bot, options = {}) {
     },
 
     getPendingOutbound () {
-      // B-031 flagged that the outbound queue is an architectural vestige; returns [].
+      /* B-031 flagged that the outbound queue is an architectural vestige; returns []. */
       return []
     },
 
@@ -650,9 +691,8 @@ export async function createTestRuntime (bot, options = {}) {
     },
 
     async close () {
-      const ms = /** @type {any} */ (mockServer)
-      if (ms && typeof ms.close === 'function') {
-        await ms.close()
+      if (mockServer && typeof mockServer.close === 'function') {
+        await mockServer.close()
       }
     }
   }
