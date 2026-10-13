@@ -7,6 +7,11 @@ use utoipa::{
 
 use crate::error::ErrorResponse;
 use crate::routes::{
+    admin::{
+        ExtensionProxyBlocklistReloadResponse, KeyTransparencyStatsResponse, ModelReloadResponse,
+        SessionTypesReloadResponse,
+    },
+    admin_oprf::{RotateOprfRequest, RotateOprfResponse},
     attachments::{PresignRequest, PresignResponse, UserAvatarUploadForm},
     capabilities::{AltchaCapView, CapabilitiesResponse},
     devices::{DeviceResponse, ListDevicesResponse, UpdateDeviceNameRequest},
@@ -113,6 +118,13 @@ impl Modify for SecurityAddon {
         crate::routes::key_transparency::get_bot_kt_handler,
         crate::routes::key_transparency::get_bot_kt_history_handler,
         crate::routes::key_transparency::get_kt_snapshot_handler,
+        crate::routes::admin_oprf::rotate,
+        crate::routes::admin::get_key_transparency_handler,
+        crate::routes::admin::post_key_transparency_snapshot_handler,
+        crate::routes::room_sessions::list_admin,
+        crate::routes::admin::post_reload_models_handler,
+        crate::routes::admin::post_reload_session_types_handler,
+        crate::routes::admin::post_reload_extension_proxy_blocklist_handler,
     ),
     components(
         schemas(
@@ -187,6 +199,15 @@ impl Modify for SecurityAddon {
             KtSnapshotResponse,
             KtTreeHead,
             KtAuditorSignature,
+            RotateOprfRequest,
+            RotateOprfResponse,
+            KeyTransparencyStatsResponse,
+            crate::key_transparency::SnapshotView,
+            crate::sessions::RoomSessionView,
+            ModelReloadResponse,
+            SessionTypesReloadResponse,
+            crate::sessions::SessionTypeAdminView,
+            ExtensionProxyBlocklistReloadResponse,
         )
     ),
     modifiers(&SecurityAddon),
@@ -195,7 +216,8 @@ impl Modify for SecurityAddon {
         (name = "User", description = "User endpoints"),
         (name = "Messaging", description = "Messaging endpoints"),
         (name = "Bots", description = "Bot account management, room grants, settings, commands, and publisher keys"),
-        (name = "Key Transparency", description = "Key Transparency endpoints for users and bots")
+        (name = "Key Transparency", description = "Key Transparency endpoints for users and bots"),
+        (name = "Admin", description = "Admin administration and operations endpoints")
     )
 )]
 pub struct ApiDoc;

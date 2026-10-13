@@ -27,7 +27,7 @@ pub struct SessionTypeCapView {
     pub max_participants: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct SessionTypeAdminView {
     pub r#type: String,
     pub extension_id: String,

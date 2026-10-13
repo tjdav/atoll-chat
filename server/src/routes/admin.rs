@@ -13,6 +13,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Row;
+use utoipa::ToSchema;
+
+use crate::error::ErrorResponse;
+use crate::key_transparency::SnapshotView;
 
 #[derive(Serialize)]
 pub struct LimitsResponse {
@@ -219,14 +223,36 @@ pub async fn post_rotate_altcha_handler(
     Ok(Json(RotateAltchaResponse { ok: true }))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct KeyTransparencyStatsResponse {
+    /// True if Key Transparency logging is active.
     pub enabled: bool,
+    /// Total number of leaves in Key Transparency log.
     pub tree_size: i64,
+    /// Timestamp when oldest leaf was added.
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub oldest_leaf_added_at: Option<DateTime<Utc>>,
+    /// Timestamp when newest leaf was added.
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub newest_leaf_added_at: Option<DateTime<Utc>>,
 }
 
+/// GET /api/v1/admin/key-transparency
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/key-transparency",
+    tag = "Admin",
+    summary = "Key Transparency log stats",
+    description = "Fetches Key Transparency log statistics including total entries and leaf timestamps. See §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Key Transparency stats retrieved successfully", body = KeyTransparencyStatsResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn get_key_transparency_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -258,6 +284,23 @@ pub async fn get_key_transparency_handler(
     }))
 }
 
+/// POST /api/v1/admin/key-transparency/snapshot
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/key-transparency/snapshot",
+    tag = "Admin",
+    summary = "Trigger signed Key Transparency snapshot",
+    description = "Triggers immediate generation and signing of a Key Transparency log Merkle tree snapshot. Reuses the same snapshot schema as public KT snapshot endpoint. See §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Key Transparency snapshot triggered and generated successfully", body = SnapshotView),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse),
+        (status = 501, description = "Key Transparency disabled", body = ErrorResponse)
+    )
+)]
 pub async fn post_key_transparency_snapshot_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -287,12 +330,31 @@ pub async fn post_key_transparency_snapshot_handler(
     Ok(Json(snapshot))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct SessionTypesReloadResponse {
+    /// True if reload succeeded.
     pub reloaded: bool,
+    /// List of active session types post-reload.
     pub session_types: Vec<crate::sessions::SessionTypeAdminView>,
 }
 
+/// POST /api/v1/admin/session-types/reload
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/session-types/reload",
+    tag = "Admin",
+    summary = "Reload session types configuration",
+    description = "Reads SESSION_TYPES_CONFIG_PATH, validates, and performs an atomic swap. On validation error, previous config remains in effect and 400 is returned. See §8.3.1.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Session types configuration reloaded successfully", body = SessionTypesReloadResponse),
+        (status = 400, description = "Validation failed or configuration file missing", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn post_reload_session_types_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -363,13 +425,35 @@ pub async fn post_reload_session_types_handler(
     }))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ModelReloadResponse {
+    /// True if reload succeeded.
     pub reloaded: bool,
+    /// Count of active Speech-to-Text models.
     pub stt_models: usize,
+    /// Count of active Text-to-Speech models.
     pub tts_models: usize,
 }
 
+/// POST /api/v1/admin/models/reload
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/models/reload",
+    tag = "Admin",
+    summary = "Reload model manifest",
+    description = "Reloads model manifest with mode-dependent atomic swap semantics. On validation/fetch failure, previous models remain in effect and error is returned. See §8.3 and §5.27.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Model manifest reloaded successfully", body = ModelReloadResponse),
+        (status = 400, description = "Invalid model manifest", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse),
+        (status = 501, description = "Model hosting disabled", body = ErrorResponse),
+        (status = 502, description = "Failed to fetch external model manifest", body = ErrorResponse)
+    )
+)]
 pub async fn post_reload_models_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -453,12 +537,31 @@ pub async fn post_reload_models_handler(
     }))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ExtensionProxyBlocklistReloadResponse {
+    /// True if reload succeeded.
     pub reloaded: bool,
+    /// Count of active domain suffixes in blocklist.
     pub suffix_count: usize,
 }
 
+/// POST /api/v1/admin/extension-proxy/reload-blocklist
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/extension-proxy/reload-blocklist",
+    tag = "Admin",
+    summary = "Reload extension proxy domain blocklist",
+    description = "Reads EXTENSION_PROXY_DENY_DOMAINS and EXTENSION_PROXY_DENY_DOMAINS_PATH, validates, and performs an atomic swap. On error, previous blocklist remains in effect and 400 is returned. See §8.3.2.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Extension proxy blocklist reloaded successfully", body = ExtensionProxyBlocklistReloadResponse),
+        (status = 400, description = "Blocklist file missing or load failed", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn post_reload_extension_proxy_blocklist_handler(
     State(state): State<AppState>,
     _auth: AuthUser,

@@ -9,6 +9,456 @@
     "version": "3.0.4"
   },
   "paths": {
+    "/api/v1/admin/extension-proxy/reload-blocklist": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reload extension proxy domain blocklist",
+        "description": "Reads EXTENSION_PROXY_DENY_DOMAINS and EXTENSION_PROXY_DENY_DOMAINS_PATH, validates, and performs an atomic swap. On error, previous blocklist remains in effect and 400 is returned. See §8.3.2.",
+        "operationId": "post_reload_extension_proxy_blocklist_handler",
+        "responses": {
+          "200": {
+            "description": "Extension proxy blocklist reloaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtensionProxyBlocklistReloadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Blocklist file missing or load failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/key-transparency": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Key Transparency log stats",
+        "description": "Fetches Key Transparency log statistics including total entries and leaf timestamps. See §8.3.",
+        "operationId": "get_key_transparency_handler",
+        "responses": {
+          "200": {
+            "description": "Key Transparency stats retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KeyTransparencyStatsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/key-transparency/snapshot": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Trigger signed Key Transparency snapshot",
+        "description": "Triggers immediate generation and signing of a Key Transparency log Merkle tree snapshot. Reuses the same snapshot schema as public KT snapshot endpoint. See §8.3.",
+        "operationId": "post_key_transparency_snapshot_handler",
+        "responses": {
+          "200": {
+            "description": "Key Transparency snapshot triggered and generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SnapshotView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Key Transparency disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/models/reload": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reload model manifest",
+        "description": "Reloads model manifest with mode-dependent atomic swap semantics. On validation/fetch failure, previous models remain in effect and error is returned. See §8.3 and §5.27.",
+        "operationId": "post_reload_models_handler",
+        "responses": {
+          "200": {
+            "description": "Model manifest reloaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelReloadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid model manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Model hosting disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Failed to fetch external model manifest",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/oprf/rotate": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Rotate username OPRF key",
+        "description": "Resamples the server username OPRF key. WARNING: CATASTROPHIC OPERATOR OPERATION. Invalidates all existing username tokens and forces full user re-registration. See §8.3 and §5.8.",
+        "operationId": "rotate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateOprfRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Username OPRF key rotated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotateOprfResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or confirmation missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rotation already in progress",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded (1/hour)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/rooms/{id}/sessions": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Read-only room session list",
+        "description": "Fetches the list of active sessions for a room. Read-only variant for admin visibility. See §8.3.",
+        "operationId": "list_admin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Target room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Room session list retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/session-types/reload": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reload session types configuration",
+        "description": "Reads SESSION_TYPES_CONFIG_PATH, validates, and performs an atomic swap. On validation error, previous config remains in effect and 400 is returned. See §8.3.1.",
+        "operationId": "post_reload_session_types_handler",
+        "responses": {
+          "200": {
+            "description": "Session types configuration reloaded successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionTypesReloadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or configuration file missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "tags": [
@@ -4587,6 +5037,24 @@
           }
         }
       },
+      "ExtensionProxyBlocklistReloadResponse": {
+        "type": "object",
+        "required": [
+          "reloaded",
+          "suffix_count"
+        ],
+        "properties": {
+          "reloaded": {
+            "type": "boolean",
+            "description": "True if reload succeeded."
+          },
+          "suffix_count": {
+            "type": "integer",
+            "description": "Count of active domain suffixes in blocklist.",
+            "minimum": 0
+          }
+        }
+      },
       "GetBotSettingsMeResp": {
         "type": "object",
         "required": [
@@ -4641,6 +5109,40 @@
         "properties": {
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "KeyTransparencyStatsResponse": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "tree_size"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "True if Key Transparency logging is active."
+          },
+          "newest_leaf_added_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Timestamp when newest leaf was added.",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "oldest_leaf_added_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Timestamp when oldest leaf was added.",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "tree_size": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Total number of leaves in Key Transparency log."
           }
         }
       },
@@ -4792,6 +5294,30 @@
         "properties": {
           "all_sessions": {
             "type": "boolean"
+          }
+        }
+      },
+      "ModelReloadResponse": {
+        "type": "object",
+        "required": [
+          "reloaded",
+          "stt_models",
+          "tts_models"
+        ],
+        "properties": {
+          "reloaded": {
+            "type": "boolean",
+            "description": "True if reload succeeded."
+          },
+          "stt_models": {
+            "type": "integer",
+            "description": "Count of active Speech-to-Text models.",
+            "minimum": 0
+          },
+          "tts_models": {
+            "type": "integer",
+            "description": "Count of active Text-to-Speech models.",
+            "minimum": 0
           }
         }
       },
@@ -5383,6 +5909,53 @@
           }
         }
       },
+      "RoomSessionView": {
+        "type": "object",
+        "required": [
+          "id",
+          "extension_id",
+          "session_type",
+          "metadata_version",
+          "position",
+          "participant_count",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "extension_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "metadata_version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "participant_count": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "session_type": {
+            "type": "string"
+          }
+        }
+      },
       "RotateBotKeysReq": {
         "type": "object",
         "properties": {
@@ -5406,6 +5979,47 @@
           }
         }
       },
+      "RotateOprfRequest": {
+        "type": "object",
+        "properties": {
+          "confirm": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Flag indicating explicit confirmation for username OPRF key rotation. Must be true."
+          }
+        }
+      },
+      "RotateOprfResponse": {
+        "type": "object",
+        "required": [
+          "backup_path",
+          "users_flagged",
+          "rotated_at",
+          "restart_required"
+        ],
+        "properties": {
+          "backup_path": {
+            "type": "string",
+            "description": "File path where previous OPRF key was backed up."
+          },
+          "restart_required": {
+            "type": "boolean",
+            "description": "True indicating server process restart is required."
+          },
+          "rotated_at": {
+            "type": "string",
+            "description": "ISO 8601 timestamp when rotation took place."
+          },
+          "users_flagged": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of registered users flagged for re-registration.",
+            "minimum": 0
+          }
+        }
+      },
       "SessionListResponse": {
         "type": "object",
         "required": [
@@ -5415,7 +6029,7 @@
           "sessions": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/SessionResponseItem"
+              "$ref": "#/components/schemas/RoomSessionView"
             }
           }
         }
@@ -5458,6 +6072,33 @@
           }
         }
       },
+      "SessionTypeAdminView": {
+        "type": "object",
+        "required": [
+          "type",
+          "extension_id",
+          "max_participants",
+          "max_per_room"
+        ],
+        "properties": {
+          "extension_id": {
+            "type": "string"
+          },
+          "max_participants": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "max_per_room": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
       "SessionTypeCapView": {
         "type": "object",
         "required": [
@@ -5476,6 +6117,59 @@
           },
           "type": {
             "type": "string"
+          }
+        }
+      },
+      "SessionTypesReloadResponse": {
+        "type": "object",
+        "required": [
+          "reloaded",
+          "session_types"
+        ],
+        "properties": {
+          "reloaded": {
+            "type": "boolean",
+            "description": "True if reload succeeded."
+          },
+          "session_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionTypeAdminView"
+            },
+            "description": "List of active session types post-reload."
+          }
+        }
+      },
+      "SnapshotView": {
+        "type": "object",
+        "required": [
+          "id",
+          "tree_size",
+          "root_hash",
+          "signature",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "id": {
+            "type": "string"
+          },
+          "root_hash": {
+            "type": "string",
+            "format": "binary",
+            "description": "32-byte Merkle tree root hash, base64url encoded. Reference: §7.11"
+          },
+          "signature": {
+            "type": "string",
+            "format": "binary",
+            "description": "Server signature over tree head, base64url encoded."
+          },
+          "tree_size": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -6002,6 +6696,10 @@
     {
       "name": "Key Transparency",
       "description": "Key Transparency endpoints for users and bots"
+    },
+    {
+      "name": "Admin",
+      "description": "Admin administration and operations endpoints"
     }
   ]
 }

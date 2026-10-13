@@ -13,7 +13,7 @@ fn test_openapi_doc_validity() {
     assert_eq!(parsed["info"]["title"], "Atoll Encrypted Chat API");
     assert_eq!(parsed["info"]["version"], "3.0.4");
 
-    // Assert path items (41 path items total)
+    // Assert path items (48 path items total)
     let paths = parsed["paths"].as_object().unwrap();
     let expected_paths = [
         "/api/v1/health",
@@ -57,6 +57,13 @@ fn test_openapi_doc_validity() {
         "/api/v1/kt/bot/{id}",
         "/api/v1/kt/bot/{id}/history",
         "/api/v1/kt/snapshot",
+        "/api/v1/admin/oprf/rotate",
+        "/api/v1/admin/key-transparency",
+        "/api/v1/admin/key-transparency/snapshot",
+        "/api/v1/admin/rooms/{id}/sessions",
+        "/api/v1/admin/models/reload",
+        "/api/v1/admin/session-types/reload",
+        "/api/v1/admin/extension-proxy/reload-blocklist",
     ];
 
     for path_str in &expected_paths {
@@ -135,6 +142,13 @@ fn test_openapi_doc_validity() {
         ("/api/v1/kt/bot/{id}", "get"),
         ("/api/v1/kt/bot/{id}/history", "get"),
         ("/api/v1/kt/snapshot", "get"),
+        ("/api/v1/admin/oprf/rotate", "post"),
+        ("/api/v1/admin/key-transparency", "get"),
+        ("/api/v1/admin/key-transparency/snapshot", "post"),
+        ("/api/v1/admin/rooms/{id}/sessions", "get"),
+        ("/api/v1/admin/models/reload", "post"),
+        ("/api/v1/admin/session-types/reload", "post"),
+        ("/api/v1/admin/extension-proxy/reload-blocklist", "post"),
     ];
 
     for (path, method) in &authenticated_paths {
@@ -251,6 +265,15 @@ fn test_openapi_doc_validity() {
         "KtSnapshotResponse",
         "KtTreeHead",
         "KtAuditorSignature",
+        "RotateOprfRequest",
+        "RotateOprfResponse",
+        "KeyTransparencyStatsResponse",
+        "SnapshotView",
+        "RoomSessionView",
+        "ModelReloadResponse",
+        "SessionTypesReloadResponse",
+        "SessionTypeAdminView",
+        "ExtensionProxyBlocklistReloadResponse",
     ];
 
     for schema in &expected_schemas {
@@ -339,6 +362,56 @@ fn test_openapi_doc_validity() {
     assert!(
         !snapshot_props.contains_key("signature"),
         "KtSnapshotResponse unexpectedly contains a signature field"
+    );
+
+    // Assert admin KT snapshot reuses the same schema (SnapshotView)
+    let admin_kt_snap_ref = parsed["paths"]["/api/v1/admin/key-transparency/snapshot"]["post"]
+        ["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+        .as_str()
+        .unwrap();
+    assert_eq!(admin_kt_snap_ref, "#/components/schemas/SnapshotView");
+
+    // Assert admin room sessions reuses the same schema (SessionListResponse)
+    let admin_room_sess_ref = parsed["paths"]["/api/v1/admin/rooms/{id}/sessions"]["get"]
+        ["responses"]["200"]["content"]["application/json"]["schema"]["$ref"]
+        .as_str()
+        .unwrap();
+    assert_eq!(
+        admin_room_sess_ref,
+        "#/components/schemas/SessionListResponse"
+    );
+
+    // Assert POST /admin/oprf/rotate description mentions catastrophic nature and §5.8
+    let oprf_rot_desc = parsed["paths"]["/api/v1/admin/oprf/rotate"]["post"]["description"]
+        .as_str()
+        .unwrap();
+    assert!(
+        oprf_rot_desc.contains("CATASTROPHIC OPERATOR OPERATION"),
+        "OPRF rotate description missing catastrophic operation warning"
+    );
+    assert!(
+        oprf_rot_desc.contains("§5.8"),
+        "OPRF rotate description missing §5.8 reference"
+    );
+
+    // Assert POST /admin/session-types/reload description mentions §8.3.1
+    let st_reload_desc = parsed["paths"]["/api/v1/admin/session-types/reload"]["post"]
+        ["description"]
+        .as_str()
+        .unwrap();
+    assert!(
+        st_reload_desc.contains("§8.3.1"),
+        "session types reload description missing §8.3.1 reference"
+    );
+
+    // Assert POST /admin/extension-proxy/reload-blocklist description mentions §8.3.2
+    let bl_reload_desc = parsed["paths"]["/api/v1/admin/extension-proxy/reload-blocklist"]["post"]
+        ["description"]
+        .as_str()
+        .unwrap();
+    assert!(
+        bl_reload_desc.contains("§8.3.2"),
+        "blocklist reload description missing §8.3.2 reference"
     );
 }
 

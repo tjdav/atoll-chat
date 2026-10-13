@@ -1,4 +1,17 @@
 
+## OpenAPI Annotations — Admin Endpoints Verification Fact
+- **ID:** OpenAPI Annotations — Admin Endpoints
+- **Date:** 2026-10-13
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §8.3, §8.3.1, §8.3.2, §5.8, §5.27
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/openapi-annotate-admin-endpoints/report.md`.
+  - **Coverage Scope:** 7 admin endpoints covering `POST /admin/oprf/rotate`, `GET /admin/key-transparency`, `POST /admin/key-transparency/snapshot`, `GET /admin/rooms/:id/sessions`, `POST /admin/models/reload`, `POST /admin/session-types/reload`, `POST /admin/extension-proxy/reload-blocklist`.
+  - **Schema Reuse:** Reused `SnapshotView`, `SessionListResponse`, `RoomSessionView`, and `SessionTypeAdminView` from prior domains without re-deriving duplicate components.
+  - **Catastrophic Rotation & Spec References:** `POST /admin/oprf/rotate` description documents §5.8 catastrophic rotation warning; reload endpoints document atomic swap semantics and spec section references (§8.3, §8.3.1, §8.3.2, §5.27).
+  - **Artifact Generation & Test Verification:** Total paths count increased to 48 in `docs/openapi.json`. Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
+- **Link to report:** [verification/openapi-annotate-admin-endpoints/report.md](verification/openapi-annotate-admin-endpoints/report.md)
+
 ## OpenAPI Annotations — Key Transparency Endpoints Verification Fact
 - **ID:** OpenAPI Annotations — Key Transparency Endpoints
 - **Date:** 2026-10-12
