@@ -54,8 +54,9 @@ async function writeKeystore (ksPath, secret, botId = 'b_test') {
 
 function writeBotFile (dir, name = 'bot.js', extraConfig = '') {
   const filePath = path.join(dir, name)
+  const defineBotUrl = new URL('../../src/define-bot.js', import.meta.url).href
   writeFileSync(filePath, `
-    import { defineBot } from '${process.cwd()}/src/define-bot.js'
+    import { defineBot } from '${defineBotUrl}'
     export default defineBot({
       id: 'com.example.run',
       apiVersion: '1.0',

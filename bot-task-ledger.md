@@ -17,6 +17,7 @@ Track progress across Bot SDK implementation tasks.
 
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
+| B-046d | Testing | done | §13 | Fix the shared cause of the 30-second timeout batches (`cli-run`, `cli-sandbox`, `runtime-pause`, `runtime-rooms`) |
 | B-046b | Testing | done | B-035 §2, §4 | Register the default KT signer endpoint in `createTestRuntime.js` and add regression test |
 | B-046a | Testing | done | §13 | Triaged and classified all six failing test batches in `@atoll/bot` |
 | B-043c-6 | Quality | done | B-043c-3 | Audit and clean suppressions in `packages/bot/src/` per revised policy |

@@ -57,8 +57,9 @@ async function writeSandboxKeystore (ksPath, secret = 'secret123', overrides = {
 
 function writeBotFile (dir, name = 'bot.js') {
   const filePath = path.join(dir, name)
+  const defineBotUrl = new URL('../../src/define-bot.js', import.meta.url).href
   writeFileSync(filePath, `
-    import { defineBot } from '${process.cwd()}/src/define-bot.js'
+    import { defineBot } from '${defineBotUrl}'
     export default defineBot({
       id: 'com.example.sandbox',
       apiVersion: '1.0',
