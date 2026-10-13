@@ -170,7 +170,22 @@ async function setupServer () {
 /**
  * Creates standard test runtime configurations and keystore.
  */
-function makeTestDeps (serverUrl, tmpDir, botConfigOverrides = {}) {
+function getWebhookPort (loggedLines) {
+  for (let i = loggedLines.length - 1; i >= 0; i--) {
+    try {
+      const parsed = JSON.parse(loggedLines[i])
+      if (parsed.msg === 'webhook server started') {
+        const port = parsed.meta?.port ?? parsed.meta?.meta?.port
+        if (typeof port === 'number' && port > 0) {
+          return port
+        }
+      }
+    } catch {}
+  }
+  return 0
+}
+
+function makeTestDeps (serverUrl, tmpDir, botConfigOverrides = {}, loggedLines = []) {
   const bot = {
     config: {
       label: 'Pause Test Bot',
@@ -217,7 +232,8 @@ function makeTestDeps (serverUrl, tmpDir, botConfigOverrides = {}) {
 
   const logger = createLogger({
     botId: 'bot_123',
-    level: 'silent'
+    level: 'debug',
+    sink: (line) => loggedLines.push(line)
   })
 
   return { bot, config, keystoreData, logger }
@@ -252,6 +268,7 @@ test('1. Three consecutive handler failures pause the runtime', async () => {
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -261,6 +278,7 @@ test('1. Three consecutive handler failures pause the runtime', async () => {
     for (let i = 1; i <= 3; i++) {
       wsInst.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
@@ -271,6 +289,7 @@ test('1. Three consecutive handler failures pause the runtime', async () => {
     // 4th dispatch should be skipped (callCount remains 3)
     wsInst.emit('message', JSON.stringify({
       event: 'message.new',
+      channel: 'private-room-r_1',
       data: JSON.stringify({ id: 'msg_4', room_id: 'r_1' })
     }))
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -311,6 +330,7 @@ test('2. The pause is reported to the server', async () => {
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -319,6 +339,7 @@ test('2. The pause is reported to the server', async () => {
     for (let i = 1; i <= 3; i++) {
       wsInst.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
@@ -364,6 +385,10 @@ test('3. A command dispatched after pause produces a paused local_message', asyn
       }
     })
 
+    const { encrypt, generateEphemeralKeypair } = await import('../../src/runtime/crypto/command-result.js')
+    const botCmdKeyPair = generateEphemeralKeypair()
+    keystoreData.bot_command_private = Buffer.from(botCmdKeyPair.privateKey).toString('base64url')
+
     const runtime = createRuntime({
       bot,
       config,
@@ -377,6 +402,7 @@ test('3. A command dispatched after pause produces a paused local_message', asyn
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -386,35 +412,33 @@ test('3. A command dispatched after pause produces a paused local_message', asyn
     for (let i = 1; i <= 3; i++) {
       wsInst.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
     }
 
-    // Dispatch command when paused
-    // Simulate raw command_invoked event by calling command handler or emitting event on bot channel
-    // Construct fake ciphertext / wire call via websocket bot channel
-    const ephemResultPub = Buffer.alloc(32, 9).toString('base64url')
+    const clientEphem = generateEphemeralKeypair()
+    const invokerResultKeyPair = generateEphemeralKeypair()
+    const ephemResultPub = Buffer.from(invokerResultKeyPair.publicKey).toString('base64url')
+
     const plainJson = JSON.stringify({
       command_name: 'ping',
       args: {},
       ephemeral_result_pubkey: ephemResultPub
     })
 
-    // Import crypto primitives to produce valid wire format for test
-    const { encrypt, generateEphemeralKeypair } = await import('../../src/runtime/crypto/command-result.js')
-    const ephem = generateEphemeralKeypair()
-    const botCmdPriv = Buffer.from(keystoreData.bot_command_private, 'base64url')
     const ct = encrypt({
-      privateKey: ephem.privateKey,
-      peerPublicKey: botCmdPriv,
+      privateKey: clientEphem.privateKey,
+      peerPublicKey: botCmdKeyPair.publicKey,
       info: 'bot-command-v1',
       plaintext: Buffer.from(plainJson, 'utf8')
     })
-    const wireStr = Buffer.concat([ephem.publicKey, ct]).toString('base64url')
+    const wireStr = Buffer.concat([clientEphem.publicKey, ct]).toString('base64url')
 
     wsInst.emit('message', JSON.stringify({
       event: 'bot.command_invoked',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({
         command_id: 'cmd_100',
         room_id: 'r_1',
@@ -469,6 +493,7 @@ test('4. A room event dispatched after pause is skipped', async () => {
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -477,6 +502,7 @@ test('4. A room event dispatched after pause is skipped', async () => {
     for (let i = 1; i <= 3; i++) {
       wsInst.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
@@ -487,6 +513,7 @@ test('4. A room event dispatched after pause is skipped', async () => {
     // Dispatch 5th event
     wsInst.emit('message', JSON.stringify({
       event: 'message.new',
+      channel: 'private-room-r_1',
       data: JSON.stringify({ id: 'msg_5', room_id: 'r_1' })
     }))
     await new Promise((resolve) => setTimeout(resolve, 20))
@@ -507,6 +534,7 @@ test('5. A webhook after pause returns 503', async () => {
 
   try {
     let webhookHandled = false
+    const loggedLines = []
     const { bot, config, keystoreData, logger } = makeTestDeps(serverUrl, tmpDir, {
       triggers: [{ type: 'webhook', path: '/test' }],
       handlers: {
@@ -517,7 +545,7 @@ test('5. A webhook after pause returns 503', async () => {
           webhookHandled = true
         }
       }
-    })
+    }, loggedLines)
 
     const runtime = createRuntime({
       bot,
@@ -532,6 +560,7 @@ test('5. A webhook after pause returns 503', async () => {
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -540,17 +569,13 @@ test('5. A webhook after pause returns 503', async () => {
     for (let i = 1; i <= 3; i++) {
       wsInst.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
     }
 
-    // Call webhook via HTTP on the webhook server port
-    // In makeTestDeps, config.webhook.port is set to 0. Retrieve the actual bound port from webhookServer.
-    /** @type {Record<string, Object>} */
-    const runtimeUntyped = runtime
-    const webhookPort = runtimeUntyped.webhookServer?.getBoundPort() ?? config.webhook.port
-
+    const webhookPort = getWebhookPort(loggedLines)
     const webhookRes = await fetch(`http://127.0.0.1:${webhookPort}/webhooks/test`, {
       method: 'POST',
       body: ''
@@ -600,6 +625,7 @@ test('6. A cron fire after pause is skipped', async () => {
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -608,6 +634,7 @@ test('6. A cron fire after pause is skipped', async () => {
     for (let i = 1; i <= 3; i++) {
       wsInst.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
@@ -648,6 +675,7 @@ test('7. A failure count exceeding the threshold does not re-report', async () =
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -656,6 +684,7 @@ test('7. A failure count exceeding the threshold does not re-report', async () =
     for (let i = 1; i <= 5; i++) {
       wsInst.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
@@ -703,25 +732,26 @@ test('8. A success before the threshold resets', async () => {
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
     await new Promise((resolve) => setTimeout(resolve, 20))
 
     // 2 failures
-    wsInst.emit('message', JSON.stringify({ event: 'message.new', data: JSON.stringify({ id: 'm1', room_id: 'r_1' }) }))
+    wsInst.emit('message', JSON.stringify({ event: 'message.new', channel: 'private-room-r_1', data: JSON.stringify({ id: 'm1', room_id: 'r_1' }) }))
     await new Promise((resolve) => setTimeout(resolve, 20))
-    wsInst.emit('message', JSON.stringify({ event: 'message.new', data: JSON.stringify({ id: 'm2', room_id: 'r_1' }) }))
+    wsInst.emit('message', JSON.stringify({ event: 'message.new', channel: 'private-room-r_1', data: JSON.stringify({ id: 'm2', room_id: 'r_1' }) }))
     await new Promise((resolve) => setTimeout(resolve, 20))
 
     // 1 success
-    wsInst.emit('message', JSON.stringify({ event: 'message.new', data: JSON.stringify({ id: 'm3', room_id: 'r_1' }) }))
+    wsInst.emit('message', JSON.stringify({ event: 'message.new', channel: 'private-room-r_1', data: JSON.stringify({ id: 'm3', room_id: 'r_1' }) }))
     await new Promise((resolve) => setTimeout(resolve, 20))
 
     // 2 more failures
-    wsInst.emit('message', JSON.stringify({ event: 'message.new', data: JSON.stringify({ id: 'm4', room_id: 'r_1' }) }))
+    wsInst.emit('message', JSON.stringify({ event: 'message.new', channel: 'private-room-r_1', data: JSON.stringify({ id: 'm4', room_id: 'r_1' }) }))
     await new Promise((resolve) => setTimeout(resolve, 20))
-    wsInst.emit('message', JSON.stringify({ event: 'message.new', data: JSON.stringify({ id: 'm5', room_id: 'r_1' }) }))
+    wsInst.emit('message', JSON.stringify({ event: 'message.new', channel: 'private-room-r_1', data: JSON.stringify({ id: 'm5', room_id: 'r_1' }) }))
     await new Promise((resolve) => setTimeout(resolve, 20))
 
     const pauseReqs = requests.filter((r) => r.url === '/api/v1/bots/me/pause')
@@ -765,6 +795,7 @@ test('9. The pause state survives dispatch of other event types', async () => {
     const wsInst = FakeWebSocket.instances[0]
     wsInst.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -774,15 +805,17 @@ test('9. The pause state survives dispatch of other event types', async () => {
     for (let i = 1; i <= 3; i++) {
       wsInst.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
     }
 
-    // Attempt room event
+    // Attempt room event (room events dispatch on private-room channel)
     wsInst.emit('message', JSON.stringify({
       event: 'room.member_added',
-      data: JSON.stringify({ id: 're_1', room_id: 'r_1' })
+      channel: 'private-room-r_1',
+      data: JSON.stringify({ id: 're_1', room_id: 'r_1', user_id: 'u_2' })
     }))
     await new Promise((resolve) => setTimeout(resolve, 20))
 
@@ -827,6 +860,7 @@ test('10. stop() then start() on a fresh runtime is unpaused', async () => {
     const wsInst1 = FakeWebSocket.instances[0]
     wsInst1.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -835,6 +869,7 @@ test('10. stop() then start() on a fresh runtime is unpaused', async () => {
     for (let i = 1; i <= 3; i++) {
       wsInst1.emit('message', JSON.stringify({
         event: 'message.new',
+        channel: 'private-room-r_1',
         data: JSON.stringify({ id: `msg_${i}`, room_id: 'r_1' })
       }))
       await new Promise((resolve) => setTimeout(resolve, 20))
@@ -856,6 +891,7 @@ test('10. stop() then start() on a fresh runtime is unpaused', async () => {
     const wsInst2 = FakeWebSocket.instances[1]
     wsInst2.emit('message', JSON.stringify({
       event: 'bot.grant_updated',
+      channel: `private-bot-${keystoreData.bot_id}`,
       data: JSON.stringify({ room_id: 'r_1', new_mode: 'member', scopes: [] })
     }))
 
@@ -863,6 +899,7 @@ test('10. stop() then start() on a fresh runtime is unpaused', async () => {
 
     wsInst2.emit('message', JSON.stringify({
       event: 'message.new',
+      channel: 'private-room-r_1',
       data: JSON.stringify({ id: 'msg_fresh', room_id: 'r_1' })
     }))
     await new Promise((resolve) => setTimeout(resolve, 20))

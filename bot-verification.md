@@ -1,5 +1,25 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-046d Verification Fact
+- **Diagnosis & Fixes across 30-Second Timeout Group**:
+  - **`cli-run` & `cli-sandbox`**:
+    - **Diagnosis**: `writeBotFile()` helper in `packages/bot/tests/unit/cli-run.test.js` and `packages/bot/tests/unit/cli-sandbox.test.js` generated synthetic bot files using `import { defineBot } from '${process.cwd()}/src/define-bot.js'`. When tests ran from the monorepo root (`/app`), `process.cwd()` evaluated to `/app` instead of `/app/packages/bot`, causing dynamic imports to fail and test helpers to hang infinitely waiting for `'Ready.'` stdout output.
+    - **Fix**: Replaced `process.cwd()` in `writeBotFile` with `import.meta.url` relative resolution: `new URL('../../src/define-bot.js', import.meta.url).href`.
+  - **`runtime-pause`**:
+    - **Diagnosis**: Mock WebSocket events emitted in `runtime-pause.test.js` were missing target `channel` properties (`private-bot-<id>` and `private-room-<id>`), causing command invocation and room events to be dropped by `createWebSocketClient` channel filtering. In addition, subtest 5 relied on `config.webhook.port` (0) instead of awaiting the dynamic port from logger lines.
+    - **Fix**: Updated subtests in `packages/bot/tests/unit/runtime-pause.test.js` to emit events with explicit channel properties (`private-bot-${keystoreData.bot_id}` and `private-room-r_1`), valid X25519 bot command keypair, and added `getWebhookPort(loggedLines)` scanning logger output in reverse.
+  - **`runtime-rooms`**:
+    - **Diagnosis**: Verified all 31 subtests pass cleanly in isolation within execution budget.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+  - `pnpm --filter @atoll/bot test:batch runtime-rooms` passed (31 passing, status 0).
+  - `pnpm --filter @atoll/bot test:batch runtime-pause` passed (10 passing, status 0).
+  - `pnpm --filter @atoll/bot test:batch cli-run` passed (37 passing, status 0).
+  - `pnpm --filter @atoll/bot test:batch cli-sandbox` passed (37 passing, status 0).
+
 ## Task B-046b Verification Fact
 - **Register KT Signer Response (`packages/bot/src/testing/create-test-runtime.js`)**:
   - Registered default `GET /api/v1/kt/user/u_signer` HTTP 200 response on `mockServer` when a synthetic signer is seeded during test runtime construction.
