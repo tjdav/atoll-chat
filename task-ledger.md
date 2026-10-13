@@ -362,6 +362,10 @@ None.
   - **Delivered:** `verification/openapi-annotate-bots-endpoints/report.md`, `server/src/openapi.rs`, `server/src/routes/bots.rs`, `server/src/routes/room_bots.rs`, `server/src/routes/publisher_keys.rs`, `server/src/routes/observer_stream.rs`, `server/src/bots/settings.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
   - **Summary:** Annotated complete bots endpoint domain (25 handlers across bot account CRUD, avatar, tokens, room grants, bot messages/commands, settings, publisher keys, and observer stream SSE; 37 path items total). Implemented missing `GET /bots/:id/tokens` handler and route per §8.8.19. Derived `ToSchema` and `IntoParams` across bot DTOs, annotated binary ciphertext and signature fields with spec references (§6.31, §6.33, §7.10, §8.10), and documented observer stream SSE (`text/event-stream`). Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
 
+- **OpenAPI Annotations — Admin Endpoints**: done
+  - **Delivered:** `verification/openapi-annotate-admin-endpoints/report.md`, `server/src/openapi.rs`, `server/src/routes/admin.rs`, `server/src/routes/admin_oprf.rs`, `server/src/routes/room_sessions.rs`, `server/src/sessions/crud.rs`, `server/src/sessions/types_config.rs`, `server/src/key_transparency/snapshot.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Annotated complete admin endpoint domain (7 handlers across OPRF rotation, KT stats, KT snapshot, room sessions, model manifest reload, session types reload, and extension proxy blocklist reload; 48 total path items in `docs/openapi.json`). Derived `ToSchema` across admin DTOs, reused prior-domain schemas (`SnapshotView`, `SessionListResponse`, `RoomSessionView`, `SessionTypeAdminView`), documented §5.8 catastrophic rotation policy and atomic swap semantics. Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
+
 ## Summary
 - **Project Status:** In-Progress (Developer Tooling track active)
 - **Total Verifications/Tasks Tracked:** 66

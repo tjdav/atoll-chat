@@ -13,9 +13,42 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize)]
+use utoipa::ToSchema;
+
+use crate::error::ErrorResponse;
+
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SessionListResponse {
     pub sessions: Vec<RoomSessionView>,
+}
+
+/// GET /api/v1/admin/rooms/{id}/sessions
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/rooms/{id}/sessions",
+    tag = "Admin",
+    summary = "Read-only room session list",
+    description = "Fetches the list of active sessions for a room. Read-only variant for admin visibility. See §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID")
+    ),
+    responses(
+        (status = 200, description = "Room session list retrieved successfully", body = SessionListResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse)
+    )
+)]
+pub async fn list_admin(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(room_id): Path<String>,
+    Query(query): Query<ListRoomSessionsQuery>,
+) -> Result<Json<SessionListResponse>, ApiError> {
+    list(State(state), auth, Path(room_id), Query(query)).await
 }
 
 #[derive(Debug, Deserialize)]

@@ -14,19 +14,48 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-#[derive(Debug, Deserialize)]
+use utoipa::ToSchema;
+
+use crate::error::ErrorResponse;
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RotateOprfRequest {
+    /// Flag indicating explicit confirmation for username OPRF key rotation. Must be true.
     pub confirm: Option<bool>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RotateOprfResponse {
+    /// File path where previous OPRF key was backed up.
     pub backup_path: String,
+    /// Number of registered users flagged for re-registration.
     pub users_flagged: u64,
+    /// ISO 8601 timestamp when rotation took place.
     pub rotated_at: String,
+    /// True indicating server process restart is required.
     pub restart_required: bool,
 }
 
+/// POST /api/v1/admin/oprf/rotate
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/oprf/rotate",
+    tag = "Admin",
+    summary = "Rotate username OPRF key",
+    description = "Resamples the server username OPRF key. WARNING: CATASTROPHIC OPERATOR OPERATION. Invalidates all existing username tokens and forces full user re-registration. See §8.3 and §5.8.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body = RotateOprfRequest,
+    responses(
+        (status = 200, description = "Username OPRF key rotated successfully", body = RotateOprfResponse),
+        (status = 400, description = "Invalid request or confirmation missing", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse),
+        (status = 409, description = "Rotation already in progress", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded (1/hour)", body = ErrorResponse)
+    )
+)]
 pub async fn rotate(
     State(state): State<AppState>,
     auth: AuthUser,

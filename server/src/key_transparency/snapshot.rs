@@ -13,12 +13,19 @@ use crate::opaque::OpaqueServer;
 use crate::sockudo::Publisher;
 use crate::sync::{allocate_user_seq, publish_user_event, UserEventEnvelope};
 
-#[derive(Debug, Clone, Serialize)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct SnapshotView {
     pub id: String,
     pub tree_size: i64,
+    /// 32-byte Merkle tree root hash, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub root_hash: String,
+    /// Server signature over tree head, base64url encoded.
+    #[schema(value_type = String, format = Binary)]
     pub signature: String,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 

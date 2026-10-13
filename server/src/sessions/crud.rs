@@ -20,7 +20,9 @@ fn get_type_regex() -> &'static Regex {
     TYPE_REGEX.get_or_init(|| Regex::new(r"^[a-z][a-z0-9_-]*$").expect("valid static regex"))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RoomSessionView {
     pub id: String,
     pub extension_id: String,
@@ -29,6 +31,7 @@ pub struct RoomSessionView {
     pub metadata_version: u32,
     pub position: i32,
     pub participant_count: u32,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 
