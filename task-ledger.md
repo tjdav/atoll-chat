@@ -343,6 +343,10 @@ None.
 
 ## Developer Tooling
 
+- **OpenAPI Annotations — Key Transparency Endpoints**: done
+  - **Delivered:** `verification/openapi-annotate-kt-endpoints/report.md`, `server/src/openapi.rs`, `server/src/routes/key_transparency.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Annotated complete Key Transparency endpoint domain (`GET /kt/user/:id`, `GET /kt/bot/:id`, `GET /kt/bot/:id/history`, `GET /kt/snapshot`; 41 path items total). Derived `ToSchema` across KT response structs (`UserKtResponse`, `BotKtResponse`, `BotKtHistoryEntry`, `BotKtHistoryResponse`, `KtSnapshotResponse`, `KtTreeHead`, `KtAuditorSignature`). Annotated public key and Merkle root hash fields with `format: binary` and §7.11 spec references. Documented `username_token` exclusion note in `GET /kt/user/{id}` operation description per §12. Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
+
 - **OpenAPI Annotations — Messaging Endpoints**: done
   - **Delivered:** `verification/openapi-annotate-messaging-endpoints/report.md`
 

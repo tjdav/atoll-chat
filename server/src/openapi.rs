@@ -11,6 +11,10 @@ use crate::routes::{
     capabilities::{AltchaCapView, CapabilitiesResponse},
     devices::{DeviceResponse, ListDevicesResponse, UpdateDeviceNameRequest},
     health::HealthResponse,
+    key_transparency::{
+        BotKtHistoryEntry, BotKtHistoryResponse, BotKtResponse, KtAuditorSignature,
+        KtSnapshotResponse, KtTreeHead, UserKtResponse,
+    },
     preferences::WritePreferenceRequest,
     push_subscriptions::{PushSubscriptionListResponse, RegisterSubscriptionBody},
     read_state::WriteReadStateRequest,
@@ -105,6 +109,10 @@ impl Modify for SecurityAddon {
         crate::routes::publisher_keys::get_publisher_key,
         crate::routes::publisher_keys::publish_publisher_key,
         crate::routes::observer_stream::observer_stream_handler,
+        crate::routes::key_transparency::get_user_kt_handler,
+        crate::routes::key_transparency::get_bot_kt_handler,
+        crate::routes::key_transparency::get_bot_kt_history_handler,
+        crate::routes::key_transparency::get_kt_snapshot_handler,
     ),
     components(
         schemas(
@@ -172,6 +180,13 @@ impl Modify for SecurityAddon {
             crate::bots::settings::PatchBotSettingRequest,
             crate::routes::publisher_keys::PublisherKeyResponse,
             crate::routes::publisher_keys::PublishPublisherKeyRequest,
+            UserKtResponse,
+            BotKtResponse,
+            BotKtHistoryEntry,
+            BotKtHistoryResponse,
+            KtSnapshotResponse,
+            KtTreeHead,
+            KtAuditorSignature,
         )
     ),
     modifiers(&SecurityAddon),
@@ -179,7 +194,8 @@ impl Modify for SecurityAddon {
         (name = "Public", description = "Public endpoints"),
         (name = "User", description = "User endpoints"),
         (name = "Messaging", description = "Messaging endpoints"),
-        (name = "Bots", description = "Bot account management, room grants, settings, commands, and publisher keys")
+        (name = "Bots", description = "Bot account management, room grants, settings, commands, and publisher keys"),
+        (name = "Key Transparency", description = "Key Transparency endpoints for users and bots")
     )
 )]
 pub struct ApiDoc;

@@ -1,4 +1,17 @@
 
+## OpenAPI Annotations — Key Transparency Endpoints Verification Fact
+- **ID:** OpenAPI Annotations — Key Transparency Endpoints
+- **Date:** 2026-10-12
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §8.11, §8.11.1–§8.11.4, §7.11, §5.22, §12
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/openapi-annotate-kt-endpoints/report.md`.
+  - **Coverage Scope:** 4 endpoints covering user KT entry, bot KT entry, bot KT history, and KT snapshot (`GET /kt/user/:id`, `GET /kt/bot/:id`, `GET /kt/bot/:id/history`, `GET /kt/snapshot`).
+  - **Option B Implementation:** Replaced inline `serde_json::Value` instances in `UserKtResponse` and `BotKtResponse` with concrete `KtTreeHead` and `Vec<KtAuditorSignature>` types.
+  - **Binary & Spec Annotations:** Public keys (`identity_pubkey`, `bot_identity_pubkey`, `bot_command_pubkey`) and Merkle `root_hash` annotated as `format: binary` with §7.11 references.
+  - **Exclusion Note & Signature Exclusion:** `GET /kt/user/:id` operation description explicitly documents `username_token` exclusion per §12. `KtSnapshotResponse` schema excludes `signature` per §8.11.4.
+- **Link to report:** [verification/openapi-annotate-kt-endpoints/report.md](verification/openapi-annotate-kt-endpoints/report.md)
+
 ## OpenAPI Annotations — Bots Endpoints Verification Fact
 - **ID:** OpenAPI Annotations — Bots Endpoints
 - **Date:** 2026-10-12

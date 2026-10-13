@@ -1057,6 +1057,227 @@
         }
       }
     },
+    "/api/v1/kt/bot/{id}": {
+      "get": {
+        "tags": [
+          "Key Transparency"
+        ],
+        "summary": "Current bot keys with inclusion proof",
+        "description": "Fetches current bot identity and command keys with Merkle inclusion proof. See §8.11.2.",
+        "operationId": "get_bot_kt_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Target bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bot Key Transparency entry retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotKtResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found or Key Transparency disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kt/bot/{id}/history": {
+      "get": {
+        "tags": [
+          "Key Transparency"
+        ],
+        "summary": "All bot key history",
+        "description": "Fetches all historical key entries for a bot ordered by leaf_index ASC without inclusion proofs. See §8.11.3.",
+        "operationId": "get_bot_kt_history_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Target bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bot Key Transparency history retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotKtHistoryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found or Key Transparency disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kt/snapshot": {
+      "get": {
+        "tags": [
+          "Key Transparency"
+        ],
+        "summary": "Current KT snapshot",
+        "description": "Fetches current Key Transparency tree head snapshot on demand. See §8.11.4.",
+        "operationId": "get_kt_snapshot_handler",
+        "responses": {
+          "200": {
+            "description": "Key Transparency snapshot retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KtSnapshotResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Snapshot not found or Key Transparency disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/kt/user/{id}": {
+      "get": {
+        "tags": [
+          "Key Transparency"
+        ],
+        "summary": "Current user keys with inclusion proof",
+        "description": "Fetches current user public key and Merkle inclusion proof. See §8.11.1. Note: username_token is excluded from response per §12.",
+        "operationId": "get_user_kt_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Target user ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User Key Transparency entry retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserKtResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found or Key Transparency disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/ready": {
       "get": {
         "tags": [
@@ -3729,6 +3950,111 @@
           }
         }
       },
+      "BotKtHistoryEntry": {
+        "type": "object",
+        "required": [
+          "leaf_index",
+          "bot_identity_pubkey",
+          "bot_command_pubkey",
+          "identity_pubkey",
+          "added_at"
+        ],
+        "properties": {
+          "added_at": {
+            "type": "string"
+          },
+          "bot_command_pubkey": {
+            "type": "string",
+            "format": "binary",
+            "description": "Bot command public key, base64url encoded. Reference: §7.11"
+          },
+          "bot_identity_pubkey": {
+            "type": "string",
+            "format": "binary",
+            "description": "Bot identity public key, base64url encoded. Reference: §7.11"
+          },
+          "identity_pubkey": {
+            "type": "string",
+            "format": "binary",
+            "description": "Bot operator Ed25519 identity public key, base64url encoded. Reference: §7.11"
+          },
+          "leaf_index": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "BotKtHistoryResponse": {
+        "type": "object",
+        "required": [
+          "bot_id",
+          "entries"
+        ],
+        "properties": {
+          "bot_id": {
+            "type": "string"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BotKtHistoryEntry"
+            }
+          }
+        }
+      },
+      "BotKtResponse": {
+        "type": "object",
+        "required": [
+          "bot_id",
+          "leaf_index",
+          "bot_identity_pubkey",
+          "bot_command_pubkey",
+          "identity_pubkey",
+          "inclusion_proof",
+          "tree_head",
+          "auditor_signatures"
+        ],
+        "properties": {
+          "auditor_signatures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KtAuditorSignature"
+            }
+          },
+          "bot_command_pubkey": {
+            "type": "string",
+            "format": "binary",
+            "description": "Bot command public key, base64url encoded. Reference: §7.11"
+          },
+          "bot_id": {
+            "type": "string"
+          },
+          "bot_identity_pubkey": {
+            "type": "string",
+            "format": "binary",
+            "description": "Bot identity public key, base64url encoded. Reference: §7.11"
+          },
+          "identity_pubkey": {
+            "type": "string",
+            "format": "binary",
+            "description": "Bot operator Ed25519 identity public key, base64url encoded. Reference: §7.11"
+          },
+          "inclusion_proof": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Merkle inclusion proof hashes, base64url encoded."
+          },
+          "leaf_index": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tree_head": {
+            "$ref": "#/components/schemas/KtTreeHead"
+          }
+        }
+      },
       "BotSettingBotView": {
         "type": "object",
         "required": [
@@ -4315,6 +4641,83 @@
         "properties": {
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "KtAuditorSignature": {
+        "type": "object",
+        "required": [
+          "auditor_id",
+          "signature"
+        ],
+        "properties": {
+          "auditor_id": {
+            "type": "string"
+          },
+          "signature": {
+            "type": "string",
+            "format": "binary",
+            "description": "Auditor signature over tree head, base64url encoded."
+          }
+        }
+      },
+      "KtSnapshotResponse": {
+        "type": "object",
+        "required": [
+          "tree_size",
+          "root_hash",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "root_hash": {
+            "type": "string",
+            "format": "binary",
+            "description": "32-byte Merkle tree root hash, base64url encoded. Reference: §7.11"
+          },
+          "tree_size": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "KtTreeHead": {
+        "type": "object",
+        "required": [
+          "tree_size",
+          "root_hash",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "root_hash": {
+            "type": "string",
+            "format": "binary",
+            "description": "32-byte Merkle tree root hash, base64url encoded. Reference: §7.11"
+          },
+          "signature": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Server signature over tree head, base64url encoded."
+          },
+          "tree_size": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -5365,6 +5768,47 @@
           }
         }
       },
+      "UserKtResponse": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "leaf_index",
+          "identity_pubkey",
+          "inclusion_proof",
+          "tree_head",
+          "auditor_signatures"
+        ],
+        "properties": {
+          "auditor_signatures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KtAuditorSignature"
+            }
+          },
+          "identity_pubkey": {
+            "type": "string",
+            "format": "binary",
+            "description": "User Ed25519 identity public key, base64url encoded. Reference: §7.11"
+          },
+          "inclusion_proof": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Merkle inclusion proof hashes, base64url encoded."
+          },
+          "leaf_index": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tree_head": {
+            "$ref": "#/components/schemas/KtTreeHead"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        }
+      },
       "UserLimitsResponse": {
         "type": "object",
         "required": [
@@ -5554,6 +5998,10 @@
     {
       "name": "Bots",
       "description": "Bot account management, room grants, settings, commands, and publisher keys"
+    },
+    {
+      "name": "Key Transparency",
+      "description": "Key Transparency endpoints for users and bots"
     }
   ]
 }
