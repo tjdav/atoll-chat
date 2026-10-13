@@ -13,7 +13,7 @@ fn test_openapi_doc_validity() {
     assert_eq!(parsed["info"]["title"], "Atoll Encrypted Chat API");
     assert_eq!(parsed["info"]["version"], "3.0.4");
 
-    // Assert path items (37 path items total)
+    // Assert path items (41 path items total)
     let paths = parsed["paths"].as_object().unwrap();
     let expected_paths = [
         "/api/v1/health",
@@ -53,6 +53,10 @@ fn test_openapi_doc_validity() {
         "/api/v1/rooms/{id}/publisher-key",
         "/api/v1/users/me/bots/{bot_id}/settings",
         "/api/v1/users/me/bots/{bot_id}/settings/{key}",
+        "/api/v1/kt/user/{id}",
+        "/api/v1/kt/bot/{id}",
+        "/api/v1/kt/bot/{id}/history",
+        "/api/v1/kt/snapshot",
     ];
 
     for path_str in &expected_paths {
@@ -127,6 +131,10 @@ fn test_openapi_doc_validity() {
         ("/api/v1/rooms/{id}/publisher-key", "get"),
         ("/api/v1/rooms/{id}/publisher-key", "post"),
         ("/api/v1/rooms/{id}/observer-stream", "get"),
+        ("/api/v1/kt/user/{id}", "get"),
+        ("/api/v1/kt/bot/{id}", "get"),
+        ("/api/v1/kt/bot/{id}/history", "get"),
+        ("/api/v1/kt/snapshot", "get"),
     ];
 
     for (path, method) in &authenticated_paths {
@@ -236,6 +244,13 @@ fn test_openapi_doc_validity() {
         "PatchBotSettingRequest",
         "PublisherKeyResponse",
         "PublishPublisherKeyRequest",
+        "UserKtResponse",
+        "BotKtResponse",
+        "BotKtHistoryEntry",
+        "BotKtHistoryResponse",
+        "KtSnapshotResponse",
+        "KtTreeHead",
+        "KtAuditorSignature",
     ];
 
     for schema in &expected_schemas {
@@ -280,6 +295,50 @@ fn test_openapi_doc_validity() {
             .unwrap()
             .contains("§7.10"),
         "value_encrypted_bot description missing §7.10 reference"
+    );
+
+    // Assert KT public key and root hash fields are documented as format: binary with spec references
+    let user_kt_pubkey = &schemas["UserKtResponse"]["properties"]["identity_pubkey"];
+    assert_eq!(user_kt_pubkey["format"], "binary");
+    assert!(
+        user_kt_pubkey["description"]
+            .as_str()
+            .unwrap()
+            .contains("§7.11"),
+        "UserKtResponse identity_pubkey missing §7.11 reference"
+    );
+
+    let bot_kt_id_pubkey = &schemas["BotKtResponse"]["properties"]["bot_identity_pubkey"];
+    assert_eq!(bot_kt_id_pubkey["format"], "binary");
+    let bot_kt_cmd_pubkey = &schemas["BotKtResponse"]["properties"]["bot_command_pubkey"];
+    assert_eq!(bot_kt_cmd_pubkey["format"], "binary");
+
+    let kt_tree_head_root = &schemas["KtTreeHead"]["properties"]["root_hash"];
+    assert_eq!(kt_tree_head_root["format"], "binary");
+    assert!(
+        kt_tree_head_root["description"]
+            .as_str()
+            .unwrap()
+            .contains("§7.11"),
+        "KtTreeHead root_hash missing §7.11 reference"
+    );
+
+    // Assert GET /kt/user/{id} operation description mentions username_token exclusion per §12
+    let user_kt_desc = parsed["paths"]["/api/v1/kt/user/{id}"]["get"]["description"]
+        .as_str()
+        .unwrap();
+    assert!(
+        user_kt_desc.contains("username_token is excluded"),
+        "user KT endpoint description missing username_token exclusion note"
+    );
+
+    // Assert GET /kt/snapshot response schema does NOT contain a signature field
+    let snapshot_props = &schemas["KtSnapshotResponse"]["properties"]
+        .as_object()
+        .unwrap();
+    assert!(
+        !snapshot_props.contains_key("signature"),
+        "KtSnapshotResponse unexpectedly contains a signature field"
     );
 }
 

@@ -7,61 +7,122 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
-use serde_json::{json, Value};
 use sqlx::Row;
+use utoipa::ToSchema;
 
 use crate::auth::AuthUser;
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::key_transparency::merkle::{
     bot_leaf_hash, compute_root_from_hashes, generate_inclusion_proof_from_hashes, leaf_hash,
 };
 use crate::AppState;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
+pub struct KtTreeHead {
+    pub id: Option<String>,
+    pub tree_size: i64,
+    /// 32-byte Merkle tree root hash, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
+    pub root_hash: String,
+    /// Server signature over tree head, base64url encoded.
+    #[schema(value_type = Option<String>, format = Binary)]
+    pub signature: Option<String>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct KtAuditorSignature {
+    pub auditor_id: String,
+    /// Auditor signature over tree head, base64url encoded.
+    #[schema(value_type = String, format = Binary)]
+    pub signature: String,
+}
+
+#[derive(Serialize, ToSchema)]
 pub struct UserKtResponse {
     pub user_id: String,
     pub leaf_index: i64,
+    /// User Ed25519 identity public key, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub identity_pubkey: String,
+    /// Merkle inclusion proof hashes, base64url encoded.
+    #[schema(value_type = Vec<String>)]
     pub inclusion_proof: Vec<String>,
-    pub tree_head: Value,
-    pub auditor_signatures: Vec<Value>,
+    pub tree_head: KtTreeHead,
+    pub auditor_signatures: Vec<KtAuditorSignature>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct BotKtResponse {
     pub bot_id: String,
     pub leaf_index: i64,
+    /// Bot identity public key, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub bot_identity_pubkey: String,
+    /// Bot command public key, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub bot_command_pubkey: String,
+    /// Bot operator Ed25519 identity public key, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub identity_pubkey: String,
+    /// Merkle inclusion proof hashes, base64url encoded.
+    #[schema(value_type = Vec<String>)]
     pub inclusion_proof: Vec<String>,
-    pub tree_head: Value,
-    pub auditor_signatures: Vec<Value>,
+    pub tree_head: KtTreeHead,
+    pub auditor_signatures: Vec<KtAuditorSignature>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct BotKtHistoryEntry {
     pub leaf_index: i64,
+    /// Bot identity public key, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub bot_identity_pubkey: String,
+    /// Bot command public key, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub bot_command_pubkey: String,
+    /// Bot operator Ed25519 identity public key, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub identity_pubkey: String,
     pub added_at: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct BotKtHistoryResponse {
     pub bot_id: String,
     pub entries: Vec<BotKtHistoryEntry>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct KtSnapshotResponse {
     pub tree_size: i64,
+    /// 32-byte Merkle tree root hash, base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
     pub root_hash: String,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 
 /// GET /api/v1/kt/user/:id
+#[utoipa::path(
+    get,
+    path = "/api/v1/kt/user/{id}",
+    tag = "Key Transparency",
+    summary = "Current user keys with inclusion proof",
+    description = "Fetches current user public key and Merkle inclusion proof. See §8.11.1. Note: username_token is excluded from response per §12.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target user ID")
+    ),
+    responses(
+        (status = 200, description = "User Key Transparency entry retrieved successfully", body = UserKtResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "User not found or Key Transparency disabled", body = ErrorResponse)
+    )
+)]
 pub async fn get_user_kt_handler(
     State(state): State<AppState>,
     _auth: AuthUser,
@@ -150,26 +211,30 @@ pub async fn get_user_kt_handler(
             let root_bytes: Vec<u8> = row.get("root_hash");
             let sig_bytes: Option<Vec<u8>> = row.get("signature");
             let created_at: DateTime<Utc> = row.get("created_at");
-            json!({
-                "id": id,
-                "tree_size": snap_tree_size,
-                "root_hash": URL_SAFE_NO_PAD.encode(&root_bytes),
-                "signature": sig_bytes.map(|s| URL_SAFE_NO_PAD.encode(&s)),
-                "created_at": created_at,
-            })
+            KtTreeHead {
+                id: Some(id),
+                tree_size: snap_tree_size,
+                root_hash: URL_SAFE_NO_PAD.encode(&root_bytes),
+                signature: sig_bytes.map(|s| URL_SAFE_NO_PAD.encode(&s)),
+                created_at,
+            }
         } else {
-            json!({
-                "tree_size": current_tree_size,
-                "root_hash": URL_SAFE_NO_PAD.encode(root_hash),
-                "created_at": Utc::now(),
-            })
+            KtTreeHead {
+                id: None,
+                tree_size: current_tree_size,
+                root_hash: URL_SAFE_NO_PAD.encode(root_hash),
+                signature: None,
+                created_at: Utc::now(),
+            }
         }
     } else {
-        json!({
-            "tree_size": current_tree_size,
-            "root_hash": URL_SAFE_NO_PAD.encode(root_hash),
-            "created_at": Utc::now(),
-        })
+        KtTreeHead {
+            id: None,
+            tree_size: current_tree_size,
+            root_hash: URL_SAFE_NO_PAD.encode(root_hash),
+            signature: None,
+            created_at: Utc::now(),
+        }
     };
 
     let response = UserKtResponse {
@@ -188,6 +253,24 @@ pub async fn get_user_kt_handler(
 }
 
 /// GET /api/v1/kt/bot/:id
+#[utoipa::path(
+    get,
+    path = "/api/v1/kt/bot/{id}",
+    tag = "Key Transparency",
+    summary = "Current bot keys with inclusion proof",
+    description = "Fetches current bot identity and command keys with Merkle inclusion proof. See §8.11.2.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target bot ID")
+    ),
+    responses(
+        (status = 200, description = "Bot Key Transparency entry retrieved successfully", body = BotKtResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Bot not found or Key Transparency disabled", body = ErrorResponse)
+    )
+)]
 pub async fn get_bot_kt_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -279,26 +362,30 @@ pub async fn get_bot_kt_handler(
             let root_bytes: Vec<u8> = row.get("root_hash");
             let sig_bytes: Option<Vec<u8>> = row.get("signature");
             let created_at: DateTime<Utc> = row.get("created_at");
-            json!({
-                "id": id,
-                "tree_size": snap_tree_size,
-                "root_hash": URL_SAFE_NO_PAD.encode(&root_bytes),
-                "signature": sig_bytes.map(|s| URL_SAFE_NO_PAD.encode(&s)),
-                "created_at": created_at,
-            })
+            KtTreeHead {
+                id: Some(id),
+                tree_size: snap_tree_size,
+                root_hash: URL_SAFE_NO_PAD.encode(&root_bytes),
+                signature: sig_bytes.map(|s| URL_SAFE_NO_PAD.encode(&s)),
+                created_at,
+            }
         } else {
-            json!({
-                "tree_size": current_tree_size,
-                "root_hash": URL_SAFE_NO_PAD.encode(root_hash),
-                "created_at": Utc::now(),
-            })
+            KtTreeHead {
+                id: None,
+                tree_size: current_tree_size,
+                root_hash: URL_SAFE_NO_PAD.encode(root_hash),
+                signature: None,
+                created_at: Utc::now(),
+            }
         }
     } else {
-        json!({
-            "tree_size": current_tree_size,
-            "root_hash": URL_SAFE_NO_PAD.encode(root_hash),
-            "created_at": Utc::now(),
-        })
+        KtTreeHead {
+            id: None,
+            tree_size: current_tree_size,
+            root_hash: URL_SAFE_NO_PAD.encode(root_hash),
+            signature: None,
+            created_at: Utc::now(),
+        }
     };
 
     let response = BotKtResponse {
@@ -319,6 +406,24 @@ pub async fn get_bot_kt_handler(
 }
 
 /// GET /api/v1/kt/bot/:id/history
+#[utoipa::path(
+    get,
+    path = "/api/v1/kt/bot/{id}/history",
+    tag = "Key Transparency",
+    summary = "All bot key history",
+    description = "Fetches all historical key entries for a bot ordered by leaf_index ASC without inclusion proofs. See §8.11.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target bot ID")
+    ),
+    responses(
+        (status = 200, description = "Bot Key Transparency history retrieved successfully", body = BotKtHistoryResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Bot not found or Key Transparency disabled", body = ErrorResponse)
+    )
+)]
 pub async fn get_bot_kt_history_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -375,6 +480,21 @@ pub async fn get_bot_kt_history_handler(
 }
 
 /// GET /api/v1/kt/snapshot
+#[utoipa::path(
+    get,
+    path = "/api/v1/kt/snapshot",
+    tag = "Key Transparency",
+    summary = "Current KT snapshot",
+    description = "Fetches current Key Transparency tree head snapshot on demand. See §8.11.4.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Key Transparency snapshot retrieved successfully", body = KtSnapshotResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Snapshot not found or Key Transparency disabled", body = ErrorResponse)
+    )
+)]
 pub async fn get_kt_snapshot_handler(
     State(state): State<AppState>,
     _auth: AuthUser,
