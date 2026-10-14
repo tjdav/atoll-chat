@@ -415,6 +415,7 @@ async fn main() -> anyhow::Result<()> {
         scheduler.register(Box::new(
             server::cleanup::bot_request_log::BotRequestLogTtlJob,
         ));
+        scheduler.register(Box::new(server::cleanup::bot_event_log::BotEventLogTtlJob));
 
         let ctx = server::cleanup::CleanupContextOwned {
             pool: pool.clone(),

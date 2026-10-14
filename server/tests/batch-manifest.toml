@@ -203,6 +203,7 @@ timeout_seconds = 60
 name = "bots"
 description = "Bot account CRUD, bot tokens, declared scopes, room bot grants, bot avatar, and bot commands"
 files = [
+    "bot_channel_delivery",
     "bot_command_results",
     "bot_commands",
     "bot_declarations",

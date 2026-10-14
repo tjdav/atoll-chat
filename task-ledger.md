@@ -373,3 +373,7 @@ None.
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0
+
+- **Bot Channel Delivery Guarantee**: in-progress
+  - **Delivered:** `verification/bot-channel-delivery/report.md`
+  - **Summary:** Implemented bot channel delivery guarantee mechanism with `bot_seq` sequence allocator, `bot_event_log` durable event store, `GET /bots/me/sync` endpoint, and 24-hour cleanup job.

@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod connection;
 pub mod declarations;
+pub mod delivery;
 pub mod idempotency;
 pub mod scopes;
 pub mod settings;
@@ -8,6 +9,7 @@ pub mod settings;
 pub use auth::{validate_bot_token, BotAuthCtx, CallerIdentity};
 pub use connection::BotConnectionState;
 pub use declarations::{validate_declarations_top_level, DECLARATIONS_MAX_BYTES};
+pub use delivery::{allocate_bot_seq, append_bot_event_log, prepare_durable_bot_event};
 pub use idempotency::{
     check_or_reserve_request_id, record_response_code, validate_request_id, IdempotencyOutcome,
     ENDPOINT_BOT_COMMANDS, ENDPOINT_BOT_COMMAND_RESULT, ENDPOINT_BOT_LOCAL_MESSAGE,

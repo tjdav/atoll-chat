@@ -459,6 +459,7 @@ pub fn build_app(state: AppState) -> Router {
             patch(routes::room_messages::edit).delete(routes::room_messages::delete_message),
         )
         .route("/bots", post(routes::bots::create_bot))
+        .route("/bots/me/sync", get(routes::bots::get_bot_sync))
         .route("/bots/me/settings", get(routes::bots::get_bot_settings_me))
         .route("/bots/me/messages", post(routes::bots::post_bot_messages))
         .route(

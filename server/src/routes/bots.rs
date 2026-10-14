@@ -13,7 +13,7 @@ use crate::routes::attachments::{
 use crate::sockudo::Publisher;
 use crate::AppState;
 use axum::{
-    extract::{FromRequest, Multipart, Path, State},
+    extract::{FromRequest, Multipart, Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     Json,
@@ -27,7 +27,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 pub async fn resolve_caller(
     pool: &SqlitePool,
@@ -1271,6 +1271,164 @@ pub async fn get_bot_settings_me(
         crate::bots::settings::get_bot_settings_for_bot(&state.pool, &bot_ctx.bot_id).await?;
 
     let resp = GetBotSettingsMeResp { settings };
+    let mut res = (StatusCode::OK, Json(resp)).into_response();
+    res.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(res)
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct GetBotSyncQuery {
+    #[param(example = 0)]
+    pub since_bot_seq: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+pub struct BotSyncEvent {
+    pub bot_seq: i64,
+    pub event_type: String,
+    pub payload: serde_json::Value,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct BotSyncResponse {
+    pub events: Vec<BotSyncEvent>,
+    pub max_bot_seq: i64,
+    pub full_resync_required: bool,
+}
+
+/// GET /bots/me/sync — Synchronize bot channel events
+#[utoipa::path(
+    get,
+    path = "/api/v1/bots/me/sync",
+    tag = "Bots",
+    summary = "Synchronize bot channel events",
+    description = "Fetches bot-scoped durable events since a given bot_seq cursor. Auth: Bot token only.",
+    params(
+        GetBotSyncQuery
+    ),
+    responses(
+        (status = 200, description = "Bot channel events synchronized successfully", body = BotSyncResponse),
+        (status = 400, description = "Invalid since_bot_seq parameter", body = ErrorResponse),
+        (status = 401, description = "Unauthorized (requires bot token)", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
+pub async fn get_bot_sync(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(query): Query<GetBotSyncQuery>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+    let bot_ctx = match caller {
+        CallerIdentity::Bot(ctx) => ctx,
+        CallerIdentity::User(_) => return Err(ApiError::Unauthorized("unauthorized".to_string())),
+    };
+
+    let since_bot_seq = match query.since_bot_seq {
+        Some(seq) if seq >= 0 => seq,
+        None => 0,
+        _ => return Err(ApiError::BadRequest("invalid_since_bot_seq".to_string())),
+    };
+
+    let bot_id = &bot_ctx.bot_id;
+
+    // 1. Fetch events ordered by bot_seq ASC
+    let rows = sqlx::query(
+        r#"
+        SELECT bot_seq, event_type, payload, CAST(created_at AS TEXT) AS created_at
+        FROM bot_event_log
+        WHERE bot_id = ? AND bot_seq > ?
+        ORDER BY bot_seq ASC
+        "#,
+    )
+    .bind(bot_id)
+    .bind(since_bot_seq)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let mut events = Vec::with_capacity(rows.len());
+    for row in rows {
+        let seq: i64 = row.get("bot_seq");
+        let event_type: String = row.get("event_type");
+        let payload_str: String = row.get("payload");
+        let created_at: String = row.get("created_at");
+
+        let payload: serde_json::Value = serde_json::from_str(&payload_str).map_err(|e| {
+            ApiError::Internal(anyhow::anyhow!(
+                "failed to deserialize event payload: {}",
+                e
+            ))
+        })?;
+
+        events.push(BotSyncEvent {
+            bot_seq: seq,
+            event_type,
+            payload,
+            created_at,
+        });
+    }
+
+    // 2. Compute max_bot_seq
+    let highest_allocated: Option<i64> =
+        sqlx::query_scalar("SELECT next_seq - 1 FROM bot_seq WHERE bot_id = ?")
+            .bind(bot_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let max_bot_seq = std::cmp::max(since_bot_seq, highest_allocated.unwrap_or(0));
+
+    // 3. Compute full_resync_required
+    let full_resync_required = if since_bot_seq == 0 {
+        false
+    } else {
+        let min_retained_seq: Option<i64> =
+            sqlx::query_scalar("SELECT MIN(bot_seq) FROM bot_event_log WHERE bot_id = ?")
+                .bind(bot_id)
+                .fetch_optional(&state.pool)
+                .await
+                .map_err(|e| ApiError::Internal(e.into()))?;
+
+        let highest_seq = highest_allocated.unwrap_or(0);
+        let min_s = match min_retained_seq {
+            Some(s) => s,
+            None if highest_seq > 0 => highest_seq + 1,
+            None => i64::MAX,
+        };
+
+        if since_bot_seq < min_s {
+            true
+        } else {
+            let is_expired: Option<i32> = sqlx::query_scalar(
+                r#"
+                SELECT 1 FROM bot_event_log
+                WHERE bot_id = ? AND bot_seq <= ? AND created_at < datetime('now', '-24 hours')
+                LIMIT 1
+                "#,
+            )
+            .bind(bot_id)
+            .bind(since_bot_seq)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+            is_expired.is_some()
+        }
+    };
+
+    let resp = BotSyncResponse {
+        events,
+        max_bot_seq,
+        full_resync_required,
+    };
+
     let mut res = (StatusCode::OK, Json(resp)).into_response();
     res.headers_mut().insert(
         header::CACHE_CONTROL,
