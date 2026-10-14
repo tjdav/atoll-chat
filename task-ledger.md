@@ -374,6 +374,10 @@ None.
 - **In-Progress:** 0
 - **Mismatches:** 0
 
-- **Bot Channel Delivery Guarantee**: in-progress
+- **Bot Channel Delivery Guarantee**: done
   - **Delivered:** `verification/bot-channel-delivery/report.md`
   - **Summary:** Implemented bot channel delivery guarantee mechanism with `bot_seq` sequence allocator, `bot_event_log` durable event store, `GET /bots/me/sync` endpoint, and 24-hour cleanup job.
+
+- **Operator Queue Schema and Designation**: in-progress
+  - **Delivered:** `verification/operator-queue-schema/report.md`
+  - **Summary:** Step 0 report generated. Implementing storage schema (`bot_operators`, `bot_operator_queue`), bot creation self-binding, room grant operator bindings, room revoke operator unbindings, `operators` array on `GET /bots/:id`, audit constants (`BOT_OPERATOR_BOUND`, `BOT_OPERATOR_UNBOUND`, `BOT_OPERATOR_QUEUE_PURGED`), bot deletion cleanup, and payload preview derivation.
