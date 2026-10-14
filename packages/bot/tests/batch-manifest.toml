@@ -139,6 +139,12 @@ files = [
 ]
 
 [[batch]]
+name = "ctx-enqueue"
+files = [
+  "unit/ctx-enqueue.test.js",
+]
+
+[[batch]]
 name = "settings-store"
 files = [
   "unit/settings-store.test.js",

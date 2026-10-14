@@ -18,7 +18,7 @@ Track progress across Bot SDK implementation tasks.
 | Task ID | Component | Status | Spec Ref | Description |
 |---|---|---|---|---|
 | B-047 | Reconnection | done | B-029 §4, B-031 §4 | Track `bot_seq`, perform channel sync on boot/reconnect, replay durable events, advance cursor |
-| B-048 | Context | pending | B-047 | Implement `ctx.enqueue` for operator queue message submission |
+| B-048 | Context | done | B-047 | Implement `ctx.enqueue` for operator queue message submission |
 | B-049 | Context | pending | B-047, B-048 | Implement `ctx.onOperatorResponse` and `bot.operator_response` event handling |
 | B-046d | Testing | done | §13 | Fix the shared cause of the 30-second timeout batches (`cli-run`, `cli-sandbox`, `runtime-pause`, `runtime-rooms`) |
 | B-046b | Testing | done | B-035 §2, §4 | Register the default KT signer endpoint in `createTestRuntime.js` and add regression test |
