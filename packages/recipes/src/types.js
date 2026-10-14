@@ -213,8 +213,13 @@
  * output of the composer. bot.js, or an extension module, is
  * emitted from a Composition.
  * @typedef {object} Composition
- * @property {string} recipeId - The recipe this was composed from.
- * @property {string} recipeVersion - The exact recipe version.
+ * @property {'recipe' | 'composed'} source - How this composition was
+ *   produced. Recipes produce 'recipe'; the composer produces
+ *   'composed'.
+ * @property {string} [recipeId] - The recipe this was composed from.
+ *   Present only when source is 'recipe'.
+ * @property {string} [recipeVersion] - The exact recipe version.
+ *   Present only when source is 'recipe'.
  * @property {RecipeTarget} target - The artifact this composition
  *   produces.
  * @property {Record<string, unknown>} slots - The slot values used.

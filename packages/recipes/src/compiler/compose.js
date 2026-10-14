@@ -179,6 +179,7 @@ export async function compose (rootDir, instantiation) {
   }
 
   const composition = {
+    source: 'recipe',
     recipeId: recipe.id,
     recipeVersion: recipe.version,
     target,

@@ -220,3 +220,14 @@ test('compose passes recipe settings through when present', async () => {
   const composition = await compose(LIB, inst)
   assert.equal(Object.hasOwn(composition, 'settings'), false)
 })
+
+test('compose sets source to "recipe" on the composition', async () => {
+  const composition = await compose(LIB, {
+    recipeId: 'delta',
+    recipeVersion: '1.0.0',
+    slots: { prefix: 'p' }
+  })
+  assert.equal(composition.source, 'recipe')
+  assert.equal(composition.recipeId, 'delta')
+  assert.equal(composition.recipeVersion, '1.0.0')
+})
