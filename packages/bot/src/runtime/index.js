@@ -9,6 +9,7 @@ import { createPostHandler } from './context/post.js'
 import { createReplyHandler } from './context/reply.js'
 import { createSendLocalHandler } from './context/send-local.js'
 import { createEnqueueMethod } from './context/enqueue.js'
+import { createOperatorResponseMethod } from './context/operator-response.js'
 import { createFetchMethods } from './context/fetch.js'
 import { createCommandInvocationHandler } from './context/command-invoked.js'
 import { createHttpClient } from './transport/http.js'
@@ -168,6 +169,8 @@ export function createRuntime ({
   }
 
   const effectiveLogger = wrappedLogger
+
+  const operatorResponse = createOperatorResponseMethod({ logger: effectiveLogger })
 
   /** @type {Map<string, { mode: string, scopes: string[] }>} */
   const grants = new Map()
@@ -625,7 +628,7 @@ export function createRuntime ({
       /** @type {(url: string, opts?: RequestInit) => Promise<Response>} */
       (fetchUserUrlMethod)
 
-    /** @type {BotCtx} */
+    /** @type {BotCtx & { enqueue: (payload: object, opts?: object) => Promise<string>, onOperatorResponse: (handle: string, callback: import('./context/operator-response.js').Callback) => () => void }} */
     const ctx = {
       bot: {
         id: botId,
@@ -680,7 +683,8 @@ export function createRuntime ({
           throw new Error('enqueueMethod not initialized')
         }
         return enqueueMethod(payload, opts)
-      }
+      },
+      onOperatorResponse: operatorResponse.onOperatorResponse
     }
 
     return ctx
@@ -834,6 +838,13 @@ export function createRuntime ({
         }
         case 'bot.updated': {
           logger.debug('bot.updated event received')
+          break
+        }
+        case 'bot.operator_response': {
+          const respEvent =
+            /** @type {import('./context/operator-response.js').OperatorResponseEvent} */
+            (data)
+          operatorResponse.dispatch(respEvent)
           break
         }
         case 'bot.keys_rotated': {
@@ -1369,6 +1380,8 @@ export function createRuntime ({
         }
       }
       subscriptions.clear()
+
+      operatorResponse.clear()
 
       // Stop trigger servers.
       if (cronEngine) {

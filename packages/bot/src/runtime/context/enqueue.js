@@ -21,10 +21,10 @@ import {
  * handle.
  *
  * @param {object} deps
- * @param {import('../../transport/http.js').HttpClient} deps.http - The
+ * @param {import('../transport/http.js').HttpClient} deps.http - The
  *   authenticated HTTP client. Must be the `apiHttp` client (paths
  *   are relative to `/api/v1/`).
- * @param {import('../../diagnostics/logger.js').Logger} [deps.logger] -
+ * @param {import('../diagnostics/logger.js').Logger} [deps.logger] -
  *   Optional logger.
  * @param {() => string} [deps.generateRequestId] - Generates a
  *   request id when the caller does not supply one. Defaults to
@@ -42,18 +42,16 @@ export function createEnqueueMethod ({
 }) {
   /**
    * @param {object} payload - The request payload.
-   * @param {object} [options] - Enqueue options.
+   * @param {{ requestId?: string, audience?: 'private' | 'public', timeout?: number | null, onTimeout?: 'ignore' | 'canned', cannedResponse?: string, roomId?: string | null }} [options] - Enqueue options.
    * @returns {Promise<string>} The request id handle.
    */
   return async function enqueue (payload, options = {}) {
-    // 1. Validate payload.
     if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new EnqueuePayloadNotSerializableError(
         'ctx.enqueue: payload must be a plain object'
       )
     }
 
-    // 2. Serialize payload.
     let serialized
     try {
       serialized = JSON.stringify(payload)
@@ -70,7 +68,6 @@ export function createEnqueueMethod ({
       )
     }
 
-    // 3. Check payload size.
     const payloadBytes = Buffer.byteLength(serialized, 'utf8')
     if (payloadBytes > maxPayloadBytes) {
       throw new EnqueuePayloadTooLargeError(
@@ -78,7 +75,6 @@ export function createEnqueueMethod ({
       )
     }
 
-    // 4. Resolve request_id.
     const requestId = options.requestId ?? generateRequestId()
     if (typeof requestId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(requestId)) {
       throw new EnqueueInvalidRequestIdError(
@@ -86,7 +82,6 @@ export function createEnqueueMethod ({
       )
     }
 
-    // 5. Resolve audience.
     const audience = options.audience ?? 'private'
     if (audience !== 'private' && audience !== 'public') {
       throw new EnqueueInvalidRoutingError(
@@ -94,7 +89,6 @@ export function createEnqueueMethod ({
       )
     }
 
-    // 6. Resolve timeout.
     const timeout = options.timeout ?? null
     if (timeout !== null) {
       if (!Number.isInteger(timeout) || timeout < 1 || timeout > 2592000) {
@@ -104,13 +98,11 @@ export function createEnqueueMethod ({
       }
     }
 
-    // 7. Resolve onTimeout.
     const onTimeout = options.onTimeout ?? 'ignore'
     if (onTimeout !== 'ignore' && onTimeout !== 'canned') {
       throw new TypeError("ctx.enqueue: onTimeout must be 'ignore' or 'canned'")
     }
 
-    // 8. Validate cannedResponse when onTimeout is 'canned'.
     let cannedResponse = null
     if (onTimeout === 'canned') {
       if (typeof options.cannedResponse !== 'string') {
@@ -126,13 +118,11 @@ export function createEnqueueMethod ({
       cannedResponse = options.cannedResponse
     }
 
-    // 9. Resolve roomId.
     const roomId = options.roomId ?? null
     if (roomId !== null && typeof roomId !== 'string') {
       throw new EnqueueInvalidRoutingError('ctx.enqueue: roomId must be a string or null')
     }
 
-    // 10. Build the request body.
     const body = {
       request_id: requestId,
       payload: JSON.parse(serialized),
@@ -143,43 +133,49 @@ export function createEnqueueMethod ({
       canned_response: cannedResponse
     }
 
-    // 11. POST with retries.
     try {
       await http.request('POST', '/bots/me/operator-queue', {
         body,
         retry: true
       })
     } catch (err) {
-      const isHttpErr = err instanceof HttpRequestError || (err && typeof err === 'object' && err.code === 'http_request_failed')
+      const errRecord =
+        /** @type {Record<string, any>} */
+        (err)
+      const isHttpErr = err instanceof HttpRequestError || (err && typeof err === 'object' && errRecord.code === 'http_request_failed')
       if (isHttpErr) {
-        if (err.responseErrorCode === 'request_id_reused') {
+        const causeErr = err instanceof Error ? err : new Error(String(err))
+        if (errRecord.responseErrorCode === 'request_id_reused') {
           throw new EnqueueRequestIdReusedError(
             `ctx.enqueue: request_id ${requestId} was already used`,
-            { cause: err }
+            { cause: causeErr }
           )
         }
-        if (err.status === 0) {
+        if (errRecord.status === 0) {
           throw new EnqueueNetworkFailureError(
             'ctx.enqueue: network failure after retries',
-            { cause: err }
+            { cause: causeErr }
           )
         }
-        if (err.status === 429) {
+        if (errRecord.status === 429) {
           throw new EnqueueBudgetExhaustedError(
             'ctx.enqueue: rate limited after retries',
-            { cause: err }
+            { cause: causeErr }
           )
         }
         throw new EnqueueNetworkFailureError(
-          `ctx.enqueue: server error ${err.status} after retries`,
-          { cause: err }
+          `ctx.enqueue: server error ${errRecord.status} after retries`,
+          { cause: causeErr }
         )
       }
       throw err
     }
 
     logger?.debug('enqueue succeeded', {
-      meta: { request_id: requestId, audience }
+      meta: {
+        request_id: requestId,
+        audience
+      }
     })
 
     return requestId
