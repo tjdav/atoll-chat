@@ -302,3 +302,86 @@ export class PausedError extends BotError {
   /** @override */
   code = 'bot_paused'
 }
+
+/**
+ * Base class for `ctx.enqueue` failures. Not thrown directly.
+ */
+export class EnqueueFailedError extends BotError {
+  /** @override */
+  name = 'EnqueueFailedError'
+
+  /** @override */
+  code = 'enqueue_failed'
+}
+
+export class EnqueuePayloadTooLargeError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueuePayloadTooLargeError'
+
+  /** @override */
+  code = 'enqueue_payload_too_large'
+}
+
+export class EnqueuePayloadNotSerializableError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueuePayloadNotSerializableError'
+
+  /** @override */
+  code = 'enqueue_payload_not_serializable'
+}
+
+export class EnqueueInvalidRequestIdError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueueInvalidRequestIdError'
+
+  /** @override */
+  code = 'enqueue_invalid_request_id'
+}
+
+export class EnqueueInvalidTimeoutError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueueInvalidTimeoutError'
+
+  /** @override */
+  code = 'enqueue_invalid_timeout'
+}
+
+export class EnqueueMissingCannedResponseError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueueMissingCannedResponseError'
+
+  /** @override */
+  code = 'enqueue_missing_canned_response'
+}
+
+export class EnqueueRequestIdReusedError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueueRequestIdReusedError'
+
+  /** @override */
+  code = 'enqueue_request_id_reused'
+}
+
+export class EnqueueNetworkFailureError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueueNetworkFailureError'
+
+  /** @override */
+  code = 'enqueue_network_failure'
+}
+
+export class EnqueueBudgetExhaustedError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueueBudgetExhaustedError'
+
+  /** @override */
+  code = 'enqueue_budget_exhausted'
+}
+
+export class EnqueueInvalidRoutingError extends EnqueueFailedError {
+  /** @override */
+  name = 'EnqueueInvalidRoutingError'
+
+  /** @override */
+  code = 'enqueue_invalid_routing'
+}

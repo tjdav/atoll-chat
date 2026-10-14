@@ -838,3 +838,17 @@ Consequences for future tasks:
   - `node --test packages/bot/tests/unit/webhook-server.test.js` passed (8 passing, status 0).
   - `node --test packages/bot/tests/unit/cron-engine.test.js` passed (59 passing, status 0).
   - `pnpm --filter @atoll/bot build` passed (status 0).
+
+## Task B-048 Verification Fact
+- **Implement `ctx.enqueue` for Operator Queue Submission (`packages/bot/src/runtime/context/enqueue.js` and `packages/bot/src/errors.js`)**:
+  - Added 10 `EnqueueFailedError` hierarchy error classes in `packages/bot/src/errors.js` (`EnqueueFailedError`, `EnqueuePayloadTooLargeError`, `EnqueuePayloadNotSerializableError`, `EnqueueInvalidRequestIdError`, `EnqueueInvalidTimeoutError`, `EnqueueMissingCannedResponseError`, `EnqueueRequestIdReusedError`, `EnqueueNetworkFailureError`, `EnqueueBudgetExhaustedError`, `EnqueueInvalidRoutingError`).
+  - Implemented `createEnqueueMethod` in `packages/bot/src/runtime/context/enqueue.js`. Validates payload serializability and size limit (64 KB default), `requestId` pattern (`^[a-zA-Z0-9_-]{1,128}$`), `audience` (`'private'` or `'public'`), `timeout` integer limits (`[1, 2592000]`), `onTimeout` (`'ignore'` or `'canned'`), `cannedResponse` presence/size (16 KB max), and `roomId`.
+  - Sends request via `POST /api/v1/bots/me/operator-queue` using `retry: true`.
+  - Maps server HTTP status codes and response envelope error codes to specific `EnqueueFailedError` subclasses.
+  - Wired `ctx.enqueue` in `packages/bot/src/runtime/index.js` as a singleton method across invocations.
+  - Wired `ctx.enqueue` into `createTestRuntime` in `packages/bot/src/testing/create-test-runtime.js`.
+  - Registered `ctx-enqueue` batch (34 unit tests in `packages/bot/tests/unit/ctx-enqueue.test.js`) in `packages/bot/tests/batch-manifest.toml`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `node --test packages/bot/tests/unit/ctx-enqueue.test.js` passed (34 passing, status 0).
+  - `pnpm --filter @atoll/bot typecheck`, `lint`, and `build` passed (status 0).

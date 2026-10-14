@@ -5,6 +5,7 @@ import { PublisherKeyCache } from '../runtime/crypto/publisher.js'
 import { createPostHandler } from '../runtime/context/post.js'
 import { createReplyHandler } from '../runtime/context/reply.js'
 import { createSendLocalHandler } from '../runtime/context/send-local.js'
+import { createEnqueueMethod } from '../runtime/context/enqueue.js'
 import { createFetchMethods } from '../runtime/context/fetch.js'
 import { createCommandInvocationHandler, COMMAND_INFO } from '../runtime/context/command-invoked.js'
 import { parseCron, nextFireTime } from '../runtime/triggers/cron.js'
@@ -301,6 +302,8 @@ export async function createTestRuntime (bot, options = {}) {
   let replyHandler
   /** @type {(opts: any) => Promise<void>} */
   let sendLocalHandler
+  /** @type {ReturnType<import('../runtime/context/enqueue.js').createEnqueueMethod>} */
+  let enqueueMethod
   /** @type {{ fetch: (url: string, opts?: any) => Promise<Response>, fetchUserUrl: (url: string, opts?: any) => Promise<Response> }} */
   let fetchMethods
   /** @type {(event: any) => Promise<void>} */
@@ -322,6 +325,10 @@ export async function createTestRuntime (bot, options = {}) {
     sendLocalHandler = createSendLocalHandler({
       http,
       getOwnerPubkey: async () => ownerEphemeral.publicKey
+    })
+
+    enqueueMethod = createEnqueueMethod({
+      http
     })
 
     const defaultFetch = options.fetchImpl ?? globalThis.fetch
@@ -428,6 +435,7 @@ export async function createTestRuntime (bot, options = {}) {
     ctx.sendLocal = function (opts) {
       return sendLocalHandler(opts)
     }
+    ctx.enqueue = enqueueMethod
 
     const resCtx =
       /** @type {BotCtx<any>} */

@@ -8,6 +8,7 @@ import { createRoomsStore } from './context/rooms.js'
 import { createPostHandler } from './context/post.js'
 import { createReplyHandler } from './context/reply.js'
 import { createSendLocalHandler } from './context/send-local.js'
+import { createEnqueueMethod } from './context/enqueue.js'
 import { createFetchMethods } from './context/fetch.js'
 import { createCommandInvocationHandler } from './context/command-invoked.js'
 import { createHttpClient } from './transport/http.js'
@@ -211,6 +212,8 @@ export function createRuntime ({
   let replyHandler = null
   /** @type {ReturnType<import('./context/send-local.js').createSendLocalHandler> | null} */
   let sendLocalHandler = null
+  /** @type {ReturnType<import('./context/enqueue.js').createEnqueueMethod> | null} */
+  let enqueueMethod = null
   /** @type {ReturnType<import('./context/command-invoked.js').createCommandInvocationHandler> | null} */
   let commandHandler = null
 
@@ -671,6 +674,12 @@ export function createRuntime ({
           throw new Error('sendLocalHandler not initialized')
         }
         return sendLocalHandler(opts)
+      },
+      enqueue: async (payload, opts) => {
+        if (!enqueueMethod) {
+          throw new Error('enqueueMethod not initialized')
+        }
+        return enqueueMethod(payload, opts)
       }
     }
 
@@ -1056,6 +1065,10 @@ export function createRuntime ({
     sendLocalHandler = createSendLocalHandler({
       http: apiHttp,
       getOwnerPubkey: getOwnerPubkeyImpl,
+      logger
+    })
+    enqueueMethod = createEnqueueMethod({
+      http: apiHttp,
       logger
     })
 
