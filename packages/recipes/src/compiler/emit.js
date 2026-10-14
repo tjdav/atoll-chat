@@ -174,6 +174,9 @@ function emitCommand (name, instance, indent, llmProxyUrl) {
  * @param {string} [options.llmProxyUrl] - The engine's LLM proxy
  *   URL. When set, injected into `llm-complete` instances whose
  *   config has no `baseUrl`.
+ * @param {string} [options.composerVersion] - The composer version
+ *   to record in the provenance header for composed bots. Ignored
+ *   when the composition source is 'recipe'. Defaults to 'unknown'.
  * @returns {string} The emitted bot.js source.
  * @throws {Error} When the composition or options are malformed, or
  *   when a primitive referenced by the composition is not
@@ -212,6 +215,10 @@ export function emit (composition, options) {
   }
   if (llmProxyUrl !== undefined && (typeof llmProxyUrl !== 'string' || llmProxyUrl.length === 0)) {
     throw new Error('emit: options.llmProxyUrl must be a non-empty string when provided')
+  }
+  if (options.composerVersion !== undefined &&
+      (typeof options.composerVersion !== 'string' || options.composerVersion.length === 0)) {
+    throw new Error('emit: options.composerVersion must be a non-empty string when provided')
   }
 
   const target = composition.target
@@ -282,9 +289,19 @@ export function emit (composition, options) {
   }
   const botConfigLines = configFields.map((field) => `  ${field}`)
 
+  let provenanceHeader
+  if (composition.source === 'composed') {
+    const composerVersion = options.composerVersion === undefined
+      ? 'unknown'
+      : options.composerVersion
+    provenanceHeader = `// Composed: ${composerVersion}`
+  } else {
+    provenanceHeader = `// Recipe: ${composition.recipeId}@${composition.recipeVersion}`
+  }
+
   const output = [
     `// SPDX-License-Identifier: AGPL-3.0-or-later`,
-    `// Recipe: ${composition.recipeId}@${composition.recipeVersion}`,
+    `${provenanceHeader}`,
     ``,
     `import { defineBot } from '@atoll/bot'`,
     ...(importNames.length === 0 ? [] : [`import {\n${importNames.map((n) => `  ${n}`).join(',\n')}\n} from '@atoll/recipes/primitives'`]),

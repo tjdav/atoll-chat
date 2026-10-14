@@ -11,6 +11,7 @@ import { emit } from '../../../src/compiler/emit.js'
  */
 function simpleComposition () {
   return {
+    source: 'recipe',
     recipeId: 'inline',
     recipeVersion: '1.0.0',
     target: 'bot',
@@ -534,4 +535,40 @@ test('emit leaves other primitives untouched when llmProxyUrl is set', () => {
     llmProxyUrl: 'https://engine.example.com/v1/llm/complete'
   })
   assert.doesNotMatch(code, /"baseUrl": "https:\/\/engine\.example\.com/)
+})
+
+test('emit writes a Recipe provenance header for recipe compositions', () => {
+  const code = emit(simpleComposition(), standardOptions())
+  assert.match(code, /\/\/ Recipe: inline@1\.0\.0/)
+  assert.doesNotMatch(code, /\/\/ Composed:/)
+})
+
+test('emit writes a Composed provenance header for composed compositions', () => {
+  const composition = simpleComposition()
+  delete composition.recipeId
+  delete composition.recipeVersion
+  composition.source = 'composed'
+  const code = emit(composition, standardOptions())
+  assert.match(code, /\/\/ Composed: unknown/)
+  assert.doesNotMatch(code, /\/\/ Recipe:/)
+})
+
+test('emit uses options.composerVersion in the composed header when provided', () => {
+  const composition = simpleComposition()
+  delete composition.recipeId
+  delete composition.recipeVersion
+  composition.source = 'composed'
+  const code = emit(composition, { ...standardOptions(), composerVersion: '2.1.0' })
+  assert.match(code, /\/\/ Composed: 2\.1\.0/)
+})
+
+test('emit throws when composerVersion is not a non-empty string', () => {
+  assert.throws(
+    () => emit(simpleComposition(), { ...standardOptions(), composerVersion: '' }),
+    /options\.composerVersion must be a non-empty string when provided/
+  )
+  assert.throws(
+    () => emit(simpleComposition(), { ...standardOptions(), composerVersion: 42 }),
+    /options\.composerVersion must be a non-empty string when provided/
+  )
 })

@@ -108,6 +108,7 @@ const wrongCreate = {
 
 /** @type {Composition} */
 const composition = {
+  source: 'recipe',
   recipeId: 'searchable-store',
   recipeVersion: '1.0.0',
   target: 'bot',
@@ -129,8 +130,13 @@ const composition = {
   capabilities: ['read_commands', 'post_message']
 }
 
+/** @type {Composition} */
 // @ts-expect-error — commands entries must be PrimitiveInstance-shaped
 const badCommands = { ...composition, commands: { save: 42 } }
+
+/** @type {Composition} */
+// @ts-expect-error — source must be 'recipe' or 'composed'
+const wrongSource = { ...composition, source: 'magic' }
 
 export {
   watchPattern,
@@ -144,5 +150,6 @@ export {
   noCapabilities,
   wrongCreate,
   composition,
-  badCommands
+  badCommands,
+  wrongSource
 }
