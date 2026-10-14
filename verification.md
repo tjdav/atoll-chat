@@ -304,3 +304,29 @@
   - **In-Memory & Non-Persistence:**
     - `ObserverCursorStore` is in-memory only with 5-minute TTL and 60-second pruner task. Cursors and stream events are never written to disk, SQLite, tracing logs, or metrics.
 - **Link to report:** [verification/observer-stream-implementation/report.md](verification/observer-stream-implementation/report.md)
+
+## Bot Channel Delivery Guarantee Verification Fact
+- **ID:** Bot Channel Delivery Guarantee
+- **Date:** 2026-10-14
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §6.22, §7.2, §7.10, §8.2.4, §8.9; Working Spec: Operator Queue Response & Delivery Guarantee Response (2026-10-14)
+- **Verified Facts:**
+  - **Schema (`bot_seq` & `bot_event_log`):**
+    - `bot_seq` table (`bot_id TEXT PRIMARY KEY REFERENCES bot_accounts(id) ON DELETE CASCADE, next_seq INTEGER NOT NULL DEFAULT 1`).
+    - `bot_event_log` table (`bot_id TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE, bot_seq INTEGER NOT NULL, event_type TEXT NOT NULL, payload TEXT NOT NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (bot_id, bot_seq)`).
+    - `idx_bot_event_log_ttl` index on `bot_event_log(created_at)`.
+  - **Allocator & Logging Helpers (`allocate_bot_seq`, `append_bot_event_log`, `prepare_durable_bot_event`):**
+    - `allocate_bot_seq` allocates monotonic sequence numbers per bot in SQLite transactions using `ON CONFLICT(bot_id) DO UPDATE SET next_seq = next_seq + 1 RETURNING next_seq - 1`. Transactional, rollback does not consume sequence numbers.
+    - `append_bot_event_log` appends serialized event payload to `bot_event_log`.
+    - `prepare_durable_bot_event` combines sequence allocation and event logging inside caller transaction, returning payload with `bot_seq` included for live publication after commit.
+  - **Durable Events (`bot.command_invoked`, `bot.settings_updated`):**
+    - `bot.command_invoked` and `bot.settings_updated` allocate `bot_seq`, log to `bot_event_log`, and publish live with `bot_seq` included.
+  - **Bot Sync Endpoint (`GET /bots/me/sync?since_bot_seq=N`):**
+    - Authenticates bot tokens only (`CallerIdentity::Bot`; user session tokens return HTTP 401 `unauthorized`).
+    - Query parameter `since_bot_seq` (default 0).
+    - Returns `{ events: [...], max_bot_seq: N, full_resync_required: bool }` with `Cache-Control: no-store`.
+    - `max_bot_seq` equals `std::cmp::max(since_bot_seq, highest_allocated.unwrap_or(0))`.
+    - `full_resync_required` is true if `since_bot_seq` is older than the 24-hour retention window or below the minimum retained sequence.
+  - **Cleanup Job (`BotEventLogTtlJob`):**
+    - Prunes `bot_event_log` rows older than 24 hours (`BOT_EVENT_LOG_RETENTION_HOURS = 24`). Idempotent, logs `rows_pruned`.
+- **Link to report:** [verification/bot-channel-delivery/report.md](verification/bot-channel-delivery/report.md)

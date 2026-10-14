@@ -771,6 +771,68 @@
         ]
       }
     },
+    "/api/v1/bots/me/sync": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Synchronize bot channel events",
+        "description": "Fetches bot-scoped durable events since a given bot_seq cursor. Auth: Bot token only.",
+        "operationId": "get_bot_sync",
+        "parameters": [
+          {
+            "name": "since_bot_seq",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "int64"
+            },
+            "example": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bot channel events synchronized successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BotSyncResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid since_bot_seq parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized (requires bot token)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/bots/{id}": {
       "get": {
         "tags": [
@@ -4588,6 +4650,51 @@
             ],
             "format": "binary",
             "description": "base64url ciphertext; see §6.29"
+          }
+        }
+      },
+      "BotSyncEvent": {
+        "type": "object",
+        "required": [
+          "bot_seq",
+          "event_type",
+          "payload",
+          "created_at"
+        ],
+        "properties": {
+          "bot_seq": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "payload": {}
+        }
+      },
+      "BotSyncResponse": {
+        "type": "object",
+        "required": [
+          "events",
+          "max_bot_seq",
+          "full_resync_required"
+        ],
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BotSyncEvent"
+            }
+          },
+          "full_resync_required": {
+            "type": "boolean"
+          },
+          "max_bot_seq": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

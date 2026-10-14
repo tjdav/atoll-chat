@@ -40,6 +40,7 @@ fn test_openapi_doc_validity() {
         "/api/v1/bots/me/commands/{id}/ack",
         "/api/v1/bots/me/messages",
         "/api/v1/bots/me/settings",
+        "/api/v1/bots/me/sync",
         "/api/v1/bots/{id}",
         "/api/v1/bots/{id}/avatar",
         "/api/v1/bots/{id}/keys",

@@ -980,12 +980,7 @@ pub async fn post_bot_command(
             .map_err(|e| ApiError::Internal(e.into()))?;
     }
 
-    tx.commit()
-        .await
-        .map_err(|e| ApiError::Internal(e.into()))?;
-
-    // 8. Publish bot.command_invoked on private-bot-{bot_id}
-    let event_payload = json!({
+    let raw_event_payload = json!({
         "command_id": command_id,
         "room_id": room_id,
         "sender_user_id": auth_user.user_id,
@@ -994,6 +989,20 @@ pub async fn post_bot_command(
         "ephemeral_result_pubkey": erpk_trimmed,
     });
 
+    let (_bot_seq, event_payload) = crate::bots::prepare_durable_bot_event(
+        &mut tx,
+        bot_id,
+        "bot.command_invoked",
+        raw_event_payload,
+    )
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    // 8. Publish bot.command_invoked on private-bot-{bot_id}
     let publish_res = Publisher::publish(
         &state.publisher,
         &format!("private-bot-{}", bot_id),

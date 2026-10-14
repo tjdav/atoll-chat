@@ -588,3 +588,19 @@ CREATE TABLE IF NOT EXISTS bot_request_log (
     PRIMARY KEY (bot_id, request_id)
 );
 CREATE INDEX IF NOT EXISTS idx_bot_request_log_ttl ON bot_request_log(created_at);
+
+CREATE TABLE IF NOT EXISTS bot_seq (
+    bot_id    TEXT PRIMARY KEY REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    next_seq  INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS bot_event_log (
+    bot_id      TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    bot_seq     INTEGER NOT NULL,
+    event_type  TEXT NOT NULL,
+    payload     TEXT NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (bot_id, bot_seq)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bot_event_log_ttl ON bot_event_log(created_at);

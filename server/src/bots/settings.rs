@@ -280,6 +280,21 @@ pub async fn write_bot_setting(
     .execute(&mut *tx)
     .await?;
 
+    let raw_bot_payload = json!({
+        "bot_id": bot_id,
+        "keys_changed": [key],
+        "user_seq": user_seq
+    });
+
+    let (_bot_seq, bot_payload) = crate::bots::prepare_durable_bot_event(
+        &mut tx,
+        bot_id,
+        "bot.settings_updated",
+        raw_bot_payload,
+    )
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
     tx.commit().await?;
 
     let user_payload = json!({
@@ -295,11 +310,6 @@ pub async fn write_bot_setting(
     )
     .await;
 
-    let bot_payload = json!({
-        "bot_id": bot_id,
-        "keys_changed": [key],
-        "user_seq": user_seq
-    });
     let _ = Publisher::publish(
         publisher,
         &format!("private-bot-{}", bot_id),
@@ -347,6 +357,21 @@ pub async fn delete_bot_setting(
         .execute(&mut *tx)
         .await?;
 
+    let raw_bot_payload = json!({
+        "bot_id": bot_id,
+        "keys_changed": [key],
+        "user_seq": user_seq
+    });
+
+    let (_bot_seq, bot_payload) = crate::bots::prepare_durable_bot_event(
+        &mut tx,
+        bot_id,
+        "bot.settings_updated",
+        raw_bot_payload,
+    )
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
     tx.commit().await?;
 
     let user_payload = json!({
@@ -362,11 +387,6 @@ pub async fn delete_bot_setting(
     )
     .await;
 
-    let bot_payload = json!({
-        "bot_id": bot_id,
-        "keys_changed": [key],
-        "user_seq": user_seq
-    });
     let _ = Publisher::publish(
         publisher,
         &format!("private-bot-{}", bot_id),
