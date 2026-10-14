@@ -70,6 +70,7 @@ function isValidBase64urlKey (str, expectedLength) {
  * @property {(opts?: { drainMs?: number }) => Promise<{ drained: boolean, remaining: number }>} stop - Closes resources and drains in-flight operations.
  * @property {(invocation?: object) => Promise<BotCtx>} makeBotCtx - Constructs a BotCtx for an invocation.
  * @property {Map<string, RoomSubscription>} [subscriptions] - Internal room subscription registry.
+ * @property {() => number} [getBotSeq] - Returns the current bot_seq cursor.
  * @property {import('./shutdown.js').ShutdownTracker | null} [shutdownTracker] - Shutdown tracker instance.
  */
 
@@ -176,6 +177,7 @@ export function createRuntime ({
   let lifecycleController = new AbortController()
 
   let isStarted = false
+  let botSeq = 0
   /** @type {Promise<{ drained: boolean, remaining: number }> | null} */
   let stopping = null
 
@@ -676,6 +678,48 @@ export function createRuntime ({
   }
 
   /**
+   * Syncs bot channel durable events from the server since a given cursor.
+   *
+   * @param {import('./transport/http.js').HttpClient} http - HTTP client.
+   * @param {number} sinceSeq - Cursor sequence number.
+   * @param {(eventName: string, data: unknown) => Promise<void>} dispatch - Event dispatch function.
+   * @returns {Promise<{ processed: number, cursor: number }>} Sync summary.
+   */
+  async function botChannelSync (http, sinceSeq, dispatch) {
+    const path = `/bots/me/sync?since_bot_seq=${sinceSeq}`
+    const res = await http.request('GET', path, { retry: true })
+    if (res.status !== 200) {
+      throw new Error(`bot channel sync failed: ${res.status}`)
+    }
+    const body =
+      /** @type {Record<string, any> | null} */
+      (res.body)
+    if (!body || typeof body !== 'object') {
+      throw new Error('bot channel sync: malformed response')
+    }
+    if (body.full_resync_required === true && sinceSeq > 0) {
+      botSeq = 0
+      return botChannelSync(http, 0, dispatch)
+    }
+    const events = Array.isArray(body.events) ? body.events : []
+    for (const ev of events) {
+      if (ev && typeof ev === 'object' && typeof ev.event_type === 'string') {
+        await dispatch(ev.event_type, ev.payload)
+        if (typeof ev.bot_seq === 'number') {
+          botSeq = ev.bot_seq
+        }
+      }
+    }
+    if (typeof body.max_bot_seq === 'number') {
+      botSeq = body.max_bot_seq
+    }
+    return {
+      processed: events.length,
+      cursor: botSeq
+    }
+  }
+
+  /**
    * Dispatches bot channel events.
    *
    * @param {string} eventName - Name of the event.
@@ -705,6 +749,15 @@ export function createRuntime ({
             const cmdEvent =
               /** @type {import('./context/command-invoked.js').CommandInvokedEvent} */
               (data)
+            if (idempotency && typeof idempotency.checkAndRecord === 'function' && cmdEvent.command_id) {
+              const seen = await idempotency.checkAndRecord(`cmd:${cmdEvent.command_id}`)
+              if (seen) {
+                logger.debug('command_invoked duplicate skipped', {
+                  meta: { command_id: cmdEvent.command_id }
+                })
+                break
+              }
+            }
             await commandHandler(cmdEvent)
           }
           break
@@ -814,6 +867,15 @@ export function createRuntime ({
           error: err instanceof Error ? err.message : String(err)
         }
       })
+    }
+
+    if (data && typeof data === 'object') {
+      const dataObj =
+        /** @type {Record<string, unknown>} */
+        (data)
+      if (typeof dataObj.bot_seq === 'number') {
+        botSeq = dataObj.bot_seq
+      }
     }
   }
 
@@ -927,7 +989,8 @@ export function createRuntime ({
         storage_keys: storageStore ? storageStore.keys() : [],
         in_flight: shutdownTracker ? shutdownTracker.inFlightCount() : 0,
         paused: pausePolicy ? pausePolicy.isPaused() : false,
-        bot_id: botId
+        bot_id: botId,
+        bot_seq: botSeq
       }
     }
 
@@ -1054,6 +1117,13 @@ export function createRuntime ({
      * @returns {Promise<void>}
      */
     async function postReconnectSequence () {
+      try {
+        await botChannelSync(apiHttp, botSeq, handleBotChannelEvent)
+      } catch (err) {
+        logger.warn('bot channel sync failed on reconnect', {
+          meta: { error: err instanceof Error ? err.message : String(err) }
+        })
+      }
       logger.warn('reconnect: grant refetch skipped; no bot-facing endpoint')
       if (settingsStore) {
         await settingsStore.refresh()
@@ -1111,6 +1181,14 @@ export function createRuntime ({
     })
 
     try {
+      try {
+        await botChannelSync(apiHttp, 0, handleBotChannelEvent)
+      } catch (err) {
+        logger.warn('initial bot channel sync failed', {
+          meta: { error: err instanceof Error ? err.message : String(err) }
+        })
+      }
+
       await ws.connect()
       reconnectController.start()
 
@@ -1338,6 +1416,7 @@ export function createRuntime ({
     stop,
     makeBotCtx,
     subscriptions,
+    getBotSeq: () => botSeq,
     get shutdownTracker () {
       return shutdownTracker
     }
