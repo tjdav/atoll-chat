@@ -852,3 +852,19 @@ Consequences for future tasks:
   - `pnpm --filter @atoll/bot check-batches` passed (status 0).
   - `node --test packages/bot/tests/unit/ctx-enqueue.test.js` passed (34 passing, status 0).
   - `pnpm --filter @atoll/bot typecheck`, `lint`, and `build` passed (status 0).
+
+## Task B-049 Verification Fact
+- **Implement `ctx.onOperatorResponse` and `bot.operator_response` Event Handling (`packages/bot/src/runtime/context/operator-response.js` and `packages/bot/src/runtime/index.js`)**:
+  - Implemented `createOperatorResponseMethod` in `packages/bot/src/runtime/context/operator-response.js` managing a per-runtime `Map<string, Set<Callback>>` callback registry keyed by `request_id`.
+  - Implemented `onOperatorResponse(handle, callback)` validating handle (non-empty string) and callback (function) types (throwing `TypeError` on invalid inputs) and returning an idempotent unsubscribe function.
+  - Implemented `dispatch(event)` mapping `bot.operator_response` event payload fields (`request_id`, `response`, `routing`, `room_id`, `responded_by`, `responded_at`) to callback argument object (`response`, `routing`, `roomId`, `respondedBy`, `respondedAt` — omitting `request_id`).
+  - Iterates a snapshot of callbacks (`Array.from(set)`) in insertion order. Synchronous callback errors and asynchronous promise rejections are caught and logged without halting dispatch or throwing.
+  - Wired `ctx.onOperatorResponse` on `makeBotCtx` in `packages/bot/src/runtime/index.js` as a runtime singleton method.
+  - Added `case 'bot.operator_response':` in `handleBotChannelEvent` delegating directly to `operatorResponse.dispatch(data)`.
+  - Connected `operatorResponse.clear()` to `runtime.stop()` sequence after `uninstall` and room unsubscribes, before WebSocket close.
+  - Confirmed pause policy boundary: pause policy does not gate `bot.operator_response` dispatch, but nested `ctx` method invocations (such as `ctx.post`) evaluate pause policy at call site.
+  - Registered `ctx-on-operator-response` batch (29 unit & integration tests in `packages/bot/tests/unit/ctx-on-operator-response.test.js`) in `packages/bot/tests/batch-manifest.toml`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot test:batch ctx-on-operator-response` passed (29 passing, status 0).
+  - `pnpm --filter @atoll/bot typecheck`, `lint`, and `build` passed (status 0).

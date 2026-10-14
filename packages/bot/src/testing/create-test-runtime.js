@@ -435,7 +435,9 @@ export async function createTestRuntime (bot, options = {}) {
     ctx.sendLocal = function (opts) {
       return sendLocalHandler(opts)
     }
-    ctx.enqueue = enqueueMethod
+    /** @type {Record<string, any>} */
+    const typedCtx = (ctx)
+    typedCtx.enqueue = enqueueMethod
 
     const resCtx =
       /** @type {BotCtx<any>} */

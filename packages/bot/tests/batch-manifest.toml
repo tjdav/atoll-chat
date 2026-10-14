@@ -329,3 +329,9 @@ name = "integration-smoke"
 files = [
   "integration/smoke.test.js",
 ]
+
+[[batch]]
+name = "ctx-on-operator-response"
+files = [
+  "unit/ctx-on-operator-response.test.js",
+]
