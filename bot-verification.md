@@ -1,5 +1,22 @@
 # Bot SDK Verification Log (@atoll/bot)
 
+## Task B-047 Verification Fact
+- **Mechanism & Integration Points**:
+  - **Cursor State:** Added unpersisted integer state `botSeq` (initialized to `0`) tracked in `createRuntime` (`packages/bot/src/runtime/index.js`), exposed via `getBotSeq()`.
+  - **Bot Channel Sync Helper:** Implemented `botChannelSync(http, sinceSeq, dispatch)` helper fetching `GET /api/v1/bots/me/sync?since_bot_seq=<cursor>`. Dispatches returned `events` in order and updates `botSeq` cursor on each event and from response `max_bot_seq`.
+  - **`full_resync_required` Handling:** When `full_resync_required` is true and `sinceSeq > 0`, resets `botSeq = 0` and retries sync from 0.
+  - **Boot Sequence:** `start()` calls `botChannelSync(apiHttp, 0, handleBotChannelEvent)` before connecting WebSocket (`ws.connect()`). Sync failure logs warning without blocking boot.
+  - **Reconnect Sequence:** `postReconnectSequence()` calls `botChannelSync(apiHttp, botSeq, handleBotChannelEvent)` before `settingsStore.refresh()`. Sync failure logs warning and continues.
+  - **Live Event Cursor:** `handleBotChannelEvent` updates `botSeq` when live event carries numeric `data.bot_seq`.
+  - **Command Deduplication:** `createCommandInvocationHandler` accepts `idempotency` store and deduplicates `command_id`s via `idempotency.checkAndRecord('cmd:' + command_id)`.
+  - **Diagnostics Snapshot:** Included `bot_seq: botSeq` in `snapshotState()`.
+- **Verification Results**:
+  - `pnpm --filter @atoll/bot typecheck` passed (status 0).
+  - `pnpm --filter @atoll/bot lint` passed (status 0).
+  - `pnpm --filter @atoll/bot check-batches` passed (status 0).
+  - `pnpm --filter @atoll/bot build` passed (status 0).
+  - `pnpm --filter @atoll/bot test:batch runtime-sync` passed (20 passing, status 0).
+
 ## Task B-046d Verification Fact
 - **Diagnosis & Fixes across 30-Second Timeout Group**:
   - **`cli-run` & `cli-sandbox`**:

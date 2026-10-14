@@ -211,6 +211,12 @@ files = [
 ]
 
 [[batch]]
+name = "runtime-sync"
+files = [
+  "unit/runtime-sync.test.js",
+]
+
+[[batch]]
 name = "shutdown"
 files = [
   "unit/shutdown.test.js",
