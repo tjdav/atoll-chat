@@ -872,6 +872,373 @@ pub async fn delete_bot(
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
+#[derive(Debug, Serialize, ToSchema)]
+pub struct OperatorQueueItemView {
+    pub id: String,
+    pub bot_id: String,
+    pub room_id: Option<String>,
+    pub audience: String,
+    pub requester_user_id: Option<String>,
+    pub payload: String,
+    pub payload_preview: String,
+    pub status: String,
+    pub queued_at: String,
+    pub timeout_at: Option<String>,
+    pub on_timeout: String,
+    pub canned_response: Option<String>,
+    pub answered_at: Option<String>,
+    pub responded_by: Option<String>,
+    pub response: Option<String>,
+    pub routing: Option<String>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct OperatorQueueListResp {
+    pub items: Vec<OperatorQueueItemView>,
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct OperatorQueueListQuery {
+    pub status: Option<String>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct OperatorQueueRespondReq {
+    pub response: String,
+    pub routing: Option<String>,
+}
+
+pub async fn list_operator_queue(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(bot_id): Path<String>,
+    Query(query): Query<OperatorQueueListQuery>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+    let user_id = match caller {
+        CallerIdentity::User(ref u) => u.user_id.clone(),
+        _ => return Err(ApiError::Forbidden("forbidden".into())),
+    };
+
+    if !is_bot_operator(&state.pool, &bot_id, &user_id).await? {
+        return Err(ApiError::Forbidden("forbidden".into()));
+    }
+
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::OperatorQueueList {
+            bot_id: bot_id.clone(),
+            user_id: user_id.clone(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    let limit = query.limit.unwrap_or(50).min(200);
+
+    let rows = if let Some(ref status_filter) = query.status {
+        sqlx::query(
+            r#"
+            SELECT id, bot_id, room_id, audience, requester_user_id, payload, payload_preview, status,
+                   CAST(queued_at AS TEXT) AS queued_at, CAST(timeout_at AS TEXT) AS timeout_at,
+                   on_timeout, canned_response, CAST(answered_at AS TEXT) AS answered_at,
+                   responded_by, response, routing
+            FROM bot_operator_queue
+            WHERE bot_id = ? AND status = ?
+            ORDER BY queued_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(&bot_id)
+        .bind(status_filter)
+        .bind(limit)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?
+    } else {
+        sqlx::query(
+            r#"
+            SELECT id, bot_id, room_id, audience, requester_user_id, payload, payload_preview, status,
+                   CAST(queued_at AS TEXT) AS queued_at, CAST(timeout_at AS TEXT) AS timeout_at,
+                   on_timeout, canned_response, CAST(answered_at AS TEXT) AS answered_at,
+                   responded_by, response, routing
+            FROM bot_operator_queue
+            WHERE bot_id = ?
+            ORDER BY queued_at DESC
+            LIMIT ?
+            "#,
+        )
+        .bind(&bot_id)
+        .bind(limit)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?
+    };
+
+    let items = rows
+        .into_iter()
+        .map(|r| OperatorQueueItemView {
+            id: r.get("id"),
+            bot_id: r.get("bot_id"),
+            room_id: r.get("room_id"),
+            audience: r.get("audience"),
+            requester_user_id: r.get("requester_user_id"),
+            payload: r.get("payload"),
+            payload_preview: r.get("payload_preview"),
+            status: r.get("status"),
+            queued_at: r.get("queued_at"),
+            timeout_at: r.get("timeout_at"),
+            on_timeout: r.get("on_timeout"),
+            canned_response: r.get("canned_response"),
+            answered_at: r.get("answered_at"),
+            responded_by: r.get("responded_by"),
+            response: r.get("response"),
+            routing: r.get("routing"),
+        })
+        .collect();
+
+    let mut resp = (StatusCode::OK, Json(OperatorQueueListResp { items })).into_response();
+    resp.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(resp)
+}
+
+pub async fn get_operator_queue_entry(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((bot_id, request_id)): Path<(String, String)>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+    let user_id = match caller {
+        CallerIdentity::User(ref u) => u.user_id.clone(),
+        _ => return Err(ApiError::Forbidden("forbidden".into())),
+    };
+
+    if !is_bot_operator(&state.pool, &bot_id, &user_id).await? {
+        return Err(ApiError::Forbidden("forbidden".into()));
+    }
+
+    let row = sqlx::query(
+        r#"
+        SELECT id, bot_id, room_id, audience, requester_user_id, payload, payload_preview, status,
+               CAST(queued_at AS TEXT) AS queued_at, CAST(timeout_at AS TEXT) AS timeout_at,
+               on_timeout, canned_response, CAST(answered_at AS TEXT) AS answered_at,
+               responded_by, response, routing
+        FROM bot_operator_queue
+        WHERE bot_id = ? AND id = ?
+        "#,
+    )
+    .bind(&bot_id)
+    .bind(&request_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let r = match row {
+        Some(r) => r,
+        None => return Err(ApiError::NotFound("entry_not_found".into())),
+    };
+
+    let item = OperatorQueueItemView {
+        id: r.get("id"),
+        bot_id: r.get("bot_id"),
+        room_id: r.get("room_id"),
+        audience: r.get("audience"),
+        requester_user_id: r.get("requester_user_id"),
+        payload: r.get("payload"),
+        payload_preview: r.get("payload_preview"),
+        status: r.get("status"),
+        queued_at: r.get("queued_at"),
+        timeout_at: r.get("timeout_at"),
+        on_timeout: r.get("on_timeout"),
+        canned_response: r.get("canned_response"),
+        answered_at: r.get("answered_at"),
+        responded_by: r.get("responded_by"),
+        response: r.get("response"),
+        routing: r.get("routing"),
+    };
+
+    let mut resp = (StatusCode::OK, Json(item)).into_response();
+    resp.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(resp)
+}
+
+pub async fn respond_operator_queue(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((bot_id, request_id)): Path<(String, String)>,
+    Json(body): Json<OperatorQueueRespondReq>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+    let user_id = match caller {
+        CallerIdentity::User(ref u) => u.user_id.clone(),
+        _ => return Err(ApiError::Forbidden("forbidden".into())),
+    };
+
+    if !is_bot_operator(&state.pool, &bot_id, &user_id).await? {
+        return Err(ApiError::Forbidden("forbidden".into()));
+    }
+
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::OperatorQueueRespond {
+            bot_id: bot_id.clone(),
+            user_id: user_id.clone(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let row = sqlx::query(
+        "SELECT audience, room_id, status FROM bot_operator_queue WHERE bot_id = ? AND id = ?",
+    )
+    .bind(&bot_id)
+    .bind(&request_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let row = match row {
+        Some(r) => r,
+        None => return Err(ApiError::NotFound("entry_not_found".into())),
+    };
+
+    let status: String = row.get("status");
+    if status != "pending" {
+        return Err(ApiError::Gone("entry_already_answered".into()));
+    }
+
+    let audience: String = row.get("audience");
+    let room_id: Option<String> = row.get("room_id");
+    let routing = body.routing.unwrap_or(audience);
+
+    let res = sqlx::query(
+        r#"
+        UPDATE bot_operator_queue
+        SET status = 'answered',
+            answered_at = CURRENT_TIMESTAMP,
+            responded_by = ?,
+            response = ?,
+            routing = ?
+        WHERE bot_id = ? AND id = ? AND status = 'pending'
+        "#,
+    )
+    .bind(&user_id)
+    .bind(&body.response)
+    .bind(&routing)
+    .bind(&bot_id)
+    .bind(&request_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if res.rows_affected() == 0 {
+        return Err(ApiError::Gone("entry_already_answered".into()));
+    }
+
+    let answered_at: String =
+        sqlx::query_scalar("SELECT CAST(answered_at AS TEXT) FROM bot_operator_queue WHERE id = ?")
+            .bind(&request_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let event_payload = serde_json::json!({
+        "request_id": request_id,
+        "response": body.response,
+        "routing": routing,
+        "room_id": room_id,
+        "responded_by": user_id,
+        "responded_at": answered_at,
+    });
+
+    let (_seq, pub_payload) = crate::bots::prepare_durable_bot_event(
+        &mut tx,
+        &bot_id,
+        "bot.operator_response",
+        event_payload,
+    )
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let channel = format!("private-bot-{}", bot_id);
+    let _ = state
+        .publisher
+        .publish(&channel, "bot.operator_response", pub_payload)
+        .await;
+
+    let item_row = sqlx::query(
+        r#"
+        SELECT id, bot_id, room_id, audience, requester_user_id, payload, payload_preview, status,
+               CAST(queued_at AS TEXT) AS queued_at, CAST(timeout_at AS TEXT) AS timeout_at,
+               on_timeout, canned_response, CAST(answered_at AS TEXT) AS answered_at,
+               responded_by, response, routing
+        FROM bot_operator_queue
+        WHERE id = ?
+        "#,
+    )
+    .bind(&request_id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let item = OperatorQueueItemView {
+        id: item_row.get("id"),
+        bot_id: item_row.get("bot_id"),
+        room_id: item_row.get("room_id"),
+        audience: item_row.get("audience"),
+        requester_user_id: item_row.get("requester_user_id"),
+        payload: item_row.get("payload"),
+        payload_preview: item_row.get("payload_preview"),
+        status: item_row.get("status"),
+        queued_at: item_row.get("queued_at"),
+        timeout_at: item_row.get("timeout_at"),
+        on_timeout: item_row.get("on_timeout"),
+        canned_response: item_row.get("canned_response"),
+        answered_at: item_row.get("answered_at"),
+        responded_by: item_row.get("responded_by"),
+        response: item_row.get("response"),
+        routing: item_row.get("routing"),
+    };
+
+    let mut resp = (StatusCode::OK, Json(item)).into_response();
+    resp.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(resp)
+}
+
 #[derive(Deserialize, ToSchema)]
 pub struct PostBotMessagesReq {
     pub target: String,

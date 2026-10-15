@@ -416,6 +416,12 @@ async fn main() -> anyhow::Result<()> {
             server::cleanup::bot_request_log::BotRequestLogTtlJob,
         ));
         scheduler.register(Box::new(server::cleanup::bot_event_log::BotEventLogTtlJob));
+        scheduler.register(Box::new(
+            server::cleanup::operator_queue::OperatorQueueTimeoutJob,
+        ));
+        scheduler.register(Box::new(
+            server::cleanup::operator_queue::OperatorQueueRetentionJob,
+        ));
 
         let ctx = server::cleanup::CleanupContextOwned {
             pool: pool.clone(),

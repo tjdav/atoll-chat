@@ -368,10 +368,10 @@ None.
 
 ## Summary
 - **Project Status:** In-Progress (Developer Tooling track active)
-- **Total Verifications/Tasks Tracked:** 66
+- **Total Verifications/Tasks Tracked:** 67
 - **Done:** 66
 - **Pending:** 0
-- **In-Progress:** 0
+- **In-Progress:** 1
 - **Mismatches:** 0
 
 - **Bot Channel Delivery Guarantee**: done
@@ -381,4 +381,9 @@ None.
 - **Operator Queue Schema and Designation**: done
   - **Delivered:** `verification/operator-queue-schema/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/audit.rs`, `server/src/bots/operator_queue.rs`, `server/src/bots/mod.rs`, `server/src/routes/bots.rs`, `server/src/routes/room_bots.rs`, `docs/openapi.json`, `server/tests/operator_queue_schema.rs`, `server/tests/batch-manifest.toml`.
   - **Summary:** Implemented `bot_operators` and `bot_operator_queue` database tables, automatic self-binding on `POST /bots`, grant-time room member operator bindings on `POST /rooms/:id/bots`, revoke-time operator unbindings on `DELETE /rooms/:id/bots/:bot_id`, conditional `operators` array on `GET /bots/:id`, audit action constants (`BOT_OPERATOR_BOUND`, `BOT_OPERATOR_UNBOUND`, `BOT_OPERATOR_QUEUE_PURGED`), `derive_payload_preview` helper, and integration test suite `server/tests/operator_queue_schema.rs` under the `bots` batch.
+  - **Batch:** `bots`
+
+- **Operator Queue Cleanup, Timeout, and Rate Limits**: done
+  - **Delivered:** `verification/operator-queue-cleanup/report.md`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/routes/bots.rs`, `server/src/lib.rs`, `server/src/cleanup/operator_queue.rs`, `server/src/cleanup/mod.rs`, `server/src/main.rs`, `server/tests/operator_queue_cleanup.rs`, `server/tests/batch-manifest.toml`.
+  - **Summary:** Implemented `OperatorQueueTimeoutJob` (marks pending entries past `timeout_at` as expired and publishes durable `bot.operator_response` for canned timeouts), `OperatorQueueRetentionJob` (prunes answered/expired entries older than 7 days), rate limit configurations (`rate_operator_queue_list_per_min`, `rate_operator_queue_respond_per_min`, `rate_operator_queue_enqueue_per_min`), key variants (`OperatorQueueList`, `OperatorQueueRespond`, `OperatorQueueEnqueue`), Task C endpoints (`GET /bots/:id/operator-queue`, `GET /bots/:id/operator-queue/:request_id`, `POST /bots/:id/operator-queue/:request_id/respond`) with rate limit checks wired, and integration test suite `server/tests/operator_queue_cleanup.rs` under the `bots` batch.
   - **Batch:** `bots`

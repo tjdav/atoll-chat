@@ -352,3 +352,23 @@
   - **Cleanup Job (`BotEventLogTtlJob`):**
     - Prunes `bot_event_log` rows older than 24 hours (`BOT_EVENT_LOG_RETENTION_HOURS = 24`). Idempotent, logs `rows_pruned`.
 - **Link to report:** [verification/bot-channel-delivery/report.md](verification/bot-channel-delivery/report.md)
+
+## Operator Queue Cleanup, Timeout, and Rate Limits Verification Fact
+- **ID:** Operator Queue Cleanup, Timeout, and Rate Limits
+- **Date:** 2026-10-15
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Working Spec: Operator Queue Response & Delivery Guarantee Response (2026-10-14); V3 Spec §4.5, §5.6, §5.18, §5.32
+- **Verified Facts:**
+  - **Timeout Job Contract (`OperatorQueueTimeoutJob`):**
+    - Queries pending rows past timeout (`status = 'pending'`, `timeout_at IS NOT NULL AND timeout_at < CURRENT_TIMESTAMP`).
+    - Updates row to `status = 'expired'` and `answered_at = CURRENT_TIMESTAMP` with concurrency guard (`WHERE id = ? AND status = 'pending'`).
+    - If `on_timeout = 'canned'`, prepares and logs durable `bot.operator_response` event via `prepare_durable_bot_event` with `response = canned_response` and `responded_by = NULL` before publishing on `private-bot-{bot_id}`.
+    - If `canned_response IS NULL` for canned timeout, logs a warning and marks row expired without publishing.
+    - If `on_timeout = 'ignore'`, commits update without publishing.
+  - **Retention Pruning Job Contract (`OperatorQueueRetentionJob`):**
+    - Prunes answered and expired rows older than 7 days (`status IN ('answered', 'expired') AND answered_at < datetime('now', '-7 days')`). Covered by `idx_bot_operator_queue_retention`.
+  - **Rate Limits & Key Formats:**
+    - `rate_operator_queue_list_per_min`: default 60, env `RATE_OPERATOR_QUEUE_LIST_PER_MIN`, key `operator_queue_list:{bot_id}:{user_id}:min:{boundary}`.
+    - `rate_operator_queue_respond_per_min`: default 30, env `RATE_OPERATOR_QUEUE_RESPOND_PER_MIN`, key `operator_queue_respond:{bot_id}:{user_id}:min:{boundary}`.
+    - `rate_operator_queue_enqueue_per_min`: default 60, env `RATE_OPERATOR_QUEUE_ENQUEUE_PER_MIN`, key `operator_queue_enqueue:{bot_id}:min:{boundary}`.
+- **Link to report:** [verification/operator-queue-cleanup/report.md](verification/operator-queue-cleanup/report.md)

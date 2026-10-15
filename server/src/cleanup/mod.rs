@@ -151,6 +151,7 @@ pub mod bot_commands;
 pub mod bot_event_log;
 pub mod bot_request_log;
 pub mod memory;
+pub mod operator_queue;
 pub mod oprf_audit;
 pub mod pending_removes;
 pub mod rate_limits;

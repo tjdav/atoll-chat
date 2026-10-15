@@ -45,6 +45,9 @@ pub enum RateLimitKey {
     BotLocalMessage { bot_id: String },
     BotKeyRotate { bot_id: String },
     BotObserverStream { bot_id: String },
+    OperatorQueueList { bot_id: String, user_id: String },
+    OperatorQueueRespond { bot_id: String, user_id: String },
+    OperatorQueueEnqueue { bot_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -505,6 +508,36 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_bot_observer_stream_per_min,
+            )
+        }
+        RateLimitKey::OperatorQueueList { bot_id, user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("operator_queue_list:{bot_id}:{user_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_operator_queue_list_per_min,
+            )
+        }
+        RateLimitKey::OperatorQueueRespond { bot_id, user_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("operator_queue_respond:{bot_id}:{user_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_operator_queue_respond_per_min,
+            )
+        }
+        RateLimitKey::OperatorQueueEnqueue { bot_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("operator_queue_enqueue:{bot_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_operator_queue_enqueue_per_min,
             )
         }
     };
