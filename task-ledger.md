@@ -368,11 +368,16 @@ None.
 
 ## Summary
 - **Project Status:** In-Progress (Developer Tooling track active)
-- **Total Verifications/Tasks Tracked:** 66
-- **Done:** 66
+- **Total Verifications/Tasks Tracked:** 67
+- **Done:** 67
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0
+
+- **Operator Queue Endpoints**: done
+  - **Delivered:** `verification/operator-queue-endpoints/report.md`, `server/src/routes/bots.rs`, `server/src/lib.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/operator_queue_endpoints.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Summary:** Implemented operator-facing queue endpoints (`GET /bots/:id/operator-queue`, `GET /bots/:id/operator-queue/:request_id`, `POST /bots/:id/operator-queue/:request_id/respond`), operator authorization gate (404 for non-operators), Option 1 routing resolution, atomic pending status transition, durable `bot.operator_response` event logging and publication, Cache-Control: no-store headers, OpenAPI annotations, and integration test suite under the `bots` batch.
+  - **Batch:** `bots`
 
 - **Bot Channel Delivery Guarantee**: done
   - **Delivered:** `verification/bot-channel-delivery/report.md`

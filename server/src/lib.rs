@@ -483,6 +483,18 @@ pub fn build_app(state: AppState) -> Router {
             post(routes::bots::upload_bot_avatar).delete(routes::bots::delete_bot_avatar),
         )
         .route(
+            "/bots/{id}/operator-queue",
+            get(routes::bots::list_operator_queue),
+        )
+        .route(
+            "/bots/{id}/operator-queue/{request_id}",
+            get(routes::bots::get_operator_queue_entry),
+        )
+        .route(
+            "/bots/{id}/operator-queue/{request_id}/respond",
+            post(routes::bots::respond_operator_queue_entry),
+        )
+        .route(
             "/rooms/{id}/bots",
             get(routes::room_bots::list_room_bots).post(routes::room_bots::grant_bot),
         )
