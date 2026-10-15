@@ -1311,6 +1311,274 @@
         ]
       }
     },
+    "/api/v1/bots/{id}/operator-queue": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "List operator queue entries",
+        "description": "List pending or answered operator queue entries for a bot. Auth: Bot owner session, designated operator session, or bot token matching id.",
+        "operationId": "list_operator_queue",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "room_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operator queue entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOperatorQueueResp"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status, limit, or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found or not an operator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/{id}/operator-queue/{request_id}": {
+      "get": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Get operator queue entry detail",
+        "description": "Fetch full operator queue entry including payload. Auth: Bot owner session, designated operator session, or bot token matching id.",
+        "operationId": "get_operator_queue_entry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "Request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operator queue entry detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueDetailEntryView"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found, request not found, or not an operator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/bots/{id}/operator-queue/{request_id}/respond": {
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Respond to operator queue entry",
+        "description": "Submit response to a pending operator queue entry. Auth: Bot owner session, designated operator session, or bot token matching id.",
+        "operationId": "respond_operator_queue_entry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Bot ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "request_id",
+            "in": "path",
+            "description": "Request ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RespondOperatorQueueReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Response accepted"
+          },
+          "400": {
+            "description": "Invalid response or invalid routing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Bot not found, request not found, or not an operator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already answered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Entry expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/bots/{id}/tokens": {
       "get": {
         "tags": [
@@ -5362,6 +5630,26 @@
           }
         }
       },
+      "ListOperatorQueueResp": {
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueueListEntryView"
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "ListRoomBotsResp": {
         "type": "object",
         "required": [
@@ -5879,6 +6167,98 @@
           }
         }
       },
+      "QueueDetailEntryView": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "room_id",
+          "audience",
+          "queued_at",
+          "requester_user_id",
+          "payload",
+          "payload_preview",
+          "status"
+        ],
+        "properties": {
+          "audience": {
+            "type": "string"
+          },
+          "payload": {},
+          "payload_preview": {
+            "type": "string"
+          },
+          "queued_at": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "requester_display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requester_user_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "timeout_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "QueueListEntryView": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "room_id",
+          "audience",
+          "queued_at",
+          "requester_user_id",
+          "payload_preview"
+        ],
+        "properties": {
+          "audience": {
+            "type": "string"
+          },
+          "payload_preview": {
+            "type": "string"
+          },
+          "queued_at": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "requester_display_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "requester_user_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "timeout_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "ReadStateRow": {
         "type": "object",
         "required": [
@@ -5981,6 +6361,23 @@
             ]
           },
           "user_agent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RespondOperatorQueueReq": {
+        "type": "object",
+        "required": [
+          "response"
+        ],
+        "properties": {
+          "response": {
+            "type": "string"
+          },
+          "routing": {
             "type": [
               "string",
               "null"

@@ -1,4 +1,19 @@
 
+## Operator Queue Endpoints Verification Fact
+- **ID:** Operator Queue Endpoints
+- **Date:** 2026-10-14
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Working Spec v2026-10-14 (Operator Queue Response, Delivery Guarantee Response); Proposal v2026-10-14
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/operator-queue-endpoints/report.md`.
+  - **Routing Resolution (Option 1):** The request body for `POST /bots/:id/operator-queue/:request_id/respond` accepts `{ "response": "..." }`. Providing a `routing` field returns 400 `invalid_routing` because `audience` is single-valued (`private` or `public`). Delivery routing in `bot.operator_response` payload inherits the stored entry's `audience` value.
+  - **Operator Authorization Gate:** Caller must be bot owner user session, designated operator (`SELECT 1 FROM bot_operators ...`), or matching bot token. Non-operators receive 404 `not_found` to prevent information disclosure.
+  - **Concurrency Safety:** `POST /bots/:id/operator-queue/:request_id/respond` executes atomic status transition `UPDATE bot_operator_queue SET status = 'answered', ... WHERE id = ? AND bot_id = ? AND status = 'pending'`. If `rows_affected() == 0`, concurrent respond or repeat attempt returns 409 `already_answered`.
+  - **Event Durability:** `bot.operator_response` event allocated with `bot_seq` and appended to `bot_event_log` within caller transaction, then published post-commit on `private-bot-{bot_id}`.
+  - **List & Detail Endpoints:** `GET /bots/:id/operator-queue` supports `status` filter (`pending` default, `answered`), `room_id` filter, `limit` (max 200), and opaque unpadded base64url cursor pagination. List items omit `payload`. `GET /bots/:id/operator-queue/:request_id` returns full detail including parsed `payload` JSON.
+  - **Response Headers:** `Cache-Control: no-store` returned on all three endpoint responses.
+- **Link to report:** [verification/operator-queue-endpoints/report.md](verification/operator-queue-endpoints/report.md)
+
 ## OpenAPI Annotations — Admin Endpoints Verification Fact
 - **ID:** OpenAPI Annotations — Admin Endpoints
 - **Date:** 2026-10-13
