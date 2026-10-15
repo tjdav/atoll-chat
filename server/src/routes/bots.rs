@@ -29,6 +29,22 @@ use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
 use utoipa::{IntoParams, ToSchema};
 
+pub async fn is_bot_operator(
+    pool: &SqlitePool,
+    bot_id: &str,
+    user_id: &str,
+) -> Result<bool, ApiError> {
+    let is_bound: Option<i64> =
+        sqlx::query_scalar("SELECT 1 FROM bot_operators WHERE bot_id = ? AND user_id = ?")
+            .bind(bot_id)
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+    Ok(is_bound.is_some())
+}
+
 pub async fn resolve_caller(
     pool: &SqlitePool,
     headers: &HeaderMap,
@@ -126,6 +142,14 @@ pub struct CreateBotReq {
 }
 
 #[derive(Serialize, ToSchema)]
+pub struct OperatorView {
+    pub user_id: String,
+    pub binding: String,
+    #[schema(value_type = String)]
+    pub bound_at: DateTime<Utc>,
+}
+
+#[derive(Serialize, ToSchema)]
 pub struct BotView {
     pub bot_id: String,
     pub display_name: String,
@@ -139,6 +163,8 @@ pub struct BotView {
     pub declarations: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bot_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub operators: Option<Vec<OperatorView>>,
 }
 
 /// POST /bots
@@ -269,6 +295,16 @@ pub async fn create_bot(
         .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
+    sqlx::query(
+        "INSERT INTO bot_operators (bot_id, user_id, bound_at, bound_by, binding) VALUES (?, ?, CURRENT_TIMESTAMP, ?, 'self')",
+    )
+    .bind(&bot_id)
+    .bind(&auth_user.user_id)
+    .bind(&auth_user.user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
     crate::key_transparency::append_bot_leaf(
         &mut tx,
         &bot_id,
@@ -281,6 +317,21 @@ pub async fn create_bot(
     tx.commit()
         .await
         .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let _ = crate::audit::log(
+        &state.pool,
+        Some(&auth_user.user_id),
+        crate::audit::action::BOT_OPERATOR_BOUND,
+        Some("bot"),
+        Some(&bot_id),
+        Some(json!({
+            "bot_id": bot_id,
+            "user_id": auth_user.user_id,
+            "binding": "self",
+            "room_id": serde_json::Value::Null
+        })),
+    )
+    .await;
 
     // Publish bot.created on owner user channel
     let event_payload = json!({
@@ -309,6 +360,7 @@ pub async fn create_bot(
         created_at,
         declarations: req.declarations,
         bot_token: Some(raw_token),
+        operators: None,
     };
 
     let mut response = (StatusCode::CREATED, Json(view)).into_response();
@@ -364,9 +416,39 @@ pub async fn get_bot(
     };
 
     let owner_user_id: String = row.get("owner_user_id");
-    if !caller.is_owner_or_bot(&bot_id, &owner_user_id) {
+
+    let is_operator = match &caller {
+        CallerIdentity::User(u) if u.user_id == owner_user_id => true,
+        CallerIdentity::Bot(b) if b.bot_id == bot_id => true,
+        CallerIdentity::User(u) => is_bot_operator(&state.pool, &bot_id, &u.user_id).await?,
+        _ => false,
+    };
+
+    if !is_operator {
         return Err(ApiError::Forbidden("forbidden".into()));
     }
+
+    let operators = if is_operator {
+        let op_rows = sqlx::query(
+            "SELECT user_id, binding, bound_at FROM bot_operators WHERE bot_id = ? ORDER BY bound_at ASC",
+        )
+        .bind(&bot_id)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+        let ops = op_rows
+            .into_iter()
+            .map(|r| OperatorView {
+                user_id: r.get("user_id"),
+                binding: r.get("binding"),
+                bound_at: r.get("bound_at"),
+            })
+            .collect();
+        Some(ops)
+    } else {
+        None
+    };
 
     let scope_rows: Vec<String> = sqlx::query_scalar(
         "SELECT scope FROM bot_declared_scopes WHERE bot_id = ? ORDER BY scope ASC",
@@ -394,6 +476,7 @@ pub async fn get_bot(
         created_at: row.get("created_at"),
         declarations,
         bot_token: None,
+        operators,
     };
 
     let mut response = (StatusCode::OK, Json(view)).into_response();
@@ -715,6 +798,20 @@ pub async fn delete_bot(
         }
     }
 
+    // Explicitly delete operator queue and operator bindings
+    let deleted_queue_entries: i64 = sqlx::query("DELETE FROM bot_operator_queue WHERE bot_id = ?")
+        .bind(&bot_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?
+        .rows_affected() as i64;
+
+    sqlx::query("DELETE FROM bot_operators WHERE bot_id = ?")
+        .bind(&bot_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
     // Allocate user_seq for durable bot.deleted event on owner's user channel
     let user_seq = allocate_user_seq(&mut tx, &owner_user_id)
         .await
@@ -723,6 +820,25 @@ pub async fn delete_bot(
     tx.commit()
         .await
         .map_err(|e| ApiError::Internal(e.into()))?;
+
+    // Audit logging for queue purge
+    let caller_id = match &caller {
+        CallerIdentity::User(u) => Some(u.user_id.as_str()),
+        CallerIdentity::Bot(b) => Some(b.owner_user_id.as_str()),
+    };
+
+    let _ = crate::audit::log(
+        &state.pool,
+        caller_id,
+        crate::audit::action::BOT_OPERATOR_QUEUE_PURGED,
+        Some("bot"),
+        Some(&bot_id),
+        Some(json!({
+            "bot_id": bot_id,
+            "entries": deleted_queue_entries
+        })),
+    )
+    .await;
 
     // Publish bot.deleted on owner's user channel
     let event_payload = json!({

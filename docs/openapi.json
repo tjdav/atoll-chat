@@ -4775,6 +4775,15 @@
           "identity_pubkey": {
             "type": "string"
           },
+          "operators": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/OperatorView"
+            }
+          },
           "owner_user_id": {
             "type": "string"
           }
@@ -5200,6 +5209,15 @@
           "bot_id": {
             "type": "string"
           },
+          "operators": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
           "scopes": {
             "type": "array",
             "items": {
@@ -5425,6 +5443,25 @@
             "type": "integer",
             "description": "Count of active Text-to-Speech models.",
             "minimum": 0
+          }
+        }
+      },
+      "OperatorView": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "binding",
+          "bound_at"
+        ],
+        "properties": {
+          "binding": {
+            "type": "string"
+          },
+          "bound_at": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
           }
         }
       },

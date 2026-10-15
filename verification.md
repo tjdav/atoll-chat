@@ -305,6 +305,28 @@
     - `ObserverCursorStore` is in-memory only with 5-minute TTL and 60-second pruner task. Cursors and stream events are never written to disk, SQLite, tracing logs, or metrics.
 - **Link to report:** [verification/observer-stream-implementation/report.md](verification/observer-stream-implementation/report.md)
 
+## Operator Queue Schema and Designation Verification Fact
+- **ID:** Operator Queue Schema and Designation
+- **Date:** 2026-10-14
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Working Spec v2026-10-14 (Operator Queue Response, Delivery Guarantee Response); Proposal v2026-10-14
+- **Verified Facts:**
+  - **Schema:**
+    - `bot_operators` (`bot_id`, `user_id`, `bound_at`, `bound_by`, `binding` CHECK ('self'|'room-member'), PK `(bot_id, user_id)`).
+    - `bot_operator_queue` (`id` PK, `bot_id`, `room_id`, `audience` CHECK ('private'|'public'), `requester_user_id`, `payload`, `payload_preview`, `status` CHECK ('pending'|'answered'|'expired'), `queued_at`, `timeout_at`, `on_timeout` CHECK ('ignore'|'canned'), `canned_response`, `answered_at`, `responded_by`, `response`, `routing` CHECK ('private'|'public')).
+    - Retention, pending, and timeout partial indexes added to support queue operations and Task E's cleanup job.
+  - **Self Binding:** `POST /bots` automatically creates a self-binding row (`binding = 'self'`, `bound_by = owner`) for the bot owner inside its creation transaction and logs `bot.operator.bound` audit entry.
+  - **Grant & Revoke Flow:**
+    - `POST /rooms/:id/bots` accepts optional `operators` array, validates room membership (`400 invalid_operator` if any non-member), inserts `binding = 'room-member'`, and writes `bot.operator.bound` audit entries.
+    - `DELETE /rooms/:id/bots/:bot_id` deletes `room-member` bindings created by the granter (`granted_by`) and writes `bot.operator.unbound` audit entries. Self-bindings and bindings from other grants remain intact.
+  - **Operators Array Visibility:**
+    - `GET /bots/:id` returns `operators: Vec<OperatorView>` ordered by `bound_at ASC` to the bot owner, designated operators (`SELECT 1 FROM bot_operators ...`), or matching bot tokens.
+    - Omitted (`None`, absent in serialized JSON) for non-operators and non-owners.
+  - **Bot Deletion & Audit:**
+    - `DELETE /bots/:id` explicitly deletes `bot_operator_queue` and `bot_operators` rows within transaction and writes `bot.operator_queue_purged` audit entry with `entries: N`.
+  - **Payload Preview Helper:** `derive_payload_preview` helper in `server/src/bots/operator_queue.rs` implements priority extraction (string, obj.preview, obj.message, obj.question, "[request]") with 120-char truncation.
+- **Link to report:** [verification/operator-queue-schema/report.md](verification/operator-queue-schema/report.md)
+
 ## Bot Channel Delivery Guarantee Verification Fact
 - **ID:** Bot Channel Delivery Guarantee
 - **Date:** 2026-10-14
