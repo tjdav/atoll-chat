@@ -604,3 +604,47 @@ CREATE TABLE IF NOT EXISTS bot_event_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bot_event_log_ttl ON bot_event_log(created_at);
+
+CREATE TABLE IF NOT EXISTS bot_operators (
+    bot_id     TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    bound_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    bound_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+    binding    TEXT NOT NULL CHECK(binding IN ('self', 'room-member')),
+    PRIMARY KEY (bot_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bot_operators_user ON bot_operators(user_id);
+
+CREATE TABLE IF NOT EXISTS bot_operator_queue (
+    id                TEXT PRIMARY KEY,
+    bot_id            TEXT NOT NULL REFERENCES bot_accounts(id) ON DELETE CASCADE,
+    room_id           TEXT REFERENCES rooms(id) ON DELETE SET NULL,
+    audience          TEXT NOT NULL CHECK(audience IN ('private', 'public')),
+    requester_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    payload           TEXT NOT NULL,
+    payload_preview   TEXT NOT NULL,
+    status            TEXT NOT NULL DEFAULT 'pending'
+                      CHECK(status IN ('pending', 'answered', 'expired')),
+    queued_at         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    timeout_at        DATETIME,
+    on_timeout        TEXT NOT NULL DEFAULT 'ignore'
+                      CHECK(on_timeout IN ('ignore', 'canned')),
+    canned_response   TEXT,
+    answered_at       DATETIME,
+    responded_by      TEXT REFERENCES users(id) ON DELETE SET NULL,
+    response          TEXT,
+    routing           TEXT CHECK(routing IN ('private', 'public'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_bot_operator_queue_pending
+    ON bot_operator_queue(bot_id, queued_at DESC)
+    WHERE status = 'pending';
+
+CREATE INDEX IF NOT EXISTS idx_bot_operator_queue_timeout
+    ON bot_operator_queue(timeout_at)
+    WHERE status = 'pending' AND timeout_at IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_bot_operator_queue_retention
+    ON bot_operator_queue(answered_at)
+    WHERE status IN ('answered', 'expired');

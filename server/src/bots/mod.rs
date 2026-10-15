@@ -3,6 +3,7 @@ pub mod connection;
 pub mod declarations;
 pub mod delivery;
 pub mod idempotency;
+pub mod operator_queue;
 pub mod scopes;
 pub mod settings;
 
@@ -15,6 +16,7 @@ pub use idempotency::{
     ENDPOINT_BOT_COMMANDS, ENDPOINT_BOT_COMMAND_RESULT, ENDPOINT_BOT_LOCAL_MESSAGE,
     ENDPOINT_BOT_MESSAGES,
 };
+pub use operator_queue::derive_payload_preview;
 pub use scopes::{
     derive_mode, is_valid_scope, validate_dependencies, validate_scopes, Mode, ScopeError, SCOPES,
 };

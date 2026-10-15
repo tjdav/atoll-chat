@@ -190,6 +190,7 @@ pub async fn list_room_bots(
 pub struct GrantBotReq {
     pub bot_id: String,
     pub scopes: Vec<String>,
+    pub operators: Option<Vec<String>>,
 }
 
 /// POST /rooms/:id/bots
@@ -303,6 +304,23 @@ pub async fn grant_bot(
         return Err(ApiError::Conflict("bot_limit_reached".into()));
     }
 
+    // Validate operator room membership if operators provided
+    if let Some(ref ops) = req.operators {
+        for op_user_id in ops {
+            let is_member: Option<i64> =
+                sqlx::query_scalar("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?")
+                    .bind(&room_id)
+                    .bind(op_user_id)
+                    .fetch_optional(&state.pool)
+                    .await
+                    .map_err(|e| ApiError::Internal(e.into()))?;
+
+            if is_member.is_none() {
+                return Err(ApiError::BadRequest("invalid_operator".into()));
+            }
+        }
+    }
+
     let derived_mode = derive_mode(&req.scopes);
 
     let mut tx = state
@@ -336,6 +354,25 @@ pub async fn grant_bot(
             .map_err(|e| ApiError::Internal(e.into()))?;
     }
 
+    let mut added_operators = Vec::new();
+    if let Some(ref ops) = req.operators {
+        for op_user_id in ops {
+            let res = sqlx::query(
+                "INSERT INTO bot_operators (bot_id, user_id, bound_at, bound_by, binding) VALUES (?, ?, CURRENT_TIMESTAMP, ?, 'room-member') ON CONFLICT(bot_id, user_id) DO NOTHING",
+            )
+            .bind(&req.bot_id)
+            .bind(op_user_id)
+            .bind(&auth_user.user_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
+
+            if res.rows_affected() > 0 {
+                added_operators.push(op_user_id.clone());
+            }
+        }
+    }
+
     let queued_client_ids = if derived_mode == Mode::Member {
         let key_pkg_selections = select_bot_key_packages(&mut tx, &req.bot_id)
             .await
@@ -361,6 +398,23 @@ pub async fn grant_bot(
     tx.commit()
         .await
         .map_err(|e| ApiError::Internal(e.into()))?;
+
+    for op_user_id in added_operators {
+        let _ = crate::audit::log(
+            &state.pool,
+            Some(&auth_user.user_id),
+            crate::audit::action::BOT_OPERATOR_BOUND,
+            Some("bot"),
+            Some(&req.bot_id),
+            Some(json!({
+                "bot_id": req.bot_id,
+                "user_id": op_user_id,
+                "binding": "room-member",
+                "room_id": room_id
+            })),
+        )
+        .await;
+    }
 
     // Event publishing
     let bot_added_event = json!({
@@ -656,7 +710,7 @@ pub async fn delete_room_bot(
     check_room_grant_auth(&state.pool, &room_id, &auth_user.user_id).await?;
 
     let grant_row = sqlx::query(
-        "SELECT mode FROM room_bots WHERE room_id = ? AND bot_id = ? AND revoked_at IS NULL",
+        "SELECT mode, granted_by FROM room_bots WHERE room_id = ? AND bot_id = ? AND revoked_at IS NULL",
     )
     .bind(&room_id)
     .bind(&bot_id)
@@ -670,6 +724,7 @@ pub async fn delete_room_bot(
     };
 
     let mode_str: String = grant_row.get("mode");
+    let granter_user_id: String = grant_row.get("granted_by");
 
     let mut tx = state
         .pool
@@ -684,6 +739,24 @@ pub async fn delete_room_bot(
         .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
+    let removed_operators: Vec<String> = sqlx::query_scalar(
+        "SELECT user_id FROM bot_operators WHERE bot_id = ? AND binding = 'room-member' AND bound_by = ?",
+    )
+    .bind(&bot_id)
+    .bind(&granter_user_id)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    sqlx::query(
+        "DELETE FROM bot_operators WHERE bot_id = ? AND binding = 'room-member' AND bound_by = ?",
+    )
+    .bind(&bot_id)
+    .bind(&granter_user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
     if mode_str == "member" {
         queue_pending_mls_remove_batch(&mut tx, &room_id, MlsTarget::Bot(&bot_id))
             .await
@@ -693,6 +766,23 @@ pub async fn delete_room_bot(
     tx.commit()
         .await
         .map_err(|e| ApiError::Internal(e.into()))?;
+
+    for op_user_id in removed_operators {
+        let _ = crate::audit::log(
+            &state.pool,
+            Some(&auth_user.user_id),
+            crate::audit::action::BOT_OPERATOR_UNBOUND,
+            Some("bot"),
+            Some(&bot_id),
+            Some(json!({
+                "bot_id": bot_id,
+                "user_id": op_user_id,
+                "binding": "room-member",
+                "room_id": room_id
+            })),
+        )
+        .await;
+    }
 
     let event_payload = json!({
         "room_id": room_id,

@@ -37,6 +37,9 @@ pub mod action {
     pub const EXTENSION_PROXY_REQUEST: &str = "extension.proxy_request";
     pub const BOT_DECLARATION_UPDATE: &str = "bot.declaration_update";
     pub const BOT_KEY_ROTATE: &str = "bot.key_rotate";
+    pub const BOT_OPERATOR_BOUND: &str = "bot.operator.bound";
+    pub const BOT_OPERATOR_UNBOUND: &str = "bot.operator.unbound";
+    pub const BOT_OPERATOR_QUEUE_PURGED: &str = "bot.operator_queue_purged";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

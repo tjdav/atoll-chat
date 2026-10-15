@@ -172,6 +172,7 @@ impl Modify for SecurityAddon {
             crate::sync::query::SyncResponse,
             crate::routes::bots::CreateBotReq,
             crate::routes::bots::BotView,
+            crate::routes::bots::OperatorView,
             crate::routes::bots::PatchBotReq,
             crate::routes::bots::RotateBotKeysReq,
             crate::routes::bots::CreateTokenResp,

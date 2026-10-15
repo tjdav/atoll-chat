@@ -378,6 +378,7 @@ None.
   - **Delivered:** `verification/bot-channel-delivery/report.md`
   - **Summary:** Implemented bot channel delivery guarantee mechanism with `bot_seq` sequence allocator, `bot_event_log` durable event store, `GET /bots/me/sync` endpoint, and 24-hour cleanup job.
 
-- **Operator Queue Schema and Designation**: in-progress
-  - **Delivered:** `verification/operator-queue-schema/report.md`
-  - **Summary:** Step 0 report generated. Implementing storage schema (`bot_operators`, `bot_operator_queue`), bot creation self-binding, room grant operator bindings, room revoke operator unbindings, `operators` array on `GET /bots/:id`, audit constants (`BOT_OPERATOR_BOUND`, `BOT_OPERATOR_UNBOUND`, `BOT_OPERATOR_QUEUE_PURGED`), bot deletion cleanup, and payload preview derivation.
+- **Operator Queue Schema and Designation**: done
+  - **Delivered:** `verification/operator-queue-schema/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/audit.rs`, `server/src/bots/operator_queue.rs`, `server/src/bots/mod.rs`, `server/src/routes/bots.rs`, `server/src/routes/room_bots.rs`, `docs/openapi.json`, `server/tests/operator_queue_schema.rs`, `server/tests/batch-manifest.toml`.
+  - **Summary:** Implemented `bot_operators` and `bot_operator_queue` database tables, automatic self-binding on `POST /bots`, grant-time room member operator bindings on `POST /rooms/:id/bots`, revoke-time operator unbindings on `DELETE /rooms/:id/bots/:bot_id`, conditional `operators` array on `GET /bots/:id`, audit action constants (`BOT_OPERATOR_BOUND`, `BOT_OPERATOR_UNBOUND`, `BOT_OPERATOR_QUEUE_PURGED`), `derive_payload_preview` helper, and integration test suite `server/tests/operator_queue_schema.rs` under the `bots` batch.
+  - **Batch:** `bots`
