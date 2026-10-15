@@ -1,4 +1,7 @@
 use serde_json::Value;
+use sqlx::SqlitePool;
+
+use crate::sockudo::Publisher;
 
 /// Derives a short text preview from an opaque JSON payload per proposal §9.
 /// Priority rules:
@@ -28,5 +31,29 @@ pub fn derive_payload_preview(payload: &Value) -> String {
         truncated
     } else {
         raw.to_string()
+    }
+}
+
+/// Enumerates all user IDs designated as operators for the given bot, ordered by bound_at ASC.
+pub async fn enumerate_operators(
+    pool: &SqlitePool,
+    bot_id: &str,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar("SELECT user_id FROM bot_operators WHERE bot_id = ? ORDER BY bound_at ASC")
+        .bind(bot_id)
+        .fetch_all(pool)
+        .await
+}
+
+/// Non-durable, best-effort publication helper for user channel operator queue events (`operator.queue.updated`, `operator.response.acked`).
+pub async fn publish_operator_queue_event(
+    publisher: &Publisher,
+    user_id: &str,
+    event_name: &str,
+    payload: Value,
+) {
+    let channel = format!("private-user-{user_id}");
+    if let Err(e) = Publisher::publish(publisher, &channel, event_name, payload).await {
+        tracing::warn!(event_name = %event_name, error = %e, "Failed to publish user channel operator queue event");
     }
 }

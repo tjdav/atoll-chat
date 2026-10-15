@@ -215,6 +215,7 @@ files = [
     "bots",
     "observer_stream",
     "operator_queue_endpoints",
+    "operator_queue_enqueue",
     "operator_queue_schema",
     "room_bots",
 ]

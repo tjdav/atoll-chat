@@ -463,6 +463,10 @@ pub fn build_app(state: AppState) -> Router {
         .route("/bots/me/settings", get(routes::bots::get_bot_settings_me))
         .route("/bots/me/messages", post(routes::bots::post_bot_messages))
         .route(
+            "/bots/me/operator-queue",
+            post(routes::bots::enqueue_operator_queue_entry),
+        )
+        .route(
             "/bots/me/commands/{id}/ack",
             post(routes::bots::ack_bot_command),
         )

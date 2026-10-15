@@ -367,12 +367,17 @@ None.
   - **Summary:** Annotated complete admin endpoint domain (7 handlers across OPRF rotation, KT stats, KT snapshot, room sessions, model manifest reload, session types reload, and extension proxy blocklist reload; 48 total path items in `docs/openapi.json`). Derived `ToSchema` across admin DTOs, reused prior-domain schemas (`SnapshotView`, `SessionListResponse`, `RoomSessionView`, `SessionTypeAdminView`), documented §5.8 catastrophic rotation policy and atomic swap semantics. Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
 
 ## Summary
-- **Project Status:** In-Progress (Developer Tooling track active)
-- **Total Verifications/Tasks Tracked:** 67
-- **Done:** 67
+- **Project Status:** Complete (Operator Queue feature complete end to end)
+- **Total Verifications/Tasks Tracked:** 68
+- **Done:** 68
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0
+
+- **Operator Queue Enqueue Endpoint and User Channel Events**: done
+  - **Delivered:** `verification/operator-queue-enqueue/report.md`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/bots/operator_queue.rs`, `server/src/routes/bots.rs`, `server/src/lib.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/operator_queue_enqueue.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
+  - **Summary:** Implemented bot-facing enqueue endpoint (`POST /bots/me/operator-queue`), grant and scope validation, request_id pending retry semantics, terminal status collision detection (409 duplicate_request_id), user channel WebSocket notifications (`operator.queue.updated` and `operator.response.acked`), rate limiting, operator enumeration helper, OpenAPI schema annotations, and integration test suite under the `bots` batch. The operator queue feature is complete end to end.
+  - **Batch:** `bots`
 
 - **Operator Queue Endpoints**: done
   - **Delivered:** `verification/operator-queue-endpoints/report.md`, `server/src/routes/bots.rs`, `server/src/lib.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/operator_queue_endpoints.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
