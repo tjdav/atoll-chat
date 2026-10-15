@@ -1,4 +1,18 @@
 
+## Operator Queue Enqueue Endpoint & User Channel Events Verification Fact
+- **ID:** Operator Queue Enqueue Endpoint & User Channel Events
+- **Date:** 2026-10-15
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Working Spec v2026-10-14 (Operator Queue Response, Delivery Guarantee Response); Proposal v2026-10-14
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/operator-queue-enqueue/report.md`.
+  - **Endpoint Contract (`POST /bots/me/operator-queue`):** Auth: bot token only (`CallerIdentity::Bot`; user session returns 401). Bot grant in target `room_id` must be active (`revoked_at IS NULL`). `audience == "public"` additionally requires `post_message` scope in `room_bot_scopes`.
+  - **Retry & Collision Semantics:** Enqueue retry with an existing `request_id` while entry status is `pending` returns 200 OK with existing `{ request_id, queued_at }`. Collision with terminal status (`answered` or `expired`) returns 409 `duplicate_request_id`.
+  - **Payload Preview & Timeout Calculation:** `payload_preview` derived via `derive_payload_preview` priority rules and 120-char truncation. `timeout_at` computed as `now + seconds` when numeric, or `NULL` when `timeout == "never"`.
+  - **User Channel Notifications:** Non-durable `operator.queue.updated` published on `private-user-{user_id}` for every designated operator on enqueue. Non-durable `operator.response.acked` published on `private-user-{user_id}` for every designated operator on respond.
+  - **Rate Limit & Idempotency:** Enforces `RATE_OPERATOR_QUEUE_ENQUEUE_PER_MIN` (default 60) with key format `operator_queue_enqueue:{bot_id}:min:{boundary}` per bot.
+- **Link to report:** [verification/operator-queue-enqueue/report.md](verification/operator-queue-enqueue/report.md)
+
 ## Operator Queue Endpoints Verification Fact
 - **ID:** Operator Queue Endpoints
 - **Date:** 2026-10-14

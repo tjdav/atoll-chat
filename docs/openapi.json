@@ -724,6 +724,103 @@
         ]
       }
     },
+    "/api/v1/bots/me/operator-queue": {
+      "post": {
+        "tags": [
+          "Bots"
+        ],
+        "summary": "Enqueue request in operator queue",
+        "description": "Bot enqueues a request in the operator queue. Auth: Bot token only.",
+        "operationId": "enqueue_operator_queue_entry",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnqueueOperatorQueueReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Request re-submitted (retry path)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnqueueOperatorQueueResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Request queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnqueueOperatorQueueResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request ID, room, audience, payload, timeout, or canned response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Bot not granted in room or scope missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate request ID for completed entry",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/bots/me/settings": {
       "get": {
         "tags": [
@@ -5400,6 +5497,56 @@
           "user_seq": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "EnqueueOperatorQueueReq": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "room_id",
+          "audience",
+          "payload",
+          "timeout",
+          "on_timeout"
+        ],
+        "properties": {
+          "audience": {
+            "type": "string"
+          },
+          "canned_response": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "on_timeout": {
+            "type": "string"
+          },
+          "payload": {},
+          "request_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "timeout": {
+            "type": "string"
+          }
+        }
+      },
+      "EnqueueOperatorQueueResponse": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "queued_at"
+        ],
+        "properties": {
+          "queued_at": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
           }
         }
       },

@@ -946,6 +946,23 @@ pub struct QueueDetailEntryView {
 }
 
 #[derive(Deserialize, ToSchema)]
+pub struct EnqueueOperatorQueueReq {
+    pub request_id: String,
+    pub room_id: String,
+    pub audience: String,
+    pub payload: Value,
+    pub timeout: String,
+    pub on_timeout: String,
+    pub canned_response: Option<String>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct EnqueueOperatorQueueResponse {
+    pub request_id: String,
+    pub queued_at: String,
+}
+
+#[derive(Deserialize, ToSchema)]
 pub struct RespondOperatorQueueReq {
     pub response: String,
     #[serde(default)]
@@ -1362,7 +1379,252 @@ pub async fn respond_operator_queue_entry(
     )
     .await;
 
+    let operators = crate::bots::operator_queue::enumerate_operators(&state.pool, &bot_id)
+        .await
+        .unwrap_or_default();
+
+    let acked_payload = json!({
+        "bot_id": bot_id,
+        "request_id": request_id,
+        "answered_at": responded_at
+    });
+
+    for op_user_id in operators {
+        crate::bots::operator_queue::publish_operator_queue_event(
+            &state.publisher,
+            &op_user_id,
+            "operator.response.acked",
+            acked_payload.clone(),
+        )
+        .await;
+    }
+
     let mut response = StatusCode::NO_CONTENT.into_response();
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        header::HeaderValue::from_static("no-store"),
+    );
+    Ok(response)
+}
+
+/// POST /bots/me/operator-queue — Enqueue request in operator queue
+#[utoipa::path(
+    post,
+    path = "/api/v1/bots/me/operator-queue",
+    tag = "Bots",
+    summary = "Enqueue request in operator queue",
+    description = "Bot enqueues a request in the operator queue. Auth: Bot token only.",
+    request_body = EnqueueOperatorQueueReq,
+    responses(
+        (status = 201, description = "Request queued", body = EnqueueOperatorQueueResponse),
+        (status = 200, description = "Request re-submitted (retry path)", body = EnqueueOperatorQueueResponse),
+        (status = 400, description = "Invalid request ID, room, audience, payload, timeout, or canned response", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Bot not granted in room or scope missing", body = ErrorResponse),
+        (status = 409, description = "Duplicate request ID for completed entry", body = ErrorResponse),
+        (status = 429, description = "Rate limited", body = ErrorResponse),
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
+pub async fn enqueue_operator_queue_entry(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<EnqueueOperatorQueueReq>,
+) -> Result<Response, ApiError> {
+    let caller = resolve_caller(&state.pool, &headers, &state).await?;
+    let bot_ctx = match caller {
+        CallerIdentity::Bot(b) => b,
+        CallerIdentity::User(_) => return Err(ApiError::Unauthorized("unauthorized".into())),
+    };
+
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::OperatorQueueEnqueue {
+            bot_id: bot_ctx.bot_id.clone(),
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
+
+    let request_id = req.request_id.trim();
+    if !crate::bots::validate_request_id(request_id) {
+        return Err(ApiError::BadRequest("invalid_request_id".into()));
+    }
+
+    let room_id = req.room_id.trim();
+    if room_id.is_empty() {
+        return Err(ApiError::BadRequest("invalid_room_id".into()));
+    }
+
+    let audience = req.audience.trim();
+    if audience != "private" && audience != "public" {
+        return Err(ApiError::BadRequest("invalid_audience".into()));
+    }
+
+    let has_grant: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM room_bots WHERE room_id = ? AND bot_id = ? AND revoked_at IS NULL)",
+    )
+    .bind(room_id)
+    .bind(&bot_ctx.bot_id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if !has_grant {
+        return Err(ApiError::Forbidden("bot_not_granted".into()));
+    }
+
+    if audience == "public" {
+        let has_scope: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM room_bot_scopes WHERE room_id = ? AND bot_id = ? AND scope = 'post_message')",
+        )
+        .bind(room_id)
+        .bind(&bot_ctx.bot_id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+        if !has_scope {
+            return Err(ApiError::Forbidden("scope_missing".into()));
+        }
+    }
+
+    let payload_str = serde_json::to_string(&req.payload)
+        .map_err(|_| ApiError::BadRequest("invalid_payload".into()))?;
+    if payload_str.len() > 65536 {
+        return Err(ApiError::BadRequest("invalid_payload".into()));
+    }
+
+    let timeout_str = req.timeout.trim();
+    let timeout_at: Option<String> = if timeout_str == "never" {
+        None
+    } else {
+        let seconds: i64 = timeout_str
+            .parse()
+            .map_err(|_| ApiError::BadRequest("invalid_timeout".into()))?;
+        if seconds <= 0 {
+            return Err(ApiError::BadRequest("invalid_timeout".into()));
+        }
+        let t = Utc::now() + chrono::Duration::seconds(seconds);
+        Some(t.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
+    };
+
+    let on_timeout = req.on_timeout.trim();
+    let canned_response = match on_timeout {
+        "canned" => {
+            let cr = req.canned_response.as_deref().unwrap_or("").trim();
+            if cr.is_empty() || req.canned_response.as_ref().map_or(0, |s| s.len()) > 65536 {
+                return Err(ApiError::BadRequest("invalid_canned_response".into()));
+            }
+            Some(cr.to_string())
+        }
+        "ignore" => {
+            if req.canned_response.is_some() {
+                return Err(ApiError::BadRequest("unexpected_canned_response".into()));
+            }
+            None
+        }
+        _ => return Err(ApiError::BadRequest("invalid_on_timeout".into())),
+    };
+
+    let payload_preview = crate::bots::operator_queue::derive_payload_preview(&req.payload);
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let existing: Option<(String, String)> = sqlx::query_as(
+        "SELECT status, CAST(queued_at AS TEXT) FROM bot_operator_queue WHERE bot_id = ? AND id = ?",
+    )
+    .bind(&bot_ctx.bot_id)
+    .bind(request_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    if let Some((status, queued_at)) = existing {
+        let _ = tx.rollback().await;
+        if status == "pending" {
+            let resp = EnqueueOperatorQueueResponse {
+                request_id: request_id.to_string(),
+                queued_at,
+            };
+            let mut response = (StatusCode::OK, Json(resp)).into_response();
+            response.headers_mut().insert(
+                header::CACHE_CONTROL,
+                header::HeaderValue::from_static("no-store"),
+            );
+            return Ok(response);
+        } else {
+            return Err(ApiError::Conflict("duplicate_request_id".into()));
+        }
+    }
+
+    let queued_at_dt = Utc::now();
+    let queued_at = queued_at_dt.to_rfc3339_opts(chrono::SecondsFormat::Millis, true);
+
+    sqlx::query(
+        r#"
+        INSERT INTO bot_operator_queue
+            (id, bot_id, room_id, audience, payload, payload_preview, status, queued_at, timeout_at, on_timeout, canned_response)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+        "#,
+    )
+    .bind(request_id)
+    .bind(&bot_ctx.bot_id)
+    .bind(room_id)
+    .bind(audience)
+    .bind(&payload_str)
+    .bind(&payload_preview)
+    .bind(&queued_at)
+    .bind(&timeout_at)
+    .bind(on_timeout)
+    .bind(&canned_response)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| ApiError::Internal(e.into()))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let operators = crate::bots::operator_queue::enumerate_operators(&state.pool, &bot_ctx.bot_id)
+        .await
+        .unwrap_or_default();
+
+    let event_payload = json!({
+        "bot_id": bot_ctx.bot_id,
+        "request_id": request_id,
+        "room_id": room_id,
+        "queued_at": queued_at
+    });
+
+    for op_user_id in operators {
+        crate::bots::operator_queue::publish_operator_queue_event(
+            &state.publisher,
+            &op_user_id,
+            "operator.queue.updated",
+            event_payload.clone(),
+        )
+        .await;
+    }
+
+    let resp = EnqueueOperatorQueueResponse {
+        request_id: request_id.to_string(),
+        queued_at,
+    };
+    let mut response = (StatusCode::CREATED, Json(resp)).into_response();
     response.headers_mut().insert(
         header::CACHE_CONTROL,
         header::HeaderValue::from_static("no-store"),
