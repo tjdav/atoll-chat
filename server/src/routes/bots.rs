@@ -1033,6 +1033,28 @@ pub async fn list_operator_queue(
     let caller = resolve_caller(&state.pool, &headers, &state).await?;
     verify_operator_or_bot(&state.pool, &caller, &bot_id).await?;
 
+    let caller_user_id = match &caller {
+        CallerIdentity::User(u) => u.user_id.clone(),
+        CallerIdentity::Bot(b) => b.bot_id.clone(),
+    };
+
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::OperatorQueueList {
+            bot_id: bot_id.clone(),
+            user_id: caller_user_id,
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
+
     let status = query.status.as_deref().unwrap_or("pending");
     if status != "pending" && status != "answered" {
         return Err(ApiError::BadRequest("invalid_status".into()));
@@ -1275,6 +1297,28 @@ pub async fn respond_operator_queue_entry(
 ) -> Result<Response, ApiError> {
     let caller = resolve_caller(&state.pool, &headers, &state).await?;
     verify_operator_or_bot(&state.pool, &caller, &bot_id).await?;
+
+    let caller_user_id = match &caller {
+        CallerIdentity::User(u) => u.user_id.clone(),
+        CallerIdentity::Bot(b) => b.bot_id.clone(),
+    };
+
+    let decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        RateLimitKey::OperatorQueueRespond {
+            bot_id: bot_id.clone(),
+            user_id: caller_user_id,
+        },
+    )
+    .await?;
+
+    if !decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limited".into(),
+            reset_at: decision.reset_at,
+        });
+    }
 
     if req.routing.is_some() {
         return Err(ApiError::BadRequest("invalid_routing".into()));

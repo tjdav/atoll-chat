@@ -1,4 +1,21 @@
 
+## Operator Queue Cleanup, Timeout, and Rate Limits Verification Fact
+- **ID:** Operator Queue Cleanup, Timeout, and Rate Limits
+- **Date:** 2026-10-15
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Working Spec v2026-10-14 (Operator Queue Response, Delivery Guarantee Response); Proposal v2026-10-14
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/operator-queue-cleanup/report.md`.
+  - **Rate Limit Config & Key Formats:**
+    - `rate_operator_queue_list_per_min` (60, env `RATE_OPERATOR_QUEUE_LIST_PER_MIN`) -> `operator_queue_list:{bot_id}:{user_id}:min:{boundary}`
+    - `rate_operator_queue_respond_per_min` (30, env `RATE_OPERATOR_QUEUE_RESPOND_PER_MIN`) -> `operator_queue_respond:{bot_id}:{user_id}:min:{boundary}`
+    - `rate_operator_queue_enqueue_per_min` (60, env `RATE_OPERATOR_QUEUE_ENQUEUE_PER_MIN`) -> `operator_queue_enqueue:{bot_id}:min:{boundary}`
+  - **Endpoint Wiring:** Rate limits enforced on `GET /bots/:id/operator-queue` and `POST /bots/:id/operator-queue/:request_id/respond` before database queries. Detail endpoint (`GET /bots/:id/operator-queue/:request_id`) remains unthrottled.
+  - **Timeout Job Contract (`OperatorQueueTimeoutJob`):** Queries pending rows past `timeout_at` (`timeout_at < CURRENT_TIMESTAMP`). Updates status to `expired` and `answered_at` to `CURRENT_TIMESTAMP` with concurrency guard (`WHERE id = ? AND status = 'pending'`). For `on_timeout = 'canned'`, allocates `bot_seq` and writes `bot.operator_response` event to `bot_event_log` via `prepare_durable_bot_event` inside transaction, then publishes post-commit to `private-bot-{bot_id}`. If `canned_response IS NULL`, logs warning and marks expired without publishing. Bounded by hourly scheduler granularity.
+  - **Retention Pruning Job Contract (`OperatorQueueRetentionJob`):** Prunes `answered` and `expired` entries older than 7 days (`OPERATOR_QUEUE_RETENTION_DAYS = 7`). Covered by `idx_bot_operator_queue_retention`.
+  - **Logging Contract:** Summary logs at info level report `rows_expired`, `rows_published`, and `rows_pruned` without field or identifying values.
+- **Link to report:** [verification/operator-queue-cleanup/report.md](verification/operator-queue-cleanup/report.md)
+
 ## Operator Queue Enqueue Endpoint & User Channel Events Verification Fact
 - **ID:** Operator Queue Enqueue Endpoint & User Channel Events
 - **Date:** 2026-10-15

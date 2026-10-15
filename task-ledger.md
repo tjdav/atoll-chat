@@ -374,6 +374,11 @@ None.
 - **In-Progress:** 0
 - **Mismatches:** 0
 
+- **Operator Queue Cleanup, Timeout, and Rate Limits**: done
+  - **Delivered:** `verification/operator-queue-cleanup/report.md`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/routes/bots.rs`, `server/src/cleanup/operator_queue_timeout.rs`, `server/src/cleanup/operator_queue_retention.rs`, `server/src/cleanup/mod.rs`, `server/src/main.rs`, `server/tests/operator_queue_cleanup.rs`, `server/tests/batch-manifest.toml`.
+  - **Summary:** Implemented `OperatorQueueTimeoutJob` (marking pending entries past `timeout_at` as expired and publishing durable `bot.operator_response` events for canned mode), `OperatorQueueRetentionJob` (pruning answered/expired entries older than 7 days), rate limit configurations (`rate_operator_queue_list_per_min`, `rate_operator_queue_respond_per_min`, `rate_operator_queue_enqueue_per_min`) and key variants (`OperatorQueueList`, `OperatorQueueRespond`, `OperatorQueueEnqueue`), rate limit check wiring on `GET /bots/:id/operator-queue` (60/min) and `POST /bots/:id/operator-queue/:request_id/respond` (30/min), leaving detail endpoint unthrottled, registration on shared hourly cleanup scheduler, and integration test suite `server/tests/operator_queue_cleanup.rs` under the `bots` batch.
+  - **Batch:** `bots`
+
 - **Operator Queue Enqueue Endpoint and User Channel Events**: done
   - **Delivered:** `verification/operator-queue-enqueue/report.md`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/bots/operator_queue.rs`, `server/src/routes/bots.rs`, `server/src/lib.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/operator_queue_enqueue.rs`, `server/tests/batch-manifest.toml`, `server/Makefile`.
   - **Summary:** Implemented bot-facing enqueue endpoint (`POST /bots/me/operator-queue`), grant and scope validation, request_id pending retry semantics, terminal status collision detection (409 duplicate_request_id), user channel WebSocket notifications (`operator.queue.updated` and `operator.response.acked`), rate limiting, operator enumeration helper, OpenAPI schema annotations, and integration test suite under the `bots` batch. The operator queue feature is complete end to end.
