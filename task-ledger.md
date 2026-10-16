@@ -366,6 +366,10 @@ None.
   - **Delivered:** `verification/openapi-annotate-admin-endpoints/report.md`, `server/src/openapi.rs`, `server/src/routes/admin.rs`, `server/src/routes/admin_oprf.rs`, `server/src/routes/room_sessions.rs`, `server/src/sessions/crud.rs`, `server/src/sessions/types_config.rs`, `server/src/key_transparency/snapshot.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
   - **Summary:** Annotated complete admin endpoint domain (7 handlers across OPRF rotation, KT stats, KT snapshot, room sessions, model manifest reload, session types reload, and extension proxy blocklist reload; 48 total path items in `docs/openapi.json`). Derived `ToSchema` across admin DTOs, reused prior-domain schemas (`SnapshotView`, `SessionListResponse`, `RoomSessionView`, `SessionTypeAdminView`), documented §5.8 catastrophic rotation policy and atomic swap semantics. Verified via `make -C server openapi-check` and `server/tests/openapi_generation.rs`.
 
+- **OpenAPI Annotations — Public and Auth Endpoints**: done
+  - **Delivered:** `verification/openapi-annotate-public-auth/report.md`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Annotated complete public and auth endpoint domain (16 path items across registration, login, recovery, public invites, OPRF blind, link preview proxy, extension proxy, model serving, and Sockudo channel auth; 68 total path items in `docs/openapi.json`). Derived `ToSchema` across request and response DTOs, annotated base64url fields with `format = Byte` and spec references. Documented unauthenticated endpoint convention in `ApiDoc` info description and verified bearer security scheme assertions. OpenAPI specification annotation is complete across all server domains.
+
 ## Summary
 - **Project Status:** Complete (Operator Queue feature complete end to end)
 - **Total Verifications/Tasks Tracked:** 68

@@ -1,5 +1,5 @@
 use crate::audit;
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::identity::{token_bytes, validate_token};
 use crate::opaque::DefaultCipherSuite;
 use crate::rate_limit::{self, RateLimitKey, Window};
@@ -16,27 +16,32 @@ use opaque_ke::{ClientRegistration, RegistrationUpload, ServerRegistration};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RecoverStartRequest {
     pub recovery_code: String,
     pub username_token: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RecoverStartResponse {
     pub recovery_session: String,
+    /// Base64url encoded OPAQUE registration challenge (Server Spec v3.0.4 §6.23)
+    #[schema(value_type = String, format = Byte)]
     pub registration_challenge: String,
     pub expires_at: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RecoverFinishRequest {
     pub recovery_session: String,
+    /// Base64url encoded OPAQUE registration record (Server Spec v3.0.4 §6.23)
+    #[schema(value_type = String, format = Byte)]
     pub registration_record: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RecoverFinishResponse {
     pub session_token: String,
     pub user_id: String,
@@ -56,6 +61,19 @@ fn normalize_recovery_code(code: &str) -> String {
         .to_uppercase()
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/recover/start",
+    tag = "Public",
+    summary = "Recovery start",
+    description = "Initiate account recovery using a recovery code to obtain registration challenge (Server Spec v3.0.4 §6.23).",
+    request_body = RecoverStartRequest,
+    responses(
+        (status = 200, description = "Recovery session created and challenge issued", body = RecoverStartResponse),
+        (status = 404, description = "Invalid username token or recovery code", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn recover_start(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -191,6 +209,18 @@ pub async fn recover_start(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/recover/finish",
+    tag = "Public",
+    summary = "Recovery finish",
+    description = "Complete account recovery using registration record, install credential, and obtain session token (Server Spec v3.0.4 §6.23).",
+    request_body = RecoverFinishRequest,
+    responses(
+        (status = 200, description = "Recovery completed and new session created", body = RecoverFinishResponse),
+        (status = 400, description = "Invalid recovery session or registration record", body = ErrorResponse)
+    )
+)]
 pub async fn recover_finish(
     State(state): State<AppState>,
     Json(body): Json<RecoverFinishRequest>,

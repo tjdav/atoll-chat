@@ -1,15 +1,17 @@
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 
-use crate::{auth::AuthUser, error::ApiError, rooms, AppState};
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+use crate::{auth::AuthUser, error::ApiError, error::ErrorResponse, rooms, AppState};
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct AuthRequest {
     pub socket_id: String,
     pub channel_name: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AuthResponse {
     pub auth: String,
 }
@@ -25,7 +27,24 @@ fn is_valid_socket_id(socket_id: &str) -> bool {
     parts[0].chars().all(|c| c.is_ascii_digit()) && parts[1].chars().all(|c| c.is_ascii_digit())
 }
 
-pub async fn auth(
+#[utoipa::path(
+    post,
+    path = "/sockudo/auth",
+    tag = "Public",
+    summary = "Sockudo channel authentication",
+    description = "Authenticate WebSocket channel subscription for Sockudo (Server Spec v3.0.4 §8.1.6). Mounted at reverse-proxy root outside /api/v1/. Accepts both user session tokens and bot tokens.",
+    request_body = AuthRequest,
+    responses(
+        (status = 200, description = "Channel authentication signature generated", body = AuthResponse),
+        (status = 400, description = "Invalid socket ID or channel name", body = ErrorResponse),
+        (status = 401, description = "Authentication required", body = ErrorResponse),
+        (status = 403, description = "Forbidden: user or bot not authorized for channel", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
+pub async fn auth_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(payload): Json<AuthRequest>,

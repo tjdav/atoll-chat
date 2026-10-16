@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Atoll Encrypted Chat API",
-    "description": "OpenAPI specification for the Atoll server API. Derived from code annotations. Source of truth remains Server Spec v3.0.4.",
+    "description": "OpenAPI specification for the Atoll server API. Derived from code annotations. Source of truth remains Server Spec v3.0.4. Endpoints without a security requirement are unauthenticated. Endpoints with the bearer security requirement accept a session token or a bot token where applicable. The auth endpoints are the entry points; the bearer scheme applies after registration or login.",
     "license": {
       "name": ""
     },
@@ -459,6 +459,120 @@
         ]
       }
     },
+    "/api/v1/auth/login/finish": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Login finish",
+        "description": "Complete OPAQUE login flow with credential finalization and obtain session token (Server Spec v3.0.4 §6.2).",
+        "operationId": "login_finish",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginFinishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Login completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginFinishResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid finalization, device limit exceeded, or identity key mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials or unknown login session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login/start": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Login start",
+        "description": "Initiate OPAQUE login flow with user lookup token and credential request (Server Spec v3.0.4 §6.2).",
+        "operationId": "login_start",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Login challenge initiated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format or client ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials or account disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Server OPRF key rotated; account re-registration required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "tags": [
@@ -504,6 +618,236 @@
             "bearer_auth": []
           }
         ]
+      }
+    },
+    "/api/v1/auth/recover/finish": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Recovery finish",
+        "description": "Complete account recovery using registration record, install credential, and obtain session token (Server Spec v3.0.4 §6.23).",
+        "operationId": "recover_finish",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverFinishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Recovery completed and new session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoverFinishResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid recovery session or registration record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/recover/start": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Recovery start",
+        "description": "Initiate account recovery using a recovery code to obtain registration challenge (Server Spec v3.0.4 §6.23).",
+        "operationId": "recover_start",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Recovery session created and challenge issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecoverStartResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invalid username token or recovery code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register/challenge": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "ALTCHA challenge",
+        "description": "Obtain ALTCHA proof-of-work challenge for account registration (Server Spec v3.0.4 §6.3, §8.1).",
+        "operationId": "register_challenge",
+        "responses": {
+          "200": {
+            "description": "Challenge created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AltchaChallengeResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "ALTCHA disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register/finish": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Registration finish",
+        "description": "Complete OPAQUE registration flow with registration upload and optional invite code (Server Spec v3.0.4 §6.2).",
+        "operationId": "register_finish",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterFinishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Registration completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterFinishResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid registration upload or parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid or expired invite code required for non-owner registration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/register/start": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Registration start",
+        "description": "Initiate OPAQUE registration flow with user lookup token and registration request (Server Spec v3.0.4 §6.2).",
+        "operationId": "register_start",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterStartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Registration initiated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterStartResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or ALTCHA verification failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Username token already taken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/bots": {
@@ -1912,6 +2256,104 @@
         }
       }
     },
+    "/api/v1/extensions/proxy": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Extension proxy",
+        "description": "SSRF-guarded egress gateway for client extensions (Server Spec v3.0.4 §8.1.5). Content Key encrypted payload.",
+        "operationId": "proxy_handler",
+        "requestBody": {
+          "description": "Content Key encrypted extension request envelope",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Content Key encrypted extension response envelope",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request envelope, blocked URL/header/method, or body too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request payload exceeds max allowed bytes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or bandwidth quota exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Extension proxy disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Outbound fetch failed or upstream response too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [
@@ -1927,6 +2369,49 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/invites/{code}": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Public invite validation",
+        "description": "Validate a server invite code publicly without consuming it (Server Spec v3.0.4 §7.3, §8.1).",
+        "operationId": "validate_invite_public_handler",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "description": "Server invite code to validate",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invite validation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateInviteResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -2153,6 +2638,156 @@
             "bearer_auth": []
           }
         ]
+      }
+    },
+    "/api/v1/link-preview/proxy": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Link preview proxy",
+        "description": "SSRF-guarded link preview metadata fetcher (Server Spec v3.0.4 §8.1.2). Requires authentication.",
+        "operationId": "proxy_handler",
+        "requestBody": {
+          "description": "Content Key encrypted request envelope containing target URL",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestEnvelope"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Content Key encrypted response envelope containing metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request format or URL blocked/invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Link preview proxy disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream fetch failed or response too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/oprf/blind": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "OPRF evaluation",
+        "description": "Evaluate blinded element using the server OPRF key (Server Spec v3.0.4 §8.1.1).",
+        "operationId": "blind",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OprfBlindRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Evaluated element returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OprfBlindResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid blinded payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "OPRF evaluation disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/ready": {
@@ -4722,6 +5357,299 @@
           }
         ]
       }
+    },
+    "/models/manifest.json": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Model manifest",
+        "description": "Combined STT and TTS model hosting manifest (Server Spec v3.0.4 §8.1.4).",
+        "operationId": "get_manifest_handler",
+        "responses": {
+          "200": {
+            "description": "Combined model manifest retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CombinedManifestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/stt/v1/{model_id}/{version}/{filename}": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Serve STT model file",
+        "description": "Serves Speech-To-Text model file binaries (Server Spec v3.0.4 §8.1.3). Supports single-range HTTP requests.",
+        "operationId": "serve_stt_file_handler",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "description": "Model identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "description": "Model version number",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "description": "Model filename",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full model file binary stream",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial content binary stream (single-range byte request)",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (matching If-None-Match ETag)"
+          },
+          "400": {
+            "description": "Invalid filename format"
+          },
+          "404": {
+            "description": "Model file not found or hosting disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Range not satisfiable (multi-range byte requests rejected)"
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Failed to fetch model file from upstream",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/tts/v1/{model_id}/{version}/{filename}": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Serve TTS model file",
+        "description": "Serves Text-To-Speech model file binaries (Server Spec v3.0.4 §8.1.3). Supports single-range HTTP requests.",
+        "operationId": "serve_tts_file_handler",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "description": "Model identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "version",
+            "in": "path",
+            "description": "Model version number",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "filename",
+            "in": "path",
+            "description": "Model filename",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full model file binary stream",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial content binary stream (single-range byte request)",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (matching If-None-Match ETag)"
+          },
+          "400": {
+            "description": "Invalid filename format"
+          },
+          "404": {
+            "description": "Model file not found or hosting disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "Range not satisfiable (multi-range byte requests rejected)"
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Failed to fetch model file from upstream",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sockudo/auth": {
+      "post": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Sockudo channel authentication",
+        "description": "Authenticate WebSocket channel subscription for Sockudo (Server Spec v3.0.4 §8.1.6). Mounted at reverse-proxy root outside /api/v1/. Accepts both user session tokens and bot tokens.",
+        "operationId": "auth_handler",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Channel authentication signature generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid socket ID or channel name",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden: user or bot not authorized for channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4744,6 +5672,44 @@
           },
           "enabled": {
             "type": "boolean"
+          }
+        }
+      },
+      "AltchaChallengeResponse": {
+        "type": "object",
+        "required": [
+          "algorithm",
+          "challenge",
+          "salt"
+        ],
+        "properties": {
+          "algorithm": {
+            "type": "string",
+            "description": "Algorithm used for ALTCHA challenge (Server Spec v3.0.4 §6.3)"
+          },
+          "challenge": {
+            "type": "string",
+            "description": "Challenge string (Server Spec v3.0.4 §6.3)"
+          },
+          "maxnumber": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Maximum cost number (Server Spec v3.0.4 §6.3)",
+            "minimum": 0
+          },
+          "salt": {
+            "type": "string",
+            "description": "Salt string (Server Spec v3.0.4 §6.3)"
+          },
+          "signature": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Signature string (Server Spec v3.0.4 §6.3)"
           }
         }
       },
@@ -4823,6 +5789,32 @@
             ]
           },
           "uploader_id": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthRequest": {
+        "type": "object",
+        "required": [
+          "socket_id",
+          "channel_name"
+        ],
+        "properties": {
+          "channel_name": {
+            "type": "string"
+          },
+          "socket_id": {
+            "type": "string"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "required": [
+          "auth"
+        ],
+        "properties": {
+          "auth": {
             "type": "string"
           }
         }
@@ -5369,6 +6361,21 @@
           }
         }
       },
+      "CombinedManifestResponse": {
+        "type": "object",
+        "required": [
+          "stt",
+          "tts"
+        ],
+        "properties": {
+          "stt": {
+            "$ref": "#/components/schemas/ManifestKindView"
+          },
+          "tts": {
+            "$ref": "#/components/schemas/ManifestKindView"
+          }
+        }
+      },
       "CreateBotReq": {
         "type": "object",
         "required": [
@@ -5547,6 +6554,23 @@
           },
           "request_id": {
             "type": "string"
+          }
+        }
+      },
+      "ErrorPlaintext": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -5849,11 +6873,204 @@
           }
         }
       },
+      "LoginFinishRequest": {
+        "type": "object",
+        "required": [
+          "login_id",
+          "credential_finalization"
+        ],
+        "properties": {
+          "credential_finalization": {
+            "type": "string",
+            "format": "byte",
+            "description": "Base64url encoded OPAQUE credential finalization (Server Spec v3.0.4 §6.2)"
+          },
+          "encrypted_device_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identity_pubkey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "byte",
+            "description": "32-byte Ed25519 identity public key base64url encoded (Server Spec v3.0.4 §6.2)"
+          },
+          "login_id": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginFinishResponse": {
+        "type": "object",
+        "required": [
+          "session_token",
+          "user_id",
+          "username_token",
+          "device_id",
+          "is_owner",
+          "expires_at"
+        ],
+        "properties": {
+          "device_id": {
+            "type": "string"
+          },
+          "encrypted_display": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expires_at": {
+            "type": "string"
+          },
+          "is_owner": {
+            "type": "boolean"
+          },
+          "session_token": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "username_token": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginStartRequest": {
+        "type": "object",
+        "required": [
+          "credential_request",
+          "client_id"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          },
+          "credential_request": {
+            "type": "string",
+            "format": "byte",
+            "description": "Base64url encoded OPAQUE credential request (Server Spec v3.0.4 §6.2)"
+          },
+          "lookup_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "platform": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "username_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "LoginStartResponse": {
+        "type": "object",
+        "required": [
+          "login_id",
+          "credential_response"
+        ],
+        "properties": {
+          "credential_response": {
+            "type": "string",
+            "format": "byte",
+            "description": "Base64url encoded OPAQUE credential response (Server Spec v3.0.4 §6.2)"
+          },
+          "login_id": {
+            "type": "string"
+          }
+        }
+      },
       "LogoutRequest": {
         "type": "object",
         "properties": {
           "all_sessions": {
             "type": "boolean"
+          }
+        }
+      },
+      "ManifestKindView": {
+        "type": "object",
+        "required": [
+          "default_model",
+          "base_url",
+          "models"
+        ],
+        "properties": {
+          "base_url": {
+            "type": "string"
+          },
+          "default_model": {
+            "type": "string"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelEntry"
+            }
+          }
+        }
+      },
+      "ModelEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "version",
+          "size_bytes",
+          "files"
+        ],
+        "properties": {
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelFile"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "ModelFile": {
+        "type": "object",
+        "required": [
+          "name",
+          "size_bytes",
+          "sha256"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           }
         }
       },
@@ -5897,6 +7114,32 @@
           },
           "user_id": {
             "type": "string"
+          }
+        }
+      },
+      "OprfBlindRequest": {
+        "type": "object",
+        "required": [
+          "blinded"
+        ],
+        "properties": {
+          "blinded": {
+            "type": "string",
+            "format": "byte",
+            "description": "Blinded element string, base64url encoded (Server Spec v3.0.4 §8.1.1)"
+          }
+        }
+      },
+      "OprfBlindResponse": {
+        "type": "object",
+        "required": [
+          "evaluated"
+        ],
+        "properties": {
+          "evaluated": {
+            "type": "string",
+            "format": "byte",
+            "description": "Evaluated element string, base64url encoded (Server Spec v3.0.4 §8.1.1)"
           }
         }
       },
@@ -6461,6 +7704,176 @@
           }
         }
       },
+      "RecoverFinishRequest": {
+        "type": "object",
+        "required": [
+          "recovery_session",
+          "registration_record"
+        ],
+        "properties": {
+          "recovery_session": {
+            "type": "string"
+          },
+          "registration_record": {
+            "type": "string",
+            "format": "byte",
+            "description": "Base64url encoded OPAQUE registration record (Server Spec v3.0.4 §6.23)"
+          }
+        }
+      },
+      "RecoverFinishResponse": {
+        "type": "object",
+        "required": [
+          "session_token",
+          "user_id"
+        ],
+        "properties": {
+          "session_token": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        }
+      },
+      "RecoverStartRequest": {
+        "type": "object",
+        "required": [
+          "recovery_code",
+          "username_token"
+        ],
+        "properties": {
+          "recovery_code": {
+            "type": "string"
+          },
+          "username_token": {
+            "type": "string"
+          }
+        }
+      },
+      "RecoverStartResponse": {
+        "type": "object",
+        "required": [
+          "recovery_session",
+          "registration_challenge",
+          "expires_at"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": "string"
+          },
+          "recovery_session": {
+            "type": "string"
+          },
+          "registration_challenge": {
+            "type": "string",
+            "format": "byte",
+            "description": "Base64url encoded OPAQUE registration challenge (Server Spec v3.0.4 §6.23)"
+          }
+        }
+      },
+      "RegisterFinishRequest": {
+        "type": "object",
+        "required": [
+          "registration_id",
+          "registration_upload"
+        ],
+        "properties": {
+          "altcha": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "encrypted_display": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invite_code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registration_id": {
+            "type": "string"
+          },
+          "registration_upload": {
+            "type": "string",
+            "format": "byte",
+            "description": "Base64url encoded OPAQUE registration upload (Server Spec v3.0.4 §6.2)"
+          }
+        }
+      },
+      "RegisterFinishResponse": {
+        "type": "object",
+        "required": [
+          "user_id",
+          "username_token",
+          "is_owner"
+        ],
+        "properties": {
+          "is_owner": {
+            "type": "boolean"
+          },
+          "user_id": {
+            "type": "string"
+          },
+          "username_token": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterStartRequest": {
+        "type": "object",
+        "required": [
+          "registration_request"
+        ],
+        "properties": {
+          "altcha": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lookup_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "registration_request": {
+            "type": "string",
+            "format": "byte",
+            "description": "Base64url encoded OPAQUE registration request (Server Spec v3.0.4 §6.2)"
+          },
+          "username_token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "RegisterStartResponse": {
+        "type": "object",
+        "required": [
+          "registration_id",
+          "registration_response"
+        ],
+        "properties": {
+          "registration_id": {
+            "type": "string"
+          },
+          "registration_response": {
+            "type": "string",
+            "format": "byte",
+            "description": "Base64url encoded OPAQUE registration response (Server Spec v3.0.4 §6.2)"
+          }
+        }
+      },
       "RegisterSubscriptionBody": {
         "type": "object",
         "required": [
@@ -6515,6 +7928,31 @@
           }
         }
       },
+      "RequestEnvelope": {
+        "type": "object",
+        "required": [
+          "ephemeral_pubkey",
+          "nonce",
+          "ciphertext"
+        ],
+        "properties": {
+          "ciphertext": {
+            "type": "string",
+            "format": "byte",
+            "description": "AES-GCM ciphertext payload, base64url encoded (Server Spec v3.0.4 §8.1.2)"
+          },
+          "ephemeral_pubkey": {
+            "type": "string",
+            "format": "byte",
+            "description": "32-byte ephemeral public key, base64url encoded (Server Spec v3.0.4 §8.1.2)"
+          },
+          "nonce": {
+            "type": "string",
+            "format": "byte",
+            "description": "12-byte AES-GCM nonce, base64url encoded (Server Spec v3.0.4 §8.1.2)"
+          }
+        }
+      },
       "RespondOperatorQueueReq": {
         "type": "object",
         "required": [
@@ -6529,6 +7967,25 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "ResponseEnvelope": {
+        "type": "object",
+        "required": [
+          "nonce",
+          "ciphertext"
+        ],
+        "properties": {
+          "ciphertext": {
+            "type": "string",
+            "format": "byte",
+            "description": "AES-GCM ciphertext payload, base64url encoded (Server Spec v3.0.4 §8.1.2)"
+          },
+          "nonce": {
+            "type": "string",
+            "format": "byte",
+            "description": "12-byte AES-GCM nonce, base64url encoded (Server Spec v3.0.4 §8.1.2)"
           }
         }
       },
@@ -7302,6 +8759,37 @@
           },
           "username_token": {
             "type": "string"
+          }
+        }
+      },
+      "ValidateInviteResponse": {
+        "type": "object",
+        "required": [
+          "valid"
+        ],
+        "properties": {
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "remaining_uses": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "valid": {
+            "type": "boolean"
           }
         }
       },

@@ -10,20 +10,22 @@ use serde_json::json;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, SeekFrom};
 use tracing::warn;
+use utoipa::ToSchema;
 
+use crate::error::ErrorResponse;
 use crate::models::manifest::is_valid_filename;
 use crate::models::ModelEntry;
 use crate::rate_limit::{self, RateLimitKey};
 use crate::AppState;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ManifestKindView {
     pub default_model: String,
     pub base_url: String,
     pub models: Vec<ModelEntry>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct CombinedManifestResponse {
     pub stt: ManifestKindView,
     pub tts: ManifestKindView,
@@ -36,6 +38,16 @@ fn construct_base_url(app_url: Option<&str>, path_suffix: &str) -> String {
     format!("{}{}", base, path_suffix)
 }
 
+#[utoipa::path(
+    get,
+    path = "/models/manifest.json",
+    tag = "Public",
+    summary = "Model manifest",
+    description = "Combined STT and TTS model hosting manifest (Server Spec v3.0.4 §8.1.4).",
+    responses(
+        (status = 200, description = "Combined model manifest retrieved successfully", body = CombinedManifestResponse)
+    )
+)]
 pub async fn get_manifest_handler(State(state): State<AppState>) -> impl IntoResponse {
     let stt_base_url = construct_base_url(state.config.app_url.as_deref(), "/models/stt/v1/");
     let tts_base_url = construct_base_url(state.config.app_url.as_deref(), "/models/tts/v1/");
@@ -72,6 +84,28 @@ pub async fn get_manifest_handler(State(state): State<AppState>) -> impl IntoRes
     (headers, Json(resp))
 }
 
+#[utoipa::path(
+    get,
+    path = "/models/stt/v1/{model_id}/{version}/{filename}",
+    tag = "Public",
+    summary = "Serve STT model file",
+    description = "Serves Speech-To-Text model file binaries (Server Spec v3.0.4 §8.1.3). Supports single-range HTTP requests.",
+    params(
+        ("model_id" = String, Path, description = "Model identifier"),
+        ("version" = u32, Path, description = "Model version number"),
+        ("filename" = String, Path, description = "Model filename")
+    ),
+    responses(
+        (status = 200, description = "Full model file binary stream", body = String, content_type = "application/octet-stream"),
+        (status = 206, description = "Partial content binary stream (single-range byte request)", body = String, content_type = "application/octet-stream"),
+        (status = 304, description = "Not modified (matching If-None-Match ETag)"),
+        (status = 400, description = "Invalid filename format"),
+        (status = 404, description = "Model file not found or hosting disabled", body = ErrorResponse),
+        (status = 416, description = "Range not satisfiable (multi-range byte requests rejected)"),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 502, description = "Failed to fetch model file from upstream", body = ErrorResponse)
+    )
+)]
 pub async fn serve_stt_file_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -80,6 +114,28 @@ pub async fn serve_stt_file_handler(
     serve_model_file(state, headers, "stt", &model_id, version, &filename).await
 }
 
+#[utoipa::path(
+    get,
+    path = "/models/tts/v1/{model_id}/{version}/{filename}",
+    tag = "Public",
+    summary = "Serve TTS model file",
+    description = "Serves Text-To-Speech model file binaries (Server Spec v3.0.4 §8.1.3). Supports single-range HTTP requests.",
+    params(
+        ("model_id" = String, Path, description = "Model identifier"),
+        ("version" = u32, Path, description = "Model version number"),
+        ("filename" = String, Path, description = "Model filename")
+    ),
+    responses(
+        (status = 200, description = "Full model file binary stream", body = String, content_type = "application/octet-stream"),
+        (status = 206, description = "Partial content binary stream (single-range byte request)", body = String, content_type = "application/octet-stream"),
+        (status = 304, description = "Not modified (matching If-None-Match ETag)"),
+        (status = 400, description = "Invalid filename format"),
+        (status = 404, description = "Model file not found or hosting disabled", body = ErrorResponse),
+        (status = 416, description = "Range not satisfiable (multi-range byte requests rejected)"),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 502, description = "Failed to fetch model file from upstream", body = ErrorResponse)
+    )
+)]
 pub async fn serve_tts_file_handler(
     State(state): State<AppState>,
     headers: HeaderMap,

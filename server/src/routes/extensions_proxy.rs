@@ -9,6 +9,7 @@ use serde_json::json;
 use tracing::warn;
 
 use crate::auth::AuthUser;
+use crate::error::ErrorResponse;
 use crate::extensions_proxy::limits::{
     check_and_record_bandwidth, check_rate_limits, ProxyLimitError,
 };
@@ -24,6 +25,26 @@ use crate::proxy_common::content_key::{
 use crate::proxy_common::ssrf::SsrfError;
 use crate::AppState;
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/extensions/proxy",
+    tag = "Public",
+    summary = "Extension proxy",
+    description = "SSRF-guarded egress gateway for client extensions (Server Spec v3.0.4 §8.1.5). Content Key encrypted payload.",
+    request_body(content = String, description = "Content Key encrypted extension request envelope", content_type = "application/octet-stream"),
+    responses(
+        (status = 200, description = "Content Key encrypted extension response envelope", body = String, content_type = "application/octet-stream"),
+        (status = 400, description = "Invalid request envelope, blocked URL/header/method, or body too large", body = ErrorResponse),
+        (status = 401, description = "Authentication required", body = ErrorResponse),
+        (status = 413, description = "Request payload exceeds max allowed bytes", body = ErrorResponse),
+        (status = 429, description = "Rate limit or bandwidth quota exceeded", body = ErrorResponse),
+        (status = 501, description = "Extension proxy disabled", body = ErrorResponse),
+        (status = 502, description = "Outbound fetch failed or upstream response too large", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn proxy_handler(
     State(state): State<AppState>,
     auth: AuthUser,

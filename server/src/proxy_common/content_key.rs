@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use tracing::info;
+use utoipa::ToSchema;
 use x25519_dalek::{PublicKey, StaticSecret};
 
 pub fn decode_base64_flexible(s: &str) -> Result<Vec<u8>, base64::DecodeError> {
@@ -68,20 +69,30 @@ impl ProxyKeys {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct RequestEnvelope {
+    /// 32-byte ephemeral public key, base64url encoded (Server Spec v3.0.4 §8.1.2)
+    #[schema(value_type = String, format = Byte)]
     pub ephemeral_pubkey: String,
+    /// 12-byte AES-GCM nonce, base64url encoded (Server Spec v3.0.4 §8.1.2)
+    #[schema(value_type = String, format = Byte)]
     pub nonce: String,
+    /// AES-GCM ciphertext payload, base64url encoded (Server Spec v3.0.4 §8.1.2)
+    #[schema(value_type = String, format = Byte)]
     pub ciphertext: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ResponseEnvelope {
+    /// 12-byte AES-GCM nonce, base64url encoded (Server Spec v3.0.4 §8.1.2)
+    #[schema(value_type = String, format = Byte)]
     pub nonce: String,
+    /// AES-GCM ciphertext payload, base64url encoded (Server Spec v3.0.4 §8.1.2)
+    #[schema(value_type = String, format = Byte)]
     pub ciphertext: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ErrorPlaintext {
     pub error: String,
     pub request_id: Option<String>,

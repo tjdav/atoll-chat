@@ -1,5 +1,5 @@
 use crate::altcha::{verify_altcha_payload, AltchaConfig};
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::identity::{token_bytes, validate_encrypted_display, validate_token};
 use crate::invites::{self, InviteError};
 use crate::opaque::DefaultCipherSuite;
@@ -13,31 +13,52 @@ use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use tracing::info;
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AltchaChallengeResponse {
+    /// Algorithm used for ALTCHA challenge (Server Spec v3.0.4 §6.3)
+    pub algorithm: String,
+    /// Challenge string (Server Spec v3.0.4 §6.3)
+    pub challenge: String,
+    /// Maximum cost number (Server Spec v3.0.4 §6.3)
+    pub maxnumber: Option<u64>,
+    /// Salt string (Server Spec v3.0.4 §6.3)
+    pub salt: String,
+    /// Signature string (Server Spec v3.0.4 §6.3)
+    pub signature: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RegisterStartRequest {
     pub lookup_token: Option<String>,
     pub username_token: Option<String>,
+    /// Base64url encoded OPAQUE registration request (Server Spec v3.0.4 §6.2)
+    #[schema(value_type = String, format = Byte)]
     pub registration_request: String,
     pub altcha: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RegisterStartResponse {
     pub registration_id: String,
+    /// Base64url encoded OPAQUE registration response (Server Spec v3.0.4 §6.2)
+    #[schema(value_type = String, format = Byte)]
     pub registration_response: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RegisterFinishRequest {
     pub registration_id: String,
+    /// Base64url encoded OPAQUE registration upload (Server Spec v3.0.4 §6.2)
+    #[schema(value_type = String, format = Byte)]
     pub registration_upload: String,
     pub invite_code: Option<String>,
     pub encrypted_display: Option<String>,
     pub altcha: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RegisterFinishResponse {
     pub user_id: String,
     pub username_token: String,
@@ -63,9 +84,20 @@ fn validate_altcha(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/auth/register/challenge",
+    tag = "Public",
+    summary = "ALTCHA challenge",
+    description = "Obtain ALTCHA proof-of-work challenge for account registration (Server Spec v3.0.4 §6.3, §8.1).",
+    responses(
+        (status = 200, description = "Challenge created successfully", body = AltchaChallengeResponse),
+        (status = 404, description = "ALTCHA disabled", body = ErrorResponse)
+    )
+)]
 pub async fn register_challenge(
     State(state): State<AppState>,
-) -> Result<Json<altcha::Challenge>, ApiError> {
+) -> Result<Json<AltchaChallengeResponse>, ApiError> {
     if !state.altcha_config.enabled {
         return Err(ApiError::NotFound("altcha_disabled".to_string()));
     }
@@ -81,7 +113,13 @@ pub async fn register_challenge(
     let challenge = altcha::create_challenge(options)
         .map_err(|e| ApiError::Internal(anyhow::anyhow!("failed to create challenge: {e}")))?;
 
-    Ok(Json(challenge))
+    let val = serde_json::to_value(&challenge)
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!("failed to serialize challenge: {e}")))?;
+
+    let resp: AltchaChallengeResponse = serde_json::from_value(val)
+        .map_err(|e| ApiError::Internal(anyhow::anyhow!("failed to convert challenge: {e}")))?;
+
+    Ok(Json(resp))
 }
 
 fn decode_base64(s: &str) -> Result<Vec<u8>, ApiError> {
@@ -91,6 +129,19 @@ fn decode_base64(s: &str) -> Result<Vec<u8>, ApiError> {
         .map_err(|_| ApiError::BadRequest("invalid base64 payload".to_string()))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/register/start",
+    tag = "Public",
+    summary = "Registration start",
+    description = "Initiate OPAQUE registration flow with user lookup token and registration request (Server Spec v3.0.4 §6.2).",
+    request_body = RegisterStartRequest,
+    responses(
+        (status = 200, description = "Registration initiated successfully", body = RegisterStartResponse),
+        (status = 400, description = "Invalid request or ALTCHA verification failed", body = ErrorResponse),
+        (status = 409, description = "Username token already taken", body = ErrorResponse)
+    )
+)]
 pub async fn register_start(
     State(state): State<AppState>,
     body_val: Json<serde_json::Value>,
@@ -179,6 +230,19 @@ pub async fn register_start(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/register/finish",
+    tag = "Public",
+    summary = "Registration finish",
+    description = "Complete OPAQUE registration flow with registration upload and optional invite code (Server Spec v3.0.4 §6.2).",
+    request_body = RegisterFinishRequest,
+    responses(
+        (status = 200, description = "Registration completed successfully", body = RegisterFinishResponse),
+        (status = 400, description = "Invalid registration upload or parameters", body = ErrorResponse),
+        (status = 403, description = "Invalid or expired invite code required for non-owner registration", body = ErrorResponse)
+    )
+)]
 pub async fn register_finish(
     State(state): State<AppState>,
     body_val: Json<serde_json::Value>,

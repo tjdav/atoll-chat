@@ -1,5 +1,5 @@
 use crate::auth::AuthUser;
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::invites::{self, CreateInviteOptions};
 use crate::permissions::{perm, Permissions};
 use crate::rate_limit::{self, RateLimitKey, Window};
@@ -12,49 +12,56 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateInviteRequest {
     pub max_uses: Option<i64>,
     pub expires_in_days: Option<i64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct CreateInviteResponse {
     pub id: String,
     pub code: String,
     pub max_uses: i64,
     pub current_uses: i64,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub expires_at: Option<DateTime<Utc>>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct ListInvitesQuery {
     pub include_revoked: Option<bool>,
     pub created_by_me: Option<bool>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct InviteListItem {
     pub id: String,
     pub max_uses: i64,
     pub current_uses: i64,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub expires_at: Option<DateTime<Utc>>,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub revoked_at: Option<DateTime<Utc>>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
     pub created_by: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ListInvitesResponse {
     pub invites: Vec<InviteListItem>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ValidateInviteResponse {
     pub valid: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub expires_at: Option<DateTime<Utc>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remaining_uses: Option<i64>,
@@ -291,6 +298,20 @@ pub async fn revoke_invite_handler(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/invites/{code}",
+    tag = "Public",
+    summary = "Public invite validation",
+    description = "Validate a server invite code publicly without consuming it (Server Spec v3.0.4 §7.3, §8.1).",
+    params(
+        ("code" = String, Path, description = "Server invite code to validate")
+    ),
+    responses(
+        (status = 200, description = "Invite validation result", body = ValidateInviteResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn validate_invite_public_handler(
     State(state): State<AppState>,
     headers: HeaderMap,
