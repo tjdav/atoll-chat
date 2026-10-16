@@ -311,3 +311,12 @@
  * @property {(record: TelemetryRecord) => Promise<void> | void} write -
  *   Persists a record.
  */
+
+/* Composer */
+
+/**
+ * A single message in the composer's chat prompt.
+ * @typedef {object} ComposerMessage
+ * @property {'system' | 'user'} role - The message role.
+ * @property {string} content - The message body.
+ */
