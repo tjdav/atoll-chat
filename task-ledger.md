@@ -341,6 +341,10 @@ None.
   - **Contract Highlights:** Implemented `RoomEventBroadcast` in-process broadcast channel (bounded 1024 capacity), `ObserverCursorStore` in-memory cursor store (5-minute TTL, 60-second pruner), publisher integration mirroring `private-room-*` events before Sockudo HTTP calls, `GET /rooms/:id/observer-stream` SSE endpoint matching §8.8.13 (bot token auth, `read_metadata` scope check, `RATE_BOT_OBSERVER_STREAM_PER_MIN` rate limit), strict 6-event allowlist filter (`message.new`, `message.edited`, `message.deleted`, `room.member_added`, `room.member_removed`, `room.updated`), metadata projection stripping `ciphertext` and `metadata` blobs, `size_bytes` calculation, `Last-Event-ID` reconnection sequence, 30-second `:keepalive\n\n` comments, buffer lag mapping to `dropped { count: n }`, non-persistence invariants, and 6 unit/integration test cases in `server/tests/observer_stream.rs` passing under `bots` batch (`make -C server test-bots`). §11 Build Plan is 100% complete across all 47 phases.
   - **Batch:** `bots`
 
+- **Repository State Audit — Final Closure Snapshot**: done
+  - **Delivered:** `verification/repository-state-audit-final/report.md`, `verification.md`, `task-ledger.md`
+  - **Summary:** Authoritative final repository audit confirming complete delivery across all three post-v3.0.3 tracks: §11 Build Plan (Phases 1–47 complete), Developer Tooling (OpenAPI scaffold and 7 annotation domains complete, 68 paths in `docs/openapi.json`), and Operator Queue Track (Tasks A–E complete). Baseline schema contains 47 tables in `0001_v2_schema.sql`. `server/src/lib.rs` contains 121 route declarations. 14 cleanup jobs run on shared hourly scheduler. 28 test batches in `server/tests/batch-manifest.toml` pass `make check-batches`. Zero outstanding server-side items remain.
+
 ## Developer Tooling
 
 - **OpenAPI Annotations — Key Transparency Endpoints**: done
