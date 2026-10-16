@@ -320,3 +320,23 @@
  * @property {'system' | 'user'} role - The message role.
  * @property {string} content - The message body.
  */
+
+/**
+ * Options for the composer's LLM call.
+ * @typedef {object} ComposerLlmOptions
+ * @property {string} upstreamUrl - The chat-completions endpoint.
+ * @property {string} apiKey - The bearer token sent to the endpoint.
+ * @property {string} model - The model name.
+ * @property {typeof globalThis.fetch} [fetch] - The fetch implementation.
+ *   Defaults to globalThis.fetch.
+ * @property {number} [timeoutMs] - Request timeout in milliseconds.
+ *   Defaults to 30000.
+ * @property {number} [temperature] - Sampling temperature. Omitted from
+ *   the request when undefined.
+ */
+
+/**
+ * The result of the composer's LLM call.
+ * @typedef {{ ok: true, content: string, parsed: unknown }
+ *   | { ok: false, error: { code: string, message: string, status?: number } }} ComposerLlmResult
+ */
