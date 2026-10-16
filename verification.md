@@ -1,4 +1,23 @@
 
+## Repository State Audit — Final Verification Fact
+- **ID:** Repository State Audit — Final
+- **Date:** 2026-10-16
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4, Working Spec v2026-10-14 (Operator Queue Response, Delivery Guarantee Response); Proposal v2026-10-14
+- **Verified Facts:**
+  - **Audit Report:** Authoritative closure snapshot delivered at `verification/repository-state-audit-final/report.md`.
+  - **§11 Build Plan Status:** All 47 phases (1–47) confirmed complete (`done`) with cited SQL tables, Axum handlers, endpoints, and test files.
+  - **Amendment Status:** All 3 amendment proposals (Proposal A bot leaf serialization, Proposal B link preview §8.1.2 X25519 alignment, Proposal C observer stream broadcast) confirmed implemented and verified.
+  - **Operator Queue Status:** All 5 operator queue tasks (Tasks A through E) confirmed complete (`done`), including bot event durability (`bot_seq`/`bot_event_log`), operator designation and schema (`bot_operators`/`bot_operator_queue`), operator-facing endpoints, bot-facing enqueue endpoint with non-durable user channel notifications (`operator.queue.updated` and `operator.response.acked`), and automated cleanup/timeout/rate-limiting.
+  - **Developer Tooling & OpenAPI Status:** `docs/openapi.json` present with exactly 68 path items. Admin domain (7 path items) and Public/Auth domain (16 path items) fully annotated. `make openapi-check` passes cleanly with zero diffs.
+  - **Baseline Schema Inventory:** Single baseline migration `server/migrations/0001_v2_schema.sql` contains exactly 47 tables. No tables added outside the baseline.
+  - **Endpoint Inventory:** `server/src/lib.rs` registers 121 `.route`/`.nest` statements defining 109 unique handler paths across 11 domain categories.
+  - **Cleanup Scheduler Inventory:** Exactly 14 cleanup jobs registered on the shared hourly scheduler in `server/src/main.rs`.
+  - **Test Batch Inventory:** All test files in `server/tests/*.rs` assigned across 28 batches in `server/tests/batch-manifest.toml` (all 60s timeouts). `make check-batches` passes with exit code 0.
+  - **External Dependencies:** Enumerated non-server-side items belonging to Engine, SDK, Client, and Spec teams.
+  - **Outstanding Items:** Zero outstanding server-side items. Server pipeline is 100% complete.
+- **Link to report:** [verification/repository-state-audit-final/report.md](verification/repository-state-audit-final/report.md)
+
 ## Operator Queue Cleanup, Timeout, and Rate Limits Verification Fact
 - **ID:** Operator Queue Cleanup, Timeout, and Rate Limits
 - **Date:** 2026-10-15
