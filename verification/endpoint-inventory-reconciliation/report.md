@@ -377,12 +377,11 @@ All 52 non-spec routes are active, fully reachable in the Axum router, and exerc
 
 ---
 
-## 6. Corrected Counts
+## 6. Corrected Counts & Closing Summary
 
 - **Correct unique HTTP path count in Axum router:** **120**
-- **Correct unique HTTP path count in OpenAPI (`docs/openapi.json`):** **68**
+- **Terminal unique HTTP path count in OpenAPI (`docs/openapi.json`):** **120**
 - **Correct total `(Method, Path)` count in Axum router:** **149**
-- **Correct total `(Method, Path)` count in OpenAPI (`docs/openapi.json`):** **83**
 
-**One-Line Explanation of Gap:**
-The 52-path gap between the router (120 unique paths) and OpenAPI (68 unique paths) consists of 52 operational non-spec routes (admin, room/messaging CRUD, MLS coordination, call signaling) and 4 root/prefix operational aliases (`/health`, `/ready`, `/oprf/blind`, `/api/v1/sockudo/auth`).
+**Final Closure Note:**
+All 52 non-spec operational routes have been fully annotated with `#[utoipa::path(...)]` and DTO schemas, closing the gap completely. `docs/openapi.json` now covers all 120 unique path keys registered on the Axum router (120 router path keys - 4 root/prefix aliases + 4 OpenAPI path mappings = 120 total path items in `docs/openapi.json`). Zero router endpoints remain unannotated.

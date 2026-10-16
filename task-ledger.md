@@ -374,6 +374,10 @@ None.
   - **Delivered:** `verification/openapi-annotate-public-auth/report.md`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
   - **Summary:** Annotated complete public and auth endpoint domain (16 path items across registration, login, recovery, public invites, OPRF blind, link preview proxy, extension proxy, model serving, and Sockudo channel auth; 68 total path items in `docs/openapi.json`). Derived `ToSchema` across request and response DTOs, annotated base64url fields with `format = Byte` and spec references. Documented unauthenticated endpoint convention in `ApiDoc` info description and verified bearer security scheme assertions. OpenAPI specification annotation is complete across all server domains.
 
+- **OpenAPI Annotations — Remaining Router Routes**: done
+  - **Delivered:** `verification/openapi-complete-remaining-routes/report.md`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Annotated all 52 remaining router endpoints across Admin, Rooms, Messaging, Attachments, MLS, Calls, Sessions, and Roles domains. Derived `ToSchema` / `IntoParams` on request/response/query DTOs, annotated binary ciphertext/signaling fields with `format = Byte`, range constraints on retention preview (`[0, 365]`), and updated `docs/openapi.json` to 120 path items (236,092 bytes). Verified 100% router path coverage in `server/tests/openapi_generation.rs`.
+
 ## Summary
 - **Project Status:** Complete (Operator Queue feature complete end to end)
 - **Total Verifications/Tasks Tracked:** 68
