@@ -340,3 +340,25 @@
  * @typedef {{ ok: true, content: string, parsed: unknown }
  *   | { ok: false, error: { code: string, message: string, status?: number } }} ComposerLlmResult
  */
+
+/**
+ * Options for the composer entry point.
+ * @typedef {object} ComposeBotOptions
+ * @property {{ getPrimitive: Function, listPrimitives: Function }} registry
+ * @property {unknown} library - The recipe library module.
+ * @property {ComposerLlmOptions} llm
+ */
+
+/**
+ * A validation error produced by the composition validator.
+ * @typedef {object} CompositionValidationError
+ * @property {string} [code] - The error code.
+ * @property {string} [path] - The path to the failing property.
+ * @property {string} message - The error message.
+ */
+
+/**
+ * The composer's result. Either a frozen Composition or a refusal.
+ * @typedef {{ kind: 'composed', composition: Composition }
+ *   | { kind: 'refusal', reason: string, message: string, errors?: CompositionValidationError[] }} ComposeBotResult
+ */
