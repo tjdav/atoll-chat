@@ -202,7 +202,7 @@ Running `sqlite3 :memory: "< server/migrations/0001_v2_schema.sql" ".tables"` yi
 
 ## f. Endpoint Inventory
 
-Parsing `server/src/lib.rs` reveals **121 `.route`/`.nest` statements** defining **109 unique handler paths** (including root-level static model hosting, `/health`, `/ready`, and `/sockudo/auth`, alongside nested `/api/v1` API routes):
+Parsing `server/src/lib.rs` reveals **120 `.route(...)` statements** defining **120 unique HTTP path strings** and **149 `(Method, Path)` pairs** (including root-level static model hosting, `/health`, `/ready`, and `/sockudo/auth`, alongside nested `/api/v1` API routes):
 
 ### Admin Domain (16)
 - `GET /api/v1/admin/config`
@@ -368,6 +368,15 @@ Parsing `server/src/lib.rs` reveals **121 `.route`/`.nest` statements** defining
 
 ---
 
+### Addendum (2026-10-16) — Reconciled Endpoint Inventory
+
+An exhaustive endpoint reconciliation (`verification/endpoint-inventory-reconciliation/report.md`) clarified the route inventory counts:
+- The Axum router in `server/src/lib.rs` registers exactly **120 unique HTTP path strings** defining **149 `(Method, Path)` pairs** across 120 `.route(...)` statements.
+- The original Section (f) list above enumerated 140 bullet items representing individual `(Method, Path)` handlers rather than unique path strings, and included 4 spec paths not directly registered in `server/src/lib.rs`.
+- The 120 unique router paths consist of **68 spec-backed paths** (64 common paths annotated in `docs/openapi.json` + 4 root/prefix operational aliases: `/health`, `/ready`, `/oprf/blind`, `/api/v1/sockudo/auth`) and **52 operational non-spec routes** documented in `verification/endpoint-inventory-reconciliation/non-spec-routes.md`.
+
+---
+
 ## g. Cleanup Job Inventory
 
 All cleanup jobs run on the **shared hourly scheduler** registered in `server/src/main.rs`. Exactly **14 cleanup jobs** are registered:
@@ -447,6 +456,8 @@ The server-side build pipeline is complete. All remaining items belong to extern
 ## j. Outstanding Server-Side Items
 
 None.
+
+The 52 operational non-spec routes currently registered in the Axum router (admin management, room/messaging CRUD, MLS coordination, call signaling) are recorded in `verification/endpoint-inventory-reconciliation/non-spec-routes.md`. A follow-up specification decision may determine whether to formally add §8 spec sections for them or exclude/prune them in a future release. All routes remain active, fully tested, and reachable.
 
 ---
 

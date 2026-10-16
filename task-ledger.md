@@ -405,3 +405,9 @@ None.
   - **Delivered:** `verification/operator-queue-schema/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/audit.rs`, `server/src/bots/operator_queue.rs`, `server/src/bots/mod.rs`, `server/src/routes/bots.rs`, `server/src/routes/room_bots.rs`, `docs/openapi.json`, `server/tests/operator_queue_schema.rs`, `server/tests/batch-manifest.toml`.
   - **Summary:** Implemented `bot_operators` and `bot_operator_queue` database tables, automatic self-binding on `POST /bots`, grant-time room member operator bindings on `POST /rooms/:id/bots`, revoke-time operator unbindings on `DELETE /rooms/:id/bots/:bot_id`, conditional `operators` array on `GET /bots/:id`, audit action constants (`BOT_OPERATOR_BOUND`, `BOT_OPERATOR_UNBOUND`, `BOT_OPERATOR_QUEUE_PURGED`), `derive_payload_preview` helper, and integration test suite `server/tests/operator_queue_schema.rs` under the `bots` batch.
   - **Batch:** `bots`
+
+
+- **Endpoint Inventory Reconciliation**: done
+  - **Delivered:** `verification/endpoint-inventory-reconciliation/report.md`, `verification/endpoint-inventory-reconciliation/non-spec-routes.md`, `verification/repository-state-audit-final/report.md`, `server/tests/openapi_generation.rs`, `verification.md`, `task-ledger.md`.
+  - **Summary:** Parsed Axum router in `server/src/lib.rs` (120 unique paths, 149 method-path pairs) and compared against `docs/openapi.json` (68 unique paths, 83 method-path pairs). Reconciled 64 common paths, 4 operational aliases, and 52 operational non-spec routes. Added Section (f) and (j) Addendum to final audit report and added non-spec exclusion assertion test in `server/tests/openapi_generation.rs`.
+  - **Batch:** `operations`
