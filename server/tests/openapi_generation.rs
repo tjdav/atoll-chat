@@ -551,3 +551,38 @@ fn test_openapi_cli_default_invocation() {
     let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
     assert_eq!(parsed["info"]["title"], "Atoll Encrypted Chat API");
 }
+
+#[test]
+fn test_non_spec_routes_excluded_from_openapi() {
+    let doc = ApiDoc::openapi();
+    let json_str = serde_json::to_string_pretty(&doc).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    let paths = parsed["paths"].as_object().unwrap();
+
+    let non_spec_routes = [
+        "/api/v1/roles",
+        "/api/v1/rooms/join",
+        "/api/v1/rooms/{id}/transfer",
+        "/api/v1/rooms/{id}/messages/{message_id}/ciphertext",
+        "/api/v1/rooms/{id}/epoch",
+        "/api/v1/rooms/{id}/invites",
+        "/api/v1/keypackages",
+        "/api/v1/keypackages/claim",
+        "/api/v1/keypackages/count",
+        "/api/v1/admin/audit",
+        "/api/v1/admin/config",
+        "/api/v1/admin/limits",
+        "/api/v1/admin/backups",
+        "/api/v1/admin/vapid/rotate",
+        "/api/v1/admin/altcha/rotate",
+        "/api/v1/admin/invites",
+    ];
+
+    for route in &non_spec_routes {
+        assert!(
+            !paths.contains_key(*route),
+            "non-spec route {} should be excluded from OpenAPI pending formal spec section",
+            route
+        );
+    }
+}

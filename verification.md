@@ -431,3 +431,20 @@
   - **Cleanup Job (`BotEventLogTtlJob`):**
     - Prunes `bot_event_log` rows older than 24 hours (`BOT_EVENT_LOG_RETENTION_HOURS = 24`). Idempotent, logs `rows_pruned`.
 - **Link to report:** [verification/bot-channel-delivery/report.md](verification/bot-channel-delivery/report.md)
+
+
+## Endpoint Inventory Verification & Reconciliation Verification Fact
+- **ID:** Endpoint Inventory Verification & Reconciliation
+- **Date:** 2026-10-16
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4, Working Spec v2026-10-14 (Operator Queue Response, Delivery Guarantee Response)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/endpoint-inventory-reconciliation/report.md`.
+  - **Axum Router Inventory:** Parsing `server/src/lib.rs` yields exactly **120 unique HTTP path strings** and **149 `(Method, Path)` pairs** across 120 `.route(...)` statement invocations.
+  - **OpenAPI Inventory:** `docs/openapi.json` contains exactly **68 unique path keys** and **83 `(Method, Path)` pairs**.
+  - **Discrepancy Resolution:**
+    - 4 operational aliases (`/health`, `/ready`, `/oprf/blind`, `/api/v1/sockudo/auth`).
+    - 52 non-spec operational routes (admin tools, room/messaging CRUD, MLS coordination, call signaling).
+  - **Section (f) Over-count Analysis:** Over-count in final audit report was caused by method vs path confusion (140 bullet items), inclusion of non-router spec paths, and omission of method variants for non-spec routes.
+  - **Non-Spec Route Register:** Documented 52 non-spec routes in `verification/endpoint-inventory-reconciliation/non-spec-routes.md`.
+- **Link to report:** [verification/endpoint-inventory-reconciliation/report.md](verification/endpoint-inventory-reconciliation/report.md)
