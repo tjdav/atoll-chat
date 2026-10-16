@@ -362,3 +362,12 @@
  * @typedef {{ kind: 'composed', composition: Composition }
  *   | { kind: 'refusal', reason: string, message: string, errors?: CompositionValidationError[] }} ComposeBotResult
  */
+
+/**
+ * The response body of POST /v1/compose. Discriminated on `kind`.
+ * On success it carries the emitted bot source and the frozen
+ * composition. On refusal it carries the composer's refusal record.
+ * @typedef {{ kind: 'composed', code: string, composition: Composition }
+ *   | { kind: 'refusal', reason: string, message: string,
+ *       errors?: CompositionValidationError[] }} ComposeResponse
+ */
