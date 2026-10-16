@@ -2,15 +2,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::Path;
 use tracing::warn;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ModelFile {
     pub name: String,
     pub size_bytes: u64,
     pub sha256: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ModelEntry {
     pub id: String,
     pub version: u32,
@@ -23,8 +24,6 @@ pub struct ModelManifest {
     pub schema_version: u32,
     pub models: Vec<ModelEntry>,
 }
-
-use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct VoiceMetadata {

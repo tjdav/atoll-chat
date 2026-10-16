@@ -4,23 +4,43 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::{
     error::ApiError,
+    error::ErrorResponse,
     rate_limit::{self, RateLimitKey, Window},
     AppState,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct OprfBlindRequest {
+    /// Blinded element string, base64url encoded (Server Spec v3.0.4 §8.1.1)
+    #[schema(value_type = String, format = Byte)]
     pub blinded: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct OprfBlindResponse {
+    /// Evaluated element string, base64url encoded (Server Spec v3.0.4 §8.1.1)
+    #[schema(value_type = String, format = Byte)]
     pub evaluated: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/oprf/blind",
+    tag = "Public",
+    summary = "OPRF evaluation",
+    description = "Evaluate blinded element using the server OPRF key (Server Spec v3.0.4 §8.1.1).",
+    request_body = OprfBlindRequest,
+    responses(
+        (status = 200, description = "Evaluated element returned successfully", body = OprfBlindResponse),
+        (status = 400, description = "Missing or invalid blinded payload", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 501, description = "OPRF evaluation disabled", body = ErrorResponse)
+    )
+)]
 pub async fn blind(
     State(state): State<AppState>,
     headers: HeaderMap,

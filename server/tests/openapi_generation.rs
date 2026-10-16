@@ -13,13 +13,28 @@ fn test_openapi_doc_validity() {
     assert_eq!(parsed["info"]["title"], "Atoll Encrypted Chat API");
     assert_eq!(parsed["info"]["version"], "3.0.4");
 
-    // Assert path items (48 path items total)
+    // Assert path items (68 path items total across all domains)
     let paths = parsed["paths"].as_object().unwrap();
     let expected_paths = [
         "/api/v1/health",
         "/api/v1/ready",
         "/api/v1/capabilities",
+        "/api/v1/auth/register/challenge",
+        "/api/v1/auth/register/start",
+        "/api/v1/auth/register/finish",
+        "/api/v1/auth/login/start",
+        "/api/v1/auth/login/finish",
+        "/api/v1/auth/recover/start",
+        "/api/v1/auth/recover/finish",
         "/api/v1/auth/logout",
+        "/api/v1/invites/{code}",
+        "/api/v1/oprf/blind",
+        "/api/v1/link-preview/proxy",
+        "/api/v1/extensions/proxy",
+        "/models/stt/v1/{model_id}/{version}/{filename}",
+        "/models/tts/v1/{model_id}/{version}/{filename}",
+        "/models/manifest.json",
+        "/sockudo/auth",
         "/api/v1/users/lookup",
         "/api/v1/users/me",
         "/api/v1/users/me/avatar",
@@ -39,11 +54,15 @@ fn test_openapi_doc_validity() {
         "/api/v1/bots",
         "/api/v1/bots/me/commands/{id}/ack",
         "/api/v1/bots/me/messages",
+        "/api/v1/bots/me/operator-queue",
         "/api/v1/bots/me/settings",
         "/api/v1/bots/me/sync",
         "/api/v1/bots/{id}",
         "/api/v1/bots/{id}/avatar",
         "/api/v1/bots/{id}/keys",
+        "/api/v1/bots/{id}/operator-queue",
+        "/api/v1/bots/{id}/operator-queue/{request_id}",
+        "/api/v1/bots/{id}/operator-queue/{request_id}/respond",
         "/api/v1/bots/{id}/tokens",
         "/api/v1/bots/{id}/tokens/{token_id}",
         "/api/v1/rooms/{id}/bot-commands",
@@ -88,9 +107,41 @@ fn test_openapi_doc_validity() {
         "missing or invalid bearer_auth scheme"
     );
 
-    // Assert every authenticated user/bot path declares bearer_auth requirement
+    // Assert unauthenticated public/auth endpoints omit security requirement
+    let unauthenticated_paths = [
+        ("/api/v1/health", "get"),
+        ("/api/v1/ready", "get"),
+        ("/api/v1/capabilities", "get"),
+        ("/api/v1/auth/register/challenge", "get"),
+        ("/api/v1/auth/register/start", "post"),
+        ("/api/v1/auth/register/finish", "post"),
+        ("/api/v1/auth/login/start", "post"),
+        ("/api/v1/auth/login/finish", "post"),
+        ("/api/v1/auth/recover/start", "post"),
+        ("/api/v1/auth/recover/finish", "post"),
+        ("/api/v1/invites/{code}", "get"),
+        ("/api/v1/oprf/blind", "post"),
+        ("/models/stt/v1/{model_id}/{version}/{filename}", "get"),
+        ("/models/tts/v1/{model_id}/{version}/{filename}", "get"),
+        ("/models/manifest.json", "get"),
+    ];
+
+    for (path, method) in &unauthenticated_paths {
+        let op = &parsed["paths"][path][method];
+        assert!(
+            op.get("security").is_none(),
+            "unauthenticated path {} {} unexpectedly has security attribute",
+            method,
+            path
+        );
+    }
+
+    // Assert every authenticated user/bot/public path declares bearer_auth requirement
     let authenticated_paths = [
         ("/api/v1/auth/logout", "post"),
+        ("/api/v1/link-preview/proxy", "post"),
+        ("/api/v1/extensions/proxy", "post"),
+        ("/sockudo/auth", "post"),
         ("/api/v1/users/lookup", "post"),
         ("/api/v1/users/me", "get"),
         ("/api/v1/users/me", "patch"),
@@ -414,6 +465,38 @@ fn test_openapi_doc_validity() {
         bl_reload_desc.contains("§8.3.2"),
         "blocklist reload description missing §8.3.2 reference"
     );
+
+    // Assert POST /sockudo/auth documents both token types in description
+    let sockudo_desc = parsed["paths"]["/sockudo/auth"]["post"]["description"]
+        .as_str()
+        .unwrap();
+    assert!(
+        sockudo_desc.contains("user session tokens") && sockudo_desc.contains("bot tokens"),
+        "Sockudo auth description missing token types statement"
+    );
+
+    // Assert model serving endpoints document binary response content type
+    let stt_200_content = &parsed["paths"]["/models/stt/v1/{model_id}/{version}/{filename}"]["get"]
+        ["responses"]["200"]["content"];
+    assert!(
+        stt_200_content
+            .as_object()
+            .unwrap()
+            .contains_key("application/octet-stream"),
+        "STT model serving missing application/octet-stream response content type"
+    );
+
+    // Assert POST /oprf/blind documents request and response shapes
+    let oprf_req = &schemas["OprfBlindRequest"]["properties"]["blinded"];
+    assert_eq!(oprf_req["format"], "byte");
+    let oprf_resp = &schemas["OprfBlindResponse"]["properties"]["evaluated"];
+    assert_eq!(oprf_resp["format"], "byte");
+
+    // Assert POST /link-preview/proxy request envelope ephemeral_pubkey and nonce fields are format: byte
+    let lp_req_pubkey = &schemas["RequestEnvelope"]["properties"]["ephemeral_pubkey"];
+    assert_eq!(lp_req_pubkey["format"], "byte");
+    let lp_req_nonce = &schemas["RequestEnvelope"]["properties"]["nonce"];
+    assert_eq!(lp_req_nonce["format"], "byte");
 }
 
 #[test]

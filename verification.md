@@ -45,6 +45,20 @@
   - **Response Headers:** `Cache-Control: no-store` returned on all three endpoint responses.
 - **Link to report:** [verification/operator-queue-endpoints/report.md](verification/operator-queue-endpoints/report.md)
 
+## OpenAPI Annotations — Public and Auth Endpoints Verification Fact
+- **ID:** OpenAPI Annotations — Public and Auth Endpoints
+- **Date:** 2026-10-16
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §6.2, §6.3, §6.23, §8.1, §8.1.1, §8.1.2, §8.1.3, §8.1.4, §8.1.5, §8.1.6
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/openapi-annotate-public-auth/report.md`.
+  - **Coverage Scope:** 16 public and auth domain path items (`/api/v1/health`, `/api/v1/ready`, `/api/v1/capabilities`, `/api/v1/auth/register/challenge`, `/api/v1/auth/register/start`, `/api/v1/auth/register/finish`, `/api/v1/auth/login/start`, `/api/v1/auth/login/finish`, `/api/v1/auth/recover/start`, `/api/v1/auth/recover/finish`, `/api/v1/invites/{code}`, `/api/v1/oprf/blind`, `/api/v1/link-preview/proxy`, `/api/v1/extensions/proxy`, `/models/stt/v1/{model_id}/{version}/{filename}`, `/models/tts/v1/{model_id}/{version}/{filename}`, `/models/manifest.json`, `/sockudo/auth`).
+  - **Unauthenticated vs Authenticated Security Model:** Unauthenticated endpoints explicitly omit the security requirement in utoipa path macros. Authenticated endpoints (`/link-preview/proxy`, `/extensions/proxy`, `/sockudo/auth`, `/auth/logout`) declare `bearer_auth`.
+  - **DTO Schema Derivations & Format Annotations:** Derived `ToSchema` across request/response DTOs, annotated base64url/byte fields with `format = Byte` and spec section references.
+  - **Terminal Path Count & Completeness:** Regenerated `docs/openapi.json` bringing total server path count to 68 path items across all server domains. OpenAPI document is complete.
+  - **Test Verification:** Verified via `make -C server openapi-check`, `server/tests/openapi_generation.rs`, `make check-batches`, `cargo fmt --check`, and `cargo clippy`.
+- **Link to report:** [verification/openapi-annotate-public-auth/report.md](verification/openapi-annotate-public-auth/report.md)
+
 ## OpenAPI Annotations — Admin Endpoints Verification Fact
 - **ID:** OpenAPI Annotations — Admin Endpoints
 - **Date:** 2026-10-13

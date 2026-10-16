@@ -1,4 +1,4 @@
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::identity::{token_bytes, validate_encrypted_device_name, validate_token};
 use crate::login::PendingLogin;
 use crate::opaque::DefaultCipherSuite;
@@ -18,31 +18,40 @@ use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Instant;
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginStartRequest {
     pub lookup_token: Option<String>,
     pub username_token: Option<String>,
+    /// Base64url encoded OPAQUE credential request (Server Spec v3.0.4 §6.2)
+    #[schema(value_type = String, format = Byte)]
     pub credential_request: String,
     pub client_id: String,
     pub platform: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LoginStartResponse {
     pub login_id: String,
+    /// Base64url encoded OPAQUE credential response (Server Spec v3.0.4 §6.2)
+    #[schema(value_type = String, format = Byte)]
     pub credential_response: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginFinishRequest {
     pub login_id: String,
+    /// Base64url encoded OPAQUE credential finalization (Server Spec v3.0.4 §6.2)
+    #[schema(value_type = String, format = Byte)]
     pub credential_finalization: String,
+    /// 32-byte Ed25519 identity public key base64url encoded (Server Spec v3.0.4 §6.2)
+    #[schema(value_type = Option<String>, format = Byte)]
     pub identity_pubkey: Option<String>,
     pub encrypted_device_name: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LoginFinishResponse {
     pub session_token: String,
     pub user_id: String,
@@ -60,6 +69,20 @@ fn decode_base64(s: &str) -> Result<Vec<u8>, ApiError> {
         .map_err(|_| ApiError::BadRequest("invalid base64 payload".to_string()))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/login/start",
+    tag = "Public",
+    summary = "Login start",
+    description = "Initiate OPAQUE login flow with user lookup token and credential request (Server Spec v3.0.4 §6.2).",
+    request_body = LoginStartRequest,
+    responses(
+        (status = 200, description = "Login challenge initiated successfully", body = LoginStartResponse),
+        (status = 400, description = "Invalid request format or client ID", body = ErrorResponse),
+        (status = 401, description = "Invalid credentials or account disabled", body = ErrorResponse),
+        (status = 409, description = "Server OPRF key rotated; account re-registration required", body = ErrorResponse)
+    )
+)]
 pub async fn login_start(
     State(state): State<AppState>,
     body_val: Json<serde_json::Value>,
@@ -239,6 +262,19 @@ pub async fn login_start(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/login/finish",
+    tag = "Public",
+    summary = "Login finish",
+    description = "Complete OPAQUE login flow with credential finalization and obtain session token (Server Spec v3.0.4 §6.2).",
+    request_body = LoginFinishRequest,
+    responses(
+        (status = 200, description = "Login completed successfully", body = LoginFinishResponse),
+        (status = 400, description = "Invalid finalization, device limit exceeded, or identity key mismatch", body = ErrorResponse),
+        (status = 401, description = "Invalid credentials or unknown login session", body = ErrorResponse)
+    )
+)]
 pub async fn login_finish(
     State(state): State<AppState>,
     body_val: Json<Value>,

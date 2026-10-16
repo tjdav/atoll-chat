@@ -539,7 +539,7 @@ pub fn build_app(state: AppState) -> Router {
         .route("/welcomes", get(routes::welcomes::list))
         .route("/welcomes/{id}", get(routes::welcomes::get))
         .route("/welcomes/{id}/consume", post(routes::welcomes::consume))
-        .route("/sockudo/auth", post(routes::sockudo::auth))
+        .route("/sockudo/auth", post(routes::sockudo::auth_handler))
         .route(
             "/rooms/{id}/pending-removes",
             get(routes::pending_removes::list),

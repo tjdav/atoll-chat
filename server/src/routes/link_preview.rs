@@ -9,6 +9,7 @@ use serde_json::json;
 use tracing::warn;
 
 use crate::auth::AuthUser;
+use crate::error::ErrorResponse;
 use crate::link_preview::content_key::{
     decode_base64_flexible, decrypt_payload, derive_content_key, encrypt_payload, ErrorPlaintext,
     RequestEnvelope, RequestPlaintext, ResponseEnvelope, ResponsePlaintext,
@@ -17,6 +18,25 @@ use crate::link_preview::ssrf::{fetch_url_ssrf_guarded, FetchOptions, SsrfError}
 use crate::rate_limit::{self, RateLimitKey};
 use crate::AppState;
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/link-preview/proxy",
+    tag = "Public",
+    summary = "Link preview proxy",
+    description = "SSRF-guarded link preview metadata fetcher (Server Spec v3.0.4 §8.1.2). Requires authentication.",
+    request_body(content = RequestEnvelope, description = "Content Key encrypted request envelope containing target URL"),
+    responses(
+        (status = 200, description = "Content Key encrypted response envelope containing metadata", body = ResponseEnvelope),
+        (status = 400, description = "Invalid request format or URL blocked/invalid", body = ErrorResponse),
+        (status = 401, description = "Authentication required", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 501, description = "Link preview proxy disabled", body = ErrorResponse),
+        (status = 502, description = "Upstream fetch failed or response too large", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
+    )
+)]
 pub async fn proxy_handler(
     State(state): State<AppState>,
     auth: AuthUser,
