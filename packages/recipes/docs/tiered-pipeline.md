@@ -67,9 +67,23 @@ fabricated bot.
 
 ### 1.4 The refusal shapes
 
-To be written. The shape of each reason's `Refusal` record — field
-names, the message convention, and how suggestions are ranked — is
-not yet drafted.
+Refusals signal that the pipeline could not produce a usable artifact for the given intent. The matcher and composer tiers return structured refusal records distinguished by `kind: 'refusal'`.
+
+The matcher produces refusals with reason `No candidate matches with sufficient confidence.` and carries candidate suggestions:
+```js
+{ kind: 'refusal', reason: string, suggestions: Candidate[] }
+```
+
+The composer produces refusals with a `reason` discriminant, a short human-readable `message`, and optional second-attempt validation `errors`:
+```js
+{ kind: 'refusal', reason: string, message: string, errors?: CompositionValidationError[] }
+```
+
+The composer produces strictly two refusal reasons:
+- `composer_unavailable`: The LLM transport failed at the wire (network error, timeout, HTTP error status, or malformed/unparseable response structure) on attempt 1 or attempt 2.
+- `validation_failed`: The LLM produced content that failed Composition validation twice, or produced unparseable JSON content on the second attempt.
+
+Higher pipeline layers (such as the matcher or SaaS cost gates) produce `no_primitive_covers` and `cost_exceeded`. The `/v1/compose` endpoint (Task A.6) projects composer results directly onto HTTP response objects.
 
 ## 2. The composer
 
@@ -87,20 +101,31 @@ the transport, the timeout policy, the cost accounting, and the
 
 ### 2.3 The composer entry
 
-To be written. Task A.5 produces the entry. This section will carry
-the composition freeze, the retry policy, and the refusal construction.
+The entry point `composeBot(intent, options)` in `packages/recipes/src/composer/compose.js` connects the prompt builder (`packages/recipes/src/composer/prompt.js`), LLM wrapper (`packages/recipes/src/composer/llm.js`), and Composition validator (`packages/recipes/src/composer/validate.js`).
+
+`composeBot` accepts a natural-language intent string and an options object containing the primitive registry, recipe library, and LLM configuration options (`upstreamUrl`, `apiKey`, `model`, optional `fetch`, `timeoutMs`, `temperature`). It returns a Promise resolving to `ComposeBotResult`:
+```js
+{ kind: 'composed', composition: Composition }
+| { kind: 'refusal', reason: string, message: string, errors?: CompositionValidationError[] }
+```
+
+The function executes at most two LLM attempts. It does not perform JavaScript code emission (`bot.js`); emission is handled separately by the compiler (`packages/recipes/src/compiler/emit.js`) when invoked by the endpoint layer.
 
 ### 2.4 The composition freeze
 
-To be written.
+Before returning a successful `{ kind: 'composed', composition }` result, `composeBot` deep-freezes the returned `Composition` object and every nested property (`slots`, `handlers`, `commands`, `triggers`, `capabilities`, `settings`, and primitive instances) using `Object.freeze`.
+
+The composition is a validated, deterministic artifact; freezing guarantees immutability across downstream compiler and endpoint processing. Deep freeze is strictly in-memory and non-durable; no disk persistence or hashing is performed at this layer.
 
 ### 2.5 The retry policy
 
-The composer validates each composition it produces. On validation
-failure, it retries once, passing the validation error to the LLM. On
-the second failure, it refuses with reason `validation_failed`. The
-exact retry mechanics — whether the failed composition is echoed back
-to the LLM, and in what form — are to be written alongside Task A.5.
+The composer validates every generated composition against §2.6 using `validateComposition`.
+
+If the first attempt fails validation, `composeBot` retries exactly once. The retry prompt carries the intent and the first attempt's validation errors as a structured list (`- [code] path: message`). The prior invalid Composition object is **not echoed back** to the LLM, keeping the retry prompt concise and focused on correction requirements.
+
+If the first LLM call returns `invalid_json_content` (content that cannot be parsed as JSON), it is treated as a validation failure and retried with a synthetic error `Response content is not valid JSON`.
+
+If the second attempt also fails validation or returns `invalid_json_content`, `composeBot` terminates retry recursion and returns a refusal with reason `validation_failed`, carrying the second attempt's validation errors in `errors`.
 
 ### 2.6 The composition validator
 
