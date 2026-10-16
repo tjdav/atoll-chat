@@ -2,3 +2,4 @@
 
 export { validateComposition } from './validate.js'
 export { buildComposerMessages } from './prompt.js'
+export { completeComposition } from './llm.js'
