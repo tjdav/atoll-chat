@@ -378,10 +378,14 @@ None.
   - **Delivered:** `verification/openapi-complete-remaining-routes/report.md`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
   - **Summary:** Annotated all 52 remaining router endpoints across Admin, Rooms, Messaging, Attachments, MLS, Calls, Sessions, and Roles domains. Derived `ToSchema` / `IntoParams` on request/response/query DTOs, annotated binary ciphertext/signaling fields with `format = Byte`, range constraints on retention preview (`[0, 365]`), and updated `docs/openapi.json` to 120 path items (236,092 bytes). Verified 100% router path coverage in `server/tests/openapi_generation.rs`.
 
+- **OpenAPI-Router Path Reconciliation**: done
+  - **Delivered:** `verification/openapi-router-path-reconcile/report.md`, `server/src/routes/health.rs`, `server/src/routes/ready.rs`, `server/src/routes/room_sessions.rs`, `server/src/sessions/crud.rs`, `server/src/lib.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`, `server/tests/sockudo.rs`, `server/tests/sync_channel_auth.rs`.
+  - **Summary:** Resolved the 4 OpenAPI-router path discrepancies. Updated health and ready OpenAPI annotations to `/health` and `/ready`. Removed root alias for `/oprf/blind`, leaving `/api/v1/oprf/blind`. Moved `/sockudo/auth` to root app per §8.1.6. Added admin permission check to `list_admin` and registered missing route `GET /api/v1/admin/rooms/{id}/sessions` in `lib.rs`. Regenerated `docs/openapi.json` and updated tests. Router paths and OpenAPI path items match 1:1 at exactly 120 unique path keys.
+
 ## Summary
 - **Project Status:** Complete (Operator Queue feature complete end to end)
-- **Total Verifications/Tasks Tracked:** 68
-- **Done:** 68
+- **Total Verifications/Tasks Tracked:** 69
+- **Done:** 69
 - **Pending:** 0
 - **In-Progress:** 0
 - **Mismatches:** 0

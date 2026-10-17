@@ -1,5 +1,6 @@
 use crate::auth::AuthUser;
 use crate::error::ApiError;
+use crate::permission_check::{ConfigEdit, RequirePermission};
 use crate::rate_limit::{self, RateLimitKey, Window};
 use crate::sessions::{
     self, CreateRoomSessionRequest, JoinResponse, ListRoomSessionsQuery, PatchRoomSessionRequest,
@@ -45,10 +46,15 @@ pub struct SessionListResponse {
 pub async fn list_admin(
     State(state): State<AppState>,
     auth: AuthUser,
+    _: RequirePermission<ConfigEdit>,
     Path(room_id): Path<String>,
     Query(query): Query<ListRoomSessionsQuery>,
 ) -> Result<Json<SessionListResponse>, ApiError> {
-    list(State(state), auth, Path(room_id), Query(query)).await
+    let _ = auth;
+    let sessions =
+        sessions::list_room_sessions_admin(&state.pool, &state.occupancy, &room_id, query).await?;
+
+    Ok(Json(SessionListResponse { sessions }))
 }
 
 #[derive(Debug, Deserialize)]

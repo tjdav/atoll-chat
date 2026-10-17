@@ -18,7 +18,7 @@ pub struct ReadinessResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/ready",
+    path = "/ready",
     tag = "Public",
     summary = "Readiness check",
     description = "Server readiness check endpoint verifying DB, OPRF key, and Sockudo (Server Spec v3.0.4 §8.1).",

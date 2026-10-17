@@ -306,6 +306,10 @@ pub fn build_app(state: AppState) -> Router {
             "/admin/extension-proxy/reload-blocklist",
             post(routes::admin::post_reload_extension_proxy_blocklist_handler),
         )
+        .route(
+            "/admin/rooms/{id}/sessions",
+            get(routes::room_sessions::list_admin),
+        )
         .route("/admin/oprf/rotate", post(routes::admin_oprf::rotate))
         .route("/capabilities", get(routes::capabilities::handler))
         .route(
@@ -539,7 +543,6 @@ pub fn build_app(state: AppState) -> Router {
         .route("/welcomes", get(routes::welcomes::list))
         .route("/welcomes/{id}", get(routes::welcomes::get))
         .route("/welcomes/{id}/consume", post(routes::welcomes::consume))
-        .route("/sockudo/auth", post(routes::sockudo::auth_handler))
         .route(
             "/rooms/{id}/pending-removes",
             get(routes::pending_removes::list),
@@ -634,7 +637,7 @@ pub fn build_app(state: AppState) -> Router {
     let mut app = Router::new()
         .route("/health", get(routes::health::handler))
         .route("/ready", get(routes::ready::handler))
-        .route("/oprf/blind", post(routes::oprf::blind));
+        .route("/sockudo/auth", post(routes::sockudo::auth_handler));
 
     let hosting_mode = state
         .config

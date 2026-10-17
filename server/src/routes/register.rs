@@ -16,17 +16,21 @@ use tracing::info;
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct AltchaChallengeResponse {
-    /// Algorithm used for ALTCHA challenge (Server Spec v3.0.4 §6.3)
+pub struct AltchaParameters {
     pub algorithm: String,
-    /// Challenge string (Server Spec v3.0.4 §6.3)
-    pub challenge: String,
-    /// Maximum cost number (Server Spec v3.0.4 §6.3)
-    pub maxnumber: Option<u64>,
-    /// Salt string (Server Spec v3.0.4 §6.3)
+    pub cost: u32,
+    #[serde(rename = "keyLength")]
+    pub key_length: Option<u32>,
+    #[serde(rename = "keyPrefix")]
+    pub key_prefix: Option<String>,
+    pub nonce: String,
     pub salt: String,
-    /// Signature string (Server Spec v3.0.4 §6.3)
-    pub signature: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct AltchaChallengeResponse {
+    pub parameters: AltchaParameters,
+    pub signature: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -97,7 +101,7 @@ fn validate_altcha(
 )]
 pub async fn register_challenge(
     State(state): State<AppState>,
-) -> Result<Json<AltchaChallengeResponse>, ApiError> {
+) -> Result<Json<altcha::Challenge>, ApiError> {
     if !state.altcha_config.enabled {
         return Err(ApiError::NotFound("altcha_disabled".to_string()));
     }
@@ -113,13 +117,7 @@ pub async fn register_challenge(
     let challenge = altcha::create_challenge(options)
         .map_err(|e| ApiError::Internal(anyhow::anyhow!("failed to create challenge: {e}")))?;
 
-    let val = serde_json::to_value(&challenge)
-        .map_err(|e| ApiError::Internal(anyhow::anyhow!("failed to serialize challenge: {e}")))?;
-
-    let resp: AltchaChallengeResponse = serde_json::from_value(val)
-        .map_err(|e| ApiError::Internal(anyhow::anyhow!("failed to convert challenge: {e}")))?;
-
-    Ok(Json(resp))
+    Ok(Json(challenge))
 }
 
 fn decode_base64(s: &str) -> Result<Vec<u8>, ApiError> {

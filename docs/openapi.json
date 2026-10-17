@@ -2354,28 +2354,6 @@
         ]
       }
     },
-    "/api/v1/health": {
-      "get": {
-        "tags": [
-          "Public"
-        ],
-        "summary": "Health check",
-        "description": "Server liveness check endpoint (Server Spec v3.0.4 §8.1).",
-        "operationId": "handler",
-        "responses": {
-          "200": {
-            "description": "Server is live",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/invites/{code}": {
       "get": {
         "tags": [
@@ -2783,38 +2761,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ready": {
-      "get": {
-        "tags": [
-          "Public"
-        ],
-        "summary": "Readiness check",
-        "description": "Server readiness check endpoint verifying DB, OPRF key, and Sockudo (Server Spec v3.0.4 §8.1).",
-        "operationId": "handler",
-        "responses": {
-          "200": {
-            "description": "Server is ready",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadinessResponse"
-                }
-              }
-            }
-          },
-          "530": {
-            "description": "Server is not ready",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadinessResponse"
                 }
               }
             }
@@ -5358,6 +5304,28 @@
         ]
       }
     },
+    "/health": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Health check",
+        "description": "Server liveness check endpoint (Server Spec v3.0.4 §8.1).",
+        "operationId": "handler",
+        "responses": {
+          "200": {
+            "description": "Server is live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/models/manifest.json": {
       "get": {
         "tags": [
@@ -5584,6 +5552,38 @@
         }
       }
     },
+    "/ready": {
+      "get": {
+        "tags": [
+          "Public"
+        ],
+        "summary": "Readiness check",
+        "description": "Server readiness check endpoint verifying DB, OPRF key, and Sockudo (Server Spec v3.0.4 §8.1).",
+        "operationId": "handler",
+        "responses": {
+          "200": {
+            "description": "Server is ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "530": {
+            "description": "Server is not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sockudo/auth": {
       "post": {
         "tags": [
@@ -5678,38 +5678,54 @@
       "AltchaChallengeResponse": {
         "type": "object",
         "required": [
+          "parameters",
+          "signature"
+        ],
+        "properties": {
+          "parameters": {
+            "$ref": "#/components/schemas/AltchaParameters"
+          },
+          "signature": {
+            "type": "string"
+          }
+        }
+      },
+      "AltchaParameters": {
+        "type": "object",
+        "required": [
           "algorithm",
-          "challenge",
+          "cost",
+          "nonce",
           "salt"
         ],
         "properties": {
           "algorithm": {
-            "type": "string",
-            "description": "Algorithm used for ALTCHA challenge (Server Spec v3.0.4 §6.3)"
+            "type": "string"
           },
-          "challenge": {
-            "type": "string",
-            "description": "Challenge string (Server Spec v3.0.4 §6.3)"
+          "cost": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
           },
-          "maxnumber": {
+          "keyLength": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "int64",
-            "description": "Maximum cost number (Server Spec v3.0.4 §6.3)",
+            "format": "int32",
             "minimum": 0
           },
-          "salt": {
-            "type": "string",
-            "description": "Salt string (Server Spec v3.0.4 §6.3)"
-          },
-          "signature": {
+          "keyPrefix": {
             "type": [
               "string",
               "null"
-            ],
-            "description": "Signature string (Server Spec v3.0.4 §6.3)"
+            ]
+          },
+          "nonce": {
+            "type": "string"
+          },
+          "salt": {
+            "type": "string"
           }
         }
       },

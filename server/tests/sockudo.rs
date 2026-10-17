@@ -154,7 +154,7 @@ async fn test_channel_auth_endpoints() {
 
     let auth_req = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -185,7 +185,7 @@ async fn test_channel_auth_endpoints() {
     // 6. Channel auth rejects non-members (User B) with 403
     let auth_req_b = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_b))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -205,7 +205,7 @@ async fn test_channel_auth_endpoints() {
     // 7. Channel auth rejects unknown rooms with 403
     let auth_req_unknown = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -225,7 +225,7 @@ async fn test_channel_auth_endpoints() {
     // 8. Channel auth rejects malformed socket_id with 400
     let auth_req_bad_socket = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -245,7 +245,7 @@ async fn test_channel_auth_endpoints() {
     // 9. Channel auth rejects malformed channel_name with 400
     let auth_req_bad_channel = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(

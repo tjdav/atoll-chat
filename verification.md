@@ -1,4 +1,20 @@
 
+## OpenAPI-Router Path Reconciliation Verification Fact
+- **ID:** OpenAPI-Router Path Reconciliation
+- **Date:** 2026-10-16
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 §8.1, §8.1.1, §8.1.6, §8.3
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/openapi-router-path-reconcile/report.md`.
+  - **Discrepancies Resolved:**
+    1. Health & Ready: Updated OpenAPI annotations in `server/src/routes/health.rs` and `server/src/routes/ready.rs` from `/api/v1/health` and `/api/v1/ready` to `/health` and `/ready` (matching spec §8.1 and root router registrations).
+    2. OPRF Blind: Removed root alias `.route("/oprf/blind", post(...))` in `server/src/lib.rs`, leaving `/api/v1/oprf/blind` in `api_routes` as the single spec-backed route matching OpenAPI and tests.
+    3. Sockudo Auth: Moved `/sockudo/auth` registration from `api_routes` (`/api/v1/sockudo/auth`) to root `app` in `server/src/lib.rs` per §8.1.6. Updated test calls in `sockudo.rs` and `sync_channel_auth.rs`.
+    4. Admin Sessions: Added `RequirePermission<ConfigEdit>` authorization check to `list_admin` in `server/src/routes/room_sessions.rs`, implemented `list_room_sessions_admin` in `server/src/sessions/crud.rs`, and registered `GET /api/v1/admin/rooms/{id}/sessions` in `api_routes` in `server/src/lib.rs`.
+  - **1:1 Set Alignment:** Regenerated `docs/openapi.json`. Axum router registrations and OpenAPI path keys match 1:1 at exactly 120 unique path keys.
+  - **Verification:** `make openapi-check`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `make check-batches`, `cargo test --test test_batch_manifest`, and affected test batches pass with 0 errors.
+- **Link to report:** [verification/openapi-router-path-reconcile/report.md](verification/openapi-router-path-reconcile/report.md)
+
 ## Repository State Audit — Final Verification Fact
 - **ID:** Repository State Audit — Final
 - **Date:** 2026-10-16

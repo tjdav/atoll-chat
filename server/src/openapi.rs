@@ -152,6 +152,7 @@ impl Modify for SecurityAddon {
             ReadinessResponse,
             CapabilitiesResponse,
             AltchaCapView,
+            crate::routes::register::AltchaParameters,
             crate::routes::register::AltchaChallengeResponse,
             crate::routes::register::RegisterStartRequest,
             crate::routes::register::RegisterStartResponse,

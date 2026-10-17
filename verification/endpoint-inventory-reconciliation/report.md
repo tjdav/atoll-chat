@@ -158,69 +158,11 @@ The Axum router in `server/src/lib.rs` constructs `api_routes` (nested under `/a
 
 ### Three Set Comparison
 
-#### Set 1: In Router but NOT in OpenAPI (56 unique path keys)
-- `/health` [GET]
-- `/ready` [GET]
-- `/oprf/blind` [POST]
-- `/api/v1/sockudo/auth` [POST]
-- `/api/v1/admin/config` [GET, PATCH]
-- `/api/v1/admin/limits` [GET, PATCH]
-- `/api/v1/admin/audit` [GET]
-- `/api/v1/admin/backups` [GET, POST]
-- `/api/v1/admin/vapid/rotate` [POST]
-- `/api/v1/admin/altcha/rotate` [POST]
-- `/api/v1/admin/invites` [GET, POST]
-- `/api/v1/admin/invites/{id}` [DELETE]
-- `/api/v1/roles` [GET]
-- `/api/v1/rooms` [GET, POST]
-- `/api/v1/rooms/join` [POST]
-- `/api/v1/rooms/{id}` [GET, PATCH, DELETE]
-- `/api/v1/rooms/{id}/invites` [GET, POST]
-- `/api/v1/rooms/{id}/invites/{invite_id}` [DELETE]
-- `/api/v1/rooms/{id}/leave` [POST]
-- `/api/v1/rooms/{id}/members` [GET, POST]
-- `/api/v1/rooms/{id}/members/{uid}` [DELETE]
-- `/api/v1/rooms/{id}/members/{uid}/promote` [POST]
-- `/api/v1/rooms/{id}/members/{uid}/demote` [POST]
-- `/api/v1/rooms/{id}/retention/preview` [POST]
-- `/api/v1/rooms/{id}/transfer` [POST]
-- `/api/v1/keypackages` [POST]
-- `/api/v1/keypackages/count` [GET]
-- `/api/v1/keypackages/claim` [POST]
-- `/api/v1/rooms/{id}/messages` [GET, POST]
-- `/api/v1/rooms/{id}/messages/{message_id}` [PATCH, DELETE]
-- `/api/v1/rooms/{id}/messages/{message_id}/reactions` [GET, POST]
-- `/api/v1/rooms/{id}/messages/{message_id}/reactions/{reaction_id}` [DELETE]
-- `/api/v1/rooms/{id}/messages/{message_id}/ciphertext` [GET]
-- `/api/v1/rooms/{id}/epoch` [GET]
-- `/api/v1/attachments/{id}` [GET, DELETE]
-- `/api/v1/attachments/{id}/presign` [POST]
-- `/api/v1/rooms/{id}/attachments` [POST]
-- `/api/v1/welcomes` [GET]
-- `/api/v1/welcomes/{id}` [GET]
-- `/api/v1/welcomes/{id}/consume` [POST]
-- `/api/v1/calls/turn-credentials` [POST]
-- `/api/v1/rooms/{id}/calls/{call_id}/join` [POST]
-- `/api/v1/rooms/{id}/calls/{call_id}/leave` [POST]
-- `/api/v1/rooms/{id}/calls/{call_id}/signal` [POST]
-- `/api/v1/rooms/{id}/calls/{call_id}/end` [POST]
-- `/api/v1/rooms/{id}/sessions` [GET, POST]
-- `/api/v1/rooms/{id}/sessions/{session_id}` [PATCH, DELETE]
-- `/api/v1/rooms/{id}/sessions/{session_id}/join` [POST]
-- `/api/v1/rooms/{id}/sessions/{session_id}/leave` [POST]
-- `/api/v1/rooms/{id}/sessions/{session_id}/heartbeat` [POST]
-- `/api/v1/rooms/{id}/sessions/{session_id}/roster` [GET]
-- `/api/v1/rooms/{id}/sessions/{session_id}/signal` [POST]
-- `/api/v1/rooms/{id}/pending-removes` [GET]
-- `/api/v1/rooms/{id}/pending-removes/{remove_id}/consume` [POST]
-- `/api/v1/rooms/{id}/pending-adds` [GET]
-- `/api/v1/rooms/{id}/pending-adds/{add_id}/consume` [POST]
+#### Set 1: In Router but NOT in OpenAPI (0 unique path keys)
+*(Set is empty following completion of full endpoint annotation.)*
 
-#### Set 2: In OpenAPI but NOT in Router (4 unique path keys)
-- `/api/v1/health` [GET] (Router registers root `/health`)
-- `/api/v1/ready` [GET] (Router registers root `/ready`)
-- `/api/v1/admin/rooms/{id}/sessions` [GET] (Spec §8.3 path; handler annotated in OpenAPI as `list_admin`, but router registers `/api/v1/rooms/{id}/sessions`)
-- `/sockudo/auth` [POST] (Router registers `/sockudo/auth` AND `/api/v1/sockudo/auth`; OpenAPI registers `/sockudo/auth`)
+#### Set 2: In OpenAPI but NOT in Router (0 unique path keys)
+*(Set is empty following OpenAPI-Router Path Reconciliation.)*
 
 #### Set 3: In Both Router and OpenAPI (64 unique path keys)
 - `/api/v1/capabilities`
@@ -384,4 +326,4 @@ All 52 non-spec routes are active, fully reachable in the Axum router, and exerc
 - **Correct total `(Method, Path)` count in Axum router:** **149**
 
 **Final Closure Note:**
-All 52 non-spec operational routes have been fully annotated with `#[utoipa::path(...)]` and DTO schemas, closing the gap completely. `docs/openapi.json` now covers all 120 unique path keys registered on the Axum router (120 router path keys - 4 root/prefix aliases + 4 OpenAPI path mappings = 120 total path items in `docs/openapi.json`). Zero router endpoints remain unannotated.
+All 120 unique path keys registered in the Axum router match `docs/openapi.json` 1:1. All 4 historical path discrepancies have been reconciled: `/health` and `/ready` are annotated at root, `/oprf/blind` root alias was removed keeping `/api/v1/oprf/blind`, `/sockudo/auth` is mounted at root per §8.1.6, and `GET /api/v1/admin/rooms/{id}/sessions` is registered in `lib.rs` with admin authorization. Router path keys and OpenAPI path items match 1:1 across all 120 unique paths.
