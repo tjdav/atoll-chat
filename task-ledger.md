@@ -2,6 +2,10 @@
 
 ## Completed Verifications
 
+- **End-to-End Smoke Walkthrough**: done
+  - **Delivered:** `server/tests/end_to_end_walkthrough.rs`, `verification/end-to-end-smoke/report.md`
+  - **Scope:** Complete end-to-end continuous chain integration test exercising registration, login, bot creation, self-operator binding, room creation, grant-time operator binding, user/bot messages with KT leaf index, command submission, operator queue enqueue/list/respond, bot sync, KT inclusion proofs, timeout/retention cleanup jobs, and wiremock event captures.
+
 - **V-B — Key Transparency Scale Verification**: done
   - **Delivered:** `verification/key-transparency-scale/report.md`
   - **Recommendation:** Interpretation B (RFC 6962-lite)
