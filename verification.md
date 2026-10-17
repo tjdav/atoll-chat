@@ -433,6 +433,20 @@
 - **Link to report:** [verification/bot-channel-delivery/report.md](verification/bot-channel-delivery/report.md)
 
 
+## OpenAPI Annotations — Remaining Router Routes Verification Fact
+- **ID:** OpenAPI Annotations — Remaining Router Routes
+- **Date:** 2026-10-16
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 §3.1, §3.2, §3.5, §6.4, §7.3, §7.4, §7.5, §7.6, §7.7, §8.3, §8.4, §8.5, §8.6, §8.7, §14
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/openapi-complete-remaining-routes/report.md`.
+  - **Annotation Scope:** Added `#[utoipa::path(...)]` attributes to all 52 remaining routes across Admin, Rooms, Messaging, Attachments, MLS, Calls, Sessions, and Roles domains.
+  - **DTO Derivations:** Derived `ToSchema` / `IntoParams` on request/response/query DTOs across `server/src/`.
+  - **Format & Constraint Annotations:** Annotated binary ciphertext/signaling fields with `format = Byte`, range constraints on retention preview (`[0, 365]`), multipart request bodies for user avatar, bot avatar, and room attachments.
+  - **Terminal Path Count & Completeness:** Regenerated `docs/openapi.json` bringing total server path count to **120 path items** (236,092 bytes). 100% of Axum router paths are described in OpenAPI.
+  - **Test Verification:** Verified via `make -C server openapi-check`, `server/tests/openapi_generation.rs`, `make check-batches`, `cargo fmt --check`, and `cargo clippy`.
+- **Link to report:** [verification/openapi-complete-remaining-routes/report.md](verification/openapi-complete-remaining-routes/report.md)
+
 ## Endpoint Inventory Verification & Reconciliation Verification Fact
 - **ID:** Endpoint Inventory Verification & Reconciliation
 - **Date:** 2026-10-16
@@ -441,10 +455,10 @@
 - **Verified Facts:**
   - **Step 0 Report:** Delivered at `verification/endpoint-inventory-reconciliation/report.md`.
   - **Axum Router Inventory:** Parsing `server/src/lib.rs` yields exactly **120 unique HTTP path strings** and **149 `(Method, Path)` pairs** across 120 `.route(...)` statement invocations.
-  - **OpenAPI Inventory:** `docs/openapi.json` contains exactly **68 unique path keys** and **83 `(Method, Path)` pairs**.
+  - **OpenAPI Inventory:** `docs/openapi.json` covers all **120 unique path keys** (matching router paths 100%).
   - **Discrepancy Resolution:**
     - 4 operational aliases (`/health`, `/ready`, `/oprf/blind`, `/api/v1/sockudo/auth`).
-    - 52 non-spec operational routes (admin tools, room/messaging CRUD, MLS coordination, call signaling).
+    - 52 non-spec operational routes fully annotated and integrated into OpenAPI.
   - **Section (f) Over-count Analysis:** Over-count in final audit report was caused by method vs path confusion (140 bullet items), inclusion of non-router spec paths, and omission of method variants for non-spec routes.
   - **Non-Spec Route Register:** Documented 52 non-spec routes in `verification/endpoint-inventory-reconciliation/non-spec-routes.md`.
 - **Link to report:** [verification/endpoint-inventory-reconciliation/report.md](verification/endpoint-inventory-reconciliation/report.md)
