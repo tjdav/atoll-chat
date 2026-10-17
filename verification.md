@@ -1,4 +1,31 @@
 
+## End-to-End Smoke Walkthrough Verification Fact
+- **ID:** End-to-End Smoke Walkthrough
+- **Date:** 2026-10-17
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4, Operator Queue Response (2026-10-14), Delivery Guarantee Response (2026-10-14)
+- **Verified Facts:**
+  - **Report & Test File:** Delivered at `verification/end-to-end-smoke/report.md` and `server/tests/end_to_end_walkthrough.rs`.
+  - **16-Phase Continuous Chain:**
+    1. Boot & capabilities (health, ready, capabilities, 68 documented OpenAPI paths).
+    2. User registration & login (Alice OPAQUE registration, session token, KT log row).
+    3. User state (`/users/me/sync`, `PATCH /users/me` encrypted display update).
+    4. Bot creation & operator self-binding (`POST /bots`, owner bound as `self` operator, KT log bot leaf).
+    5. Room creation & bot grant (server invite, Bob registration, RoomX creation, room invite code redemption, bot grant with Bob as `room-member` operator).
+    6. User message send & fetch (`POST /rooms/:id/messages`, `message.new` broadcast, `sender_type="user"`, null `bot_key_leaf_index`).
+    7. Bot message send with KT leaf (`POST /rooms/:id/bot-messages`, 202 Accepted, `sender_type="bot"`, `bot_key_leaf_index` populated from KT leaf).
+    8. Bot command submission (`POST /rooms/:id/bot-commands`, pending row, `bot.command_invoked` event log, bot ack).
+    9. Operator queue enqueue (`POST /bots/me/operator-queue`, 201 Created, pending row).
+    10. Operator list (`GET /bots/:id/operator-queue`, preview populated, non-operator Carol receives 404 NOT_FOUND secrecy gate).
+    11. Operator respond (`POST /bots/:id/operator-queue/:id/respond`, status `answered`, `responded_by = Bob`, `bot.operator_response` event log).
+    12. Bot sync (`GET /bots/me/sync?since_bot_seq=0`, returns `bot.command_invoked` and `bot.operator_response` in order).
+    13. KT verification (tree head snapshot, inclusion proof, `username_token` privacy exclusion on user KT).
+    14. Timeout cleanup (`OperatorQueueTimeoutJob`, status `expired`, `responded_by = NULL`, canned response event log).
+    15. Retention cleanup (`OperatorQueueRetentionJob`, prunes old answered row > 7 days, retains recent answered row).
+    16. Final state check (`GET /bots/me/sync` confirms timeout event, 14 registered cleanup jobs on scheduler, wiremock captured Sockudo publishes).
+  - **Verification:** `cargo test --test end_to_end_walkthrough`, `make -C server test-operations`, `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `make check-batches`, `cargo test --test test_batch_manifest`, and `make -C server openapi-check` pass with 0 errors.
+- **Link to report:** [verification/end-to-end-smoke/report.md](verification/end-to-end-smoke/report.md)
+
 ## OpenAPI-Router Path Reconciliation Verification Fact
 - **ID:** OpenAPI-Router Path Reconciliation
 - **Date:** 2026-10-16

@@ -124,6 +124,7 @@ files = [
     "cli_migrate",
     "cli_models",
     "cli_rotate",
+    "end_to_end_walkthrough",
     "migration_schema",
     "openapi_generation",
 ]
