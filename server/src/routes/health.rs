@@ -9,7 +9,7 @@ pub struct HealthResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/health",
+    path = "/health",
     tag = "Public",
     summary = "Health check",
     description = "Server liveness check endpoint (Server Spec v3.0.4 §8.1).",

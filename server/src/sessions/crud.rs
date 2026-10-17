@@ -257,6 +257,76 @@ pub async fn list_room_sessions(
     Ok(sessions)
 }
 
+pub async fn list_room_sessions_admin(
+    pool: &SqlitePool,
+    occupancy: &OccupancyStore,
+    room_id: &str,
+    query: ListRoomSessionsQuery,
+) -> Result<Vec<RoomSessionView>, RoomSessionError> {
+    let room_exists: Option<(i32,)> = sqlx::query_as("SELECT 1 FROM rooms WHERE id = ?")
+        .bind(room_id)
+        .fetch_optional(pool)
+        .await?;
+
+    if room_exists.is_none() {
+        return Err(RoomSessionError::RoomNotFound);
+    }
+
+    let mut sql = String::from(
+        "SELECT id, extension_id, session_type, metadata, metadata_version, position, created_at FROM room_sessions WHERE room_id = ?",
+    );
+
+    if query.extension_id.is_some() {
+        sql.push_str(" AND extension_id = ?");
+    }
+
+    if let Some(ref st) = query.session_type {
+        if !get_type_regex().is_match(st) {
+            return Err(RoomSessionError::InvalidSessionType);
+        }
+        sql.push_str(" AND session_type = ?");
+    }
+
+    sql.push_str(" ORDER BY position ASC, id ASC");
+
+    let mut q = sqlx::query(&sql).bind(room_id);
+
+    if let Some(ref ext_id) = query.extension_id {
+        q = q.bind(ext_id);
+    }
+    if let Some(ref st) = query.session_type {
+        q = q.bind(st);
+    }
+
+    let rows = q.fetch_all(pool).await?;
+
+    let mut sessions = Vec::with_capacity(rows.len());
+    for row in rows {
+        let id: String = row.get("id");
+        let extension_id: String = row.get("extension_id");
+        let session_type: String = row.get("session_type");
+        let metadata: Option<String> = row.get("metadata");
+        let metadata_version: i32 = row.get("metadata_version");
+        let position: i32 = row.get("position");
+        let created_at: DateTime<Utc> = row.get("created_at");
+
+        let participant_count = occupancy.get_participant_count(&id).await;
+
+        sessions.push(RoomSessionView {
+            id,
+            extension_id,
+            session_type,
+            metadata,
+            metadata_version: metadata_version as u32,
+            position,
+            participant_count,
+            created_at,
+        });
+    }
+
+    Ok(sessions)
+}
+
 pub async fn create_room_session(
     pool: &SqlitePool,
     publisher: &Publisher,

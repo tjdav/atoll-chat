@@ -16,8 +16,8 @@ fn test_openapi_doc_validity() {
     // Assert path items (68 path items total across all domains)
     let paths = parsed["paths"].as_object().unwrap();
     let expected_paths = [
-        "/api/v1/health",
-        "/api/v1/ready",
+        "/health",
+        "/ready",
         "/api/v1/capabilities",
         "/api/v1/auth/register/challenge",
         "/api/v1/auth/register/start",
@@ -109,8 +109,8 @@ fn test_openapi_doc_validity() {
 
     // Assert unauthenticated public/auth endpoints omit security requirement
     let unauthenticated_paths = [
-        ("/api/v1/health", "get"),
-        ("/api/v1/ready", "get"),
+        ("/health", "get"),
+        ("/ready", "get"),
         ("/api/v1/capabilities", "get"),
         ("/api/v1/auth/register/challenge", "get"),
         ("/api/v1/auth/register/start", "post"),
@@ -553,36 +553,91 @@ fn test_openapi_cli_default_invocation() {
 }
 
 #[test]
-fn test_non_spec_routes_excluded_from_openapi() {
+fn test_router_and_openapi_paths_match_one_to_one() {
     let doc = ApiDoc::openapi();
     let json_str = serde_json::to_string_pretty(&doc).unwrap();
     let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
-    let paths = parsed["paths"].as_object().unwrap();
+    let openapi_paths: std::collections::BTreeSet<String> = parsed["paths"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect();
 
-    let non_spec_routes = [
-        "/api/v1/roles",
-        "/api/v1/rooms/join",
-        "/api/v1/rooms/{id}/transfer",
-        "/api/v1/rooms/{id}/messages/{message_id}/ciphertext",
-        "/api/v1/rooms/{id}/epoch",
-        "/api/v1/rooms/{id}/invites",
-        "/api/v1/keypackages",
-        "/api/v1/keypackages/claim",
-        "/api/v1/keypackages/count",
-        "/api/v1/admin/audit",
-        "/api/v1/admin/config",
-        "/api/v1/admin/limits",
-        "/api/v1/admin/backups",
-        "/api/v1/admin/vapid/rotate",
-        "/api/v1/admin/altcha/rotate",
-        "/api/v1/admin/invites",
+    // Assert /sockudo/auth is present and /api/v1/sockudo/auth is absent
+    assert!(
+        openapi_paths.contains("/sockudo/auth"),
+        "OpenAPI missing /sockudo/auth"
+    );
+    assert!(
+        !openapi_paths.contains("/api/v1/sockudo/auth"),
+        "OpenAPI unexpectedly contains non-spec /api/v1/sockudo/auth"
+    );
+
+    // Assert spec-mandated paths (§8.1, §8.3) are present in OpenAPI
+    let spec_mandated_paths = [
+        "/health",
+        "/ready",
+        "/api/v1/oprf/blind",
+        "/sockudo/auth",
+        "/api/v1/admin/rooms/{id}/sessions",
     ];
-
-    for route in &non_spec_routes {
+    for spec_path in &spec_mandated_paths {
         assert!(
-            !paths.contains_key(*route),
-            "non-spec route {} should be excluded from OpenAPI pending formal spec section",
-            route
+            openapi_paths.contains(*spec_path),
+            "OpenAPI missing spec-mandated path {}",
+            spec_path
+        );
+    }
+
+    // Extract paths directly registered on Axum router in server/src/lib.rs
+    let lib_str = include_str!("../src/lib.rs");
+    let mut router_paths = std::collections::BTreeSet::new();
+
+    let mut in_api_routes = false;
+    let mut in_root_app = false;
+
+    let lines: Vec<&str> = lib_str.lines().collect();
+    for idx in 0..lines.len() {
+        let line = lines[idx];
+        if line.contains("let api_routes = Router::new()") {
+            in_api_routes = true;
+            in_root_app = false;
+        } else if line.contains("let mut app = Router::new()")
+            || line.contains("if hosting_mode.registers_routes()")
+        {
+            in_api_routes = false;
+            in_root_app = true;
+        }
+
+        if line.contains(".route(") {
+            for offset in 0..=2 {
+                if idx + offset < lines.len() {
+                    let search_line = lines[idx + offset];
+                    if let Some(first_quote) = search_line.find('"') {
+                        let rest = &search_line[first_quote + 1..];
+                        if let Some(second_quote) = rest.find('"') {
+                            let route_path = &rest[..second_quote];
+                            if route_path.starts_with('/') {
+                                if in_api_routes {
+                                    router_paths.insert(format!("/api/v1{}", route_path));
+                                } else if in_root_app {
+                                    router_paths.insert(route_path.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Assert every OpenAPI path is a registered router path
+    for openapi_path in &openapi_paths {
+        assert!(
+            router_paths.contains(openapi_path),
+            "OpenAPI path {} is not a registered router path in server/src/lib.rs",
+            openapi_path
         );
     }
 }

@@ -50,7 +50,7 @@ async fn test_sync_channel_auth() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(auth_req.to_string()))
@@ -75,7 +75,7 @@ async fn test_sync_channel_auth() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(auth_req_b.to_string()))
@@ -97,7 +97,7 @@ async fn test_sync_channel_auth() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(invalid_channel_req.to_string()))
@@ -119,7 +119,7 @@ async fn test_sync_channel_auth() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(empty_user_req.to_string()))
@@ -163,7 +163,7 @@ async fn test_sync_channel_auth() {
 
     let req = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(room_auth_req.to_string()))
@@ -175,7 +175,7 @@ async fn test_sync_channel_auth() {
     // User B cannot auth for private-room-{room_id} since they aren't a member
     let req = Request::builder()
         .method("POST")
-        .uri("/api/v1/sockudo/auth")
+        .uri("/sockudo/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_b))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(room_auth_req.to_string()))
