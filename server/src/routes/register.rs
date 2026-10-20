@@ -3,7 +3,9 @@ use crate::error::{ApiError, ErrorResponse};
 use crate::identity::{token_bytes, validate_encrypted_display, validate_token};
 use crate::invites::{self, InviteError};
 use crate::opaque::DefaultCipherSuite;
+use crate::recovery_code;
 use crate::registration::PendingRegistration;
+use crate::session;
 use crate::AppState;
 use axum::{extract::State, Json};
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
@@ -67,6 +69,8 @@ pub struct RegisterFinishResponse {
     pub user_id: String,
     pub username_token: String,
     pub is_owner: bool,
+    pub session_token: String,
+    pub recovery_codes: Vec<String>,
 }
 
 fn validate_altcha(
@@ -382,6 +386,25 @@ pub async fn register_finish(
         }
     }
 
+    // Generate and persist 8 initial recovery codes inside the transaction
+    let mut recovery_codes = Vec::with_capacity(8);
+    for _ in 0..8 {
+        let code = recovery_code::persist_for_user(&mut *tx, &user_id).await?;
+        recovery_codes.push(code);
+    }
+
+    // Create initial session inside the transaction
+    let session_token_info = session::create_session(
+        &mut *tx,
+        &user_id,
+        None,
+        state.config.session_expiry_days,
+    )
+    .await?;
+
+    // Log safety compliance: raw session_token and recovery_codes are never printed to tracing/logs.
+    let session_token = session_token_info.raw;
+
     tx.commit().await?;
 
     if is_owner {
@@ -400,5 +423,7 @@ pub async fn register_finish(
         user_id,
         username_token: pending.username_token,
         is_owner,
+        session_token,
+        recovery_codes,
     }))
 }

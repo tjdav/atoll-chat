@@ -50,12 +50,15 @@ pub fn generate_session_token() -> SessionToken {
     SessionToken { raw, hash }
 }
 
-pub async fn create_session(
-    pool: &SqlitePool,
+pub async fn create_session<'e, E>(
+    executor: E,
     user_id: &str,
     device_id: Option<&str>,
     expiry_days: u32,
-) -> Result<SessionToken, SessionError> {
+) -> Result<SessionToken, SessionError>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+{
     let token = generate_session_token();
 
     let mut id_bytes = [0u8; 16];
@@ -75,7 +78,7 @@ pub async fn create_session(
     .bind(device_id)
     .bind(&token.hash)
     .bind(&expiry_modifier)
-    .execute(pool)
+    .execute(executor)
     .await?;
 
     Ok(token)

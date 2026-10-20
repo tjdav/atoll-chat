@@ -7828,11 +7828,22 @@
         "required": [
           "user_id",
           "username_token",
-          "is_owner"
+          "is_owner",
+          "session_token",
+          "recovery_codes"
         ],
         "properties": {
           "is_owner": {
             "type": "boolean"
+          },
+          "recovery_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "session_token": {
+            "type": "string"
           },
           "user_id": {
             "type": "string"

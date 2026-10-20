@@ -497,6 +497,22 @@ fn test_openapi_doc_validity() {
     assert_eq!(lp_req_pubkey["format"], "byte");
     let lp_req_nonce = &schemas["RequestEnvelope"]["properties"]["nonce"];
     assert_eq!(lp_req_nonce["format"], "byte");
+
+    // Assert RegisterFinishResponse schema declares session_token and recovery_codes
+    let reg_finish_props = &schemas["RegisterFinishResponse"]["properties"]
+        .as_object()
+        .unwrap();
+    assert!(reg_finish_props.contains_key("session_token"));
+    assert!(reg_finish_props.contains_key("recovery_codes"));
+
+    let reg_finish_required: Vec<&str> = schemas["RegisterFinishResponse"]["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert!(reg_finish_required.contains(&"session_token"));
+    assert!(reg_finish_required.contains(&"recovery_codes"));
 }
 
 #[test]
