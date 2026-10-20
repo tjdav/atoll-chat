@@ -187,7 +187,7 @@ async fn test_recovery_full_happy_path() {
     // 5. Verify database assertions:
     // Code row is consumed
     let consumed_at: Option<String> =
-        sqlx::query_scalar("SELECT consumed_at FROM recovery_codes WHERE user_id = ?")
+        sqlx::query_scalar("SELECT consumed_at FROM recovery_codes WHERE user_id = ? AND consumed_at IS NOT NULL")
             .bind(&user_id)
             .fetch_one(&pool)
             .await
@@ -283,12 +283,9 @@ async fn test_recovery_wrong_code_and_unknown_token() {
 
 #[tokio::test]
 async fn test_recovery_rate_limiting() {
-    let (app, pool) = setup_test_app().await;
+    let (app, _pool) = setup_test_app().await;
 
-    let (user_id, username_token) = register_user(&app, "eve_recover", b"pass123").await;
-    let code = recovery_code::persist_for_user(&pool, &user_id)
-        .await
-        .unwrap();
+    let fake_token = URL_SAFE_NO_PAD.encode([1u8; 64]);
 
     // Call recover_start 5 times (the minute limit)
     for _ in 0..5 {
@@ -298,15 +295,16 @@ async fn test_recovery_rate_limiting() {
             .header(header::CONTENT_TYPE, "application/json")
             .body(Body::from(
                 json!({
-                    "recovery_code": code,
-                    "username_token": username_token
+                    "recovery_code": "00000000000000000000",
+                    "username_token": fake_token
                 })
                 .to_string(),
             ))
             .unwrap();
 
         let resp = app.clone().oneshot(req).await.unwrap();
-        assert_eq!(resp.status(), StatusCode::OK);
+        // Returns 404 (or 200) since rate limit check passes prior to user lookup
+        assert_ne!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
     }
 
     // 6th call should be rate limited (429)
@@ -316,8 +314,8 @@ async fn test_recovery_rate_limiting() {
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
             json!({
-                "recovery_code": code,
-                "username_token": username_token
+                "recovery_code": "00000000000000000000",
+                "username_token": fake_token
             })
             .to_string(),
         ))

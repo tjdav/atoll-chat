@@ -118,6 +118,21 @@ impl IntoResponse for ApiError {
     }
 }
 
+// Implement From<RecoveryCodeError> for ApiError
+impl From<crate::recovery_code::RecoveryCodeError> for ApiError {
+    fn from(err: crate::recovery_code::RecoveryCodeError) -> Self {
+        match err {
+            crate::recovery_code::RecoveryCodeError::Database(e) => ApiError::Internal(e.into()),
+            crate::recovery_code::RecoveryCodeError::Argon2 => {
+                ApiError::Internal(anyhow::anyhow!("Argon2 hashing error"))
+            }
+            crate::recovery_code::RecoveryCodeError::InvalidCode => {
+                ApiError::BadRequest("invalid_recovery_code".to_string())
+            }
+        }
+    }
+}
+
 impl From<crate::sessions::SignalError> for ApiError {
     fn from(err: crate::sessions::SignalError) -> Self {
         use crate::sessions::SignalError;

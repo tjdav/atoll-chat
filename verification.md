@@ -1,4 +1,16 @@
 
+## Task A — register_finish Returns Session Token and Recovery Codes
+- **ID:** Task A — register_finish Response Extension (Issue 1)
+- **Date:** 2026-10-17
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§6.2, §7.1, §8.1), Client Contract Verification (`verification/client-contract-issues-verify/report.md`)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/register-finish-session-and-recovery/report.md`.
+  - **Response Extension:** `RegisterFinishResponse` declares `session_token` (43-character unpadded base64url string) and `recovery_codes` (array of 8 20-character Crockford Base32 plaintext strings).
+  - **Transactional Atomicity:** `recovery_code::persist_for_user` and `session::create_session` execute inside `register_finish`'s SQLite transaction. Rollback on failure leaves zero user, session, or recovery code rows.
+  - **Immediate Authentication:** The returned `session_token` authenticates immediately against `GET /users/me`.
+  - **Log Safety:** No raw session tokens or plaintext recovery codes appear in any server tracing/log line.
+
 ## Client Contract Issues Verification Fact
 - **ID:** Client Contract Issues Verification
 - **Date:** 2026-10-17

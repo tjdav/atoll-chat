@@ -31,8 +31,8 @@
 
 ## Pending Implementation Tasks (v3.0.5 Patch)
 
-- **Task v3.0.5-1 — `register_finish` Auto-Login & Recovery Code Issuance**: pending
-  - **Scope:** Update `register_finish` in `server/src/routes/register.rs` to generate and persist initial recovery codes (`recovery_code::persist_for_user`), create session token (`session::create_session`), and return `session_token` and `recovery_codes` in `RegisterFinishResponse`.
+- **Task v3.0.5-1 — `register_finish` Auto-Login & Recovery Code Issuance**: done
+  - **Scope:** Updated `register_finish` in `server/src/routes/register.rs` to generate and persist initial recovery codes (`recovery_code::persist_for_user`), create session token (`session::create_session`), and return `session_token` and `recovery_codes` in `RegisterFinishResponse`. Closes Issue 1.
   - **Target Version:** v3.0.5
   - **Batch:** `identity`
 

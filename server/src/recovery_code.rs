@@ -99,10 +99,13 @@ pub fn verify(presented_code: &str, stored_hash: &[u8], stored_salt: &[u8]) -> b
 
 /// Helper function to generate, hash, and persist a recovery code row for a user.
 /// Returns the plaintext code to the caller.
-pub async fn persist_for_user(
-    pool: &SqlitePool,
+pub async fn persist_for_user<'e, E>(
+    executor: E,
     user_id: &str,
-) -> Result<String, RecoveryCodeError> {
+) -> Result<String, RecoveryCodeError>
+where
+    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+{
     let code = generate();
     let (code_hash, code_salt) = hash(&code)?;
 
@@ -120,7 +123,7 @@ pub async fn persist_for_user(
     .bind(user_id)
     .bind(&code_hash[..])
     .bind(&code_salt[..])
-    .execute(pool)
+    .execute(executor)
     .await?;
 
     Ok(code)
