@@ -1,4 +1,21 @@
 
+## Client Contract Issues Verification Fact
+- **ID:** Client Contract Issues Verification
+- **Date:** 2026-10-17
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§5.19, §6.2, §6.19, §6.23, §8.1, §8.1.6)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/client-contract-issues-verify/report.md`.
+  - **Zero Code/Schema Changes:** Verified zero modifications made under `server/`, `docs/openapi.json`, or spec files.
+  - **Issue 1 (`register_finish` response shape):** Emits `{ user_id, username_token, is_owner }`. No recovery code generated; no session token issued. Classified as Spec Decision Required / Genuine Gap.
+  - **Issue 2 (`recover_start` request shape):** Accepts `username_token` ONLY. Rejects `lookup_token`. Diverges from Server Spec §6.23 and `login_start`/`register_start`. Classified as Genuine Gap.
+  - **Issue 3 (`sockudo_url` vs `websocket_url`):** Runtime and OpenAPI emit `websocket_url`. Spec §5.19 & §8.1 mandate `sockudo_url` (v3.0.3 rename rationale). Classified as Code & Annotation Drift / Wrong Client Recommendation.
+  - **Issue 4 (`sockudo_auth_endpoint` in capabilities):** Omitted from runtime response and OpenAPI schema. Mandated by Spec §5.19. Classified as Genuine Gap.
+  - **Issue 5 (`sockudo_channel_prefix` in OpenAPI):** Runtime and OpenAPI emit `sockudo_channel_prefix`. Deliberately removed in Spec §8.1. Classified as Code & Annotation Drift / Wrong Client Recommendation.
+  - **Issue 6 (Contract test):** Evaluated as reasonable suggestion, low priority.
+  - **Formal Response:** Included in report with counter-proposals and target version v3.0.5.
+- **Link to report:** [verification/client-contract-issues-verify/report.md](verification/client-contract-issues-verify/report.md)
+
 ## End-to-End Smoke Walkthrough Verification Fact
 - **ID:** End-to-End Smoke Walkthrough
 - **Date:** 2026-10-17
@@ -499,7 +516,7 @@
   - **Step 0 Report:** Delivered at `verification/endpoint-inventory-reconciliation/report.md`.
   - **Axum Router Inventory:** Parsing `server/src/lib.rs` yields exactly **120 unique HTTP path strings** and **149 `(Method, Path)` pairs** across 120 `.route(...)` statement invocations.
   - **OpenAPI Inventory:** `docs/openapi.json` covers all **120 unique path keys** (matching router paths 100%).
-  - **Discrepancy Resolution:**
+  - **Discrepancies Resolved:**
     - 4 operational aliases (`/health`, `/ready`, `/oprf/blind`, `/api/v1/sockudo/auth`).
     - 52 non-spec operational routes fully annotated and integrated into OpenAPI.
   - **Section (f) Over-count Analysis:** Over-count in final audit report was caused by method vs path confusion (140 bullet items), inclusion of non-router spec paths, and omission of method variants for non-spec routes.
