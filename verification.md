@@ -1,4 +1,15 @@
 
+## Task B — recover_start Accepts lookup_token
+- **ID:** Task B — recover_start Field Fallback Alignment (Issue 2)
+- **Date:** 2026-10-17
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§6.23, §8.1), Client Contract Verification (`verification/client-contract-issues-verify/report.md`)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/recover-start-lookup-token/report.md`.
+  - **Field Fallback Realignment:** `RecoverStartRequest` defines `lookup_token: Option<String>` and `username_token: Option<String>`. `recover_start` resolves token via `body.lookup_token.or(body.username_token)`, preferring `lookup_token` when both are present and retaining `username_token` for backward compatibility.
+  - **Error Code Consistency:** Submitting a request with neither token (or empty token strings) returns `invalid_credentials` (HTTP 401 Unauthorized), matching `login_start`.
+  - **OpenAPI Schema:** `docs/openapi.json` updated with optional `lookup_token` and `username_token` properties on `RecoverStartRequest` schema, leaving `recovery_code` as required.
+
 ## Task A — register_finish Returns Session Token and Recovery Codes
 - **ID:** Task A — register_finish Response Extension (Issue 1)
 - **Date:** 2026-10-17

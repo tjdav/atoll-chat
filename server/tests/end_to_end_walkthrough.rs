@@ -33,12 +33,8 @@ fn valid_pubkey() -> String {
 }
 
 fn make_bot_sig(room_id: &str, epoch: u64, content_type: &str, ciphertext: &[u8]) -> String {
-    let input = server::signing::encode_bot_message_signing_input(
-        room_id,
-        epoch,
-        content_type,
-        ciphertext,
-    );
+    let input =
+        server::signing::encode_bot_message_signing_input(room_id, epoch, content_type, ciphertext);
     let sk = test_signing_key();
     let sig = sk.sign(&input);
     URL_SAFE_NO_PAD.encode(sig.to_bytes())
@@ -143,12 +139,11 @@ async fn setup_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer, serve
         None,
     ));
 
-    let extension_proxy_blocklist = Arc::new(
-        server::extensions_proxy::blocklist::init_blocklist_store(
+    let extension_proxy_blocklist =
+        Arc::new(server::extensions_proxy::blocklist::init_blocklist_store(
             &config_arc.extension_proxy_deny_domains,
             &config_arc.extension_proxy_deny_domains_path,
-        ),
-    );
+        ));
 
     let state = server::AppState {
         pool: pool.clone(),
@@ -306,13 +301,12 @@ async fn test_end_to_end_walkthrough() {
     assert_eq!(login_status, StatusCode::OK);
     let alice_token = login_json["session_token"].as_str().unwrap().to_string();
 
-    let kt_user_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM key_transparency_log WHERE user_id = ?",
-    )
-    .bind(&alice_id)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let kt_user_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM key_transparency_log WHERE user_id = ?")
+            .bind(&alice_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert_eq!(kt_user_count, 1);
 
     // Ensure Alice has a registered device matching her client_id
@@ -345,7 +339,7 @@ async fn test_end_to_end_walkthrough() {
     let resp_user_sync = app.clone().oneshot(req_user_sync).await.unwrap();
     assert_eq!(resp_user_sync.status(), StatusCode::OK);
 
-    let encrypted_display_blob = URL_SAFE_NO_PAD.encode(&[0u8; 32]);
+    let encrypted_display_blob = URL_SAFE_NO_PAD.encode([0u8; 32]);
     let req_patch_me = Request::builder()
         .method("PATCH")
         .uri("/api/v1/users/me")
@@ -395,12 +389,11 @@ async fn test_end_to_end_walkthrough() {
     let bot_id = create_bot_json["bot_id"].as_str().unwrap().to_string();
     let bot_token = create_bot_json["bot_token"].as_str().unwrap().to_string();
 
-    let bot_row_exists: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM bot_accounts WHERE id = ?")
-            .bind(&bot_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let bot_row_exists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM bot_accounts WHERE id = ?")
+        .bind(&bot_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     assert_eq!(bot_row_exists, 1);
 
     let (self_op_user, self_binding, self_bound_by): (String, String, String) =
@@ -453,7 +446,10 @@ async fn test_end_to_end_walkthrough() {
     )
     .await;
     assert_eq!(bob_login_status, StatusCode::OK);
-    let bob_token = bob_login_json["session_token"].as_str().unwrap().to_string();
+    let bob_token = bob_login_json["session_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let req_create_room = Request::builder()
         .method("POST")
@@ -485,7 +481,9 @@ async fn test_end_to_end_walkthrough() {
         .unwrap();
     let get_room_json: Value = serde_json::from_slice(&get_room_bytes).unwrap();
     assert!(get_room_json.get("effective_max_file_size_bytes").is_some());
-    assert!(get_room_json.get("effective_message_retention_days").is_some());
+    assert!(get_room_json
+        .get("effective_message_retention_days")
+        .is_some());
 
     // Alice creates a room invite code for RoomX
     let req_room_invite = Request::builder()
@@ -577,7 +575,11 @@ async fn test_end_to_end_walkthrough() {
         .await
         .unwrap();
     if user_msg_status != StatusCode::CREATED {
-        panic!("post_user_msg failed: status={}, body={}", user_msg_status, String::from_utf8_lossy(&user_msg_bytes));
+        panic!(
+            "post_user_msg failed: status={}, body={}",
+            user_msg_status,
+            String::from_utf8_lossy(&user_msg_bytes)
+        );
     }
     let user_msg_json: Value = serde_json::from_slice(&user_msg_bytes).unwrap();
     let user_msg_id = user_msg_json["message_id"].as_str().unwrap();
@@ -751,7 +753,10 @@ async fn test_end_to_end_walkthrough() {
     // ==========================================
     let req_list_alice = Request::builder()
         .method("GET")
-        .uri(format!("/api/v1/bots/{}/operator-queue?status=pending", bot_id))
+        .uri(format!(
+            "/api/v1/bots/{}/operator-queue?status=pending",
+            bot_id
+        ))
         .header(header::AUTHORIZATION, format!("Bearer {}", alice_token))
         .body(Body::empty())
         .unwrap();
@@ -761,18 +766,34 @@ async fn test_end_to_end_walkthrough() {
         .await
         .unwrap();
     if list_alice_status != StatusCode::OK {
-        panic!("list_alice failed: status={}, body={}", list_alice_status, String::from_utf8_lossy(&list_alice_bytes));
+        panic!(
+            "list_alice failed: status={}, body={}",
+            list_alice_status,
+            String::from_utf8_lossy(&list_alice_bytes)
+        );
     }
     let list_alice_json: Value = serde_json::from_slice(&list_alice_bytes).unwrap();
-    let entries_alice = list_alice_json["requests"].as_array().or_else(|| list_alice_json["entries"].as_array()).expect("requests array");
+    let entries_alice = list_alice_json["requests"]
+        .as_array()
+        .or_else(|| list_alice_json["entries"].as_array())
+        .expect("requests array");
     assert_eq!(entries_alice.len(), 1);
-    assert_eq!(entries_alice[0]["request_id"].as_str().or(entries_alice[0]["id"].as_str()).unwrap(), "op_req_1");
+    assert_eq!(
+        entries_alice[0]["request_id"]
+            .as_str()
+            .or(entries_alice[0]["id"].as_str())
+            .unwrap(),
+        "op_req_1"
+    );
     assert!(entries_alice[0].get("payload_preview").is_some());
     assert!(entries_alice[0].get("payload").is_none());
 
     let req_list_bob = Request::builder()
         .method("GET")
-        .uri(format!("/api/v1/bots/{}/operator-queue?status=pending", bot_id))
+        .uri(format!(
+            "/api/v1/bots/{}/operator-queue?status=pending",
+            bot_id
+        ))
         .header(header::AUTHORIZATION, format!("Bearer {}", bob_token))
         .body(Body::empty())
         .unwrap();
@@ -788,7 +809,8 @@ async fn test_end_to_end_walkthrough() {
     .await
     .unwrap();
 
-    let _carol_id = register_user(&app, "carol", "CarolPassword123!", Some(&carol_invite.code)).await;
+    let _carol_id =
+        register_user(&app, "carol", "CarolPassword123!", Some(&carol_invite.code)).await;
     let (carol_login_status, carol_login_json) = login_user(
         &app,
         "carol",
@@ -798,11 +820,17 @@ async fn test_end_to_end_walkthrough() {
     )
     .await;
     assert_eq!(carol_login_status, StatusCode::OK);
-    let carol_token = carol_login_json["session_token"].as_str().unwrap().to_string();
+    let carol_token = carol_login_json["session_token"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let req_list_carol = Request::builder()
         .method("GET")
-        .uri(format!("/api/v1/bots/{}/operator-queue?status=pending", bot_id))
+        .uri(format!(
+            "/api/v1/bots/{}/operator-queue?status=pending",
+            bot_id
+        ))
         .header(header::AUTHORIZATION, format!("Bearer {}", carol_token))
         .body(Body::empty())
         .unwrap();
@@ -941,10 +969,20 @@ async fn test_end_to_end_walkthrough() {
         push_delivery: None,
         occupancy: server::sessions::OccupancyStore::default(),
         call_occupancy: server::calls::CallOccupancyStore::default(),
-        extension_proxy_blocklist: Arc::new(server::extensions_proxy::blocklist::init_blocklist_store("", "")),
+        extension_proxy_blocklist: Arc::new(
+            server::extensions_proxy::blocklist::init_blocklist_store("", ""),
+        ),
         bot_connection_state: server::bots::BotConnectionState::default(),
     };
-    server::key_transparency::create_snapshot(&pool, &app_state.opaque_server, &app_state.publisher, &config, Some(&alice_id)).await.unwrap();
+    server::key_transparency::create_snapshot(
+        &pool,
+        &app_state.opaque_server,
+        &app_state.publisher,
+        &config,
+        Some(&alice_id),
+    )
+    .await
+    .unwrap();
 
     let req_kt_bot = Request::builder()
         .method("GET")
@@ -1014,12 +1052,11 @@ async fn test_end_to_end_walkthrough() {
     let timeout_report = timeout_job.run(&job_ctx.as_ctx()).await.unwrap();
     assert_eq!(timeout_report.rows_deleted, 1);
 
-    let timeout_row_status: String = sqlx::query_scalar(
-        "SELECT status FROM bot_operator_queue WHERE id = 'op_req_timeout_1'",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    let timeout_row_status: String =
+        sqlx::query_scalar("SELECT status FROM bot_operator_queue WHERE id = 'op_req_timeout_1'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
     assert_eq!(timeout_row_status, "expired");
 
     let timeout_event_str: String = sqlx::query_scalar(

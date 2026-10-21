@@ -21,7 +21,10 @@ use utoipa::ToSchema;
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct RecoverStartRequest {
     pub recovery_code: String,
-    pub username_token: String,
+    /// Optional lookup token for user resolution (Server Spec v3.0.4 §6.23)
+    pub lookup_token: Option<String>,
+    /// Optional username token retained for backward compatibility
+    pub username_token: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -114,12 +117,16 @@ pub async fn recover_start(
     }
 
     // 2. Validate inputs
-    let username_token = body.username_token.trim().to_string();
-    if validate_token(&username_token).is_err() {
+    let lookup_token = match body.lookup_token.or(body.username_token) {
+        Some(ref tok) if !tok.trim().is_empty() => tok.trim().to_string(),
+        _ => return Err(ApiError::Unauthorized("invalid_credentials".to_string())),
+    };
+
+    if validate_token(&lookup_token).is_err() {
         return Err(ApiError::NotFound("recovery_failed".to_string()));
     }
 
-    let credential_id = match token_bytes(&username_token) {
+    let credential_id = match token_bytes(&lookup_token) {
         Ok(bytes) => bytes,
         Err(_) => return Err(ApiError::NotFound("recovery_failed".to_string())),
     };
@@ -129,7 +136,7 @@ pub async fn recover_start(
     // 3. Look up user by username_token
     let user_row: Option<(String,)> =
         sqlx::query_as("SELECT id FROM users WHERE username_token = ? AND deleted_at IS NULL")
-            .bind(&username_token)
+            .bind(&lookup_token)
             .fetch_optional(&state.pool)
             .await?;
 

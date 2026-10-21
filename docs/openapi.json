@@ -7755,15 +7755,25 @@
       "RecoverStartRequest": {
         "type": "object",
         "required": [
-          "recovery_code",
-          "username_token"
+          "recovery_code"
         ],
         "properties": {
+          "lookup_token": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional lookup token for user resolution (Server Spec v3.0.4 §6.23)"
+          },
           "recovery_code": {
             "type": "string"
           },
           "username_token": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional username token retained for backward compatibility"
           }
         }
       },

@@ -394,13 +394,8 @@ pub async fn register_finish(
     }
 
     // Create initial session inside the transaction
-    let session_token_info = session::create_session(
-        &mut *tx,
-        &user_id,
-        None,
-        state.config.session_expiry_days,
-    )
-    .await?;
+    let session_token_info =
+        session::create_session(&mut *tx, &user_id, None, state.config.session_expiry_days).await?;
 
     // Log safety compliance: raw session_token and recovery_codes are never printed to tracing/logs.
     let session_token = session_token_info.raw;
