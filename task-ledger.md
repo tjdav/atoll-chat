@@ -31,6 +31,12 @@
 
 ## Pending Implementation Tasks (v3.0.5 Patch)
 
+- **Rename Task 1 — Config and Internal Rename**: done
+  - **Scope:** Renamed `SOCKUDO_*` env vars to `WEBSOCKET_*` and `PUSHER_*`, `server_config` keys to `pusher_app_key` / `pusher_app_secret`, rate limit env var to `RATE_WEBSOCKET_AUTH_PER_MIN` and variant to `RateLimitKey::WebSocketAuth`, and audit action to `websocket.config_generate`. Wire contract response shapes, auth endpoint mount path, and OpenAPI schema remain unchanged for Rename Task 2.
+  - **Delivered:** Step 0 Empirical Report at `verification/rename-sockudo-config/report.md`.
+  - **Target Version:** v3.0.5
+  - **Batch:** `transport`
+
 - **Task v3.0.5-1 — `register_finish` Auto-Login & Recovery Code Issuance**: done
   - **Scope:** Updated `register_finish` in `server/src/routes/register.rs` to generate and persist initial recovery codes (`recovery_code::persist_for_user`), create session token (`session::create_session`), and return `session_token` and `recovery_codes` in `RegisterFinishResponse`. Closes Issue 1.
   - **Target Version:** v3.0.5

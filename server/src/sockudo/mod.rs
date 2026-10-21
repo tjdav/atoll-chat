@@ -1,3 +1,4 @@
+use crate::audit;
 use crate::config::Config;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
@@ -34,15 +35,15 @@ impl SockudoConfig {
         pool: &SqlitePool,
         config: &Config,
     ) -> Result<Self, SockudoError> {
-        let is_key_auto = config.sockudo_app_key == "auto";
-        let is_secret_auto = config.sockudo_app_secret == "auto";
+        let is_key_auto = config.pusher_app_key == "auto";
+        let is_secret_auto = config.pusher_app_secret == "auto";
 
         let (app_key, app_secret) = match (is_key_auto, is_secret_auto) {
             (false, false) => {
                 info!("sockudo: using externally configured credentials");
                 (
-                    config.sockudo_app_key.clone(),
-                    config.sockudo_app_secret.clone(),
+                    config.pusher_app_key.clone(),
+                    config.pusher_app_secret.clone(),
                 )
             }
             (true, false) | (false, true) => {
@@ -54,11 +55,11 @@ impl SockudoConfig {
                 let mut tx = pool.begin().await?;
 
                 let db_key: Option<(String,)> =
-                    sqlx::query_as("SELECT value FROM server_config WHERE key = 'sockudo_app_key'")
+                    sqlx::query_as("SELECT value FROM server_config WHERE key = 'pusher_app_key'")
                         .fetch_optional(&mut *tx)
                         .await?;
                 let db_secret: Option<(String,)> = sqlx::query_as(
-                    "SELECT value FROM server_config WHERE key = 'sockudo_app_secret'",
+                    "SELECT value FROM server_config WHERE key = 'pusher_app_secret'",
                 )
                 .fetch_optional(&mut *tx)
                 .await?;
@@ -77,7 +78,7 @@ impl SockudoConfig {
                     let gen_secret = URL_SAFE_NO_PAD.encode(secret_bytes);
 
                     sqlx::query(
-                        "INSERT INTO server_config (key, value, is_secret) VALUES ('sockudo_app_key', ?, 0) \
+                        "INSERT INTO server_config (key, value, is_secret) VALUES ('pusher_app_key', ?, 0) \
                          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                     )
                     .bind(&gen_key)
@@ -85,7 +86,7 @@ impl SockudoConfig {
                     .await?;
 
                     sqlx::query(
-                        "INSERT INTO server_config (key, value, is_secret) VALUES ('sockudo_app_secret', ?, 1) \
+                        "INSERT INTO server_config (key, value, is_secret) VALUES ('pusher_app_secret', ?, 1) \
                          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                     )
                     .bind(&gen_secret)
@@ -94,23 +95,36 @@ impl SockudoConfig {
 
                     tx.commit().await?;
 
+                    let _ = audit::log(
+                        pool,
+                        None,
+                        audit::action::WEBSOCKET_CONFIG_GENERATE,
+                        Some("server_config"),
+                        Some(&config.pusher_app_id),
+                        Some(serde_json::json!({
+                            "app_id": config.pusher_app_id,
+                            "app_key": gen_key,
+                        })),
+                    )
+                    .await;
+
                     info!(
                         "sockudo: generated new app credentials (app_id={})",
-                        config.sockudo_app_id
+                        config.pusher_app_id
                     );
                     (gen_key, gen_secret)
                 }
             }
         };
 
-        let http_base = config.sockudo_url.trim_end_matches('/').to_string();
+        let http_base = config.websocket_url.trim_end_matches('/').to_string();
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(2))
             .build();
 
         if let Ok(client) = client {
-            let reachability_url = format!("{}/up/{}", http_base, config.sockudo_app_id);
+            let reachability_url = format!("{}/up/{}", http_base, config.pusher_app_id);
             match client.get(&reachability_url).send().await {
                 Ok(resp) if resp.status().is_success() => {
                     info!("sockudo: reachable at {}", http_base);
@@ -125,10 +139,10 @@ impl SockudoConfig {
 
         Ok(Self {
             http_base,
-            app_id: config.sockudo_app_id.clone(),
+            app_id: config.pusher_app_id.clone(),
             app_key,
             app_secret,
-            enable_client_events: config.sockudo_enable_client_events,
+            enable_client_events: config.websocket_enable_client_events,
         })
     }
 }

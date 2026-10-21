@@ -48,6 +48,7 @@ pub enum RateLimitKey {
     OperatorQueueList { bot_id: String, user_id: String },
     OperatorQueueRespond { bot_id: String, user_id: String },
     OperatorQueueEnqueue { bot_id: String },
+    WebSocketAuth { identity: String },
 }
 
 #[derive(Debug, Clone)]
@@ -538,6 +539,16 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_operator_queue_enqueue_per_min,
+            )
+        }
+        RateLimitKey::WebSocketAuth { identity } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("websocket_auth:{identity}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_websocket_auth_per_min,
             )
         }
     };

@@ -45,6 +45,7 @@ pub struct RateLimitConfig {
     pub rate_operator_queue_list_per_min: u32,
     pub rate_operator_queue_respond_per_min: u32,
     pub rate_operator_queue_enqueue_per_min: u32,
+    pub rate_websocket_auth_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -153,12 +154,13 @@ pub struct Config {
     pub hsts_max_age: u64,
     pub hsts_include_subdomains: bool,
     pub client_static_dir: Option<String>,
-    pub sockudo_url: String,
-    pub sockudo_app_id: String,
-    pub sockudo_app_key: String,
-    pub sockudo_app_secret: String,
-    pub sockudo_enable_client_events: bool,
-    pub sockudo_public_url: Option<String>,
+    pub websocket_url: String,
+    pub pusher_app_id: String,
+    pub pusher_app_key: String,
+    pub pusher_app_secret: String,
+    pub websocket_auth_path: String,
+    pub websocket_enable_client_events: bool,
+    pub websocket_public_url: Option<String>,
 
     pub storage_backend: String,
     pub storage_fs_path: PathBuf,
@@ -615,6 +617,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(60);
 
+        let rate_websocket_auth_per_min = env::var("RATE_WEBSOCKET_AUTH_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(300);
+
         let bot_command_ttl_hours = env::var("BOT_COMMAND_TTL_HOURS")
             .ok()
             .and_then(|s| s.parse().ok())
@@ -663,6 +670,7 @@ impl Config {
             rate_operator_queue_list_per_min,
             rate_operator_queue_respond_per_min,
             rate_operator_queue_enqueue_per_min,
+            rate_websocket_auth_per_min,
         };
 
         let link_preview_proxy_enabled = env::var("LINK_PREVIEW_PROXY_ENABLED")
@@ -1056,40 +1064,46 @@ impl Config {
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
 
-        let sockudo_url = match env::var("SOCKUDO_URL") {
+        let websocket_url = match env::var("WEBSOCKET_URL") {
             Ok(val) if !val.trim().is_empty() => val.trim().to_string(),
             _ => {
                 if app_env == "production" {
-                    anyhow::bail!("SOCKUDO_URL must be set in production mode");
+                    anyhow::bail!("WEBSOCKET_URL must be set in production mode");
                 } else {
                     "http://localhost:6001".to_string()
                 }
             }
         };
 
-        let sockudo_app_id = env::var("SOCKUDO_APP_ID")
+        let pusher_app_id = env::var("PUSHER_APP_ID")
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "chat".to_string());
 
-        let sockudo_app_key = env::var("SOCKUDO_APP_KEY")
+        let pusher_app_key = env::var("PUSHER_APP_KEY")
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "auto".to_string());
 
-        let sockudo_app_secret = env::var("SOCKUDO_APP_SECRET")
+        let pusher_app_secret = env::var("PUSHER_APP_SECRET")
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "auto".to_string());
 
-        let sockudo_enable_client_events = env::var("SOCKUDO_ENABLE_CLIENT_EVENTS")
+        let websocket_auth_path = env::var("WEBSOCKET_AUTH_PATH")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "/sockudo/auth".to_string());
+
+        let websocket_enable_client_events = env::var("WEBSOCKET_ENABLE_CLIENT_EVENTS")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
             .unwrap_or(true);
 
-        let sockudo_public_url = env::var("SOCKUDO_PUBLIC_URL")
+        let websocket_public_url = env::var("WEBSOCKET_PUBLIC_URL")
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
@@ -1431,12 +1445,13 @@ impl Config {
             hsts_max_age,
             hsts_include_subdomains,
             client_static_dir,
-            sockudo_url,
-            sockudo_app_id,
-            sockudo_app_key,
-            sockudo_app_secret,
-            sockudo_enable_client_events,
-            sockudo_public_url,
+            websocket_url,
+            pusher_app_id,
+            pusher_app_key,
+            pusher_app_secret,
+            websocket_auth_path,
+            websocket_enable_client_events,
+            websocket_public_url,
             storage_backend,
             storage_fs_path,
             s3_endpoint,
@@ -1546,6 +1561,7 @@ impl Config {
                 rate_operator_queue_list_per_min: 60,
                 rate_operator_queue_respond_per_min: 30,
                 rate_operator_queue_enqueue_per_min: 60,
+                rate_websocket_auth_per_min: 300,
             },
             bot_command_ttl_hours: 24,
             link_preview_proxy_enabled: false,
@@ -1605,12 +1621,13 @@ impl Config {
             hsts_max_age: 0,
             hsts_include_subdomains: false,
             client_static_dir: None,
-            sockudo_url: "http://localhost:6001".to_string(),
-            sockudo_app_id: "chat".to_string(),
-            sockudo_app_key: "test-key".to_string(),
-            sockudo_app_secret: "test-secret".to_string(),
-            sockudo_enable_client_events: true,
-            sockudo_public_url: None,
+            websocket_url: "http://localhost:6001".to_string(),
+            pusher_app_id: "chat".to_string(),
+            pusher_app_key: "test-key".to_string(),
+            pusher_app_secret: "test-secret".to_string(),
+            websocket_auth_path: "/sockudo/auth".to_string(),
+            websocket_enable_client_events: true,
+            websocket_public_url: None,
             storage_backend: "fs".to_string(),
             storage_fs_path: PathBuf::from("/tmp/test-attachments"),
             s3_endpoint: None,

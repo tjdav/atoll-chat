@@ -46,12 +46,12 @@ pub async fn handler(State(state): State<AppState>) -> Response {
     checks.insert("oprf_key".to_string(), "ok".to_string());
 
     // 3. Sockudo check
-    if let Ok(sockudo_url) = std::env::var("SOCKUDO_URL") {
-        let trimmed = sockudo_url.trim();
+    if let Ok(websocket_url) = std::env::var("WEBSOCKET_URL") {
+        let trimmed = websocket_url.trim();
         if trimmed.is_empty() {
             checks.insert("sockudo".to_string(), "skipped".to_string());
         } else {
-            let app_id = std::env::var("SOCKUDO_APP_ID").unwrap_or_else(|_| "app".to_string());
+            let app_id = std::env::var("PUSHER_APP_ID").unwrap_or_else(|_| "app".to_string());
             let target_url = format!("{}/up/{}", trimmed.trim_end_matches('/'), app_id);
 
             match check_sockudo(&target_url).await {
