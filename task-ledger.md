@@ -2,6 +2,14 @@
 
 ## Completed Verifications
 
+- **Verify Sessions Endpoints and Full Annotation Coverage**: done
+  - **Delivered:** `verification/verify-sessions-and-annotation-coverage/report.md`
+  - **Summary:** Verified all sessions routes in `server/src/lib.rs`. Identified 7 unannotated room-scoped session handlers in `server/src/routes/room_sessions.rs`. Confirmed `POST /api/v1/rooms/:id/sessions/:session_id/signal` contract (auth checks room member + in-memory participant; envelope is opaque <=64KB; occupancy published to room channel). Computed full 55-path router-vs-OpenAPI gap diff across 10 domains. Recommended follow-up annotation sweep and runtime dynamic comparison test fix.
+
+- **Verify Client Events Configuration and Capability Exposure**: done
+  - **Delivered:** `verification/verify-client-events-config/report.md`
+  - **Summary:** Verified `SOCKUDO_ENABLE_CLIENT_EVENTS` env var read and propagation to `sockudo::Publisher`. Verified Sockudo container runs independently; server does not manage app provisioning over HTTP API. Identified gap that `CapabilitiesResponse` lacks `client_events_enabled` property. Recommended adding `client_events_enabled: bool` to capabilities response.
+
 - **Client Contract Issues Verification**: done
   - **Delivered:** `verification/client-contract-issues-verify/report.md`
   - **Summary:** Verified 5 contract issues filed by client team against Server Spec v3.0.4. Classified Issue 1 (register_finish response shape: session token & recovery codes) as Spec Decision Required / Genuine Gap; Issue 2 (recover_start request shape: accept lookup_token) as Genuine Gap; Issue 3 (sockudo_url in capabilities) & Issue 5 (remove sockudo_channel_prefix) as Code/Annotation Drift with Wrong Client Recommendations; Issue 4 (sockudo_auth_endpoint in capabilities) as Genuine Gap; Issue 6 (contract test) as Reasonable Suggestion (low priority). Provided formal response to client team outlining counter-proposals and v3.0.5 target patch release. Zero code or schema files modified.
@@ -29,7 +37,22 @@
   - **Delivered:** `verification/device-contracts-verified/report.md`
   - **Outcome:** Verified `platform` validation at `login_start`, `user_seq` transaction atomicity, event publish timing post-commit, `device.name_updated` payload shape, absence of legacy V2 code remnants, and `device_state` response contract in `GET /users/me/sync`. Identified 7 test coverage gaps logged as pending follow-up test items.
 
-## Pending Implementation Tasks (v3.0.5 Patch)
+## Pending Implementation Tasks (v3.0.5 Patch & Tooling)
+
+- **Annotation sweep — fix all unannotated routes identified in verify-sessions-and-annotation-coverage**: pending
+  - **Scope:** Annotate all 55 router-only paths identified in `verification/verify-sessions-and-annotation-coverage/report.md` with `#[utoipa::path(...)]` attributes across Admin, Attachments, Calls, Keypackages, Models, Roles, Rooms, Messaging, Sessions, and Welcomes domains, and register them in `docs/openapi.json`.
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
+- **Annotation coverage assertion — replace hardcoded list with router-vs-OpenAPI runtime comparison**: pending
+  - **Scope:** Update `server/tests/openapi_generation.rs` to extract route paths dynamically from `server/src/lib.rs` Axum router definition and assert that every router path is present in `docs/openapi.json` at test time.
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
+- **Task v3.0.5-5 — Capabilities `client_events_enabled` Field Addition**: pending
+  - **Scope:** Update `CapabilitiesResponse` struct in `server/src/routes/capabilities.rs` and OpenAPI schema in `docs/openapi.json` to expose `client_events_enabled: bool` populated from `config.sockudo_enable_client_events`.
+  - **Target Version:** v3.0.5
+  - **Batch:** `transport`
 
 - **Task v3.0.5-1 — `register_finish` Auto-Login & Recovery Code Issuance**: done
   - **Scope:** Updated `register_finish` in `server/src/routes/register.rs` to generate and persist initial recovery codes (`recovery_code::persist_for_user`), create session token (`session::create_session`), and return `session_token` and `recovery_codes` in `RegisterFinishResponse`. Closes Issue 1.
@@ -414,9 +437,9 @@ None.
   - **Summary:** Resolved the 4 OpenAPI-router path discrepancies. Updated health and ready OpenAPI annotations to `/health` and `/ready`. Removed root alias for `/oprf/blind`, leaving `/api/v1/oprf/blind`. Moved `/sockudo/auth` to root app per §8.1.6. Added admin permission check to `list_admin` and registered missing route `GET /api/v1/admin/rooms/{id}/sessions` in `lib.rs`. Regenerated `docs/openapi.json` and updated tests. Router paths and OpenAPI path items match 1:1 at exactly 120 unique path keys.
 
 ## Summary
-- **Project Status:** Active (Client Contract Verification complete; v3.0.5 patch tasks pending)
-- **Total Verifications/Tasks Tracked:** 73
-- **Done:** 69
+- **Project Status:** Active (Client Contract Verification & Verification Tasks 1/2 complete; v3.0.5 patch tasks pending)
+- **Total Verifications/Tasks Tracked:** 75
+- **Done:** 71
 - **Pending:** 4
 - **In-Progress:** 0
 - **Mismatches:** 0

@@ -1,4 +1,31 @@
 
+## Verify Sessions Endpoints and Full Annotation Coverage
+- **ID:** Verify Sessions Endpoints and Full Annotation Coverage
+- **Date:** 2026-10-21
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§6.26, §8.7, §8.7.16), Client Team Round 3 Proposal Item 3
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/verify-sessions-and-annotation-coverage/report.md`.
+  - **Router Registration:** Enumerate 10 route registrations defining 13 `(Method, Path)` handlers for room, user, and admin sessions in `server/src/lib.rs`.
+  - **Annotation Status:** Identified that 7 room-scoped session handlers in `server/src/routes/room_sessions.rs` lack `#[utoipa::path]` annotations.
+  - **Signal Endpoint Contract:** Analyzed `POST /api/v1/rooms/:id/sessions/:session_id/signal`. Verified caller authorization (room member DB check + in-memory session participant check), complete signature/envelope opacity (64 KiB size cap), and occupancy disclosure (`session.occupancy` events published over `private-room-{room_id}` WebSocket channel).
+  - **Full Router-vs-OpenAPI Diff:** Produced complete router-vs-OpenAPI diff identifying 55 router-only paths across 10 functional domains (Admin, Attachments, Calls, Keypackages, Models, Roles, Rooms, Messaging, Sessions, Welcomes).
+  - **Recommendations:** Recommended follow-up sweep task to annotate all 55 paths and test fix in `server/tests/openapi_generation.rs` comparing router paths dynamically against OpenAPI at runtime.
+- **Link to report:** [verification/verify-sessions-and-annotation-coverage/report.md](verification/verify-sessions-and-annotation-coverage/report.md)
+
+## Verify Client Events Configuration and Capability Exposure
+- **ID:** Verify Client Events Configuration and Capability Exposure
+- **Date:** 2026-10-21
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§5.19, §8.1), Client Team Round 3 Proposal Item 2
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/verify-client-events-config/report.md`.
+  - **Environment Variable Read:** `SOCKUDO_ENABLE_CLIENT_EVENTS` (and rename alias `WEBSOCKET_ENABLE_CLIENT_EVENTS`) read in `server/src/config.rs` (defaulting to `true`) and stored on `SockudoConfig.enable_client_events`.
+  - **Sockudo Setup & App Creation:** Verified that Sockudo container is independent; server does not manage or provision the Sockudo app over HTTP API.
+  - **Capabilities Exposure Gap:** Confirmed `CapabilitiesResponse` in `server/src/routes/capabilities.rs` and `docs/openapi.json` currently lacks a `client_events_enabled` field.
+  - **Root Cause & Recommendations:** Client team concern is valid—if `enableClientMessages` is off on Sockudo, typing events drop silently. Recommended adding `client_events_enabled: bool` to capabilities response and documenting Sockudo container alignment.
+- **Link to report:** [verification/verify-client-events-config/report.md](verification/verify-client-events-config/report.md)
+
 ## Task B — recover_start Accepts lookup_token
 - **ID:** Task B — recover_start Field Fallback Alignment (Issue 2)
 - **Date:** 2026-10-17
