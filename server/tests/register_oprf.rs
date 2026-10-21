@@ -117,7 +117,9 @@ async fn test_registration_flow() {
     assert_eq!(json2["is_owner"], true);
 
     // 1. Assert session_token presence and 43-char unpadded base64url format
-    let session_token = json2["session_token"].as_str().expect("missing session_token");
+    let session_token = json2["session_token"]
+        .as_str()
+        .expect("missing session_token");
     assert_eq!(session_token.len(), 43);
 
     // 2. Assert recovery_codes presence and count = 8
@@ -316,7 +318,9 @@ async fn test_register_finish_log_leak_prevention() {
         .unwrap();
     let json2: Value = serde_json::from_slice(&body_bytes2).unwrap();
 
-    let session_token = json2["session_token"].as_str().expect("missing session_token");
+    let session_token = json2["session_token"]
+        .as_str()
+        .expect("missing session_token");
     let recovery_codes: Vec<&str> = json2["recovery_codes"]
         .as_array()
         .expect("missing recovery_codes")

@@ -186,12 +186,13 @@ async fn test_recovery_full_happy_path() {
 
     // 5. Verify database assertions:
     // Code row is consumed
-    let consumed_at: Option<String> =
-        sqlx::query_scalar("SELECT consumed_at FROM recovery_codes WHERE user_id = ? AND consumed_at IS NOT NULL")
-            .bind(&user_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+    let consumed_at: Option<String> = sqlx::query_scalar(
+        "SELECT consumed_at FROM recovery_codes WHERE user_id = ? AND consumed_at IS NOT NULL",
+    )
+    .bind(&user_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     assert!(consumed_at.is_some());
 
     // Old HTTP session is revoked
@@ -653,4 +654,127 @@ async fn test_recovery_invalid_registration_record() {
             .await
             .unwrap();
     assert!(consumed_at.is_none());
+}
+
+#[tokio::test]
+async fn test_recovery_start_token_fallback_and_precedence() {
+    let (app, pool) = setup_test_app().await;
+
+    let (user_id, token) = register_user(&app, "eve_recover", b"pass123").await;
+    let code = recovery_code::persist_for_user(&pool, &user_id)
+        .await
+        .unwrap();
+
+    // 1. Request with lookup_token ONLY succeeds
+    let req_lookup_only = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/recover/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "recovery_code": code,
+                "lookup_token": token
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_lookup_only = app.clone().oneshot(req_lookup_only).await.unwrap();
+    assert_eq!(resp_lookup_only.status(), StatusCode::OK);
+    let body_lookup_bytes = axum::body::to_bytes(resp_lookup_only.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_lookup: Value = serde_json::from_slice(&body_lookup_bytes).unwrap();
+    assert!(json_lookup["recovery_session"].as_str().is_some());
+
+    // 2. Request with username_token ONLY succeeds (backward compatibility)
+    let req_user_only = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/recover/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "recovery_code": code,
+                "username_token": token
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_user_only = app.clone().oneshot(req_user_only).await.unwrap();
+    assert_eq!(resp_user_only.status(), StatusCode::OK);
+    let body_user_bytes = axum::body::to_bytes(resp_user_only.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_user: Value = serde_json::from_slice(&body_user_bytes).unwrap();
+    assert!(json_user["recovery_session"].as_str().is_some());
+
+    // 3. Request with BOTH: valid lookup_token and fake username_token succeeds (lookup_token takes precedence)
+    let fake_token = URL_SAFE_NO_PAD.encode([9u8; 64]);
+    let req_both = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/recover/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "recovery_code": code,
+                "lookup_token": token,
+                "username_token": fake_token
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_both = app.clone().oneshot(req_both).await.unwrap();
+    assert_eq!(resp_both.status(), StatusCode::OK);
+    let body_both_bytes = axum::body::to_bytes(resp_both.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_both: Value = serde_json::from_slice(&body_both_bytes).unwrap();
+    assert!(json_both["recovery_session"].as_str().is_some());
+
+    // 4. Request with NEITHER returns 401 Unauthorized "invalid_credentials"
+    let req_neither = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/recover/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "recovery_code": code
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_neither = app.clone().oneshot(req_neither).await.unwrap();
+    assert_eq!(resp_neither.status(), StatusCode::UNAUTHORIZED);
+    let body_neither_bytes = axum::body::to_bytes(resp_neither.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_neither: Value = serde_json::from_slice(&body_neither_bytes).unwrap();
+    assert_eq!(json_neither["error"], "invalid_credentials");
+
+    // 5. Request with empty-string lookup_token and valid username_token returns 401 Unauthorized "invalid_credentials"
+    // (because Option::or takes Some("") without falling back to username_token, matching login_start behavior)
+    let req_empty_lookup = Request::builder()
+        .method("POST")
+        .uri("/api/v1/auth/recover/start")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "recovery_code": code,
+                "lookup_token": "",
+                "username_token": token
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let resp_empty_lookup = app.clone().oneshot(req_empty_lookup).await.unwrap();
+    assert_eq!(resp_empty_lookup.status(), StatusCode::UNAUTHORIZED);
+    let body_empty_bytes = axum::body::to_bytes(resp_empty_lookup.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_empty: Value = serde_json::from_slice(&body_empty_bytes).unwrap();
+    assert_eq!(json_empty["error"], "invalid_credentials");
 }

@@ -513,6 +513,22 @@ fn test_openapi_doc_validity() {
         .collect();
     assert!(reg_finish_required.contains(&"session_token"));
     assert!(reg_finish_required.contains(&"recovery_codes"));
+
+    // Assert RecoverStartRequest schema declares recovery_code as the only required field and lookup_token / username_token as optional
+    let rec_start_props = &schemas["RecoverStartRequest"]["properties"]
+        .as_object()
+        .unwrap();
+    assert!(rec_start_props.contains_key("recovery_code"));
+    assert!(rec_start_props.contains_key("lookup_token"));
+    assert!(rec_start_props.contains_key("username_token"));
+
+    let rec_start_required: Vec<&str> = schemas["RecoverStartRequest"]["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert_eq!(rec_start_required, vec!["recovery_code"]);
 }
 
 #[test]

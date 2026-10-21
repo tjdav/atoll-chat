@@ -36,8 +36,8 @@
   - **Target Version:** v3.0.5
   - **Batch:** `identity`
 
-- **Task v3.0.5-2 — `recover_start` Field Fallback Alignment**: pending
-  - **Scope:** Update `recover_start` in `server/src/routes/recover.rs` and `RecoverStartRequest` DTO to accept `lookup_token` or `username_token` (`body.lookup_token.or(body.username_token)`), aligning with `login_start` and `register_start` per Server Spec §6.23.
+- **Task v3.0.5-2 — `recover_start` Field Fallback Alignment**: done
+  - **Scope:** Updated `recover_start` in `server/src/routes/recover.rs` and `RecoverStartRequest` DTO to accept `lookup_token` or `username_token` (`body.lookup_token.or(body.username_token)`), aligning with `login_start` and `register_start` per Server Spec §6.23. Closes Issue 2.
   - **Target Version:** v3.0.5
   - **Batch:** `identity`
 
