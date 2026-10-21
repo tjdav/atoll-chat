@@ -1,4 +1,17 @@
 
+## Client Events Configuration and Capability Verification Fact
+- **ID:** Task 2 — Verify Client Events Configuration and Capability
+- **Date:** 2026-10-21
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§5.19, §8.1)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/verify-client-events-config/report.md`.
+  - **Unused Config Variable:** `SOCKUDO_ENABLE_CLIENT_EVENTS` is read in `server/src/config.rs:1088-1090` (default `true`) and stored on `Publisher`, but is never passed to Sockudo, never used to configure Sockudo via HTTP, and never exposed in `GET /capabilities`.
+  - **Sockudo Container Ownership:** Sockudo runs in its own container configured independently. Axum server does not create or configure the Sockudo app on startup over HTTP.
+  - **Capabilities Exposure Gap:** `CapabilitiesResponse` (`server/src/routes/capabilities.rs`) and `docs/openapi.json` do not expose `client_events_enabled` or `sockudo_client_events`.
+  - **Client Concern Valid:** Typing indicators depend on client events sent directly over WebSockets (`client-typing.start`/`.stop`). There is no HTTP relay fallback. If client events are disabled on Sockudo, typing indicators silently fail.
+- **Link to report:** [verification/verify-client-events-config/report.md](verification/verify-client-events-config/report.md)
+
 ## Task B — recover_start Accepts lookup_token
 - **ID:** Task B — recover_start Field Fallback Alignment (Issue 2)
 - **Date:** 2026-10-17

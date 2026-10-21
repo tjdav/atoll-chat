@@ -2,6 +2,10 @@
 
 ## Completed Verifications
 
+- **Client Events Configuration and Capability Exposure Verification**: done
+  - **Delivered:** `verification/verify-client-events-config/report.md`
+  - **Summary:** Verified environment variable reads, propagation paths, Sockudo container independence, app creation flow, capabilities schema, client event whitelisting, rate limits, and failure modes. Confirmed that `SOCKUDO_ENABLE_CLIENT_EVENTS` is read into `Config` and `Publisher` but never passed to Sockudo or exposed in `GET /capabilities`. Confirmed client concern is valid (typing indicators depend on client events directly over WebSocket, with no server HTTP fallback).
+
 - **Client Contract Issues Verification**: done
   - **Delivered:** `verification/client-contract-issues-verify/report.md`
   - **Summary:** Verified 5 contract issues filed by client team against Server Spec v3.0.4. Classified Issue 1 (register_finish response shape: session token & recovery codes) as Spec Decision Required / Genuine Gap; Issue 2 (recover_start request shape: accept lookup_token) as Genuine Gap; Issue 3 (sockudo_url in capabilities) & Issue 5 (remove sockudo_channel_prefix) as Code/Annotation Drift with Wrong Client Recommendations; Issue 4 (sockudo_auth_endpoint in capabilities) as Genuine Gap; Issue 6 (contract test) as Reasonable Suggestion (low priority). Provided formal response to client team outlining counter-proposals and v3.0.5 target patch release. Zero code or schema files modified.
@@ -48,7 +52,7 @@
   - **Batch:** `identity`
 
 - **Task v3.0.5-3 — Capabilities Sockudo Fields Alignment**: pending
-  - **Scope:** Update `capabilities` handler in `server/src/routes/capabilities.rs` to emit `sockudo_url` (renaming from `websocket_url`), emit `sockudo_auth_endpoint: "/sockudo/auth"`, and remove `sockudo_channel_prefix` per Server Spec §5.19 and §8.1.
+  - **Scope:** Update `capabilities` handler in `server/src/routes/capabilities.rs` to emit `sockudo_url` (renaming from `websocket_url`), emit `sockudo_auth_endpoint: "/sockudo/auth"`, remove `sockudo_channel_prefix`, and add `client_events_enabled` boolean per Server Spec §5.19 and §8.1.
   - **Target Version:** v3.0.5
   - **Batch:** `transport`
 
