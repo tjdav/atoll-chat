@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
 
-use crate::{auth::AuthUser, error::ApiError, error::ErrorResponse, rooms, AppState};
+use crate::{
+    auth::AuthUser, error::ApiError, error::ErrorResponse, rate_limit, rooms, AppState,
+};
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct AuthRequest {
@@ -49,6 +51,22 @@ pub async fn auth_handler(
     auth: AuthUser,
     Json(payload): Json<AuthRequest>,
 ) -> Result<Json<AuthResponse>, ApiError> {
+    let rate_decision = rate_limit::check(
+        &state.pool,
+        &state.config.rate_limits,
+        rate_limit::RateLimitKey::WebSocketAuth {
+            identity: auth.user_id.clone(),
+        },
+    )
+    .await?;
+
+    if !rate_decision.allowed {
+        return Err(ApiError::TooManyRequests {
+            message: "rate_limit_exceeded".to_string(),
+            reset_at: rate_decision.reset_at,
+        });
+    }
+
     if !is_valid_socket_id(&payload.socket_id) {
         return Err(ApiError::BadRequest("invalid_socket_id".to_string()));
     }

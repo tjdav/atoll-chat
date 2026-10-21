@@ -40,6 +40,7 @@ pub mod action {
     pub const BOT_OPERATOR_BOUND: &str = "bot.operator.bound";
     pub const BOT_OPERATOR_UNBOUND: &str = "bot.operator.unbound";
     pub const BOT_OPERATOR_QUEUE_PURGED: &str = "bot.operator_queue_purged";
+    pub const WEBSOCKET_CONFIG_GENERATE: &str = "websocket.config_generate";
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

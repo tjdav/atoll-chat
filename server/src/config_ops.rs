@@ -14,8 +14,8 @@ pub const SECRET_KEYS: &[&str] = &[
     "altcha_hmac_secret",
     "vapid_public_key",
     "vapid_private_key",
-    "sockudo_app_key",
-    "sockudo_app_secret",
+    "pusher_app_key",
+    "pusher_app_secret",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
