@@ -2,6 +2,10 @@
 
 ## Completed Verifications
 
+- **Dynamic OpenAPI Router Test Verification**: done
+  - **Delivered:** `verification/dynamic-openapi-router-test/report.md`, `server/tests/openapi_generation.rs`
+  - **Summary:** Replaced hardcoded OpenAPI path list assertion in `server/tests/openapi_generation.rs` with dynamic router-vs-OpenAPI comparison parsing `server/src/lib.rs` and querying `ApiDoc::openapi()`. The test normalizes path parameters and prefixes, formats clear multi-line failure messages listing missing paths alphabetically, and is marked `#[ignore]` pending the OpenAPI annotation sweep. Empirically confirmed initial failure set of 52 missing router paths.
+
 - **Client Events Configuration and Capability Exposure Verification**: done
   - **Delivered:** `verification/verify-client-events-config/report.md`
   - **Summary:** Verified environment variable reads, propagation paths, Sockudo container independence, app creation flow, capabilities schema, client event whitelisting, rate limits, and failure modes. Confirmed that `SOCKUDO_ENABLE_CLIENT_EVENTS` is read into `Config` and `Publisher` but never passed to Sockudo or exposed in `GET /capabilities`. Confirmed client concern is valid (typing indicators depend on client events directly over WebSocket, with no server HTTP fallback).
@@ -33,7 +37,12 @@
   - **Delivered:** `verification/device-contracts-verified/report.md`
   - **Outcome:** Verified `platform` validation at `login_start`, `user_seq` transaction atomicity, event publish timing post-commit, `device.name_updated` payload shape, absence of legacy V2 code remnants, and `device_state` response contract in `GET /users/me/sync`. Identified 7 test coverage gaps logged as pending follow-up test items.
 
-## Pending Implementation Tasks (v3.0.5 Patch)
+## Pending Implementation Tasks
+
+- **Annotation Sweep — OpenAPI Coverage Completion**: pending
+  - **Scope:** Annotate the 52 missing router paths in OpenAPI (`ApiDoc` / `utoipa`), regenerating `docs/openapi.json`. Remove `#[ignore]` on `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs` when the sweep lands to verify 100% path matching.
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
 
 - **Rename Task 1 — Config and Internal Rename**: done
   - **Scope:** Renamed `SOCKUDO_*` env vars to `WEBSOCKET_*` and `PUSHER_*`, `server_config` keys to `pusher_app_key` / `pusher_app_secret`, rate limit env var to `RATE_WEBSOCKET_AUTH_PER_MIN` and variant to `RateLimitKey::WebSocketAuth`, and audit action to `websocket.config_generate`. Wire contract response shapes, auth endpoint mount path, and OpenAPI schema remain unchanged for Rename Task 2.
@@ -425,8 +434,8 @@ None.
 
 ## Summary
 - **Project Status:** Active (Client Contract Verification complete; v3.0.5 patch tasks pending)
-- **Total Verifications/Tasks Tracked:** 73
-- **Done:** 69
+- **Total Verifications/Tasks Tracked:** 74
+- **Done:** 70
 - **Pending:** 4
 - **In-Progress:** 0
 - **Mismatches:** 0

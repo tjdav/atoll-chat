@@ -1,4 +1,18 @@
 
+## Dynamic OpenAPI Router Test Verification Fact
+- **ID:** Dynamic OpenAPI Router Test
+- **Date:** 2026-10-22
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§8.1)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/dynamic-openapi-router-test/report.md`.
+  - **Dynamic Router Extraction:** Hardcoded `expected_paths` list in `server/tests/openapi_generation.rs` removed and replaced with dynamic set comparison that parses `server/src/lib.rs` to extract all router paths.
+  - **OpenAPI Extraction:** Reads path items dynamically from `ApiDoc::openapi().paths`.
+  - **Set Comparison & Error Format:** Computes `router_only` and `openapi_only` sets. Panic message formats a clear, multi-line list of missing paths sorted alphabetically.
+  - **Ignored Initial State:** Test `test_router_and_openapi_paths_match_one_to_one` is marked `#[ignore = "Pending OpenAPI annotation sweep (52 paths currently missing from OpenAPI)"]`.
+  - **Empirical Failure Baseline:** Manual execution (`cargo test --test openapi_generation -- --ignored`) produces expected failure showing `router_only count: 52` and `openapi_only count: 0`.
+- **Link to report:** [verification/dynamic-openapi-router-test/report.md](verification/dynamic-openapi-router-test/report.md)
+
 ## Client Events Configuration and Capability Verification Fact
 - **ID:** Task 2 — Verify Client Events Configuration and Capability
 - **Date:** 2026-10-21
