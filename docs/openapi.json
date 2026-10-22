@@ -3747,6 +3747,72 @@
         ]
       }
     },
+    "/api/v1/rooms/{id}/p2p/signal": {
+      "post": {
+        "tags": [
+          "Messaging"
+        ],
+        "summary": "Relay a P2P file transfer signaling envelope.",
+        "description": "Relays an encrypted WebRTC signaling envelope to the specified target user on their private user channel (`private-user-{target_user_id}`) as `p2p.signal`. Refers to Server Spec v3.0.4 §6.24 (call signaling pattern), §8.9 (user channel events), and §14.6 (metadata minimization). The envelope is opaque to the server, the event is non-durable, and the server does not persist or log the payload.",
+        "operationId": "signal_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/P2pSignalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signaling envelope relayed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P2pSignalResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, envelope, or sender client ID"
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing session token"
+          },
+          "403": {
+            "description": "Forbidden - caller is not a member of the room"
+          },
+          "404": {
+            "description": "Target user is not a member of the room"
+          },
+          "429": {
+            "description": "Rate limit exceeded for P2P signaling"
+          },
+          "500": {
+            "description": "Internal server error - publish failure"
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/rooms/{id}/publisher-key": {
       "get": {
         "tags": [
@@ -8566,6 +8632,43 @@
             "type": "string",
             "format": "byte",
             "description": "Evaluated element string, base64url encoded (Server Spec v3.0.4 §8.1.1)"
+          }
+        }
+      },
+      "P2pSignalRequest": {
+        "type": "object",
+        "required": [
+          "sender_client_id",
+          "target_user_id",
+          "target_client_id",
+          "envelope"
+        ],
+        "properties": {
+          "envelope": {
+            "type": "string",
+            "format": "byte",
+            "description": "End-to-end encrypted P2P file transfer signaling envelope (unpadded Base64URL string, <= 64 KiB) per Server Spec v3.0.4 §6.24, §8.9, and §14.6."
+          },
+          "sender_client_id": {
+            "type": "string"
+          },
+          "target_client_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          }
+        }
+      },
+      "P2pSignalResponse": {
+        "type": "object",
+        "required": [
+          "delivered_to"
+        ],
+        "properties": {
+          "delivered_to": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },

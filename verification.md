@@ -1,4 +1,19 @@
 
+## P2P Signaling Relay Endpoint Fact
+- **ID:** P2P Signaling Endpoint (`POST /api/v1/rooms/:id/p2p/signal`)
+- **Date:** 2026-10-24
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Client Round 3 Item 1, Server Spec §6.24, §8.9, §14.6, §5.6
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/p2p-signal-endpoint/report.md` with all 13 baseline checks and draft specification amendment.
+  - **Endpoint & Route Registration:** `POST /api/v1/rooms/:id/p2p/signal` implemented in `server/src/routes/p2p.rs` and registered in `server/src/lib.rs`.
+  - **Auth & Validations:** Authenticates bearer session token, verifies caller room membership (403 `not_a_member`), target user room membership (404 `target_not_in_room`), caller device ownership of `sender_client_id` (400 `invalid_sender_client_id`), and base64url envelope length <= 64 KiB (400 `invalid_envelope`).
+  - **Rate Limiting:** Enforces `RATE_P2P_SIGNAL_PER_MIN=120` key format `p2p_signal:{user_id}:{room_id}:min:{boundary}` before database queries.
+  - **Event Delivery & Opacity:** Relays `p2p.signal` payload `{ room_id, sender_user_id, sender_client_id, target_client_id, envelope }` on `private-user-{target_user_id}` non-durably without `user_seq` allocation. Server persists no state, logs no request fields, and writes no audit log. Returns `{ "delivered_to": 1 }` with `Cache-Control: no-store`.
+  - **OpenAPI & Test Suite:** `docs/openapi.json` annotated and regenerated (path count expanded to 79). 11 integration tests pass in `server/tests/p2p_signal.rs` under `messaging` batch in `batch-manifest.toml`.
+  - **Target Version:** v3.0.5.
+- **Link to report:** [verification/p2p-signal-endpoint/report.md](verification/p2p-signal-endpoint/report.md)
+
 ## Key Transparency leaf_hash and Snapshot Signature
 - **ID:** Task v3.0.5-5 — Key Transparency leaf_hash and Snapshot Signature (Issues 4a & 4b)
 - **Date:** 2026-10-22

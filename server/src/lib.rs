@@ -579,6 +579,7 @@ pub fn build_app(state: AppState) -> Router {
             "/rooms/{id}/calls/{call_id}/end",
             post(routes::calls::end_handler),
         )
+        .route("/rooms/{id}/p2p/signal", post(routes::p2p::signal_handler))
         .route(
             "/rooms/{id}/sessions",
             get(routes::room_sessions::list).post(routes::room_sessions::create),

@@ -70,6 +70,12 @@
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
+- **P2P Signal Endpoint (`POST /api/v1/rooms/:id/p2p/signal`)**: done
+  - **Scope:** Implemented P2P file transfer signaling endpoint per Round 3 Item 1, V3 Spec §6.24, §8.9, §14.6, §5.6. Relays `p2p.signal` event to `private-user-{target_user_id}` non-durably. Enforces 120/min rate limit per (user, room).
+  - **Delivered:** `server/src/routes/p2p.rs`, `server/src/lib.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/p2p_signal.rs`, `server/tests/batch-manifest.toml`, `verification/p2p-signal-endpoint/report.md`.
+  - **Target Version:** v3.0.5
+  - **Batch:** `messaging`
+
 - **Task v3.0.5-5 — Key Transparency leaf_hash and Snapshot Signature**: done
   - **Delivered:** `verification/kt-leaf-hash-and-snapshot-signature/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/routes/key_transparency.rs`, `server/src/routes/register.rs`, `server/src/key_transparency/log.rs`, `docs/openapi.json`, `server/tests/key_transparency_log.rs`, `server/tests/kt_endpoints.rs`, `server/tests/kt_bot_endpoints.rs`, `server/tests/key_transparency_snapshots.rs`, `server/tests/end_to_end_walkthrough.rs`, `server/tests/bot_leaf_index.rs`, `server/tests/bots.rs`, `server/tests/openapi_generation.rs`.
   - **Summary:** Added `leaf_hash BLOB NOT NULL` to `key_transparency_log`, computed SHA-256(0x00 || serialized_leaf) at leaf insertion time in user finish registration and bot leaf appends, exposed `leaf_hash` in `UserKtResponse`, `BotKtResponse`, and `BotKtHistoryEntry`, exposed `signature` in `KtSnapshotResponse`, regenerated `docs/openapi.json`, updated unit/integration test suites, and verified inclusion proof walks and snapshot signature checks. Closed Round 2 Issues 4a and 4b.

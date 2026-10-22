@@ -155,6 +155,7 @@ impl Modify for SecurityAddon {
         crate::routes::admin::get_key_transparency_handler,
         crate::routes::admin::post_key_transparency_snapshot_handler,
         crate::routes::room_sessions::list_admin,
+        crate::routes::p2p::signal_handler,
         crate::routes::admin::post_reload_models_handler,
         crate::routes::admin::post_reload_session_types_handler,
         crate::routes::admin::post_reload_extension_proxy_blocklist_handler,
@@ -290,6 +291,8 @@ impl Modify for SecurityAddon {
             SessionTypesReloadResponse,
             crate::sessions::SessionTypeAdminView,
             ExtensionProxyBlocklistReloadResponse,
+            crate::routes::p2p::P2pSignalRequest,
+            crate::routes::p2p::P2pSignalResponse,
         )
     ),
     modifiers(&SecurityAddon),
