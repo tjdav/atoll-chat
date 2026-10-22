@@ -1,4 +1,5 @@
 use crate::error::ApiError;
+use crate::key_transparency::merkle::bot_leaf_hash;
 use sqlx::{SqliteConnection, SqlitePool};
 
 /// Returns the current highest leaf index for the bot where `bot_id = ?`.
@@ -41,10 +42,11 @@ pub async fn append_bot_leaf(
     command_pubkey: &str,
     identity_pubkey: &str,
 ) -> Result<i64, ApiError> {
+    let hash = bot_leaf_hash(bot_identity_pubkey, command_pubkey, identity_pubkey);
     let leaf_index: i64 = sqlx::query_scalar(
         r#"
-        INSERT INTO key_transparency_log (bot_id, bot_identity_pubkey, command_pubkey, identity_pubkey)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO key_transparency_log (bot_id, bot_identity_pubkey, command_pubkey, identity_pubkey, leaf_hash)
+        VALUES (?, ?, ?, ?, ?)
         RETURNING leaf_index
         "#,
     )
@@ -52,6 +54,7 @@ pub async fn append_bot_leaf(
     .bind(bot_identity_pubkey)
     .bind(command_pubkey)
     .bind(identity_pubkey)
+    .bind(&hash[..])
     .fetch_one(tx)
     .await
     .map_err(|e| ApiError::Internal(e.into()))?;

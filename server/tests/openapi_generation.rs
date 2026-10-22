@@ -358,13 +358,13 @@ fn test_openapi_doc_validity() {
         "user KT endpoint description missing username_token exclusion note"
     );
 
-    // Assert GET /kt/snapshot response schema does NOT contain a signature field
+    // Assert GET /kt/snapshot response schema contains a signature field
     let snapshot_props = &schemas["KtSnapshotResponse"]["properties"]
         .as_object()
         .unwrap();
     assert!(
-        !snapshot_props.contains_key("signature"),
-        "KtSnapshotResponse unexpectedly contains a signature field"
+        snapshot_props.contains_key("signature"),
+        "KtSnapshotResponse missing expected signature field"
     );
 
     // Assert admin KT snapshot reuses the same schema (SnapshotView)

@@ -73,12 +73,14 @@ async fn test_key_transparency_log_schema_xor_check_and_bot_accounts() {
     assert_eq!(bot_count, 2);
 
     // 5. Bot leaf insert directly into key_transparency_log
+    let hash = server::key_transparency::merkle::bot_leaf_hash("pk_id_1", "b_cmd_pk", "id_pk");
     sqlx::query(
         r#"
-        INSERT INTO key_transparency_log (bot_id, command_pubkey, identity_pubkey)
-        VALUES ('b_full_pubkeys', 'b_cmd_pk', 'id_pk')
+        INSERT INTO key_transparency_log (bot_id, command_pubkey, identity_pubkey, leaf_hash)
+        VALUES ('b_full_pubkeys', 'b_cmd_pk', 'id_pk', ?)
         "#,
     )
+    .bind(&hash[..])
     .execute(&pool)
     .await
     .unwrap();
@@ -318,11 +320,11 @@ async fn test_get_kt_snapshot_endpoint() {
     assert!(body_snap["root_hash"].is_string());
     assert!(body_snap["created_at"].is_string());
 
-    // CRITICAL SPEC INVARIANT (§8.11.3): Assert signature is NOT in the JSON response keys
+    // Assert signature IS in the JSON response keys per Issue 4a
     let obj = body_snap.as_object().unwrap();
     assert!(
-        !obj.contains_key("signature"),
-        "signature field MUST NOT be in GET /kt/snapshot response per §8.11.3"
+        obj.contains_key("signature"),
+        "signature field MUST be in GET /kt/snapshot response per Issue 4a"
     );
     assert!(
         !obj.contains_key("id"),
