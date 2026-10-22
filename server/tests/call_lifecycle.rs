@@ -35,9 +35,9 @@ async fn setup_test_app(
         altcha_cost: 100,
         cleanup_startup_delay_secs: 30,
         calling_enabled,
-        sockudo_url: mock_server.uri(),
-        sockudo_app_key: "test-app-key".to_string(),
-        sockudo_app_secret: "test-app-secret".to_string(),
+        websocket_url: mock_server.uri(),
+        pusher_app_key: "test-app-key".to_string(),
+        pusher_app_secret: "test-app-secret".to_string(),
         ..server::Config::test_default()
     };
 

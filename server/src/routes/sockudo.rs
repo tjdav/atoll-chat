@@ -3,9 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use utoipa::ToSchema;
 
-use crate::{
-    auth::AuthUser, error::ApiError, error::ErrorResponse, rate_limit, rooms, AppState,
-};
+use crate::{auth::AuthUser, error::ApiError, error::ErrorResponse, rate_limit, rooms, AppState};
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct AuthRequest {

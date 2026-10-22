@@ -36,9 +36,9 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         altcha_hmac_secret: "auto".to_string(),
         altcha_cost: 100,
         cleanup_startup_delay_secs: 30,
-        sockudo_url: mock_server.uri(),
-        sockudo_app_key: "test-app-key".to_string(),
-        sockudo_app_secret: "test-app-secret".to_string(),
+        websocket_url: mock_server.uri(),
+        pusher_app_key: "test-app-key".to_string(),
+        pusher_app_secret: "test-app-secret".to_string(),
         ..server::Config::test_default()
     };
 

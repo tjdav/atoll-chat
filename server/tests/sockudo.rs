@@ -24,8 +24,8 @@ fn create_test_config(key: &str, secret: &str) -> Config {
     Config {
         opaque_oprf_key_path: "./data/oprf.key".to_string(),
         cleanup_startup_delay_secs: 30,
-        sockudo_app_key: key.to_string(),
-        sockudo_app_secret: secret.to_string(),
+        pusher_app_key: key.to_string(),
+        pusher_app_secret: secret.to_string(),
         ..Config::test_default()
     }
 }
@@ -43,12 +43,12 @@ async fn test_first_startup_generates_app_credentials() {
     assert!(!sockudo_cfg.app_secret.is_empty());
 
     let db_key: (String,) =
-        sqlx::query_as("SELECT value FROM server_config WHERE key = 'sockudo_app_key'")
+        sqlx::query_as("SELECT value FROM server_config WHERE key = 'pusher_app_key'")
             .fetch_one(&pool)
             .await
             .unwrap();
     let db_secret: (String,) =
-        sqlx::query_as("SELECT value FROM server_config WHERE key = 'sockudo_app_secret'")
+        sqlx::query_as("SELECT value FROM server_config WHERE key = 'pusher_app_secret'")
             .fetch_one(&pool)
             .await
             .unwrap();
@@ -282,7 +282,7 @@ async fn test_channel_auth_endpoints() {
         .as_str()
         .unwrap()
         .starts_with("ws://"));
-    assert_eq!(cap_json["sockudo_app_key"].as_str().unwrap(), "test-key");
+    assert_eq!(cap_json["pusher_app_key"].as_str().unwrap(), "test-key");
     assert_eq!(
         cap_json["sockudo_channel_prefix"].as_str().unwrap(),
         "private-room-"

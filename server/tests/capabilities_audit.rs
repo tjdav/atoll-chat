@@ -23,7 +23,7 @@ const EXPECTED_CAPABILITIES_KEYS: &[&str] = &[
     "tts_models",
     "push_vapid_public_key",
     "websocket_url",
-    "sockudo_app_key",
+    "pusher_app_key",
     "sockudo_channel_prefix",
     "altcha",
     "storage_backend",

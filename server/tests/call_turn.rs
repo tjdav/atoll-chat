@@ -53,9 +53,9 @@ async fn setup_test_app(
         turn_shared_secret: turn_shared_secret.to_string(),
         turn_ttl_seconds: 600,
         rate_limits,
-        sockudo_url: mock_server.uri(),
-        sockudo_app_key: "test-app-key".to_string(),
-        sockudo_app_secret: "test-app-secret".to_string(),
+        websocket_url: mock_server.uri(),
+        pusher_app_key: "test-app-key".to_string(),
+        pusher_app_secret: "test-app-secret".to_string(),
         ..server::Config::test_default()
     };
 

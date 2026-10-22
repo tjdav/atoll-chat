@@ -62,9 +62,9 @@ async fn setup_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer, serve
         altcha_cost: 100,
         cleanup_enabled: true,
         cleanup_startup_delay_secs: 30,
-        sockudo_url: mock_server.uri(),
-        sockudo_app_key: "test-app-key".to_string(),
-        sockudo_app_secret: "test-app-secret".to_string(),
+        websocket_url: mock_server.uri(),
+        pusher_app_key: "test-app-key".to_string(),
+        pusher_app_secret: "test-app-secret".to_string(),
         storage_fs_path: temp_dir.join("attachments"),
         backup_path: temp_dir.join("backups"),
         ..server::Config::test_default()
@@ -255,7 +255,7 @@ async fn test_end_to_end_walkthrough() {
     assert!(caps_json.get("calling").is_some());
     assert!(caps_json.get("sessions_enabled").is_some());
     assert!(caps_json.get("websocket_url").is_some());
-    assert!(caps_json.get("sockudo_app_key").is_some());
+    assert!(caps_json.get("pusher_app_key").is_some());
     assert!(caps_json.get("sockudo_channel_prefix").is_some());
 
     // Sanity check OpenAPI path count against schema definition (68 documented OpenAPI paths)
