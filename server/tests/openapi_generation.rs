@@ -87,6 +87,19 @@ fn test_openapi_doc_validity() {
         ("/api/v1/users/me/starred-items", "post"),
         ("/api/v1/users/me/starred-items/{item_id}", "delete"),
         ("/api/v1/users/me/sync", "get"),
+        ("/api/v1/rooms/{id}/attachments", "post"),
+        ("/api/v1/attachments/{id}", "get"),
+        ("/api/v1/attachments/{id}", "delete"),
+        ("/api/v1/attachments/{id}/presign", "post"),
+        ("/api/v1/rooms/{id}/sessions", "get"),
+        ("/api/v1/rooms/{id}/sessions", "post"),
+        ("/api/v1/rooms/{id}/sessions/{session_id}", "patch"),
+        ("/api/v1/rooms/{id}/sessions/{session_id}", "delete"),
+        ("/api/v1/rooms/{id}/sessions/{session_id}/join", "post"),
+        ("/api/v1/rooms/{id}/sessions/{session_id}/leave", "post"),
+        ("/api/v1/rooms/{id}/sessions/{session_id}/heartbeat", "post"),
+        ("/api/v1/rooms/{id}/sessions/{session_id}/roster", "get"),
+        ("/api/v1/rooms/{id}/sessions/{session_id}/signal", "post"),
         ("/api/v1/bots", "post"),
         ("/api/v1/bots/{id}", "get"),
         ("/api/v1/bots/{id}", "patch"),
@@ -206,7 +219,23 @@ fn test_openapi_doc_validity() {
         "StarredItemRow",
         "StarredItemCursor",
         "AttachmentView",
+        "RoomAttachmentUploadForm",
         "UserAvatarUploadForm",
+        "PresignRequest",
+        "PresignResponse",
+        "ListRoomSessionsQuery",
+        "CreateRoomSessionRequest",
+        "PatchRoomSessionRequest",
+        "JoinSessionRequest",
+        "LeaveSessionRequest",
+        "HeartbeatSessionRequest",
+        "RosterUserItem",
+        "RosterResponse",
+        "IceServer",
+        "MediaConfig",
+        "JoinResponse",
+        "SignalRequest",
+        "SignalResponse",
         "BotSettingSyncRow",
         "SyncResponse",
         "CreateBotReq",
@@ -451,6 +480,17 @@ fn test_openapi_doc_validity() {
         .map(|v| v.as_str().unwrap())
         .collect();
     assert_eq!(rec_start_required, vec!["recovery_code"]);
+
+    // Assert session signal envelope schema has format: byte and §6.26.1 reference
+    let signal_env = &schemas["SignalRequest"]["properties"]["envelope"];
+    assert_eq!(signal_env["format"], "byte");
+    assert!(
+        signal_env["description"]
+            .as_str()
+            .unwrap()
+            .contains("§6.26.1"),
+        "session signal envelope description missing §6.26.1 reference"
+    );
 }
 
 #[test]

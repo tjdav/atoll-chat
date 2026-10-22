@@ -1,4 +1,18 @@
 
+## Task A — Annotate Attachments and Sessions (Client-Blocking Paths) Fact
+- **ID:** Task A — Annotate Attachments and Sessions (Client-Blocking Paths)
+- **Date:** 2026-10-22
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§8.6, §8.7, §6.26.1, §12)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/annotate-attachments-and-sessions/report.md`.
+  - **OpenAPI Path Annotations:** Added `#[utoipa::path]` attributes to all 13 attachment and session handler functions across `server/src/routes/attachments.rs` and `server/src/routes/room_sessions.rs`.
+  - **OpenAPI Path Key Expansion:** `docs/openapi.json` expanded from 68 to 78 unique path keys (+10 unique path keys: 3 attachment paths, 7 session paths).
+  - **DTO Schema Derivations:** Derived `ToSchema` / `IntoParams` across request/response DTOs: `RoomAttachmentUploadForm`, `ListRoomSessionsQuery`, `CreateRoomSessionRequest`, `PatchRoomSessionRequest`, `JoinSessionRequest`, `LeaveSessionRequest`, `HeartbeatSessionRequest`, `RosterUserItem`, `RosterResponse`, `IceServer`, `MediaConfig`, `JoinResponse`, `SignalRequest`, `SignalResponse`. Registered all in `ApiDoc` components.
+  - **Signal Envelope Annotation:** `SignalRequest.envelope` annotated with `format = Byte` and §6.26.1 / §12 reference in description.
+  - **Test Mismatch Count Reduction:** Ignored router-vs-OpenAPI test (`test_router_and_openapi_paths_match_one_to_one`) missing path count reduced from 52 to 42.
+- **Link to report:** [verification/annotate-attachments-and-sessions/report.md](verification/annotate-attachments-and-sessions/report.md)
+
 ## Dynamic OpenAPI Router Test Verification Fact
 - **ID:** Dynamic OpenAPI Router Test
 - **Date:** 2026-10-22
@@ -10,7 +24,7 @@
   - **OpenAPI Extraction:** Reads path items dynamically from `ApiDoc::openapi().paths`.
   - **Set Comparison & Error Format:** Computes `router_only` and `openapi_only` sets. Panic message formats a clear, multi-line list of missing paths sorted alphabetically.
   - **Ignored Initial State:** Test `test_router_and_openapi_paths_match_one_to_one` is marked `#[ignore = "Pending OpenAPI annotation sweep (52 paths currently missing from OpenAPI)"]`.
-  - **Empirical Failure Baseline:** Manual execution (`cargo test --test openapi_generation -- --ignored`) produces expected failure showing `router_only count: 52` and `openapi_only count: 0`.
+  - **Empirical Failure Baseline:** Manual execution (`cargo test --test openapi_generation -- --ignored`) produces expected failure showing `router_only count: 42` and `openapi_only count: 0` (reduced from 52 after Task A).
 - **Link to report:** [verification/dynamic-openapi-router-test/report.md](verification/dynamic-openapi-router-test/report.md)
 
 ## Client Events Configuration and Capability Verification Fact

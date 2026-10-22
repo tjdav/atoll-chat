@@ -81,6 +81,32 @@ pub fn parse_range_header(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/attachments",
+    tag = "Messaging",
+    summary = "Upload room attachment",
+    description = "Uploads an encrypted file attachment to a room as a multipart/form-data payload or octet-stream (Server Spec v3.0.4 §8.6, §7.7).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID")
+    ),
+    request_body(
+        content = RoomAttachmentUploadForm,
+        content_type = "multipart/form-data",
+        description = "Multipart file attachment and manifest metadata"
+    ),
+    responses(
+        (status = 201, description = "Attachment uploaded successfully", body = AttachmentView),
+        (status = 400, description = "Bad request / invalid manifest or claimed ID mismatch", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (not a member of target room)", body = ErrorResponse),
+        (status = 413, description = "File exceeds effective size limit", body = ErrorResponse),
+        (status = 415, description = "Unsupported media type", body = ErrorResponse)
+    )
+)]
 #[allow(clippy::too_many_arguments)]
 pub async fn upload(
     State(pool): State<SqlitePool>,
@@ -228,6 +254,30 @@ fn build_range_response(
     (StatusCode::PARTIAL_CONTENT, res_headers, bytes).into_response()
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/attachments/{id}",
+    tag = "Messaging",
+    summary = "Download attachment",
+    description = "Downloads attachment content. Supports HTTP Range requests and ETag validation (Server Spec v3.0.4 §8.6).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Attachment ID"),
+        ("Range" = Option<String>, Header, description = "HTTP Range header (e.g., bytes=0-1023)"),
+        ("If-None-Match" = Option<String>, Header, description = "ETag validation header")
+    ),
+    responses(
+        (status = 200, description = "Full attachment binary content", body = Vec<u8>, content_type = "application/octet-stream"),
+        (status = 206, description = "Partial attachment binary content (Range request)", body = Vec<u8>, content_type = "application/octet-stream"),
+        (status = 304, description = "Not modified (ETag matched)"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (caller cannot access attachment)", body = ErrorResponse),
+        (status = 404, description = "Attachment not found", body = ErrorResponse),
+        (status = 416, description = "Range not satisfiable")
+    )
+)]
 pub async fn download(
     State(pool): State<SqlitePool>,
     State(storage): State<Arc<dyn Storage>>,
@@ -295,6 +345,28 @@ pub struct PresignResponse {
     pub expires_at: DateTime<Utc>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/attachments/{id}/presign",
+    tag = "Messaging",
+    summary = "Generate presigned GET URL for attachment",
+    description = "Generates a temporary presigned download URL for S3/compatible storage backends (Server Spec v3.0.4 §8.6).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Attachment ID")
+    ),
+    request_body = PresignRequest,
+    responses(
+        (status = 200, description = "Presigned URL generated successfully", body = PresignResponse),
+        (status = 400, description = "Bad request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Attachment not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 501, description = "Presigning not supported for storage backend", body = ErrorResponse)
+    )
+)]
 pub async fn presign(
     State(pool): State<SqlitePool>,
     State(storage): State<Arc<dyn Storage>>,
@@ -351,6 +423,25 @@ pub async fn presign(
     Ok(Json(PresignResponse { url, expires_at }))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/attachments/{id}",
+    tag = "Messaging",
+    summary = "Delete attachment",
+    description = "Deletes an attachment from storage and database. Only the uploader can delete an attachment (Server Spec v3.0.4 §8.6).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Attachment ID")
+    ),
+    responses(
+        (status = 204, description = "Attachment deleted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (only the uploader can perform this action)", body = ErrorResponse),
+        (status = 404, description = "Attachment not found", body = ErrorResponse)
+    )
+)]
 pub async fn delete_attachment(
     State(pool): State<SqlitePool>,
     State(storage): State<Arc<dyn Storage>>,
@@ -389,6 +480,21 @@ async fn get_effective_file_size_limit(
 }
 
 use crate::error::ErrorResponse;
+
+#[derive(utoipa::ToSchema)]
+pub struct RoomAttachmentUploadForm {
+    #[schema(format = Binary, value_type = String)]
+    pub file: Vec<u8>,
+    pub claimed_id: String,
+    pub plaintext_size: i64,
+    pub encrypted_size: i64,
+    pub chunk_size: i64,
+    pub chunk_count: i64,
+    pub nonce_prefix: String,
+    pub base_counter: i64,
+    pub content_type: Option<String>,
+    pub uploader_client_id: Option<String>,
+}
 
 #[derive(utoipa::ToSchema)]
 pub struct UserAvatarUploadForm {
