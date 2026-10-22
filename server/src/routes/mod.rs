@@ -16,6 +16,7 @@ pub mod login;
 pub mod models;
 pub mod observer_stream;
 pub mod oprf;
+pub mod p2p;
 pub mod pending_removes;
 pub mod preferences;
 pub mod publisher_keys;

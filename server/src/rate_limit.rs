@@ -49,6 +49,7 @@ pub enum RateLimitKey {
     OperatorQueueRespond { bot_id: String, user_id: String },
     OperatorQueueEnqueue { bot_id: String },
     WebSocketAuth { identity: String },
+    P2pSignal { user_id: String, room_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -549,6 +550,16 @@ pub async fn check(
                 start,
                 reset,
                 config.rate_websocket_auth_per_min,
+            )
+        }
+        RateLimitKey::P2pSignal { user_id, room_id } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            let boundary = start.format("%Y-%m-%d-%H-%M").to_string();
+            (
+                format!("p2p_signal:{user_id}:{room_id}:min:{boundary}"),
+                start,
+                reset,
+                config.rate_p2p_signal_per_min,
             )
         }
     };

@@ -81,6 +81,7 @@ files = [
     "rooms",
     "message_threading",
     "message_whispers",
+    "p2p_signal",
     "welcomes",
 ]
 timeout_seconds = 60

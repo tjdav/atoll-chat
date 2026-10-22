@@ -46,6 +46,7 @@ pub struct RateLimitConfig {
     pub rate_operator_queue_respond_per_min: u32,
     pub rate_operator_queue_enqueue_per_min: u32,
     pub rate_websocket_auth_per_min: u32,
+    pub rate_p2p_signal_per_min: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -392,6 +393,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(300);
 
+        let rate_p2p_signal_per_min = env::var("RATE_P2P_SIGNAL_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(120);
+
         let rate_read_state_per_min = env::var("RATE_READ_STATE_PER_MIN")
             .ok()
             .and_then(|s| s.parse().ok())
@@ -671,6 +677,7 @@ impl Config {
             rate_operator_queue_respond_per_min,
             rate_operator_queue_enqueue_per_min,
             rate_websocket_auth_per_min,
+            rate_p2p_signal_per_min,
         };
 
         let link_preview_proxy_enabled = env::var("LINK_PREVIEW_PROXY_ENABLED")
@@ -1562,6 +1569,7 @@ impl Config {
                 rate_operator_queue_respond_per_min: 30,
                 rate_operator_queue_enqueue_per_min: 60,
                 rate_websocket_auth_per_min: 300,
+                rate_p2p_signal_per_min: 120,
             },
             bot_command_ttl_hours: 24,
             link_preview_proxy_enabled: false,
