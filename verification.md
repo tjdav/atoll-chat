@@ -1,4 +1,19 @@
 
+## Key Transparency leaf_hash and Snapshot Signature
+- **ID:** Task v3.0.5-5 — Key Transparency leaf_hash and Snapshot Signature (Issues 4a & 4b)
+- **Date:** 2026-10-22
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §7.11, §8.11.1, §8.11.2, §8.11.3, §8.11.4, Proposal A amendment
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/kt-leaf-hash-and-snapshot-signature/report.md`.
+  - **Database Schema:** `key_transparency_log` CREATE TABLE baseline in `server/migrations/0001_v2_schema.sql` updated to include `leaf_hash BLOB NOT NULL` with schema documentation.
+  - **Insertion Computation:** `leaf_hash` calculated as `SHA-256(0x00 || serialized_leaf)` at insertion time in `register_finish` (`server/src/routes/register.rs`) and `append_bot_leaf` (`server/src/key_transparency/log.rs`).
+  - **User & Bot KT Responses:** `UserKtResponse`, `BotKtResponse`, and `BotKtHistoryEntry` in `server/src/routes/key_transparency.rs` now expose `leaf_hash` (base64url string).
+  - **Snapshot Signature:** `KtSnapshotResponse` returns `signature` (base64url string or `null` if un-signed).
+  - **Client Verification Walk:** Verified via unit and integration tests that walking `inclusion_proof` from returned `leaf_hash` applying `0x01` for internal nodes reproduces `tree_head.root_hash`, and snapshot signature verifies against server's Ed25519 public key over `I2OSP(tree_size, 8) || root_hash`.
+  - **OpenAPI Artifacts:** `docs/openapi.json` regenerated and verified with `make -C server openapi-check`.
+- **Link to report:** [verification/kt-leaf-hash-and-snapshot-signature/report.md](verification/kt-leaf-hash-and-snapshot-signature/report.md)
+
 ## Task A — Annotate Attachments and Sessions (Client-Blocking Paths) Fact
 - **ID:** Task A — Annotate Attachments and Sessions (Client-Blocking Paths)
 - **Date:** 2026-10-22

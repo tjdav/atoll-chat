@@ -357,15 +357,20 @@ pub async fn register_finish(
 
     // Append leaf to Key Transparency log if enabled
     if state.config.key_transparency_enabled {
+        let hash = crate::key_transparency::merkle::leaf_hash(
+            &pending.username_token,
+            initial_identity_pubkey,
+        );
         sqlx::query(
             r#"
-            INSERT INTO key_transparency_log (user_id, username_token, identity_pubkey)
-            VALUES (?, ?, ?)
+            INSERT INTO key_transparency_log (user_id, username_token, identity_pubkey, leaf_hash)
+            VALUES (?, ?, ?, ?)
             "#,
         )
         .bind(&user_id)
         .bind(&pending.username_token)
         .bind(initial_identity_pubkey)
+        .bind(&hash[..])
         .execute(&mut *tx)
         .await?;
     }

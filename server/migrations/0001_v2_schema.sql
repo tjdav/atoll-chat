@@ -364,6 +364,8 @@ CREATE TABLE IF NOT EXISTS key_transparency_log (
     bot_identity_pubkey  TEXT,
     identity_pubkey      TEXT,
     command_pubkey       TEXT,
+    -- leaf_hash: SHA-256(0x00 || serialize_leaf(...)), computed at insertion time. Reference: §7.11
+    leaf_hash            BLOB NOT NULL,
     added_at             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (
         (user_id IS NOT NULL AND bot_id IS NULL)

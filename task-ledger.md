@@ -70,6 +70,12 @@
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
+- **Task v3.0.5-5 — Key Transparency leaf_hash and Snapshot Signature**: done
+  - **Delivered:** `verification/kt-leaf-hash-and-snapshot-signature/report.md`, `server/migrations/0001_v2_schema.sql`, `server/src/routes/key_transparency.rs`, `server/src/routes/register.rs`, `server/src/key_transparency/log.rs`, `docs/openapi.json`, `server/tests/key_transparency_log.rs`, `server/tests/kt_endpoints.rs`, `server/tests/kt_bot_endpoints.rs`, `server/tests/key_transparency_snapshots.rs`, `server/tests/end_to_end_walkthrough.rs`, `server/tests/bot_leaf_index.rs`, `server/tests/bots.rs`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Added `leaf_hash BLOB NOT NULL` to `key_transparency_log`, computed SHA-256(0x00 || serialized_leaf) at leaf insertion time in user finish registration and bot leaf appends, exposed `leaf_hash` in `UserKtResponse`, `BotKtResponse`, and `BotKtHistoryEntry`, exposed `signature` in `KtSnapshotResponse`, regenerated `docs/openapi.json`, updated unit/integration test suites, and verified inclusion proof walks and snapshot signature checks. Closed Round 2 Issues 4a and 4b.
+  - **Target Version:** v3.0.5
+  - **Batch:** `identity`
+
 ## Completed Tasks
 
 - **Task A — Annotate Attachments and Sessions (Client-Blocking Paths)**: done

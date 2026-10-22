@@ -43,6 +43,9 @@ pub struct KtAuditorSignature {
 pub struct UserKtResponse {
     pub user_id: String,
     pub leaf_index: i64,
+    /// 32-byte leaf hash SHA-256(0x00 || serialized_leaf), base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
+    pub leaf_hash: String,
     /// User Ed25519 identity public key, base64url encoded. Reference: §7.11
     #[schema(value_type = String, format = Binary)]
     pub identity_pubkey: String,
@@ -57,6 +60,9 @@ pub struct UserKtResponse {
 pub struct BotKtResponse {
     pub bot_id: String,
     pub leaf_index: i64,
+    /// 32-byte leaf hash SHA-256(0x00 || serialized_leaf), base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
+    pub leaf_hash: String,
     /// Bot identity public key, base64url encoded. Reference: §7.11
     #[schema(value_type = String, format = Binary)]
     pub bot_identity_pubkey: String,
@@ -76,6 +82,9 @@ pub struct BotKtResponse {
 #[derive(Serialize, ToSchema)]
 pub struct BotKtHistoryEntry {
     pub leaf_index: i64,
+    /// 32-byte leaf hash SHA-256(0x00 || serialized_leaf), base64url encoded. Reference: §7.11
+    #[schema(value_type = String, format = Binary)]
+    pub leaf_hash: String,
     /// Bot identity public key, base64url encoded. Reference: §7.11
     #[schema(value_type = String, format = Binary)]
     pub bot_identity_pubkey: String,
@@ -100,6 +109,9 @@ pub struct KtSnapshotResponse {
     /// 32-byte Merkle tree root hash, base64url encoded. Reference: §7.11
     #[schema(value_type = String, format = Binary)]
     pub root_hash: String,
+    /// Server signature over snapshot (I2OSP(tree_size, 8) || root_hash), base64url encoded. Reference: §8.11.4
+    #[schema(value_type = Option<String>, format = Binary)]
+    pub signature: Option<String>,
     #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
@@ -135,7 +147,7 @@ pub async fn get_user_kt_handler(
     // 1. Fetch all leaves in leaf_index ASC order to construct Merkle tree
     let rows = sqlx::query(
         r#"
-        SELECT leaf_index, user_id, bot_id, username_token, bot_identity_pubkey, identity_pubkey, command_pubkey
+        SELECT leaf_index, user_id, bot_id, username_token, bot_identity_pubkey, identity_pubkey, command_pubkey, leaf_hash
         FROM key_transparency_log
         ORDER BY leaf_index ASC
         "#,
@@ -146,6 +158,7 @@ pub async fn get_user_kt_handler(
     let mut target_index_in_tree = None;
     let mut target_leaf_index_db = 0i64;
     let mut target_identity_pubkey = String::new();
+    let mut target_leaf_hash_bytes = Vec::new();
     let mut leaf_hashes = Vec::with_capacity(rows.len());
 
     for (idx, row) in rows.iter().enumerate() {
@@ -156,14 +169,31 @@ pub async fn get_user_kt_handler(
         let identity_pubkey: Option<String> = row.get("identity_pubkey");
         let command_pubkey: Option<String> = row.get("command_pubkey");
         let leaf_index: i64 = row.get("leaf_index");
+        let stored_leaf_hash: Option<Vec<u8>> = row.get("leaf_hash");
 
-        if user_id.as_deref() == Some(&target_user_id) {
-            target_index_in_tree = Some(idx);
-            target_leaf_index_db = leaf_index;
-            target_identity_pubkey = identity_pubkey.clone().unwrap_or_default();
-        }
-
-        let hash = if let (Some(token), Some(pubkey)) =
+        let hash = if let Some(ref lh) = stored_leaf_hash {
+            let mut arr = [0u8; 32];
+            if lh.len() == 32 {
+                arr.copy_from_slice(lh);
+                arr
+            } else if let (Some(token), Some(pubkey)) =
+                (username_token.as_ref(), identity_pubkey.as_ref())
+            {
+                if user_id.is_some() {
+                    leaf_hash(token, pubkey)
+                } else {
+                    [0u8; 32]
+                }
+            } else if let (Some(b_pub), Some(c_pub), Some(i_pub)) = (
+                bot_identity_pubkey.as_ref(),
+                command_pubkey.as_ref(),
+                identity_pubkey.as_ref(),
+            ) {
+                bot_leaf_hash(b_pub, c_pub, i_pub)
+            } else {
+                [0u8; 32]
+            }
+        } else if let (Some(token), Some(pubkey)) =
             (username_token.as_ref(), identity_pubkey.as_ref())
         {
             if user_id.is_some() {
@@ -180,6 +210,13 @@ pub async fn get_user_kt_handler(
         } else {
             [0u8; 32]
         };
+
+        if user_id.as_deref() == Some(&target_user_id) {
+            target_index_in_tree = Some(idx);
+            target_leaf_index_db = leaf_index;
+            target_identity_pubkey = identity_pubkey.clone().unwrap_or_default();
+            target_leaf_hash_bytes = hash.to_vec();
+        }
 
         leaf_hashes.push(hash);
     }
@@ -240,6 +277,7 @@ pub async fn get_user_kt_handler(
     let response = UserKtResponse {
         user_id: target_user_id,
         leaf_index: target_leaf_index_db,
+        leaf_hash: URL_SAFE_NO_PAD.encode(&target_leaf_hash_bytes),
         identity_pubkey: target_identity_pubkey,
         inclusion_proof,
         tree_head,
@@ -284,7 +322,7 @@ pub async fn get_bot_kt_handler(
 
     let rows = sqlx::query(
         r#"
-        SELECT leaf_index, user_id, bot_id, username_token, bot_identity_pubkey, identity_pubkey, command_pubkey
+        SELECT leaf_index, user_id, bot_id, username_token, bot_identity_pubkey, identity_pubkey, command_pubkey, leaf_hash
         FROM key_transparency_log
         ORDER BY leaf_index ASC
         "#,
@@ -297,6 +335,7 @@ pub async fn get_bot_kt_handler(
     let mut target_bot_identity_pubkey = String::new();
     let mut target_bot_command_pubkey = String::new();
     let mut target_identity_pubkey = String::new();
+    let mut target_leaf_hash_bytes = Vec::new();
     let mut leaf_hashes = Vec::with_capacity(rows.len());
 
     for (idx, row) in rows.iter().enumerate() {
@@ -307,16 +346,31 @@ pub async fn get_bot_kt_handler(
         let identity_pubkey: Option<String> = row.get("identity_pubkey");
         let command_pubkey: Option<String> = row.get("command_pubkey");
         let leaf_index: i64 = row.get("leaf_index");
+        let stored_leaf_hash: Option<Vec<u8>> = row.get("leaf_hash");
 
-        if bot_id.as_deref() == Some(&target_bot_id) {
-            target_index_in_tree = Some(idx);
-            target_leaf_index_db = leaf_index;
-            target_bot_identity_pubkey = bot_identity_pubkey.clone().unwrap_or_default();
-            target_bot_command_pubkey = command_pubkey.clone().unwrap_or_default();
-            target_identity_pubkey = identity_pubkey.clone().unwrap_or_default();
-        }
-
-        let hash = if let (Some(token), Some(pubkey)) =
+        let hash = if let Some(ref lh) = stored_leaf_hash {
+            let mut arr = [0u8; 32];
+            if lh.len() == 32 {
+                arr.copy_from_slice(lh);
+                arr
+            } else if let (Some(token), Some(pubkey)) =
+                (username_token.as_ref(), identity_pubkey.as_ref())
+            {
+                if user_id.is_some() {
+                    leaf_hash(token, pubkey)
+                } else {
+                    [0u8; 32]
+                }
+            } else if let (Some(b_pub), Some(c_pub), Some(i_pub)) = (
+                bot_identity_pubkey.as_ref(),
+                command_pubkey.as_ref(),
+                identity_pubkey.as_ref(),
+            ) {
+                bot_leaf_hash(b_pub, c_pub, i_pub)
+            } else {
+                [0u8; 32]
+            }
+        } else if let (Some(token), Some(pubkey)) =
             (username_token.as_ref(), identity_pubkey.as_ref())
         {
             if user_id.is_some() {
@@ -333,6 +387,15 @@ pub async fn get_bot_kt_handler(
         } else {
             [0u8; 32]
         };
+
+        if bot_id.as_deref() == Some(&target_bot_id) {
+            target_index_in_tree = Some(idx);
+            target_leaf_index_db = leaf_index;
+            target_bot_identity_pubkey = bot_identity_pubkey.clone().unwrap_or_default();
+            target_bot_command_pubkey = command_pubkey.clone().unwrap_or_default();
+            target_identity_pubkey = identity_pubkey.clone().unwrap_or_default();
+            target_leaf_hash_bytes = hash.to_vec();
+        }
 
         leaf_hashes.push(hash);
     }
@@ -391,6 +454,7 @@ pub async fn get_bot_kt_handler(
     let response = BotKtResponse {
         bot_id: target_bot_id,
         leaf_index: target_leaf_index_db,
+        leaf_hash: URL_SAFE_NO_PAD.encode(&target_leaf_hash_bytes),
         bot_identity_pubkey: target_bot_identity_pubkey,
         bot_command_pubkey: target_bot_command_pubkey,
         identity_pubkey: target_identity_pubkey,
@@ -437,7 +501,7 @@ pub async fn get_bot_kt_history_handler(
 
     let rows = sqlx::query(
         r#"
-        SELECT leaf_index, bot_identity_pubkey, command_pubkey, identity_pubkey, CAST(added_at AS TEXT) AS added_at
+        SELECT leaf_index, bot_identity_pubkey, command_pubkey, identity_pubkey, leaf_hash, CAST(added_at AS TEXT) AS added_at
         FROM key_transparency_log
         WHERE bot_id = ?
         ORDER BY leaf_index ASC
@@ -453,18 +517,36 @@ pub async fn get_bot_kt_history_handler(
 
     let entries = rows
         .into_iter()
-        .map(|row| BotKtHistoryEntry {
-            leaf_index: row.get("leaf_index"),
-            bot_identity_pubkey: row
+        .map(|row| {
+            let b_pub: String = row
                 .get::<Option<String>, _>("bot_identity_pubkey")
-                .unwrap_or_default(),
-            bot_command_pubkey: row
+                .unwrap_or_default();
+            let c_pub: String = row
                 .get::<Option<String>, _>("command_pubkey")
-                .unwrap_or_default(),
-            identity_pubkey: row
+                .unwrap_or_default();
+            let i_pub: String = row
                 .get::<Option<String>, _>("identity_pubkey")
-                .unwrap_or_default(),
-            added_at: row.get("added_at"),
+                .unwrap_or_default();
+            let stored_leaf_hash: Option<Vec<u8>> = row.get("leaf_hash");
+
+            let hash_bytes = if let Some(lh) = stored_leaf_hash {
+                if lh.len() == 32 {
+                    lh
+                } else {
+                    bot_leaf_hash(&b_pub, &c_pub, &i_pub).to_vec()
+                }
+            } else {
+                bot_leaf_hash(&b_pub, &c_pub, &i_pub).to_vec()
+            };
+
+            BotKtHistoryEntry {
+                leaf_index: row.get("leaf_index"),
+                leaf_hash: URL_SAFE_NO_PAD.encode(&hash_bytes),
+                bot_identity_pubkey: b_pub,
+                bot_command_pubkey: c_pub,
+                identity_pubkey: i_pub,
+                added_at: row.get("added_at"),
+            }
         })
         .collect();
 
@@ -504,7 +586,7 @@ pub async fn get_kt_snapshot_handler(
     }
 
     let row = sqlx::query(
-        "SELECT tree_size, root_hash, created_at FROM key_transparency_snapshots ORDER BY created_at DESC, id DESC LIMIT 1",
+        "SELECT tree_size, root_hash, signature, created_at FROM key_transparency_snapshots ORDER BY created_at DESC, id DESC LIMIT 1",
     )
     .fetch_optional(&state.pool)
     .await?
@@ -512,11 +594,13 @@ pub async fn get_kt_snapshot_handler(
 
     let tree_size: i64 = row.get("tree_size");
     let root_hash_bytes: Vec<u8> = row.get("root_hash");
+    let sig_bytes: Option<Vec<u8>> = row.get("signature");
     let created_at: DateTime<Utc> = row.get("created_at");
 
     let response = KtSnapshotResponse {
         tree_size,
         root_hash: URL_SAFE_NO_PAD.encode(&root_hash_bytes),
+        signature: sig_bytes.map(|s| URL_SAFE_NO_PAD.encode(&s)),
         created_at,
     };
 

@@ -266,9 +266,11 @@ async fn test_key_transparency_registration_transaction_rollback() {
     .await
     .unwrap();
 
+    let hash = server::key_transparency::merkle::leaf_hash("rollback_token", "");
     sqlx::query(
-        "INSERT INTO key_transparency_log (user_id, username_token, identity_pubkey) VALUES ('rollback_user', 'rollback_token', '')",
+        "INSERT INTO key_transparency_log (user_id, username_token, identity_pubkey, leaf_hash) VALUES ('rollback_user', 'rollback_token', '', ?)",
     )
+    .bind(&hash[..])
     .execute(&mut *tx)
     .await
     .unwrap();

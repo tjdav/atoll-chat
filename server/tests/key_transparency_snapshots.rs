@@ -140,12 +140,14 @@ async fn create_dummy_user(pool: &sqlx::SqlitePool, user_id: &str, role: &str) {
 }
 
 async fn create_log_entry(pool: &sqlx::SqlitePool, user_id: &str, token: &str, pubkey: &str) {
+    let hash = server::key_transparency::merkle::leaf_hash(token, pubkey);
     sqlx::query(
-        "INSERT INTO key_transparency_log (user_id, username_token, identity_pubkey) VALUES (?, ?, ?)"
+        "INSERT INTO key_transparency_log (user_id, username_token, identity_pubkey, leaf_hash) VALUES (?, ?, ?, ?)"
     )
     .bind(user_id)
     .bind(token)
     .bind(pubkey)
+    .bind(&hash[..])
     .execute(pool)
     .await
     .unwrap();

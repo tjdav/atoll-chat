@@ -50,9 +50,11 @@ async fn test_current_bot_leaf_index_helper() {
     .await
     .unwrap();
 
+    let hash1 = server::key_transparency::merkle::bot_leaf_hash("pk1", "cmd1", "mls1");
     sqlx::query(
-        "INSERT INTO key_transparency_log (leaf_index, bot_id, bot_identity_pubkey, command_pubkey, identity_pubkey) VALUES (10, 'b_multi', 'pk1', 'cmd1', 'mls1')",
+        "INSERT INTO key_transparency_log (leaf_index, bot_id, bot_identity_pubkey, command_pubkey, identity_pubkey, leaf_hash) VALUES (10, 'b_multi', 'pk1', 'cmd1', 'mls1', ?)",
     )
+    .bind(&hash1[..])
     .execute(&pool)
     .await
     .unwrap();
@@ -62,9 +64,11 @@ async fn test_current_bot_leaf_index_helper() {
         .unwrap();
     assert_eq!(res1, Some(10));
 
+    let hash2 = server::key_transparency::merkle::bot_leaf_hash("pk2", "cmd2", "mls2");
     sqlx::query(
-        "INSERT INTO key_transparency_log (leaf_index, bot_id, bot_identity_pubkey, command_pubkey, identity_pubkey) VALUES (25, 'b_multi', 'pk2', 'cmd2', 'mls2')",
+        "INSERT INTO key_transparency_log (leaf_index, bot_id, bot_identity_pubkey, command_pubkey, identity_pubkey, leaf_hash) VALUES (25, 'b_multi', 'pk2', 'cmd2', 'mls2', ?)",
     )
+    .bind(&hash2[..])
     .execute(&pool)
     .await
     .unwrap();

@@ -7089,6 +7089,7 @@
         "type": "object",
         "required": [
           "leaf_index",
+          "leaf_hash",
           "bot_identity_pubkey",
           "bot_command_pubkey",
           "identity_pubkey",
@@ -7112,6 +7113,11 @@
             "type": "string",
             "format": "binary",
             "description": "Bot operator Ed25519 identity public key, base64url encoded. Reference: §7.11"
+          },
+          "leaf_hash": {
+            "type": "string",
+            "format": "binary",
+            "description": "32-byte leaf hash SHA-256(0x00 || serialized_leaf), base64url encoded. Reference: §7.11"
           },
           "leaf_index": {
             "type": "integer",
@@ -7142,6 +7148,7 @@
         "required": [
           "bot_id",
           "leaf_index",
+          "leaf_hash",
           "bot_identity_pubkey",
           "bot_command_pubkey",
           "identity_pubkey",
@@ -7180,6 +7187,11 @@
               "type": "string"
             },
             "description": "Merkle inclusion proof hashes, base64url encoded."
+          },
+          "leaf_hash": {
+            "type": "string",
+            "format": "binary",
+            "description": "32-byte leaf hash SHA-256(0x00 || serialized_leaf), base64url encoded. Reference: §7.11"
           },
           "leaf_index": {
             "type": "integer",
@@ -8107,6 +8119,14 @@
             "type": "string",
             "format": "binary",
             "description": "32-byte Merkle tree root hash, base64url encoded. Reference: §7.11"
+          },
+          "signature": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Server signature over snapshot (I2OSP(tree_size, 8) || root_hash), base64url encoded. Reference: §8.11.4"
           },
           "tree_size": {
             "type": "integer",
@@ -10181,6 +10201,7 @@
         "required": [
           "user_id",
           "leaf_index",
+          "leaf_hash",
           "identity_pubkey",
           "inclusion_proof",
           "tree_head",
@@ -10204,6 +10225,11 @@
               "type": "string"
             },
             "description": "Merkle inclusion proof hashes, base64url encoded."
+          },
+          "leaf_hash": {
+            "type": "string",
+            "format": "binary",
+            "description": "32-byte leaf hash SHA-256(0x00 || serialized_leaf), base64url encoded. Reference: §7.11"
           },
           "leaf_index": {
             "type": "integer",
