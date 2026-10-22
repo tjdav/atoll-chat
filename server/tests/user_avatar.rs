@@ -22,7 +22,7 @@ async fn setup_test_app_with_sockudo_mock() -> (Router, SqlitePool, MockServer) 
         .await;
 
     let (app, pool, _) = common::setup_test_app_with_custom_config(|cfg| {
-        cfg.sockudo_url = mock_server.uri();
+        cfg.websocket_url = mock_server.uri();
     })
     .await;
 

@@ -491,6 +491,57 @@ fn test_openapi_doc_validity() {
             .contains("§6.26.1"),
         "session signal envelope description missing §6.26.1 reference"
     );
+
+    // Assert 10 new attachment and session path keys appear in OpenAPI
+    let new_paths = [
+        "/api/v1/rooms/{id}/attachments",
+        "/api/v1/attachments/{id}",
+        "/api/v1/attachments/{id}/presign",
+        "/api/v1/rooms/{id}/sessions",
+        "/api/v1/rooms/{id}/sessions/{session_id}",
+        "/api/v1/rooms/{id}/sessions/{session_id}/join",
+        "/api/v1/rooms/{id}/sessions/{session_id}/leave",
+        "/api/v1/rooms/{id}/sessions/{session_id}/heartbeat",
+        "/api/v1/rooms/{id}/sessions/{session_id}/roster",
+        "/api/v1/rooms/{id}/sessions/{session_id}/signal",
+    ];
+
+    for path in &new_paths {
+        assert!(
+            parsed["paths"].as_object().unwrap().contains_key(*path),
+            "missing new path key {}",
+            path
+        );
+    }
+
+    // Assert session signal declares both 200 and 202 responses
+    let signal_resps =
+        &parsed["paths"]["/api/v1/rooms/{id}/sessions/{session_id}/signal"]["post"]["responses"];
+    assert!(
+        signal_resps.as_object().unwrap().contains_key("200"),
+        "session signal missing 200 response"
+    );
+    assert!(
+        signal_resps.as_object().unwrap().contains_key("202"),
+        "session signal missing 202 response"
+    );
+
+    // Assert attachment download declares binary response content type
+    let download_200_content =
+        &parsed["paths"]["/api/v1/attachments/{id}"]["get"]["responses"]["200"]["content"];
+    assert!(
+        download_200_content
+            .as_object()
+            .unwrap()
+            .contains_key("application/octet-stream"),
+        "attachment download missing application/octet-stream response content type"
+    );
+
+    // Assert RoomAttachmentUploadForm is present in schemas
+    assert!(
+        schemas.contains_key("RoomAttachmentUploadForm"),
+        "missing RoomAttachmentUploadForm in schemas"
+    );
 }
 
 #[test]
@@ -547,7 +598,7 @@ fn test_openapi_cli_default_invocation() {
 }
 
 #[test]
-#[ignore = "Pending OpenAPI annotation sweep (52 paths currently missing from OpenAPI)"]
+#[ignore = "Pending OpenAPI annotation sweep (42 paths currently missing from OpenAPI)"]
 fn test_router_and_openapi_paths_match_one_to_one() {
     let doc = ApiDoc::openapi();
     let json_str = serde_json::to_string_pretty(&doc).unwrap();

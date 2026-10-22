@@ -439,9 +439,9 @@ async fn test_15_device_added_event_payload_shape() {
         .await;
 
     let (app, pool, _) = common::setup_test_app_with_custom_config(|cfg| {
-        cfg.sockudo_url = mock_server.uri();
-        cfg.sockudo_app_key = "test-key".to_string();
-        cfg.sockudo_app_secret = "test-secret".to_string();
+        cfg.websocket_url = mock_server.uri();
+        cfg.pusher_app_key = "test-key".to_string();
+        cfg.pusher_app_secret = "test-secret".to_string();
     })
     .await;
 

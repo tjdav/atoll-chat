@@ -120,9 +120,9 @@ async fn test_message_edit_events_and_audit() {
 
     let mock_uri = mock_server.uri();
     let (app, pool, _) = common::setup_test_app_with_custom_config(|cfg| {
-        cfg.sockudo_url = mock_uri;
-        cfg.sockudo_app_key = "test-app-key".to_string();
-        cfg.sockudo_app_secret = "test-app-secret".to_string();
+        cfg.websocket_url = mock_uri;
+        cfg.pusher_app_key = "test-app-key".to_string();
+        cfg.pusher_app_secret = "test-app-secret".to_string();
     })
     .await;
 
