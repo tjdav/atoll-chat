@@ -39,8 +39,14 @@
 
 ## Pending Implementation Tasks
 
-- **Annotation Sweep — OpenAPI Coverage Completion**: pending
-  - **Scope:** Annotate the 52 missing router paths in OpenAPI (`ApiDoc` / `utoipa`), regenerating `docs/openapi.json`. Remove `#[ignore]` on `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs` when the sweep lands to verify 100% path matching.
+- **Task A — Annotate Attachments and Sessions (Client-Blocking Paths)**: done
+  - **Delivered:** `verification/annotate-attachments-and-sessions/report.md`, `server/src/routes/attachments.rs`, `server/src/routes/room_sessions.rs`, `server/src/sessions/crud.rs`, `server/src/sessions/occupancy.rs`, `server/src/sessions/signal.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`
+  - **Summary:** Annotated all 13 handler functions across attachments (4 handlers) and sessions (9 handlers) domains in OpenAPI (`ApiDoc` / `utoipa`), unblocking client Phase J (attachments) and Phase K (sessions). Unblocked two client blockers (Round 2 Issue 3, Round 3 Item 3). Added `ToSchema` / `IntoParams` derives across DTOs (`RoomAttachmentUploadForm`, `ListRoomSessionsQuery`, `CreateRoomSessionRequest`, `PatchRoomSessionRequest`, `JoinSessionRequest`, `LeaveSessionRequest`, `HeartbeatSessionRequest`, `RosterUserItem`, `RosterResponse`, `IceServer`, `MediaConfig`, `JoinResponse`, `SignalRequest`, `SignalResponse`). Regenerated `docs/openapi.json` bringing unique path keys from 68 to 78. Extended `server/tests/openapi_generation.rs` assertions. Reduced ignored router-vs-OpenAPI test missing path count from 52 to 42 (leaving 42 remaining paths for Tasks B and C).
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
+- **Annotation Sweep — OpenAPI Coverage Completion (Tasks B & C)**: pending
+  - **Scope:** Annotate the remaining 42 missing router paths in OpenAPI (`ApiDoc` / `utoipa`), regenerating `docs/openapi.json`. Remove `#[ignore]` on `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs` when the sweep lands to verify 100% path matching.
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 

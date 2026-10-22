@@ -57,21 +57,41 @@ pub async fn list_admin(
     Ok(Json(SessionListResponse { sessions }))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct JoinSessionRequest {
     pub client_id: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LeaveSessionRequest {
     pub client_id: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct HeartbeatSessionRequest {
     pub client_id: String,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/sessions",
+    tag = "Messaging",
+    summary = "List active room sessions",
+    description = "Fetches the list of active sessions for a room (Server Spec v3.0.4 §8.7.12, §5.26).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID"),
+        ListRoomSessionsQuery
+    ),
+    responses(
+        (status = 200, description = "Room session list retrieved successfully", body = SessionListResponse),
+        (status = 400, description = "Bad request / invalid session type", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse)
+    )
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -90,6 +110,29 @@ pub async fn list(
     Ok(Json(SessionListResponse { sessions }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/sessions",
+    tag = "Messaging",
+    summary = "Create room session",
+    description = "Creates a new session in a room (Server Spec v3.0.4 §8.7).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID")
+    ),
+    request_body = CreateRoomSessionRequest,
+    responses(
+        (status = 201, description = "Room session created successfully", body = RoomSessionView),
+        (status = 400, description = "Bad request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Moderator/Discord mode restrictions)", body = ErrorResponse),
+        (status = 409, description = "Conflict (session limit reached)", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+        (status = 501, description = "Sessions disabled", body = ErrorResponse)
+    )
+)]
 pub async fn create(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -134,6 +177,28 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(view)))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/rooms/{id}/sessions/{session_id}",
+    tag = "Messaging",
+    summary = "Update room session metadata/position",
+    description = "Updates metadata or position of an active room session (Server Spec v3.0.4 §8.7).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID"),
+        ("session_id" = String, Path, description = "Target session ID")
+    ),
+    request_body = PatchRoomSessionRequest,
+    responses(
+        (status = 200, description = "Room session updated successfully", body = RoomSessionView),
+        (status = 400, description = "Bad request / no changes or invalid metadata", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Session not found", body = ErrorResponse)
+    )
+)]
 pub async fn patch(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -154,6 +219,26 @@ pub async fn patch(
     Ok(Json(view))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/rooms/{id}/sessions/{session_id}",
+    tag = "Messaging",
+    summary = "Delete room session",
+    description = "Deletes a room session and tears down its occupancy (Server Spec v3.0.4 §8.7).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID"),
+        ("session_id" = String, Path, description = "Target session ID")
+    ),
+    responses(
+        (status = 204, description = "Room session deleted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Session not found", body = ErrorResponse)
+    )
+)]
 pub async fn delete(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -173,6 +258,30 @@ pub async fn delete(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/sessions/{session_id}/join",
+    tag = "Messaging",
+    summary = "Join room session",
+    description = "Joins an active room session and returns current roster and media configuration (Server Spec v3.0.4 §8.7.13).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID"),
+        ("session_id" = String, Path, description = "Target session ID")
+    ),
+    request_body = JoinSessionRequest,
+    responses(
+        (status = 200, description = "Joined room session successfully", body = JoinResponse),
+        (status = 400, description = "Bad request / invalid client ID", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room or session not found", body = ErrorResponse),
+        (status = 409, description = "Session full", body = ErrorResponse),
+        (status = 429, description = "Too many requests", body = ErrorResponse),
+        (status = 501, description = "Sessions disabled", body = ErrorResponse)
+    )
+)]
 pub async fn join(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -238,6 +347,31 @@ pub async fn join(
     Ok(Json(resp))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/sessions/{session_id}/signal",
+    tag = "Messaging",
+    summary = "Send session signal",
+    description = "Relays an end-to-end encrypted session signaling envelope to a target participant or broadcast (Server Spec v3.0.4 §8.7.11, §6.26.1).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID"),
+        ("session_id" = String, Path, description = "Target session ID")
+    ),
+    request_body = SignalRequest,
+    responses(
+        (status = 200, description = "Unicast signal delivered successfully", body = SignalResponse),
+        (status = 202, description = "Broadcast signal queued/delivered successfully", body = SignalResponse),
+        (status = 400, description = "Bad request / invalid envelope or client ID", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden / not a participant", body = ErrorResponse),
+        (status = 404, description = "Session or target client not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 501, description = "Sessions disabled", body = ErrorResponse)
+    )
+)]
 pub async fn signal(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -282,6 +416,28 @@ pub async fn signal(
     Ok((status, Json(resp)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/sessions/{session_id}/leave",
+    tag = "Messaging",
+    summary = "Leave room session",
+    description = "Leaves an active room session (Server Spec v3.0.4 §8.7.13).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID"),
+        ("session_id" = String, Path, description = "Target session ID")
+    ),
+    request_body = LeaveSessionRequest,
+    responses(
+        (status = 204, description = "Left room session successfully"),
+        (status = 400, description = "Bad request / invalid client ID", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room or session not found", body = ErrorResponse),
+        (status = 501, description = "Sessions disabled", body = ErrorResponse)
+    )
+)]
 pub async fn leave(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -327,6 +483,29 @@ pub async fn leave(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/sessions/{session_id}/heartbeat",
+    tag = "Messaging",
+    summary = "Send session heartbeat",
+    description = "Refreshes active participant heartbeat in a room session (Server Spec v3.0.4 §8.7.13).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID"),
+        ("session_id" = String, Path, description = "Target session ID")
+    ),
+    request_body = HeartbeatSessionRequest,
+    responses(
+        (status = 204, description = "Session heartbeat updated successfully"),
+        (status = 400, description = "Bad request / invalid client ID", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Not a participant or session not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 501, description = "Sessions disabled", body = ErrorResponse)
+    )
+)]
 pub async fn heartbeat(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -377,6 +556,27 @@ pub async fn heartbeat(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/sessions/{session_id}/roster",
+    tag = "Messaging",
+    summary = "Get room session roster",
+    description = "Fetches the current participant roster for an active room session (Server Spec v3.0.4 §8.7.13).",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Target room ID"),
+        ("session_id" = String, Path, description = "Target session ID")
+    ),
+    responses(
+        (status = 200, description = "Roster retrieved successfully", body = RosterResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden / not a participant", body = ErrorResponse),
+        (status = 404, description = "Session not found", body = ErrorResponse),
+        (status = 501, description = "Sessions disabled", body = ErrorResponse)
+    )
+)]
 pub async fn roster(
     State(state): State<AppState>,
     auth: AuthUser,

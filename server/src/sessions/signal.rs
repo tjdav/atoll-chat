@@ -12,15 +12,19 @@ use base64::engine::general_purpose::{STANDARD, STANDARD_NO_PAD, URL_SAFE, URL_S
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SignalRequest {
     pub sender_client_id: String,
+    #[schema(value_type = Option<String>)]
     pub target_client_id: Option<String>,
+    /// End-to-end encrypted session signaling envelope (unpadded Base64URL string, <= 64 KiB) per Server Spec v3.0.4 §6.26.1 and §12.
+    #[schema(format = Byte, value_type = String)]
     pub envelope: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SignalResponse {
     pub delivered_to: usize,
 }

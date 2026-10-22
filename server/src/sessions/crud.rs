@@ -20,7 +20,7 @@ fn get_type_regex() -> &'static Regex {
     TYPE_REGEX.get_or_init(|| Regex::new(r"^[a-z][a-z0-9_-]*$").expect("valid static regex"))
 }
 
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RoomSessionView {
@@ -35,7 +35,7 @@ pub struct RoomSessionView {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct CreateRoomSessionRequest {
     pub extension_id: String,
     pub session_type: String,
@@ -47,7 +47,7 @@ pub struct CreateRoomSessionRequest {
     pub max_participants: Option<u32>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct PatchRoomSessionRequest {
     #[serde(default)]
     pub metadata: Option<String>,
@@ -55,7 +55,8 @@ pub struct PatchRoomSessionRequest {
     pub position: Option<i32>,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, IntoParams, ToSchema)]
+#[into_params(parameter_in = Query)]
 pub struct ListRoomSessionsQuery {
     pub extension_id: Option<String>,
     pub session_type: Option<String>,
