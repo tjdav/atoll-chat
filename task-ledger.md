@@ -49,8 +49,14 @@
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
-- **Annotation Sweep — OpenAPI Coverage Completion (Tasks C & D — Remaining 20 Paths)**: pending
-  - **Scope:** Annotate remaining 20 missing router paths in admin, calls, keypackages, models, roles, and welcomes.
+- **Task D — Annotate Admin and Roles (and Confirm Models)**: done
+  - **Delivered:** `verification/annotate-admin-and-roles/report.md`, `server/src/routes/admin.rs`, `server/src/routes/admin_backups.rs`, `server/src/routes/invites.rs`, `server/src/routes/roles.rs`, `server/src/config_ops.rs`, `server/src/limits.rs`, `server/src/audit.rs`, `server/src/roles.rs`, `server/src/permissions.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Confirmed models route registrations and OpenAPI declarations match (`/models/...`). Annotated all 8 Admin handlers and 1 Roles handler with `#[utoipa::path(...)]`. Derived `ToSchema` / `IntoParams` (with `#[into_params(parameter_in = Query)]` for `AuditQuery` and `ListInvitesQuery`) across request, response, and query DTOs. Verified secret redaction in `InstanceConfig`. Expanded path keys in `docs/openapi.json` from 101 to 110. Extended integration tests in `server/tests/openapi_generation.rs`. Reduced ignored router-vs-OpenAPI test missing path count from 20 to 11 (leaving 11 remaining paths for Task C / Task E).
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
+- **Task E — Remove Ignore Attribute from OpenAPI Router Test**: pending
+  - **Scope:** Remove `#[ignore]` attribute from `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs` when the missing path count reaches 0.
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 

@@ -33,6 +33,7 @@ pub struct CreateInviteResponse {
 }
 
 #[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ListInvitesQuery {
     pub include_revoked: Option<bool>,
     pub created_by_me: Option<bool>,
@@ -95,6 +96,25 @@ async fn get_user_permissions(state: &AppState, user_id: &str) -> Result<Permiss
     .unwrap_or_else(|_| Permissions::from_json("[]").unwrap()))
 }
 
+/// POST /api/v1/admin/invites
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/invites",
+    tag = "Admin",
+    summary = "Create server invite",
+    description = "Creates a new server-wide invite code. Distinct from room invites. See §7.3 and §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    request_body = CreateInviteRequest,
+    responses(
+        (status = 201, description = "Server invite created successfully", body = CreateInviteResponse),
+        (status = 400, description = "Invalid request parameters", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden or invite limit reached", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn create_invite_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -217,6 +237,25 @@ pub async fn create_invite_handler(
     }))
 }
 
+/// GET /api/v1/admin/invites
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/invites",
+    tag = "Admin",
+    summary = "List server invites",
+    description = "Lists server-wide invites filtered by caller permissions and query flags. See §7.3 and §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ListInvitesQuery
+    ),
+    responses(
+        (status = 200, description = "Server invites list retrieved successfully", body = ListInvitesResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse)
+    )
+)]
 pub async fn list_invites_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -258,6 +297,27 @@ pub async fn list_invites_handler(
     Ok(Json(ListInvitesResponse { invites: filtered }))
 }
 
+/// DELETE /api/v1/admin/invites/{id}
+#[utoipa::path(
+    delete,
+    path = "/api/v1/admin/invites/{id}",
+    tag = "Admin",
+    summary = "Revoke server invite",
+    description = "Revokes an active server-wide invite code by ID. See §7.3 and §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    params(
+        ("id" = String, Path, description = "Server invite ID to revoke")
+    ),
+    responses(
+        (status = 204, description = "Server invite revoked successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden", body = ErrorResponse),
+        (status = 404, description = "Invite not found", body = ErrorResponse),
+        (status = 409, description = "Invite already revoked", body = ErrorResponse)
+    )
+)]
 pub async fn revoke_invite_handler(
     State(state): State<AppState>,
     auth: AuthUser,

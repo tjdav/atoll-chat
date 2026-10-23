@@ -2,6 +2,7 @@ use crate::audit;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use std::collections::HashMap;
+use utoipa::ToSchema;
 
 pub const EXPOSED_KEYS: &[&str] = &[
     "moderation_mode",
@@ -18,7 +19,7 @@ pub const SECRET_KEYS: &[&str] = &[
     "pusher_app_secret",
 ];
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct InstanceConfig {
     pub moderation_mode: String,
     pub altcha_enabled: bool,

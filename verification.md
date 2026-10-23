@@ -644,6 +644,21 @@
   - **Test Verification:** Verified via `make -C server openapi-check`, `server/tests/openapi_generation.rs`, `make check-batches`, `cargo fmt --check`, and `cargo clippy`.
 - **Link to report:** [verification/openapi-complete-remaining-routes/report.md](verification/openapi-complete-remaining-routes/report.md)
 
+## Task D — Annotate Admin and Roles (and Confirm Models) Empirical Fact
+- **ID:** Task D — Annotate Admin and Roles (and Confirm Models)
+- **Date:** 2026-10-24
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§8.3, §8.3.1, §8.3.2, §7.3, §3.1, §8.1.3, §8.1.4, §13, §5.9, §5.11)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/annotate-admin-and-roles/report.md`.
+  - **Models Confirmation:** Router registrations (`/models/manifest.json`, `/models/stt/v1/...`, `/models/tts/v1/...`) and OpenAPI annotations matched 100%. No models code or annotation changes were required.
+  - **OpenAPI Path Annotations:** Added `#[utoipa::path]` attributes to all 8 Admin handlers (config GET/PATCH, limits GET/PATCH, audit GET, backups GET/POST, vapid rotate POST, altcha rotate POST, invites GET/POST/DELETE) and 1 Roles handler in `server/src/routes/admin.rs`, `server/src/routes/admin_backups.rs`, `server/src/routes/invites.rs`, and `server/src/routes/roles.rs`.
+  - **DTO Schema Derivations:** Derived `ToSchema` / `IntoParams` (with `#[into_params(parameter_in = Query)]` for `AuditQuery` and `ListInvitesQuery`) across DTO structs in `config_ops.rs`, `routes/admin.rs`, `limits.rs`, `audit.rs`, `routes/admin_backups.rs`, `routes/invites.rs`, `routes/roles.rs`, `roles.rs`, and `permissions.rs`.
+  - **Secret Protection Verification:** Verified `InstanceConfig` schema exposes only `moderation_mode`, `altcha_enabled`, `safety_number_mode`, and `push_enabled`, omitting secret fields (`app_secret`, `vapid_private_key`, `altcha_hmac_secret`, `pusher_app_secret`).
+  - **OpenAPI Artifact Expansion:** `docs/openapi.json` expanded from 101 to 110 unique path keys (+9 path keys).
+  - **Test Mismatch Count Reduction:** Ignored router-vs-OpenAPI test (`test_router_and_openapi_paths_match_one_to_one`) missing path count reduced from 20 to 11 (leaving 11 remaining paths for Task C / Task E).
+- **Link to report:** [verification/annotate-admin-and-roles/report.md](verification/annotate-admin-and-roles/report.md)
+
 ## Task B — Annotate Rooms and Messaging Domains Empirical Fact
 - **ID:** Task B — Annotate Rooms and Messaging Domains
 - **Date:** 2026-10-24

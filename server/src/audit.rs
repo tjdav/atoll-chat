@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use tracing::error;
 use ulid::Ulid;
+use utoipa::ToSchema;
 
 pub mod action {
     pub const CONFIG_UPDATE: &str = "config.update";
@@ -43,7 +44,7 @@ pub mod action {
     pub const WEBSOCKET_CONFIG_GENERATE: &str = "websocket.config_generate";
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuditEntry {
     pub id: String,
     pub actor_id: Option<String>,
@@ -51,6 +52,7 @@ pub struct AuditEntry {
     pub target_type: Option<String>,
     pub target_id: Option<String>,
     pub metadata: Option<serde_json::Value>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 

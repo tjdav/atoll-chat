@@ -133,9 +133,22 @@ fn test_openapi_doc_validity() {
         ("/api/v1/admin/key-transparency", "get"),
         ("/api/v1/admin/key-transparency/snapshot", "post"),
         ("/api/v1/admin/rooms/{id}/sessions", "get"),
+        ("/api/v1/admin/config", "get"),
+        ("/api/v1/admin/config", "patch"),
+        ("/api/v1/admin/limits", "get"),
+        ("/api/v1/admin/limits", "patch"),
+        ("/api/v1/admin/audit", "get"),
+        ("/api/v1/admin/backups", "get"),
+        ("/api/v1/admin/backups", "post"),
+        ("/api/v1/admin/vapid/rotate", "post"),
+        ("/api/v1/admin/altcha/rotate", "post"),
+        ("/api/v1/admin/invites", "get"),
+        ("/api/v1/admin/invites", "post"),
+        ("/api/v1/admin/invites/{id}", "delete"),
         ("/api/v1/admin/models/reload", "post"),
         ("/api/v1/admin/session-types/reload", "post"),
         ("/api/v1/admin/extension-proxy/reload-blocklist", "post"),
+        ("/api/v1/roles", "get"),
     ];
 
     for (path, method) in &authenticated_paths {
@@ -315,6 +328,23 @@ fn test_openapi_doc_validity() {
         "SessionTypesReloadResponse",
         "SessionTypeAdminView",
         "ExtensionProxyBlocklistReloadResponse",
+        "InstanceConfig",
+        "LimitsResponse",
+        "InstanceLimits",
+        "ServerHardMax",
+        "AuditListResponse",
+        "AuditEntry",
+        "BackupListResponse",
+        "BackupItemResponse",
+        "RotateVapidResponse",
+        "RotateAltchaResponse",
+        "CreateInviteRequest",
+        "CreateInviteResponse",
+        "InviteListItem",
+        "ListInvitesResponse",
+        "RolesResponse",
+        "Role",
+        "Permissions",
     ];
 
     for schema in &expected_schemas {
@@ -580,6 +610,32 @@ fn test_openapi_doc_validity() {
         schemas.contains_key("RoomAttachmentUploadForm"),
         "missing RoomAttachmentUploadForm in schemas"
     );
+
+    // Assert InstanceConfig schema properties do not declare secret fields
+    let config_props = &schemas["InstanceConfig"]["properties"].as_object().unwrap();
+    assert!(config_props.contains_key("moderation_mode"));
+    assert!(config_props.contains_key("altcha_enabled"));
+    assert!(config_props.contains_key("safety_number_mode"));
+    assert!(config_props.contains_key("push_enabled"));
+    assert!(
+        !config_props.contains_key("app_secret")
+            && !config_props.contains_key("vapid_private_key")
+            && !config_props.contains_key("altcha_hmac_secret")
+            && !config_props.contains_key("pusher_app_secret"),
+        "InstanceConfig schema unexpectedly contains secret configuration keys"
+    );
+
+    // Assert backups POST response declares 201 Created and BackupItemResponse body
+    let backup_post_resp = &parsed["paths"]["/api/v1/admin/backups"]["post"]["responses"];
+    assert!(
+        backup_post_resp.as_object().unwrap().contains_key("201"),
+        "admin backups POST missing 201 response"
+    );
+    let backup_post_body = backup_post_resp["201"]["content"]["application/json"]["schema"]
+        ["$ref"]
+        .as_str()
+        .unwrap();
+    assert_eq!(backup_post_body, "#/components/schemas/BackupItemResponse");
 }
 
 #[test]

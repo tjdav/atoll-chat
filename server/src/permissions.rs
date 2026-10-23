@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 #[allow(dead_code)]
 pub mod perm {
@@ -20,7 +21,7 @@ pub enum PermissionError {
     InvalidJson(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct Permissions(Vec<String>);
 
 impl Permissions {
