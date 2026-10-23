@@ -644,6 +644,17 @@
   - **Test Verification:** Verified via `make -C server openapi-check`, `server/tests/openapi_generation.rs`, `make check-batches`, `cargo fmt --check`, and `cargo clippy`.
 - **Link to report:** [verification/openapi-complete-remaining-routes/report.md](verification/openapi-complete-remaining-routes/report.md)
 
+## Task C — Annotate Calls, Keypackages, and Welcomes Empirical Fact
+- **ID:** Task C — Annotate Calls, Keypackages, and Welcomes
+- **Date:** 2026-10-24
+- **Status:** In-Progress. Step 0 Complete.
+- **Spec / Decision references:** Server Specification v3.0.4 (§8.7.1, §8.7.2, §8.7.3, §8.7.5, §8.7.6, §8.7.7, §8.7.8, §7.5, §6.24)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/annotate-calls-keypackages-welcomes/report.md`.
+  - **Scope:** 11 path keys across calls (5 path keys), keypackages (3 path keys), and welcomes (3 path keys).
+  - **Ignored Test Baseline:** Router-vs-OpenAPI path mismatch test failure list shows exactly 20 router-only paths missing before Task C. 11 of those 20 are in scope for Task C.
+  - **Ciphertext Annotations:** Call signal envelope format: binary (§6.24); keypackage data format: binary (§7.5); welcome data format: binary.
+
 ## Task B — Annotate Rooms and Messaging Domains Empirical Fact
 - **ID:** Task B — Annotate Rooms and Messaging Domains
 - **Date:** 2026-10-24

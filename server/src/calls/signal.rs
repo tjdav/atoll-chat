@@ -6,16 +6,21 @@ use crate::sockudo::Publisher;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(as = CallSignalRequest)]
 pub struct SignalRequest {
     pub sender_client_id: String,
     pub target_user_id: String,
     pub target_client_id: String,
+    /// Opaque base64url encrypted call signaling envelope (§6.24)
+    #[schema(value_type = String, format = Binary)]
     pub envelope: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
+#[schema(as = CallSignalResponse)]
 pub struct SignalResponse {
     pub delivered_to: usize,
 }

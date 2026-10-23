@@ -5,6 +5,7 @@ use rand::RngCore;
 use serde::Serialize;
 use sqlx::{Row, SqlitePool};
 use std::collections::HashMap;
+use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct KeyPackageSummary {
@@ -35,7 +36,7 @@ pub struct ClaimedKeyPackage {
     pub is_last_resort: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Default, ToSchema)]
 pub struct UnconsumedCount {
     pub total: u32,
     pub by_client: HashMap<String, u32>,

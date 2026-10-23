@@ -2509,6 +2509,63 @@
         ]
       }
     },
+    "/api/v1/calls/turn-credentials": {
+      "post": {
+        "tags": [
+          "Calls"
+        ],
+        "summary": "Generate TURN server credentials (§8.7.3)",
+        "description": "Generates temporary TURN credentials for WebRTC media relay (§8.7.3).",
+        "operationId": "turn_credentials_handler",
+        "responses": {
+          "200": {
+            "description": "TURN credentials generated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnCredentialsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Calling or TURN not configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/capabilities": {
       "get": {
         "tags": [
@@ -2670,6 +2727,187 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/keypackages": {
+      "post": {
+        "tags": [
+          "Keypackages"
+        ],
+        "summary": "Upload MLS KeyPackages (§7.5)",
+        "description": "Uploads a batch of binary MLS KeyPackages for the authenticated user's devices (§7.5). Implementation-defined API route.",
+        "operationId": "upload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadKeyPackagesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "KeyPackages uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadKeyPackagesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid client ID, cipher suite, or package data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Per-device limit reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/keypackages/claim": {
+      "post": {
+        "tags": [
+          "Keypackages"
+        ],
+        "summary": "Claim an unconsumed KeyPackage (§7.5)",
+        "description": "Claims an available MLS KeyPackage for a target user (§7.5). Implementation-defined API route.",
+        "operationId": "claim",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimKeyPackageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "KeyPackage claimed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimKeyPackageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User ID required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No keypackages available for user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/keypackages/count": {
+      "get": {
+        "tags": [
+          "Keypackages"
+        ],
+        "summary": "Get unconsumed KeyPackages count (§7.5)",
+        "description": "Returns the count of available unconsumed MLS KeyPackages for the authenticated user (§7.5). Implementation-defined API route.",
+        "operationId": "count",
+        "responses": {
+          "200": {
+            "description": "Unconsumed KeyPackages count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnconsumedCount"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
       }
     },
     "/api/v1/kt/bot/{id}": {
@@ -4041,6 +4279,427 @@
           },
           "404": {
             "description": "Bot grant not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/calls/{call_id}/end": {
+      "post": {
+        "tags": [
+          "Calls"
+        ],
+        "summary": "End a room call (§8.7.8)",
+        "description": "Ends an active call session (§8.7.8). Allowed for call initiator or room owner.",
+        "operationId": "end_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "call_id",
+            "in": "path",
+            "description": "Call session ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Call session ended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EndCallResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (neither initiator nor room owner)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room or call session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Calling disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/calls/{call_id}/join": {
+      "post": {
+        "tags": [
+          "Calls"
+        ],
+        "summary": "Join a room call (§8.7.5)",
+        "description": "Joins an active call or initiates a new call in the specified room (§8.7.5).",
+        "operationId": "join_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "call_id",
+            "in": "path",
+            "description": "Call session ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinCallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Joined call session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JoinCallResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Client ID not owned by caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found or non-member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Call ended or max participant limit reached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Calling disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/calls/{call_id}/leave": {
+      "post": {
+        "tags": [
+          "Calls"
+        ],
+        "summary": "Leave a room call (§8.7.6)",
+        "description": "Leaves an active room call session (§8.7.6).",
+        "operationId": "leave_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "call_id",
+            "in": "path",
+            "description": "Call session ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaveCallRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Left call session"
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Client ID not owned by caller",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room not found or non-member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Calling disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rooms/{id}/calls/{call_id}/signal": {
+      "post": {
+        "tags": [
+          "Calls"
+        ],
+        "summary": "Send call WebRTC signal (§8.7.7, §6.24)",
+        "description": "Relays an opaque WebRTC SDP/ICE signaling envelope to a target call participant (§8.7.7, §6.24).",
+        "operationId": "signal_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Room ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "call_id",
+            "in": "path",
+            "description": "Call session ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallSignalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Signal delivered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallSignalResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid envelope or target mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not a participant or sender client not owned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Room, call, or target not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Calling disabled",
             "content": {
               "application/json": {
                 "schema": {
@@ -8819,6 +9478,189 @@
         ]
       }
     },
+    "/api/v1/welcomes": {
+      "get": {
+        "tags": [
+          "Welcomes"
+        ],
+        "summary": "List pending MLS Welcomes (§8.7.1)",
+        "description": "Returns pending unconsumed MLS Welcome messages for the authenticated user (§8.7.1).",
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "List of pending MLS Welcomes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WelcomesListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/welcomes/{id}": {
+      "get": {
+        "tags": [
+          "Welcomes"
+        ],
+        "summary": "Get MLS Welcome detail (§8.7.2)",
+        "description": "Fetches a specific MLS Welcome message for the recipient user (§8.7.2). Returns welcome_data as a base64url encoded binary string.",
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Welcome ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Welcome detail with binary welcome_data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WelcomeDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Welcome not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/welcomes/{id}/consume": {
+      "post": {
+        "tags": [
+          "Welcomes"
+        ],
+        "summary": "Consume an MLS Welcome (§8.7.1, §7.5)",
+        "description": "Marks an MLS Welcome message as consumed by the recipient (§8.7.1, §7.5).",
+        "operationId": "consume",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Welcome ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Welcome marked as consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumeWelcomeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Welcome not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Welcome already consumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -9760,6 +10602,65 @@
           }
         }
       },
+      "CallIceServer": {
+        "type": "object",
+        "required": [
+          "urls",
+          "username",
+          "credential"
+        ],
+        "properties": {
+          "credential": {
+            "type": "string"
+          },
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "CallSignalRequest": {
+        "type": "object",
+        "required": [
+          "sender_client_id",
+          "target_user_id",
+          "target_client_id",
+          "envelope"
+        ],
+        "properties": {
+          "envelope": {
+            "type": "string",
+            "format": "binary",
+            "description": "Opaque base64url encrypted call signaling envelope (§6.24)"
+          },
+          "sender_client_id": {
+            "type": "string"
+          },
+          "target_client_id": {
+            "type": "string"
+          },
+          "target_user_id": {
+            "type": "string"
+          }
+        }
+      },
+      "CallSignalResponse": {
+        "type": "object",
+        "required": [
+          "delivered_to"
+        ],
+        "properties": {
+          "delivered_to": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "CapabilitiesResponse": {
         "type": "object",
         "required": [
@@ -9972,6 +10873,51 @@
           }
         }
       },
+      "ClaimKeyPackageRequest": {
+        "type": "object",
+        "required": [
+          "user_id"
+        ],
+        "properties": {
+          "user_id": {
+            "type": "string"
+          }
+        }
+      },
+      "ClaimKeyPackageResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "client_id",
+          "cipher_suite",
+          "key_package_data",
+          "is_last_resort"
+        ],
+        "properties": {
+          "cipher_suite": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_last_resort": {
+            "type": "boolean"
+          },
+          "key_package_data": {
+            "type": "string",
+            "format": "binary",
+            "description": "Base64url encoded binary MLS KeyPackage (§7.5)"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        }
+      },
       "CombinedManifestResponse": {
         "type": "object",
         "required": [
@@ -9998,6 +10944,25 @@
             "type": "string"
           },
           "id": {
+            "type": "string"
+          }
+        }
+      },
+      "ConsumeWelcomeResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "room_id",
+          "consumed"
+        ],
+        "properties": {
+          "consumed": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "room_id": {
             "type": "string"
           }
         }
@@ -10263,6 +11228,35 @@
           }
         }
       },
+      "EndCallResponse": {
+        "type": "object",
+        "required": [
+          "call_id",
+          "room_id",
+          "initiator_id",
+          "started_at",
+          "ended_at"
+        ],
+        "properties": {
+          "call_id": {
+            "type": "string"
+          },
+          "ended_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "initiator_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          }
+        }
+      },
       "EnqueueOperatorQueueReq": {
         "type": "object",
         "required": [
@@ -10482,6 +11476,31 @@
           }
         }
       },
+      "JoinCallRequest": {
+        "type": "object",
+        "required": [
+          "client_id"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
+          }
+        }
+      },
+      "JoinCallResponse": {
+        "type": "object",
+        "required": [
+          "ice_servers"
+        ],
+        "properties": {
+          "ice_servers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CallIceServer"
+            }
+          }
+        }
+      },
       "JoinResponse": {
         "type": "object",
         "required": [
@@ -10657,6 +11676,17 @@
           "tree_size": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "LeaveCallRequest": {
+        "type": "object",
+        "required": [
+          "client_id"
+        ],
+        "properties": {
+          "client_id": {
+            "type": "string"
           }
         }
       },
@@ -13511,6 +14541,59 @@
           }
         }
       },
+      "TurnCredentialsResponse": {
+        "type": "object",
+        "required": [
+          "urls",
+          "username",
+          "credential",
+          "ttl"
+        ],
+        "properties": {
+          "credential": {
+            "type": "string"
+          },
+          "ttl": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "username": {
+            "type": "string"
+          }
+        }
+      },
+      "UnconsumedCount": {
+        "type": "object",
+        "required": [
+          "total",
+          "by_client"
+        ],
+        "properties": {
+          "by_client": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
       "UpdateDeviceNameRequest": {
         "type": "object",
         "required": [
@@ -13532,6 +14615,63 @@
               "string",
               "null"
             ]
+          }
+        }
+      },
+      "UploadKeyPackagesRequest": {
+        "type": "object",
+        "required": [
+          "packages"
+        ],
+        "properties": {
+          "packages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UploadPackageItem"
+            }
+          }
+        }
+      },
+      "UploadKeyPackagesResponse": {
+        "type": "object",
+        "required": [
+          "uploaded",
+          "unconsumed_count"
+        ],
+        "properties": {
+          "unconsumed_count": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "uploaded": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "UploadPackageItem": {
+        "type": "object",
+        "required": [
+          "client_id",
+          "cipher_suite",
+          "key_package_data"
+        ],
+        "properties": {
+          "cipher_suite": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "is_last_resort": {
+            "type": "boolean"
+          },
+          "key_package_data": {
+            "type": "string",
+            "format": "binary",
+            "description": "Base64url encoded binary MLS KeyPackage (§7.5)"
           }
         }
       },
@@ -13826,6 +14966,90 @@
           }
         }
       },
+      "WelcomeDetailResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "room_id",
+          "recipient_user_id",
+          "recipient_client_id",
+          "created_at",
+          "consumed",
+          "welcome_data"
+        ],
+        "properties": {
+          "consumed": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "id": {
+            "type": "string"
+          },
+          "recipient_client_id": {
+            "type": "string"
+          },
+          "recipient_user_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "welcome_data": {
+            "type": "string",
+            "format": "binary",
+            "description": "Base64url encoded binary MLS Welcome message (§8.7.2, §7.5)"
+          }
+        }
+      },
+      "WelcomeView": {
+        "type": "object",
+        "required": [
+          "id",
+          "room_id",
+          "recipient_user_id",
+          "recipient_client_id",
+          "created_at",
+          "consumed"
+        ],
+        "properties": {
+          "consumed": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "id": {
+            "type": "string"
+          },
+          "recipient_client_id": {
+            "type": "string"
+          },
+          "recipient_user_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          }
+        }
+      },
+      "WelcomesListResponse": {
+        "type": "object",
+        "required": [
+          "welcomes"
+        ],
+        "properties": {
+          "welcomes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WelcomeView"
+            }
+          }
+        }
+      },
       "WritePreferenceRequest": {
         "type": "object",
         "required": [
@@ -13882,6 +15106,18 @@
     {
       "name": "Bots",
       "description": "Bot account management, room grants, settings, commands, and publisher keys"
+    },
+    {
+      "name": "Calls",
+      "description": "Call signaling and media session management"
+    },
+    {
+      "name": "Keypackages",
+      "description": "MLS KeyPackage management"
+    },
+    {
+      "name": "Welcomes",
+      "description": "MLS Welcome message management"
     },
     {
       "name": "Key Transparency",

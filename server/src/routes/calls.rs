@@ -4,7 +4,7 @@ use crate::calls::{
     JoinCallRequest, JoinCallResponse, LeaveCallRequest, SignalRequest, SignalResponse,
     TurnCredentialsResponse,
 };
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::rate_limit::{check, RateLimitKey};
 use crate::AppState;
 use axum::{
@@ -13,6 +13,20 @@ use axum::{
     Json,
 };
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/calls/turn-credentials",
+    tag = "Calls",
+    summary = "Generate TURN server credentials (§8.7.3)",
+    description = "Generates temporary TURN credentials for WebRTC media relay (§8.7.3).",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "TURN credentials generated", body = TurnCredentialsResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 501, description = "Calling or TURN not configured", body = ErrorResponse)
+    )
+)]
 pub async fn turn_credentials_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -40,6 +54,28 @@ pub async fn turn_credentials_handler(
     Ok(Json(creds))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/calls/{call_id}/join",
+    tag = "Calls",
+    summary = "Join a room call (§8.7.5)",
+    description = "Joins an active call or initiates a new call in the specified room (§8.7.5).",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("call_id" = String, Path, description = "Call session ID")
+    ),
+    request_body = JoinCallRequest,
+    responses(
+        (status = 200, description = "Joined call session", body = JoinCallResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Client ID not owned by caller", body = ErrorResponse),
+        (status = 404, description = "Room not found or non-member", body = ErrorResponse),
+        (status = 409, description = "Call ended or max participant limit reached", body = ErrorResponse),
+        (status = 501, description = "Calling disabled", body = ErrorResponse)
+    )
+)]
 pub async fn join_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -65,6 +101,27 @@ pub async fn join_handler(
     Ok((headers, Json(res)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/calls/{call_id}/leave",
+    tag = "Calls",
+    summary = "Leave a room call (§8.7.6)",
+    description = "Leaves an active room call session (§8.7.6).",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("call_id" = String, Path, description = "Call session ID")
+    ),
+    request_body = LeaveCallRequest,
+    responses(
+        (status = 204, description = "Left call session"),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Client ID not owned by caller", body = ErrorResponse),
+        (status = 404, description = "Room not found or non-member", body = ErrorResponse),
+        (status = 501, description = "Calling disabled", body = ErrorResponse)
+    )
+)]
 pub async fn leave_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -88,6 +145,28 @@ pub async fn leave_handler(
     Ok((headers, StatusCode::NO_CONTENT))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/calls/{call_id}/signal",
+    tag = "Calls",
+    summary = "Send call WebRTC signal (§8.7.7, §6.24)",
+    description = "Relays an opaque WebRTC SDP/ICE signaling envelope to a target call participant (§8.7.7, §6.24).",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("call_id" = String, Path, description = "Call session ID")
+    ),
+    request_body = SignalRequest,
+    responses(
+        (status = 200, description = "Signal delivered", body = SignalResponse),
+        (status = 400, description = "Invalid envelope or target mismatch", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Not a participant or sender client not owned", body = ErrorResponse),
+        (status = 404, description = "Room, call, or target not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+        (status = 501, description = "Calling disabled", body = ErrorResponse)
+    )
+)]
 pub async fn signal_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -113,6 +192,25 @@ pub async fn signal_handler(
     Ok((headers, Json(res)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/calls/{call_id}/end",
+    tag = "Calls",
+    summary = "End a room call (§8.7.8)",
+    description = "Ends an active call session (§8.7.8). Allowed for call initiator or room owner.",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("call_id" = String, Path, description = "Call session ID")
+    ),
+    responses(
+        (status = 200, description = "Call session ended", body = EndCallResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (neither initiator nor room owner)", body = ErrorResponse),
+        (status = 404, description = "Room or call session not found", body = ErrorResponse),
+        (status = 501, description = "Calling disabled", body = ErrorResponse)
+    )
+)]
 pub async fn end_handler(
     State(state): State<AppState>,
     auth: AuthUser,

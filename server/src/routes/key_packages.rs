@@ -3,11 +3,12 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use utoipa::ToSchema;
 
 use crate::{
     auth::AuthUser,
-    error::ApiError,
-    key_packages::{self, UploadedKeyPackage},
+    error::{ApiError, ErrorResponse},
+    key_packages::{self, UnconsumedCount, UploadedKeyPackage},
     limits,
     rate_limit::{self, RateLimitKey, Window},
     AppState,
@@ -15,41 +16,60 @@ use crate::{
 
 const SERVER_MAX_KEYPACKAGES_PER_DEVICE: i64 = 50;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UploadPackageItem {
     pub client_id: String,
     pub cipher_suite: i64,
+    /// Base64url encoded binary MLS KeyPackage (§7.5)
+    #[schema(value_type = String, format = Binary)]
     pub key_package_data: String,
     #[serde(default)]
     pub is_last_resort: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UploadKeyPackagesRequest {
     pub packages: Vec<UploadPackageItem>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UploadKeyPackagesResponse {
     pub uploaded: usize,
     pub unconsumed_count: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ClaimKeyPackageRequest {
     pub user_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ClaimKeyPackageResponse {
     pub id: String,
     pub user_id: String,
     pub client_id: String,
     pub cipher_suite: i64,
+    /// Base64url encoded binary MLS KeyPackage (§7.5)
+    #[schema(value_type = String, format = Binary)]
     pub key_package_data: String,
     pub is_last_resort: bool,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/keypackages",
+    tag = "Keypackages",
+    summary = "Upload MLS KeyPackages (§7.5)",
+    description = "Uploads a batch of binary MLS KeyPackages for the authenticated user's devices (§7.5). Implementation-defined API route.",
+    security(("bearer_auth" = [])),
+    request_body = UploadKeyPackagesRequest,
+    responses(
+        (status = 201, description = "KeyPackages uploaded", body = UploadKeyPackagesResponse),
+        (status = 400, description = "Invalid client ID, cipher suite, or package data", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 409, description = "Per-device limit reached", body = ErrorResponse)
+    )
+)]
 pub async fn upload(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -148,6 +168,18 @@ pub async fn upload(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/keypackages/count",
+    tag = "Keypackages",
+    summary = "Get unconsumed KeyPackages count (§7.5)",
+    description = "Returns the count of available unconsumed MLS KeyPackages for the authenticated user (§7.5). Implementation-defined API route.",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "Unconsumed KeyPackages count", body = UnconsumedCount),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    )
+)]
 pub async fn count(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -156,6 +188,22 @@ pub async fn count(
     Ok(Json(unconsumed))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/keypackages/claim",
+    tag = "Keypackages",
+    summary = "Claim an unconsumed KeyPackage (§7.5)",
+    description = "Claims an available MLS KeyPackage for a target user (§7.5). Implementation-defined API route.",
+    security(("bearer_auth" = [])),
+    request_body = ClaimKeyPackageRequest,
+    responses(
+        (status = 200, description = "KeyPackage claimed", body = ClaimKeyPackageResponse),
+        (status = 400, description = "User ID required", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "No keypackages available for user", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse)
+    )
+)]
 pub async fn claim(
     State(state): State<AppState>,
     auth: AuthUser,

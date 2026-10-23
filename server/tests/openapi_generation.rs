@@ -136,6 +136,17 @@ fn test_openapi_doc_validity() {
         ("/api/v1/admin/models/reload", "post"),
         ("/api/v1/admin/session-types/reload", "post"),
         ("/api/v1/admin/extension-proxy/reload-blocklist", "post"),
+        ("/api/v1/calls/turn-credentials", "post"),
+        ("/api/v1/rooms/{id}/calls/{call_id}/join", "post"),
+        ("/api/v1/rooms/{id}/calls/{call_id}/leave", "post"),
+        ("/api/v1/rooms/{id}/calls/{call_id}/signal", "post"),
+        ("/api/v1/rooms/{id}/calls/{call_id}/end", "post"),
+        ("/api/v1/keypackages", "post"),
+        ("/api/v1/keypackages/count", "get"),
+        ("/api/v1/keypackages/claim", "post"),
+        ("/api/v1/welcomes", "get"),
+        ("/api/v1/welcomes/{id}", "get"),
+        ("/api/v1/welcomes/{id}/consume", "post"),
     ];
 
     for (path, method) in &authenticated_paths {
@@ -315,6 +326,24 @@ fn test_openapi_doc_validity() {
         "SessionTypesReloadResponse",
         "SessionTypeAdminView",
         "ExtensionProxyBlocklistReloadResponse",
+        "TurnCredentialsResponse",
+        "CallIceServer",
+        "JoinCallRequest",
+        "JoinCallResponse",
+        "LeaveCallRequest",
+        "EndCallResponse",
+        "CallSignalRequest",
+        "CallSignalResponse",
+        "UploadPackageItem",
+        "UploadKeyPackagesRequest",
+        "UploadKeyPackagesResponse",
+        "ClaimKeyPackageRequest",
+        "ClaimKeyPackageResponse",
+        "UnconsumedCount",
+        "WelcomesListResponse",
+        "WelcomeDetailResponse",
+        "ConsumeWelcomeResponse",
+        "WelcomeView",
     ];
 
     for schema in &expected_schemas {
@@ -530,7 +559,48 @@ fn test_openapi_doc_validity() {
         "session signal envelope description missing §6.26.1 reference"
     );
 
-    // Assert 10 new attachment and session path keys appear in OpenAPI
+    // Assert call signal envelope has format: binary and §6.24 reference
+    let call_sig_env = &schemas["CallSignalRequest"]["properties"]["envelope"];
+    assert_eq!(call_sig_env["format"], "binary");
+    assert!(
+        call_sig_env["description"]
+            .as_str()
+            .unwrap()
+            .contains("§6.24"),
+        "CallSignalRequest envelope description missing §6.24 reference"
+    );
+
+    // Assert keypackage key_package_data has format: binary and §7.5 reference
+    let kp_upload_data = &schemas["UploadPackageItem"]["properties"]["key_package_data"];
+    assert_eq!(kp_upload_data["format"], "binary");
+    assert!(
+        kp_upload_data["description"]
+            .as_str()
+            .unwrap()
+            .contains("§7.5"),
+        "UploadPackageItem key_package_data description missing §7.5 reference"
+    );
+
+    let kp_claim_data = &schemas["ClaimKeyPackageResponse"]["properties"]["key_package_data"];
+    assert_eq!(kp_claim_data["format"], "binary");
+
+    // Assert welcome welcome_data has format: binary and §8.7.2 reference
+    let welcome_data_field = &schemas["WelcomeDetailResponse"]["properties"]["welcome_data"];
+    assert_eq!(welcome_data_field["format"], "binary");
+    assert!(
+        welcome_data_field["description"]
+            .as_str()
+            .unwrap()
+            .contains("§8.7.2"),
+        "WelcomeDetailResponse welcome_data description missing §8.7.2 reference"
+    );
+
+    // Assert TurnCredentialsResponse urls is array of strings
+    let turn_urls = &schemas["TurnCredentialsResponse"]["properties"]["urls"];
+    assert_eq!(turn_urls["type"], "array");
+    assert_eq!(turn_urls["items"]["type"], "string");
+
+    // Assert 21 new attachment, session, call, keypackage, and welcome path keys appear in OpenAPI
     let new_paths = [
         "/api/v1/rooms/{id}/attachments",
         "/api/v1/attachments/{id}",
@@ -542,6 +612,17 @@ fn test_openapi_doc_validity() {
         "/api/v1/rooms/{id}/sessions/{session_id}/heartbeat",
         "/api/v1/rooms/{id}/sessions/{session_id}/roster",
         "/api/v1/rooms/{id}/sessions/{session_id}/signal",
+        "/api/v1/calls/turn-credentials",
+        "/api/v1/rooms/{id}/calls/{call_id}/join",
+        "/api/v1/rooms/{id}/calls/{call_id}/leave",
+        "/api/v1/rooms/{id}/calls/{call_id}/signal",
+        "/api/v1/rooms/{id}/calls/{call_id}/end",
+        "/api/v1/keypackages",
+        "/api/v1/keypackages/count",
+        "/api/v1/keypackages/claim",
+        "/api/v1/welcomes",
+        "/api/v1/welcomes/{id}",
+        "/api/v1/welcomes/{id}/consume",
     ];
 
     for path in &new_paths {
@@ -636,7 +717,7 @@ fn test_openapi_cli_default_invocation() {
 }
 
 #[test]
-#[ignore = "Pending OpenAPI annotation sweep (42 paths currently missing from OpenAPI)"]
+#[ignore = "Pending OpenAPI annotation sweep (9 paths currently missing from OpenAPI)"]
 fn test_router_and_openapi_paths_match_one_to_one() {
     let doc = ApiDoc::openapi();
     let json_str = serde_json::to_string_pretty(&doc).unwrap();
