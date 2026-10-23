@@ -1,5 +1,18 @@
 # Verification Facts Log
 
+## C2SP Header Byte Layout Empirical Verification Fact
+- **ID:** C2SP Header Byte Layout Verification
+- **Date:** 2026-10-24
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** V3 Spec §5.13, §6.5–§6.11, §7.7, §8.6; Client follow-up question ("Subject: Follow-up: C2SP header byte layout confirmation")
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/c2sp-header-layout-verify/report.md`.
+  - **Classification (Answer A):** The server does **not** parse, validate, inspect, or construct C2SP headers, salts, or commitments. Payload data is treated as opaque binary bytes.
+  - **Size & Integrity Validations:** Server validates payload length against allowed bucket sizes (`config.attachment_bucket_sizes`), validates `chunk_size == 16384`, `chunk_count > 0`, `0 < plaintext_size <= encrypted_size`, 7-byte base64 `nonce_prefix`, `base_counter`, and computes `SHA-256(data)` over 100% of the uploaded bytes verifying `SHA-256 == claimed_id`.
+  - **Client Layout Compatibility:** Client's hardcoded layout (24-byte salt, 32-byte commitment, 56-byte header, chunk offset 56) is 100% compatible with the server as a client-side implementation choice.
+  - **Zero Code Changes:** Confirmed zero modifications to server code or OpenAPI specification.
+- **Link to report:** [verification/c2sp-header-layout-verify/report.md](verification/c2sp-header-layout-verify/report.md)
+
 ## Rename Task 2 — Auth Endpoint Path and Capabilities Nested Object
 - **ID:** Rename Task 2 — Auth Endpoint Path (`/ws/auth`) and Capabilities Nested Object (`websocket`)
 - **Date:** 2026-10-24
