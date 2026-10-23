@@ -2,6 +2,10 @@
 
 ## Completed Verifications
 
+- **C2SP Header Byte Layout Verification**: done
+  - **Delivered:** `verification/c2sp-header-layout-verify/report.md`
+  - **Summary:** Empirically verified server's attachment upload handling and C2SP header handling. Confirmed Answer A (server treats attachment payloads as opaque binary bytes, does not parse salt/commitment/header, and computes SHA-256 over 100% of uploaded bytes). Provided exact answers to the client's four questions, code citations, formal client response, and confirmed zero server code modifications required.
+
 - **Dynamic OpenAPI Router Test Verification**: done
   - **Delivered:** `verification/dynamic-openapi-router-test/report.md`, `server/tests/openapi_generation.rs`
   - **Summary:** Replaced hardcoded OpenAPI path list assertion in `server/tests/openapi_generation.rs` with dynamic router-vs-OpenAPI comparison parsing `server/src/lib.rs` and querying `ApiDoc::openapi()`. The test normalizes path parameters and prefixes, formats clear multi-line failure messages listing missing paths alphabetically, and is marked `#[ignore]` pending the OpenAPI annotation sweep. Empirically confirmed initial failure set of 52 missing router paths.
