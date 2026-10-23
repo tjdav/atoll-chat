@@ -41,6 +41,8 @@ pub struct CapabilitiesResponse {
     pub websocket_url: String,
     pub sockudo_app_key: String,
     pub sockudo_channel_prefix: String,
+    /// Reflects the server's configured client events capability (Server Spec v3.0.4 §5.19). Note: The Sockudo container's enableClientMessages setting must match for typing events to work.
+    pub client_events_enabled: bool,
     pub altcha: AltchaCapView,
     pub storage_backend: String,
     pub storage_presign_supported: bool,
@@ -210,6 +212,7 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         websocket_url,
         sockudo_app_key: state.publisher.app_key().to_string(),
         sockudo_channel_prefix: "private-room-".to_string(),
+        client_events_enabled: state.config.websocket_enable_client_events,
         altcha,
         storage_backend: state.config.storage_backend.clone(),
         storage_presign_supported,

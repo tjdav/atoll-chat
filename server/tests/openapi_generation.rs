@@ -187,6 +187,10 @@ fn test_openapi_doc_validity() {
         "patch setting description missing secret validation rule notes"
     );
 
+    // Assert CapabilitiesResponse schema declares client_events_enabled property as boolean
+    let caps_props = &parsed["components"]["schemas"]["CapabilitiesResponse"]["properties"];
+    assert_eq!(caps_props["client_events_enabled"]["type"], "boolean");
+
     // Assert schemas contain user and bot domain types
     let schemas = parsed["components"]["schemas"].as_object().unwrap();
     let expected_schemas = [

@@ -60,8 +60,9 @@
   - **Target Version:** v3.0.5
   - **Batch:** `identity`
 
-- **Task v3.0.5-3 — Capabilities Sockudo Fields Alignment**: pending
-  - **Scope:** Update `capabilities` handler in `server/src/routes/capabilities.rs` to emit `sockudo_url` (renaming from `websocket_url`), emit `sockudo_auth_endpoint: "/sockudo/auth"`, remove `sockudo_channel_prefix`, and add `client_events_enabled` boolean per Server Spec §5.19 and §8.1.
+- **Task v3.0.5-3 — Capabilities Sockudo Fields Alignment**: done
+  - **Delivered:** `server/src/routes/capabilities.rs`, `docs/openapi.json`, `server/tests/capabilities_audit.rs`, `server/tests/openapi_generation.rs`, `verification/client-events-enabled-capability/report.md`.
+  - **Summary:** Added top-level `client_events_enabled: bool` to `CapabilitiesResponse` populated from `state.config.websocket_enable_client_events`. Regenerated `docs/openapi.json` and updated capabilities audit and openapi generation test suites. Closed Round 3 Item 2.
   - **Target Version:** v3.0.5
   - **Batch:** `transport`
 
