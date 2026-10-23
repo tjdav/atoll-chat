@@ -7510,6 +7510,7 @@
           "websocket_url",
           "sockudo_app_key",
           "sockudo_channel_prefix",
+          "client_events_enabled",
           "altcha",
           "storage_backend",
           "storage_presign_supported",
@@ -7565,6 +7566,10 @@
           },
           "calling": {
             "type": "boolean"
+          },
+          "client_events_enabled": {
+            "type": "boolean",
+            "description": "Reflects the server's configured client events capability (Server Spec v3.0.4 §5.19). Note: The Sockudo container's enableClientMessages setting must match for typing events to work."
           },
           "edit_window_seconds": {
             "type": "integer",

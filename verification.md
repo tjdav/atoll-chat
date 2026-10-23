@@ -70,6 +70,19 @@
   - **Client Concern Valid:** Typing indicators depend on client events sent directly over WebSockets (`client-typing.start`/`.stop`). There is no HTTP relay fallback. If client events are disabled on Sockudo, typing indicators silently fail.
 - **Link to report:** [verification/verify-client-events-config/report.md](verification/verify-client-events-config/report.md)
 
+## Client Events Enabled Capability Fact
+- **ID:** Task v3.0.5-3b — client_events_enabled Capability
+- **Date:** 2026-10-24
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§5.19, §8.1), Round 3 Item 2
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/client-events-enabled-capability/report.md`.
+  - **Config Source:** Sourced from `state.config.websocket_enable_client_events` (`WEBSOCKET_ENABLE_CLIENT_EVENTS`).
+  - **Capabilities Response:** Top-level boolean field `client_events_enabled` added to `CapabilitiesResponse`.
+  - **Field Invariant:** Present and boolean in all capabilities responses (`true` when configured true, `false` when false).
+  - **OpenAPI & Test Verification:** `docs/openapi.json` regenerated and verified via `make openapi-check`. Capabilities audit tests (`server/tests/capabilities_audit.rs`) and OpenAPI tests (`server/tests/openapi_generation.rs`) pass.
+- **Link to report:** [verification/client-events-enabled-capability/report.md](verification/client-events-enabled-capability/report.md)
+
 ## Task B — recover_start Accepts lookup_token
 - **ID:** Task B — recover_start Field Fallback Alignment (Issue 2)
 - **Date:** 2026-10-17

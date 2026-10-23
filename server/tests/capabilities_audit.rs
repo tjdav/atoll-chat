@@ -23,8 +23,9 @@ const EXPECTED_CAPABILITIES_KEYS: &[&str] = &[
     "tts_models",
     "push_vapid_public_key",
     "websocket_url",
-    "pusher_app_key",
+    "sockudo_app_key",
     "sockudo_channel_prefix",
+    "client_events_enabled",
     "altcha",
     "storage_backend",
     "storage_presign_supported",
@@ -44,6 +45,7 @@ const EXPECTED_CAPABILITIES_KEYS: &[&str] = &[
     "sync_event_retention_days",
     "threading_enabled",
     "starred_items_per_user",
+    "preferences_max_encrypted_bytes",
     "extension_proxy_enabled",
     "extension_proxy_max_request_bytes",
     "extension_proxy_max_response_bytes",
@@ -88,7 +90,8 @@ async fn test_capabilities_exact_key_set_enabled() {
         "Capabilities response contains extra keys not in §8.1: {:?}",
         extra_keys
     );
-    assert_eq!(actual_keys.len(), 42);
+    assert_eq!(actual_keys.len(), 44);
+    assert_eq!(obj["client_events_enabled"], true);
 }
 
 #[tokio::test]
@@ -139,7 +142,7 @@ async fn test_capabilities_exact_key_set_disabled() {
         "Disabled capabilities response contains extra keys not in §8.1: {:?}",
         extra_keys
     );
-    assert_eq!(actual_keys.len(), 42);
+    assert_eq!(actual_keys.len(), 44);
 
     // Verify disabled shapes
     assert_eq!(obj["calling"], false);
@@ -153,4 +156,45 @@ async fn test_capabilities_exact_key_set_disabled() {
     assert_eq!(obj["link_preview_proxy_enabled"], false);
     assert_eq!(obj["extension_proxy_enabled"], false);
     assert_eq!(obj["extension_proxy_key"], Value::Null);
+}
+
+#[tokio::test]
+async fn test_capabilities_client_events_enabled_toggle() {
+    let (app_true, _pool_true, _altcha_true) = common::setup_test_app_with_custom_config(|c| {
+        c.websocket_enable_client_events = true;
+    })
+    .await;
+
+    let req_true = Request::builder()
+        .method("GET")
+        .uri("/api/v1/capabilities")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp_true = app_true.oneshot(req_true).await.unwrap();
+    assert_eq!(resp_true.status(), StatusCode::OK);
+    let body_true = axum::body::to_bytes(resp_true.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_true: Value = serde_json::from_slice(&body_true).unwrap();
+    assert_eq!(json_true["client_events_enabled"], true);
+
+    let (app_false, _pool_false, _altcha_false) = common::setup_test_app_with_custom_config(|c| {
+        c.websocket_enable_client_events = false;
+    })
+    .await;
+
+    let req_false = Request::builder()
+        .method("GET")
+        .uri("/api/v1/capabilities")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp_false = app_false.oneshot(req_false).await.unwrap();
+    assert_eq!(resp_false.status(), StatusCode::OK);
+    let body_false = axum::body::to_bytes(resp_false.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_false: Value = serde_json::from_slice(&body_false).unwrap();
+    assert_eq!(json_false["client_events_enabled"], false);
 }
