@@ -10,28 +10,31 @@ use crate::sockudo::Publisher;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct JoinCallRequest {
     pub client_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct JoinCallResponse {
     pub ice_servers: Vec<IceServer>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LeaveCallRequest {
     pub client_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct EndCallResponse {
     pub call_id: String,
     pub room_id: String,
     pub initiator_id: String,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub started_at: DateTime<Utc>,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub ended_at: DateTime<Utc>,
 }
 

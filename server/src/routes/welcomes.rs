@@ -9,7 +9,7 @@ use utoipa::ToSchema;
 
 use crate::{
     auth::AuthUser,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     welcomes::{self, WelcomeError, WelcomeView},
     AppState,
 };
@@ -28,6 +28,8 @@ pub struct WelcomeDetailResponse {
     #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub consumed: bool,
+    /// Base64url encoded binary MLS Welcome message (§8.7.2, §7.5)
+    #[schema(value_type = String, format = Binary)]
     pub welcome_data: String,
 }
 
@@ -38,6 +40,19 @@ pub struct ConsumeWelcomeResponse {
     pub consumed: bool,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/welcomes",
+    tag = "Welcomes",
+    summary = "List pending MLS Welcomes (§8.7.1)",
+    description = "Returns pending unconsumed MLS Welcome messages for the authenticated user (§8.7.1).",
+    security(("bearer_auth" = [])),
+    responses(
+        (status = 200, description = "List of pending MLS Welcomes", body = WelcomesListResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    )
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -52,6 +67,23 @@ pub async fn list(
     Ok(Json(WelcomesListResponse { welcomes }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/welcomes/{id}",
+    tag = "Welcomes",
+    summary = "Get MLS Welcome detail (§8.7.2)",
+    description = "Fetches a specific MLS Welcome message for the recipient user (§8.7.2). Returns welcome_data as a base64url encoded binary string.",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = String, Path, description = "Welcome ID")
+    ),
+    responses(
+        (status = 200, description = "Welcome detail with binary welcome_data", body = WelcomeDetailResponse),
+        (status = 400, description = "Invalid request", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Welcome not found", body = ErrorResponse)
+    )
+)]
 pub async fn get(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -78,6 +110,23 @@ pub async fn get(
     }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/welcomes/{id}/consume",
+    tag = "Welcomes",
+    summary = "Consume an MLS Welcome (§8.7.1, §7.5)",
+    description = "Marks an MLS Welcome message as consumed by the recipient (§8.7.1, §7.5).",
+    security(("bearer_auth" = [])),
+    params(
+        ("id" = String, Path, description = "Welcome ID")
+    ),
+    responses(
+        (status = 200, description = "Welcome marked as consumed", body = ConsumeWelcomeResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Welcome not found", body = ErrorResponse),
+        (status = 409, description = "Welcome already consumed", body = ErrorResponse)
+    )
+)]
 pub async fn consume(
     State(state): State<AppState>,
     auth: AuthUser,

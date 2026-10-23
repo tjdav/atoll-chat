@@ -6,17 +6,19 @@ use hmac::{Hmac, Mac};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha1::Sha1;
+use utoipa::ToSchema;
 
 type HmacSha1 = Hmac<Sha1>;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+#[schema(as = CallIceServer)]
 pub struct IceServer {
     pub urls: Vec<String>,
     pub username: String,
     pub credential: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct TurnCredentialsResponse {
     pub urls: Vec<String>,
     pub username: String,

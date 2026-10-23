@@ -49,8 +49,14 @@
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
-- **Annotation Sweep — OpenAPI Coverage Completion (Tasks C & D — Remaining 20 Paths)**: pending
-  - **Scope:** Annotate remaining 20 missing router paths in admin, calls, keypackages, models, roles, and welcomes.
+- **Task C — Annotate Calls, Keypackages, and Welcomes**: done
+  - **Delivered:** `verification/annotate-calls-keypackages-welcomes/report.md`
+  - **Summary:** Step 0 empirical verification complete. Baseline verification recorded for all 11 paths across calls (5 paths), keypackages (3 paths), and welcomes (3 paths).
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
+- **Annotation Sweep — OpenAPI Coverage Completion (Task D — Remaining 9 Paths)**: pending
+  - **Scope:** Annotate remaining 9 missing router paths in admin, roles, and models (including models prefix mismatch).
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
