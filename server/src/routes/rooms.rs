@@ -8,71 +8,88 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     auth::AuthUser,
     config_ops,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     limits,
     rate_limit::{self, RateLimitKey},
     rooms::{
-        self, CreateRoomOptions, LeaveOutcome, ListMembersQuery, MemberCursor, RoomError,
-        RoomMember, RoomMemberItem, RoomWithRole,
+        self, CreateRoomOptions, LeaveOutcome, ListMembersQuery, MemberCursor,
+        RetentionPreviewResult, RoomError, RoomMember, RoomMemberItem, RoomMetadataResult,
+        RoomWithRole,
     },
     AppState,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateRoomRequest {
     pub retention_days: Option<i64>,
     pub max_file_size_bytes: Option<i64>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateMetadataRequest {
     pub metadata: Option<Option<String>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RoomListResponse {
     pub rooms: Vec<RoomWithRole>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams, ToSchema)]
+#[into_params(parameter_in = Query)]
 pub struct ListMembersQueryParams {
     pub limit: Option<String>,
     pub cursor: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MemberListResponse {
     pub members: Vec<RoomMemberItem>,
     pub next_cursor: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct AddMemberRequest {
     pub user_id: String,
     pub welcome_data: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LeaveResponse {
     pub outcome: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub new_owner_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RetentionPreviewRequest {
+    #[schema(minimum = 0, maximum = 365)]
     pub retention_days: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct TransferOwnershipRequest {
     pub user_id: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms",
+    tag = "Rooms",
+    request_body = CreateRoomRequest,
+    responses(
+        (status = 201, description = "Room created successfully", body = RoomWithRole),
+        (status = 400, description = "Invalid request payload", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Room creation limit reached", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn create(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -119,6 +136,16 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(room_with_role)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms",
+    tag = "Rooms",
+    responses(
+        (status = 200, description = "List of user rooms", body = RoomListResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -143,6 +170,20 @@ pub async fn list(
     Ok(Json(RoomListResponse { rooms: user_rooms }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "Room details with user role", body = RoomWithRole),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn get(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -170,6 +211,21 @@ pub async fn get(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/rooms/{id}",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 204, description = "Room deleted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-owner)", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn delete(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -186,6 +242,21 @@ pub async fn delete(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/leave",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "Left room successfully", body = LeaveResponse),
+        (status = 400, description = "Not a room member", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn leave(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -234,6 +305,23 @@ pub async fn leave(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/members",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ListMembersQueryParams
+    ),
+    responses(
+        (status = 200, description = "List of room members (users and bots)", body = MemberListResponse),
+        (status = 400, description = "Invalid limit or cursor", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn list_members(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -305,17 +393,31 @@ pub async fn list_members(
     ))
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PendingAddsResponse {
     pub pending_adds: Vec<rooms::PendingAddView>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ConsumePendingAddResponse {
     pub id: String,
     pub consumed_at: String,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/pending-adds",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "List of pending MLS adds", body = PendingAddsResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found or not a member", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn list_pending_adds(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -335,6 +437,21 @@ pub async fn list_pending_adds(
     Ok((headers, Json(PendingAddsResponse { pending_adds })))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/pending-adds/{add_id}/consume",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("add_id" = String, Path, description = "Pending add ID")
+    ),
+    responses(
+        (status = 200, description = "Pending add consumed successfully", body = ConsumePendingAddResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found, add not found, or not a member", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn consume_pending_add(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -360,6 +477,24 @@ pub async fn consume_pending_add(
     ))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/members",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = AddMemberRequest,
+    responses(
+        (status = 201, description = "Member added successfully", body = RoomMember),
+        (status = 400, description = "Invalid welcome data", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden or room member limit reached", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+        (status = 409, description = "Already a room member", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn add_member(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -423,6 +558,22 @@ pub async fn add_member(
     Ok((StatusCode::CREATED, Json(outcome.member)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/rooms/{id}/members/{uid}",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("uid" = String, Path, description = "User ID to kick")
+    ),
+    responses(
+        (status = 204, description = "Member kicked successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-moderator)", body = ErrorResponse),
+        (status = 404, description = "Room or member not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn kick_member(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -454,6 +605,22 @@ pub async fn kick_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/members/{uid}/promote",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("uid" = String, Path, description = "User ID to promote")
+    ),
+    responses(
+        (status = 204, description = "Member promoted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-owner)", body = ErrorResponse),
+        (status = 404, description = "Room or member not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn promote_member(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -471,6 +638,22 @@ pub async fn promote_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/members/{uid}/demote",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("uid" = String, Path, description = "User ID to demote")
+    ),
+    responses(
+        (status = 204, description = "Member demoted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-owner)", body = ErrorResponse),
+        (status = 404, description = "Room or member not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn demote_member(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -488,6 +671,24 @@ pub async fn demote_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/rooms/{id}",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = UpdateMetadataRequest,
+    responses(
+        (status = 200, description = "Room metadata updated", body = RoomMetadataResult),
+        (status = 400, description = "Invalid request payload or metadata length", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-moderator)", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn update_metadata(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -555,6 +756,23 @@ pub async fn update_metadata(
     Ok((headers, Json(result)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/retention/preview",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = RetentionPreviewRequest,
+    responses(
+        (status = 200, description = "Retention preview result", body = RetentionPreviewResult),
+        (status = 400, description = "Invalid retention days (must be 0..=365)", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-owner)", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn retention_preview(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -605,6 +823,23 @@ pub async fn retention_preview(
     Ok((headers, Json(result)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/transfer",
+    tag = "Rooms",
+    description = "Transfers ownership of a room immediately to another member. Note: V3 §3.5 specifies a three-step transfer flow (initiate/accept/cancel); this single-step endpoint is an implementation variation.",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = TransferOwnershipRequest,
+    responses(
+        (status = 204, description = "Room ownership transferred successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-owner)", body = ErrorResponse),
+        (status = 404, description = "Room not found or target user not a member", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn transfer_ownership(
     State(state): State<AppState>,
     auth: AuthUser,

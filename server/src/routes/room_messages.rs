@@ -8,29 +8,32 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     audit,
     auth::AuthUser,
     config_ops, devices,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     limits,
     rate_limit::{self, RateLimitKey},
     room_messages::{
         self, DeleteRequest, EditRequest, ListMessagesQuery, ListMessagesResult,
-        MessageContentType, MessageCursor, RoomMessageError, SubmitOutcome, SubmitRequest,
+        MessageContentType, MessageCursor, RoomMessageError, RoomMessageView, SubmitOutcome,
+        SubmitRequest,
     },
     AppState,
 };
 
 const MAX_CIPHERTEXT_BYTES: usize = 1024 * 1024; // 1 MB
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SubmitMessageRequest {
     pub sender_client_id: String,
     pub epoch: i64,
     pub content_type: String,
+    /// Message ciphertext envelope or bot ciphertext (base64url unpadded). See §6.4.
+    #[schema(value_type = String, format = Binary)]
     pub ciphertext: String,
     pub transcript_hash: Option<String>,
     pub reply_to: Option<String>,
@@ -45,7 +48,8 @@ pub struct EditMessageRequest {
     pub content_type: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, IntoParams, ToSchema)]
+#[into_params(parameter_in = Query)]
 pub struct ListQuery {
     pub since_epoch: Option<i64>,
     pub since_seq: Option<i64>,
@@ -61,10 +65,29 @@ pub struct EpochResponse {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct MessageCiphertextResponse {
     pub id: String,
+    /// Message ciphertext bytes (base64url encoded).
     #[schema(value_type = String, format = Binary)]
     pub ciphertext: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/messages",
+    tag = "Messaging",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = SubmitMessageRequest,
+    responses(
+        (status = 201, description = "Message submitted successfully", body = RoomMessageView),
+        (status = 400, description = "Invalid request or ciphertext too large", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (not a member)", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+        (status = 409, description = "Whisper limit reached", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn submit(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -305,6 +328,21 @@ pub async fn submit(
     Ok((StatusCode::CREATED, Json(outcome)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/epoch",
+    tag = "Messaging",
+    description = "Fetches the current sequence epoch for a room. Implementation-defined route not specified in V3 server spec.",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "Current epoch and sequence", body = EpochResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found or not a member", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn get_epoch(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -316,6 +354,22 @@ pub async fn get_epoch(
     Ok(Json(EpochResponse { epoch, sequence }))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/messages",
+    tag = "Messaging",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ListQuery
+    ),
+    responses(
+        (status = 200, description = "List of room messages", body = ListMessagesResult),
+        (status = 400, description = "Invalid cursor parameters", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found or not a member", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -347,6 +401,22 @@ pub async fn list(
     Ok(Json(result))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/messages/{message_id}/ciphertext",
+    tag = "Messaging",
+    description = "Fetches the raw ciphertext for a single room message. Implementation-defined route not specified in V3 server spec.",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("message_id" = String, Path, description = "Message ID")
+    ),
+    responses(
+        (status = 200, description = "Message ciphertext response", body = MessageCiphertextResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room or message not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn get_ciphertext(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -363,6 +433,22 @@ pub async fn get_ciphertext(
     }))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/rooms/{id}/messages/{message_id}",
+    tag = "Messaging",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("message_id" = String, Path, description = "Message ID to delete")
+    ),
+    responses(
+        (status = 204, description = "Message deleted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-sender/non-moderator)", body = ErrorResponse),
+        (status = 404, description = "Room or message not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn delete_message(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -441,6 +527,25 @@ pub async fn delete_message(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/rooms/{id}/messages/{message_id}",
+    tag = "Messaging",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("message_id" = String, Path, description = "Message ID to edit")
+    ),
+    request_body = EditMessageRequest,
+    responses(
+        (status = 201, description = "Message edited successfully", body = RoomMessageView),
+        (status = 400, description = "Invalid request payload", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden or edit window expired", body = ErrorResponse),
+        (status = 404, description = "Room or message not found", body = ErrorResponse),
+        (status = 409, description = "Message deleted or editing an edit prohibited", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn edit(
     State(state): State<AppState>,
     auth: AuthUser,

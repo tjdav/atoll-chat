@@ -5,11 +5,12 @@ use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use ulid::Ulid;
+use utoipa::ToSchema;
 
 use crate::limits::{InstanceLimits, ServerHardMax};
 use crate::sockudo::Publisher;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct Room {
     pub id: String,
     pub owner_id: String,
@@ -21,7 +22,7 @@ pub struct Room {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct RoomWithRole {
     #[serde(flatten)]
     pub room: Room,
@@ -69,7 +70,7 @@ pub fn effective_message_retention_days(
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct PendingRemove {
     pub id: String,
     pub room_id: String,
@@ -80,7 +81,7 @@ pub struct PendingRemove {
     pub remove_confirmed_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct RoomMember {
     pub user_id: String,
     pub username_token: String,
@@ -89,7 +90,7 @@ pub struct RoomMember {
     pub joined_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RoomMemberItem {
     User {
@@ -124,7 +125,7 @@ pub struct AddMemberOutcome {
     pub added_client_ids: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct PendingAddView {
     pub id: String,
     pub target_user_id: Option<String>,
@@ -268,14 +269,14 @@ pub fn validate_metadata_blob(value: &str, max_bytes: usize) -> Result<(), RoomM
     Ok(())
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RoomMetadataResult {
     pub room_id: String,
     pub metadata: Option<String>,
     pub metadata_version: i64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct RetentionPreviewResult {
     pub current_retention_days: i64,
     pub proposed_retention_days: i64,

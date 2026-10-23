@@ -644,6 +644,21 @@
   - **Test Verification:** Verified via `make -C server openapi-check`, `server/tests/openapi_generation.rs`, `make check-batches`, `cargo fmt --check`, and `cargo clippy`.
 - **Link to report:** [verification/openapi-complete-remaining-routes/report.md](verification/openapi-complete-remaining-routes/report.md)
 
+## Task B — Annotate Rooms and Messaging Domains Empirical Fact
+- **ID:** Task B — Annotate Rooms and Messaging Domains
+- **Date:** 2026-10-24
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§8.4, §8.5, §8.5.1, §8.6, §7.3, §7.5, §7.6, §3.5)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/annotate-rooms-and-messaging/report.md`.
+  - **OpenAPI Path Annotations:** Added `#[utoipa::path]` attributes to all 22 room and messaging handler functions across `server/src/routes/rooms.rs`, `server/src/routes/room_invites.rs`, `server/src/routes/pending_removes.rs`, `server/src/routes/room_messages.rs`, and `server/src/routes/reactions.rs`.
+  - **OpenAPI Path Key Expansion:** `docs/openapi.json` expanded from 79 to 101 unique path keys (+22 unique path keys).
+  - **DTO Schema Derivations:** Derived `ToSchema` / `IntoParams` (with `parameter_in = Query`) across DTO structs in `rooms.rs`, `routes/rooms.rs`, `routes/room_invites.rs`, `room_invites.rs`, `routes/pending_removes.rs`, `routes/room_messages.rs`, and `routes/reactions.rs`.
+  - **Ciphertext & Range Annotations:** Message submit/edit `ciphertext` annotated as `format = Binary` referencing §6.4; retention preview `retention_days` annotated with range constraint `0..=365`.
+  - **Spec Notes:** Documented `/rooms/{id}/transfer` single-step spec gap note and `/epoch` and `/ciphertext` implementation-defined route notes.
+  - **Test Mismatch Count Reduction:** Ignored router-vs-OpenAPI test (`test_router_and_openapi_paths_match_one_to_one`) missing path count reduced from 42 to 20.
+- **Link to report:** [verification/annotate-rooms-and-messaging/report.md](verification/annotate-rooms-and-messaging/report.md)
+
 ## Endpoint Inventory Verification & Reconciliation Verification Fact
 - **ID:** Endpoint Inventory Verification & Reconciliation
 - **Date:** 2026-10-16

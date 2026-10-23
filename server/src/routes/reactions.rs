@@ -11,7 +11,7 @@ use utoipa::ToSchema;
 use crate::{
     audit,
     auth::AuthUser,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     limits,
     rate_limit::{self, RateLimitKey},
     reactions::{
@@ -46,6 +46,25 @@ pub struct ListReactionsResponse {
     pub reactions: Vec<ReactionSummary>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/messages/{message_id}/reactions",
+    tag = "Messaging",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("message_id" = String, Path, description = "Message ID")
+    ),
+    request_body = AddReactionInput,
+    responses(
+        (status = 201, description = "Reaction added successfully", body = AddReactionResponse),
+        (status = 200, description = "Reaction already exists (idempotent add)", body = AddReactionResponse),
+        (status = 400, description = "Missing field or invalid reaction format", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room or message not found", body = ErrorResponse),
+        (status = 409, description = "Reaction limit reached for message", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn add(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -224,6 +243,24 @@ pub async fn add(
     ))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/rooms/{id}/messages/{message_id}/reactions/{reaction_id}",
+    tag = "Messaging",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("message_id" = String, Path, description = "Message ID"),
+        ("reaction_id" = String, Path, description = "Reaction ID to remove")
+    ),
+    responses(
+        (status = 204, description = "Reaction removed successfully"),
+        (status = 400, description = "Invalid reaction", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-owner/non-moderator)", body = ErrorResponse),
+        (status = 404, description = "Room or reaction not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn remove(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -339,6 +376,21 @@ pub async fn remove(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/messages/{message_id}/reactions",
+    tag = "Messaging",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("message_id" = String, Path, description = "Message ID")
+    ),
+    responses(
+        (status = 200, description = "List of reaction summaries for message", body = ListReactionsResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room or message not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,

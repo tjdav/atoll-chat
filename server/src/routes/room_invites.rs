@@ -5,23 +5,24 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::{
     auth::AuthUser,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     limits,
     rate_limit::{self, RateLimitKey},
     room_invites::{self, CreateRoomInviteOptions, RedeemOutcome, RoomInviteView},
     AppState,
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateRoomInviteRequest {
     pub max_uses: Option<i64>,
     pub expires_in_days: Option<i64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct CreateRoomInviteResponse {
     pub id: String,
     pub code: String,
@@ -31,28 +32,46 @@ pub struct CreateRoomInviteResponse {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams, ToSchema)]
+#[into_params(parameter_in = Query)]
 pub struct ListRoomInvitesQuery {
     pub include_revoked: Option<bool>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ListRoomInvitesResponse {
     pub invites: Vec<RoomInviteView>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct JoinRoomRequest {
     pub code: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct JoinRoomResponse {
     pub room_id: String,
     pub member_role: String,
     pub already_member: bool,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/invites",
+    tag = "Room Invites",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    request_body = CreateRoomInviteRequest,
+    responses(
+        (status = 201, description = "Room invite created successfully", body = CreateRoomInviteResponse),
+        (status = 400, description = "Invalid request payload", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-moderator)", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn create(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -80,6 +99,22 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/invites",
+    tag = "Room Invites",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ListRoomInvitesQuery
+    ),
+    responses(
+        (status = 200, description = "List of room invites", body = ListRoomInvitesResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-moderator)", body = ErrorResponse),
+        (status = 404, description = "Room not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -94,6 +129,22 @@ pub async fn list(
     Ok(Json(ListRoomInvitesResponse { invites }))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/rooms/{id}/invites/{invite_id}",
+    tag = "Room Invites",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("invite_id" = String, Path, description = "Invite ID to revoke")
+    ),
+    responses(
+        (status = 204, description = "Invite revoked successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (non-creator/non-owner)", body = ErrorResponse),
+        (status = 404, description = "Room or invite not found", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn revoke(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -103,6 +154,21 @@ pub async fn revoke(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/join",
+    tag = "Room Invites",
+    request_body = JoinRoomRequest,
+    responses(
+        (status = 200, description = "Joined room successfully", body = JoinRoomResponse),
+        (status = 400, description = "Invalid invite code", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Invite not found or expired", body = ErrorResponse),
+        (status = 409, description = "Already a room member", body = ErrorResponse),
+        (status = 429, description = "Rate limit exceeded", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn join(
     State(state): State<AppState>,
     auth: AuthUser,
