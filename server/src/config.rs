@@ -1104,7 +1104,7 @@ impl Config {
             .ok()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "/sockudo/auth".to_string());
+            .unwrap_or_else(|| "/ws/auth".to_string());
 
         let websocket_enable_client_events = env::var("WEBSOCKET_ENABLE_CLIENT_EVENTS")
             .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
@@ -1633,7 +1633,7 @@ impl Config {
             pusher_app_id: "chat".to_string(),
             pusher_app_key: "test-key".to_string(),
             pusher_app_secret: "test-secret".to_string(),
-            websocket_auth_path: "/sockudo/auth".to_string(),
+            websocket_auth_path: "/ws/auth".to_string(),
             websocket_enable_client_events: true,
             websocket_public_url: None,
             storage_backend: "fs".to_string(),

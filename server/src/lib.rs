@@ -638,7 +638,10 @@ pub fn build_app(state: AppState) -> Router {
     let mut app = Router::new()
         .route("/health", get(routes::health::handler))
         .route("/ready", get(routes::ready::handler))
-        .route("/sockudo/auth", post(routes::sockudo::auth_handler));
+        .route(
+            &state.config.websocket_auth_path,
+            post(routes::sockudo::auth_handler),
+        );
 
     let hosting_mode = state
         .config

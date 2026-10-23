@@ -917,7 +917,7 @@ Phase 11 integrates Sockudo for push-based real-time event delivery and exposes 
 - **App Credentials**: On first startup with default settings (`SOCKUDO_APP_KEY=auto`, `SOCKUDO_APP_SECRET=auto`), the server generates 24-byte random app keys and 32-byte random secrets, persisting them in `server_config`. External credentials can be provided via environment variables.
 - **Private Channels**: Public channels are not used. All room channels follow the naming convention `private-room-<room_id>`.
 
-### Channel Authentication (`POST /api/v1/sockudo/auth`)
+### Channel Authentication (`POST /ws/auth`)
 
 Before Sockudo allows a WebSocket client to subscribe to a private channel, the client requests a signature from the server:
 - Body: `{"socket_id": "1234.5678", "channel_name": "private-room-<room_id>"}`
@@ -996,7 +996,7 @@ The user-scoped sync foundation provides the core synchronization infrastructure
 
 ### User Channel Subscription (`private-user-{user_id}`)
 
-- **Sockudo Auth Extension**: `POST /api/v1/sockudo/auth` supports channel authorization for `private-user-{user_id}` channels.
+- **WebSocket Auth Extension**: `POST /ws/auth` supports channel authorization for `private-user-{user_id}` channels.
 - **Authorization Rule**: Strict user equality check (`target_user_id == auth.user_id`). Users can subscribe only to their own user channel; attempts to authorize another user's channel return HTTP 403 (`{"error":"forbidden"}`).
 
 ### Durable User Event Envelope
