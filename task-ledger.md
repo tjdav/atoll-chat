@@ -55,8 +55,14 @@
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
-- **Annotation Sweep — OpenAPI Coverage Completion (Task D — Remaining 9 Paths)**: pending
-  - **Scope:** Annotate remaining 9 missing router paths in admin, roles, and models (including models prefix mismatch).
+- **Task D — Annotate Admin and Roles (and Confirm Models)**: done
+  - **Delivered:** `verification/annotate-admin-and-roles/report.md`, `server/src/config_ops.rs`, `server/src/limits.rs`, `server/src/audit.rs`, `server/src/permissions.rs`, `server/src/roles.rs`, `server/src/routes/admin.rs`, `server/src/routes/admin_backups.rs`, `server/src/routes/invites.rs`, `server/src/routes/roles.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Step 0 confirmed models paths match root mount `/models/...`. Derived `ToSchema` / `IntoParams` across admin and roles DTOs (`InstanceConfig`, `InstanceLimits`, `ServerHardMax`, `AuditEntry`, `LimitsResponse`, `AuditListResponse`, `RotateVapidResponse`, `RotateAltchaResponse`, `BackupItemResponse`, `BackupListResponse`, `CreateInviteRequest`, `CreateInviteResponse`, `InviteListItem`, `ListInvitesResponse`, `Permissions`, `Role`, `RolesResponse`). Annotated 8 admin path keys and 1 roles path key in OpenAPI. Verified `InstanceConfig` schema redacts secret keys. Regenerated `docs/openapi.json` expanding unique path items from 112 to 121 (achieving 100% full router coverage across 121 paths). Reduced router-only count in `test_router_and_openapi_paths_match_one_to_one` from 9 to 0.
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
+- **Task E — Remove `#[ignore]` from Router-vs-OpenAPI Path Mismatch Test**: pending
+  - **Scope:** Remove `#[ignore]` attribute from `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs`, locking in 100% OpenAPI-router route coverage as a permanent CI gate.
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 

@@ -13,35 +13,55 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Row;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::error::ErrorResponse;
 use crate::key_transparency::SnapshotView;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct LimitsResponse {
     #[serde(flatten)]
     pub limits: InstanceLimits,
     pub server_hard_max: ServerHardMax,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct AuditQuery {
     pub actor_id: Option<String>,
     pub action: Option<String>,
     pub target_type: Option<String>,
     pub target_id: Option<String>,
+    #[param(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub before: Option<DateTime<Utc>>,
+    #[param(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub after: Option<DateTime<Utc>>,
     pub per_page: Option<u32>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct AuditListResponse {
     pub entries: Vec<AuditEntry>,
+    #[schema(value_type = Option<String>, example = "2026-10-12T00:00:00Z")]
     pub next_before: Option<DateTime<Utc>>,
 }
 
+/// GET /api/v1/admin/config
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/config",
+    tag = "Admin",
+    summary = "Get instance configuration",
+    description = "Fetches current instance configuration. Redacts secret configuration values (app secrets, private keys, HMAC secrets). See §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Instance configuration retrieved successfully", body = InstanceConfig),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn get_config_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -55,6 +75,23 @@ pub async fn get_config_handler(
     Ok(Json(config))
 }
 
+/// PATCH /api/v1/admin/config
+#[utoipa::path(
+    patch,
+    path = "/api/v1/admin/config",
+    tag = "Admin",
+    summary = "Update instance configuration",
+    description = "Updates exposed instance configuration key-value pairs. Rejects updates to non-exposed/secret keys. See §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Instance configuration updated successfully", body = InstanceConfig),
+        (status = 400, description = "Invalid request body or configuration key/value", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn patch_config_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -103,6 +140,22 @@ pub async fn patch_config_handler(
     Ok(Json(updated))
 }
 
+/// GET /api/v1/admin/limits
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/limits",
+    tag = "Admin",
+    summary = "Get instance limits",
+    description = "Fetches current instance limits and hard maximums. See §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Instance limits retrieved successfully", body = LimitsResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn get_limits_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -119,6 +172,23 @@ pub async fn get_limits_handler(
     }))
 }
 
+/// PATCH /api/v1/admin/limits
+#[utoipa::path(
+    patch,
+    path = "/api/v1/admin/limits",
+    tag = "Admin",
+    summary = "Update instance limits",
+    description = "Updates instance operational limits within server hard bounds. See §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Instance limits updated successfully", body = LimitsResponse),
+        (status = 400, description = "Invalid request body or limit out of bounds", body = ErrorResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn patch_limits_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -151,6 +221,25 @@ pub async fn patch_limits_handler(
     }))
 }
 
+/// GET /api/v1/admin/audit
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/audit",
+    tag = "Admin",
+    summary = "List audit log entries",
+    description = "Retrieves paginated server audit log entries with optional actor, action, and target filters. See §8.3.",
+    params(
+        AuditQuery
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Audit log entries retrieved successfully", body = AuditListResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn get_audit_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -185,17 +274,33 @@ pub async fn get_audit_handler(
     }))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct RotateVapidResponse {
     pub public_key: String,
     pub subscriptions_revoked: u64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct RotateAltchaResponse {
     pub ok: bool,
 }
 
+/// POST /api/v1/admin/vapid/rotate
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/vapid/rotate",
+    tag = "Admin",
+    summary = "Rotate VAPID push keys",
+    description = "Generates new VAPID keypair and revokes all existing web push subscriptions. CATASTROPHIC OPERATION: clients must re-subscribe to web push. See §5.9 and §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "VAPID keypair rotated successfully", body = RotateVapidResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn post_rotate_vapid_handler(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -211,6 +316,22 @@ pub async fn post_rotate_vapid_handler(
     }))
 }
 
+/// POST /api/v1/admin/altcha/rotate
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/altcha/rotate",
+    tag = "Admin",
+    summary = "Rotate ALTCHA HMAC secret",
+    description = "Generates new random HMAC secret for ALTCHA puzzle generation. CATASTROPHIC OPERATION: invalidates all outstanding unresolved challenges. See §5.11 and §8.3.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "ALTCHA HMAC secret rotated successfully", body = RotateAltchaResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse)
+    )
+)]
 pub async fn post_rotate_altcha_handler(
     State(state): State<AppState>,
     auth: AuthUser,

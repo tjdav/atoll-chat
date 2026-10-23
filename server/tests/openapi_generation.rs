@@ -129,6 +129,19 @@ fn test_openapi_doc_validity() {
         ("/api/v1/kt/bot/{id}", "get"),
         ("/api/v1/kt/bot/{id}/history", "get"),
         ("/api/v1/kt/snapshot", "get"),
+        ("/api/v1/admin/config", "get"),
+        ("/api/v1/admin/config", "patch"),
+        ("/api/v1/admin/limits", "get"),
+        ("/api/v1/admin/limits", "patch"),
+        ("/api/v1/admin/audit", "get"),
+        ("/api/v1/admin/backups", "get"),
+        ("/api/v1/admin/backups", "post"),
+        ("/api/v1/admin/vapid/rotate", "post"),
+        ("/api/v1/admin/altcha/rotate", "post"),
+        ("/api/v1/admin/invites", "get"),
+        ("/api/v1/admin/invites", "post"),
+        ("/api/v1/admin/invites/{id}", "delete"),
+        ("/api/v1/roles", "get"),
         ("/api/v1/admin/oprf/rotate", "post"),
         ("/api/v1/admin/key-transparency", "get"),
         ("/api/v1/admin/key-transparency/snapshot", "post"),
@@ -326,6 +339,23 @@ fn test_openapi_doc_validity() {
         "SessionTypesReloadResponse",
         "SessionTypeAdminView",
         "ExtensionProxyBlocklistReloadResponse",
+        "InstanceConfig",
+        "InstanceLimits",
+        "ServerHardMax",
+        "AuditEntry",
+        "LimitsResponse",
+        "AuditListResponse",
+        "RotateVapidResponse",
+        "RotateAltchaResponse",
+        "BackupItemResponse",
+        "BackupListResponse",
+        "CreateInviteRequest",
+        "CreateInviteResponse",
+        "InviteListItem",
+        "ListInvitesResponse",
+        "Permissions",
+        "Role",
+        "RolesResponse",
         "TurnCredentialsResponse",
         "CallIceServer",
         "JoinCallRequest",
@@ -660,6 +690,28 @@ fn test_openapi_doc_validity() {
     assert!(
         schemas.contains_key("RoomAttachmentUploadForm"),
         "missing RoomAttachmentUploadForm in schemas"
+    );
+
+    // Assert InstanceConfig does not expose secret keys (app secret, vapid private key, altcha hmac secret)
+    let config_props = &schemas["InstanceConfig"]["properties"].as_object().unwrap();
+    assert!(
+        !config_props.contains_key("sockudo_app_secret"),
+        "InstanceConfig unexpectedly exposes sockudo_app_secret"
+    );
+    assert!(
+        !config_props.contains_key("vapid_private_key"),
+        "InstanceConfig unexpectedly exposes vapid_private_key"
+    );
+    assert!(
+        !config_props.contains_key("altcha_hmac_secret"),
+        "InstanceConfig unexpectedly exposes altcha_hmac_secret"
+    );
+
+    // Assert backups POST response declares Created status and BackupItemResponse body
+    let backup_post_resp = &parsed["paths"]["/api/v1/admin/backups"]["post"]["responses"];
+    assert!(
+        backup_post_resp.as_object().unwrap().contains_key("201"),
+        "backups POST missing 201 response"
     );
 }
 

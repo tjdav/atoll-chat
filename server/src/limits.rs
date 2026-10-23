@@ -2,8 +2,9 @@ use crate::audit;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 use std::collections::HashMap;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct InstanceLimits {
     pub file_size_bytes: i64,
     pub room_size: i64,
@@ -18,7 +19,7 @@ pub struct InstanceLimits {
     pub edit_window_seconds: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
 pub struct ServerHardMax {
     pub file_size_bytes: i64,
     pub room_size: i64,

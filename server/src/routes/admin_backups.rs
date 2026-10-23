@@ -2,25 +2,44 @@ use axum::{extract::State, http::StatusCode, Json};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use serde_json::json;
+use utoipa::ToSchema;
 
 use crate::auth::AuthUser;
 use crate::backup::{list_backups, BackupJob};
-use crate::error::ApiError;
+use crate::error::{ApiError, ErrorResponse};
 use crate::permission_check::{BackupManage, RequirePermission};
 use crate::AppState;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct BackupItemResponse {
     pub filename: String,
     pub size_bytes: u64,
+    #[schema(value_type = String, example = "2026-10-12T00:00:00Z")]
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct BackupListResponse {
     pub backups: Vec<BackupItemResponse>,
 }
 
+/// GET /api/v1/admin/backups
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/backups",
+    tag = "Admin",
+    summary = "List server backups",
+    description = "Lists existing database backup snapshots. See §8.3 and §13.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 200, description = "Backup items retrieved successfully", body = BackupListResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse),
+        (status = 501, description = "Backup disabled", body = ErrorResponse)
+    )
+)]
 pub async fn list(
     State(state): State<AppState>,
     _auth: AuthUser,
@@ -46,6 +65,25 @@ pub async fn list(
     Ok(Json(BackupListResponse { backups }))
 }
 
+/// POST /api/v1/admin/backups
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/backups",
+    tag = "Admin",
+    summary = "Trigger server backup",
+    description = "Triggers an immediate database backup snapshot. Side-effect operation. See §8.3 and §13.",
+    security(
+        ("bearer_auth" = [])
+    ),
+    responses(
+        (status = 201, description = "Backup created successfully", body = BackupItemResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden (Admin permission required)", body = ErrorResponse),
+        (status = 409, description = "Conflict (Backup already in progress)", body = ErrorResponse),
+        (status = 500, description = "Backup failed", body = ErrorResponse),
+        (status = 501, description = "Backup disabled", body = ErrorResponse)
+    )
+)]
 pub async fn trigger(
     State(state): State<AppState>,
     _auth: AuthUser,

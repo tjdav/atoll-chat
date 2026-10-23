@@ -9,6 +9,396 @@
     "version": "3.0.4"
   },
   "paths": {
+    "/api/v1/admin/altcha/rotate": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Rotate ALTCHA HMAC secret",
+        "description": "Generates new random HMAC secret for ALTCHA puzzle generation. CATASTROPHIC OPERATION: invalidates all outstanding unresolved challenges. See §5.11 and §8.3.",
+        "operationId": "post_rotate_altcha_handler",
+        "responses": {
+          "200": {
+            "description": "ALTCHA HMAC secret rotated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotateAltchaResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/audit": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List audit log entries",
+        "description": "Retrieves paginated server audit log entries with optional actor, action, and target filters. See §8.3.",
+        "operationId": "get_audit_handler",
+        "parameters": [
+          {
+            "name": "actor_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "target_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "target_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "2026-10-12T00:00:00Z"
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "2026-10-12T00:00:00Z"
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit log entries retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/backups": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List server backups",
+        "description": "Lists existing database backup snapshots. See §8.3 and §13.",
+        "operationId": "list",
+        "responses": {
+          "200": {
+            "description": "Backup items retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Backup disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Trigger server backup",
+        "description": "Triggers an immediate database backup snapshot. Side-effect operation. See §8.3 and §13.",
+        "operationId": "trigger",
+        "responses": {
+          "201": {
+            "description": "Backup created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupItemResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (Backup already in progress)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Backup failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Backup disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/config": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get instance configuration",
+        "description": "Fetches current instance configuration. Redacts secret configuration values (app secrets, private keys, HMAC secrets). See §8.3.",
+        "operationId": "get_config_handler",
+        "responses": {
+          "200": {
+            "description": "Instance configuration retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceConfig"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update instance configuration",
+        "description": "Updates exposed instance configuration key-value pairs. Rejects updates to non-exposed/secret keys. See §8.3.",
+        "operationId": "patch_config_handler",
+        "responses": {
+          "200": {
+            "description": "Instance configuration updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstanceConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or configuration key/value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
     "/api/v1/admin/extension-proxy/reload-blocklist": {
       "post": {
         "tags": [
@@ -50,6 +440,207 @@
           },
           "403": {
             "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/invites": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List server invites",
+        "description": "Lists server-wide invites created by caller or all invites if caller has unlimited invite permissions. See §7.3 and §8.3.",
+        "operationId": "list_invites_handler",
+        "parameters": [
+          {
+            "name": "include_revoked",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "created_by_me",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server invites retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListInvitesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create server invite",
+        "description": "Creates a new server invite. Server-wide invites are distinct from room-specific invites. See §7.3 and §8.3.",
+        "operationId": "create_invite_handler",
+        "responses": {
+          "200": {
+            "description": "Server invite created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateInviteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/invites/{id}": {
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Revoke server invite",
+        "description": "Revokes a server-wide invite by ID. See §7.3 and §8.3.",
+        "operationId": "revoke_invite_handler",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Server invite ID to revoke",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Server invite revoked successfully"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Invite not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (Invite already revoked)",
             "content": {
               "application/json": {
                 "schema": {
@@ -154,6 +745,108 @@
           },
           "501": {
             "description": "Key Transparency disabled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/limits": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get instance limits",
+        "description": "Fetches current instance limits and hard maximums. See §8.3.",
+        "operationId": "get_limits_handler",
+        "responses": {
+          "200": {
+            "description": "Instance limits retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LimitsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update instance limits",
+        "description": "Updates instance operational limits within server hard bounds. See §8.3.",
+        "operationId": "patch_limits_handler",
+        "responses": {
+          "200": {
+            "description": "Instance limits updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LimitsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or limit out of bounds",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
             "content": {
               "application/json": {
                 "schema": {
@@ -427,6 +1120,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (Admin permission required)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/vapid/rotate": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Rotate VAPID push keys",
+        "description": "Generates new VAPID keypair and revokes all existing web push subscriptions. CATASTROPHIC OPERATION: clients must re-subscribe to web push. See §5.9 and §8.3.",
+        "operationId": "post_rotate_vapid_handler",
+        "responses": {
+          "200": {
+            "description": "VAPID keypair rotated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotateVapidResponse"
                 }
               }
             }
@@ -3279,6 +4019,43 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/roles": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List server roles",
+        "description": "Fetches list of server roles and permissions. Implementation-defined endpoint. See §3.1.",
+        "operationId": "handler",
+        "responses": {
+          "200": {
+            "description": "Server roles retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
       }
     },
     "/api/v1/rooms": {
@@ -10237,6 +11014,66 @@
           }
         }
       },
+      "AuditEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "created_at"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {},
+          "target_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "target_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "AuditListResponse": {
+        "type": "object",
+        "required": [
+          "entries"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEntry"
+            }
+          },
+          "next_before": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          }
+        }
+      },
       "AuthRequest": {
         "type": "object",
         "required": [
@@ -10260,6 +11097,42 @@
         "properties": {
           "auth": {
             "type": "string"
+          }
+        }
+      },
+      "BackupItemResponse": {
+        "type": "object",
+        "required": [
+          "filename",
+          "size_bytes",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "BackupListResponse": {
+        "type": "object",
+        "required": [
+          "backups"
+        ],
+        "properties": {
+          "backups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupItemResponse"
+            }
           }
         }
       },
@@ -10998,6 +11871,62 @@
           }
         }
       },
+      "CreateInviteRequest": {
+        "type": "object",
+        "properties": {
+          "expires_in_days": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "max_uses": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "CreateInviteResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "max_uses",
+          "current_uses",
+          "created_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "current_uses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "id": {
+            "type": "string"
+          },
+          "max_uses": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
       "CreateRoomInviteRequest": {
         "type": "object",
         "properties": {
@@ -11476,6 +12405,137 @@
           }
         }
       },
+      "InstanceConfig": {
+        "type": "object",
+        "required": [
+          "moderation_mode",
+          "altcha_enabled",
+          "safety_number_mode",
+          "push_enabled"
+        ],
+        "properties": {
+          "altcha_enabled": {
+            "type": "boolean"
+          },
+          "moderation_mode": {
+            "type": "string"
+          },
+          "push_enabled": {
+            "type": "boolean"
+          },
+          "safety_number_mode": {
+            "type": "string"
+          }
+        }
+      },
+      "InstanceLimits": {
+        "type": "object",
+        "required": [
+          "file_size_bytes",
+          "room_size",
+          "rooms_per_user",
+          "devices_per_user",
+          "keypackages_per_device",
+          "message_size_bytes",
+          "attachment_retention_days",
+          "call_max_participants",
+          "reactions_per_message",
+          "room_metadata_bytes",
+          "edit_window_seconds"
+        ],
+        "properties": {
+          "attachment_retention_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "call_max_participants": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "devices_per_user": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "edit_window_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "file_size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "keypackages_per_device": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "message_size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reactions_per_message": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "room_metadata_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "room_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rooms_per_user": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "InviteListItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "max_uses",
+          "current_uses",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "created_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current_uses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          },
+          "id": {
+            "type": "string"
+          },
+          "max_uses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "revoked_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "2026-10-12T00:00:00Z"
+          }
+        }
+      },
       "JoinCallRequest": {
         "type": "object",
         "required": [
@@ -11718,6 +12778,24 @@
           }
         }
       },
+      "LimitsResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/InstanceLimits"
+          },
+          {
+            "type": "object",
+            "required": [
+              "server_hard_max"
+            ],
+            "properties": {
+              "server_hard_max": {
+                "$ref": "#/components/schemas/ServerHardMax"
+              }
+            }
+          }
+        ]
+      },
       "ListDevicesResponse": {
         "type": "object",
         "required": [
@@ -11728,6 +12806,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/DeviceResponse"
+            }
+          }
+        }
+      },
+      "ListInvitesResponse": {
+        "type": "object",
+        "required": [
+          "invites"
+        ],
+        "properties": {
+          "invites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InviteListItem"
             }
           }
         }
@@ -12524,6 +13616,12 @@
               "null"
             ]
           }
+        }
+      },
+      "Permissions": {
+        "type": "array",
+        "items": {
+          "type": "string"
         }
       },
       "PostBotCommandReq": {
@@ -13380,6 +14478,40 @@
           }
         }
       },
+      "Role": {
+        "type": "object",
+        "required": [
+          "name",
+          "level",
+          "permissions"
+        ],
+        "properties": {
+          "level": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          }
+        }
+      },
+      "RolesResponse": {
+        "type": "object",
+        "required": [
+          "roles"
+        ],
+        "properties": {
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        }
+      },
       "Room": {
         "type": "object",
         "required": [
@@ -14012,6 +15144,17 @@
           }
         }
       },
+      "RotateAltchaResponse": {
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
       "RotateBotKeysReq": {
         "type": "object",
         "properties": {
@@ -14073,6 +15216,85 @@
             "format": "int64",
             "description": "Number of registered users flagged for re-registration.",
             "minimum": 0
+          }
+        }
+      },
+      "RotateVapidResponse": {
+        "type": "object",
+        "required": [
+          "public_key",
+          "subscriptions_revoked"
+        ],
+        "properties": {
+          "public_key": {
+            "type": "string"
+          },
+          "subscriptions_revoked": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ServerHardMax": {
+        "type": "object",
+        "required": [
+          "file_size_bytes",
+          "room_size",
+          "rooms_per_user",
+          "devices_per_user",
+          "keypackages_per_device",
+          "message_size_bytes",
+          "attachment_retention_days",
+          "call_max_participants",
+          "reactions_per_message",
+          "room_metadata_bytes",
+          "edit_window_seconds"
+        ],
+        "properties": {
+          "attachment_retention_days": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "call_max_participants": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "devices_per_user": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "edit_window_seconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "file_size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "keypackages_per_device": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "message_size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reactions_per_message": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "room_metadata_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "room_size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "rooms_per_user": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
