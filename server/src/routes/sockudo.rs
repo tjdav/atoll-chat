@@ -29,10 +29,10 @@ fn is_valid_socket_id(socket_id: &str) -> bool {
 
 #[utoipa::path(
     post,
-    path = "/sockudo/auth",
+    path = "/ws/auth",
     tag = "Public",
-    summary = "Sockudo channel authentication",
-    description = "Authenticate WebSocket channel subscription for Sockudo (Server Spec v3.0.4 §8.1.6). Mounted at reverse-proxy root outside /api/v1/. Accepts both user session tokens and bot tokens.",
+    summary = "WebSocket channel authentication",
+    description = "Authenticate WebSocket channel subscription (Server Spec v3.0.4 §8.1.6). Mounted at reverse-proxy root outside /api/v1/ (default /ws/auth, configurable via WEBSOCKET_AUTH_PATH). Accepts both user session tokens and bot tokens.",
     request_body = AuthRequest,
     responses(
         (status = 200, description = "Channel authentication signature generated", body = AuthResponse),

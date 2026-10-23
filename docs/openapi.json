@@ -6900,13 +6900,13 @@
         }
       }
     },
-    "/sockudo/auth": {
+    "/ws/auth": {
       "post": {
         "tags": [
           "Public"
         ],
-        "summary": "Sockudo channel authentication",
-        "description": "Authenticate WebSocket channel subscription for Sockudo (Server Spec v3.0.4 §8.1.6). Mounted at reverse-proxy root outside /api/v1/. Accepts both user session tokens and bot tokens.",
+        "summary": "WebSocket channel authentication",
+        "description": "Authenticate WebSocket channel subscription (Server Spec v3.0.4 §8.1.6). Mounted at reverse-proxy root outside /api/v1/ (default /ws/auth, configurable via WEBSOCKET_AUTH_PATH). Accepts both user session tokens and bot tokens.",
         "operationId": "auth_handler",
         "requestBody": {
           "content": {
@@ -7507,9 +7507,7 @@
           "tts_models_base_url",
           "tts_default_model",
           "tts_models",
-          "websocket_url",
-          "sockudo_app_key",
-          "sockudo_channel_prefix",
+          "websocket",
           "client_events_enabled",
           "altcha",
           "storage_backend",
@@ -7651,12 +7649,6 @@
           "sessions_enabled": {
             "type": "boolean"
           },
-          "sockudo_app_key": {
-            "type": "string"
-          },
-          "sockudo_channel_prefix": {
-            "type": "string"
-          },
           "starred_items_per_user": {
             "type": "integer",
             "format": "int32",
@@ -7705,8 +7697,8 @@
           "version": {
             "type": "string"
           },
-          "websocket_url": {
-            "type": "string"
+          "websocket": {
+            "$ref": "#/components/schemas/WebSocketCapability"
           }
         }
       },
@@ -10511,6 +10503,29 @@
             "type": "string"
           },
           "language": {
+            "type": "string"
+          }
+        }
+      },
+      "WebSocketCapability": {
+        "type": "object",
+        "required": [
+          "url",
+          "protocol",
+          "app_key",
+          "auth_endpoint"
+        ],
+        "properties": {
+          "app_key": {
+            "type": "string"
+          },
+          "auth_endpoint": {
+            "type": "string"
+          },
+          "protocol": {
+            "type": "string"
+          },
+          "url": {
             "type": "string"
           }
         }

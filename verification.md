@@ -1,3 +1,20 @@
+# Verification Facts Log
+
+## Rename Task 2 — Auth Endpoint Path and Capabilities Nested Object
+- **ID:** Rename Task 2 — Auth Endpoint Path (`/ws/auth`) and Capabilities Nested Object (`websocket`)
+- **Date:** 2026-10-24
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Spec v3.0.4 (§5.19, §8.1, §8.1.6), Formal Response to Client Team (2026-10-21)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/websocket-capabilities-nested/report.md` with all 14 empirical verification answers, client confirmation record, and Specification Amendment text.
+  - **Client Confirmation Record:** Confirmed client team received the 2026-10-21 correction message *"Formal Response to Client Team — Superseding the v3.0.4 Contract Response"*.
+  - **Auth Endpoint Mount Path:** Endpoint mounted at `/ws/auth` by default (configurable via `WEBSOCKET_AUTH_PATH` env var) at reverse-proxy root outside `/api/v1/`. Mounted dynamically via `&state.config.websocket_auth_path` in `server/src/lib.rs`.
+  - **Capabilities Response Shape:** `CapabilitiesResponse` returns nested `websocket` object (`url`, `protocol`, `app_key`, `auth_endpoint`).
+  - **Protocol Constant:** `websocket.protocol == "pusher-v7"` (constant `pub const WEBSOCKET_PROTOCOL: &str = "pusher-v7";` in `server/src/routes/capabilities.rs`).
+  - **Flat Fields Removal:** Flat `websocket_url`, `sockudo_app_key`, `sockudo_channel_prefix`, and `sockudo_auth_endpoint` removed from response object and OpenAPI schema.
+  - **Feature Flag Position:** `client_events_enabled` stays top-level in `CapabilitiesResponse`.
+  - **OpenAPI Artifacts:** `docs/openapi.json` regenerated with nested `WebSocketCapability` schema component, auth OpenAPI path `/ws/auth`, unchanged path count (120), and schema count +1.
+- **Link to report:** [verification/websocket-capabilities-nested/report.md](verification/websocket-capabilities-nested/report.md)
 
 ## P2P Signaling Relay Endpoint Fact
 - **ID:** P2P Signaling Endpoint (`POST /api/v1/rooms/:id/p2p/signal`)

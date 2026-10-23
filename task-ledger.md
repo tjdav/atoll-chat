@@ -50,6 +50,12 @@
   - **Target Version:** v3.0.5
   - **Batch:** `transport`
 
+- **Rename Task 2 — Auth Endpoint Path and Capabilities Nested Object**: done
+  - **Scope:** Renamed auth endpoint mount path from `/sockudo/auth` to `/ws/auth` (default, configurable via `WEBSOCKET_AUTH_PATH`). Replaced flat fields in `CapabilitiesResponse` with nested `websocket` object (`url`, `protocol`, `app_key`, `auth_endpoint`). Retained `client_events_enabled` at top level. Updated OpenAPI annotations and regenerated `docs/openapi.json`. Concludes all wire-visible changes in the v3.0.5 patch.
+  - **Delivered:** Step 0 Empirical Report at `verification/websocket-capabilities-nested/report.md`, `server/src/config.rs`, `server/src/lib.rs`, `server/src/routes/capabilities.rs`, `server/src/routes/sockudo.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/README.md`.
+  - **Target Version:** v3.0.5
+  - **Batch:** `transport`, `capabilities`, `sockudo`, `operations`
+
 - **Task v3.0.5-1 — `register_finish` Auto-Login & Recovery Code Issuance**: done
   - **Scope:** Updated `register_finish` in `server/src/routes/register.rs` to generate and persist initial recovery codes (`recovery_code::persist_for_user`), create session token (`session::create_session`), and return `session_token` and `recovery_codes` in `RegisterFinishResponse`. Closes Issue 1.
   - **Target Version:** v3.0.5

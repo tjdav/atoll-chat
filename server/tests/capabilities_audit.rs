@@ -22,9 +22,7 @@ const EXPECTED_CAPABILITIES_KEYS: &[&str] = &[
     "tts_default_model",
     "tts_models",
     "push_vapid_public_key",
-    "websocket_url",
-    "sockudo_app_key",
-    "sockudo_channel_prefix",
+    "websocket",
     "client_events_enabled",
     "altcha",
     "storage_backend",
@@ -90,8 +88,21 @@ async fn test_capabilities_exact_key_set_enabled() {
         "Capabilities response contains extra keys not in §8.1: {:?}",
         extra_keys
     );
-    assert_eq!(actual_keys.len(), 44);
+    assert_eq!(actual_keys.len(), 42);
     assert_eq!(obj["client_events_enabled"], true);
+
+    // Verify websocket capability nested object
+    let ws = obj.get("websocket").expect("websocket object missing");
+    assert!(ws["url"].is_string());
+    assert_eq!(ws["protocol"], "pusher-v7");
+    assert_eq!(ws["app_key"], "test-key");
+    assert_eq!(ws["auth_endpoint"], "/ws/auth");
+
+    // Verify flat fields are absent
+    assert!(obj.get("websocket_url").is_none());
+    assert!(obj.get("sockudo_app_key").is_none());
+    assert!(obj.get("sockudo_channel_prefix").is_none());
+    assert!(obj.get("sockudo_auth_endpoint").is_none());
 }
 
 #[tokio::test]
@@ -142,7 +153,7 @@ async fn test_capabilities_exact_key_set_disabled() {
         "Disabled capabilities response contains extra keys not in §8.1: {:?}",
         extra_keys
     );
-    assert_eq!(actual_keys.len(), 44);
+    assert_eq!(actual_keys.len(), 42);
 
     // Verify disabled shapes
     assert_eq!(obj["calling"], false);
@@ -197,4 +208,27 @@ async fn test_capabilities_client_events_enabled_toggle() {
         .unwrap();
     let json_false: Value = serde_json::from_slice(&body_false).unwrap();
     assert_eq!(json_false["client_events_enabled"], false);
+}
+
+#[tokio::test]
+async fn test_capabilities_custom_websocket_auth_path() {
+    let (app, _pool, _altcha) = common::setup_test_app_with_custom_config(|c| {
+        c.websocket_auth_path = "/custom-path/auth".to_string();
+    })
+    .await;
+
+    let req = Request::builder()
+        .method("GET")
+        .uri("/api/v1/capabilities")
+        .body(Body::empty())
+        .unwrap();
+
+    let resp = app.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body_bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json_val: Value = serde_json::from_slice(&body_bytes).unwrap();
+    assert_eq!(json_val["websocket"]["auth_endpoint"], "/custom-path/auth");
 }

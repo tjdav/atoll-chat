@@ -63,7 +63,7 @@ fn test_openapi_doc_validity() {
         ("/api/v1/auth/logout", "post"),
         ("/api/v1/link-preview/proxy", "post"),
         ("/api/v1/extensions/proxy", "post"),
-        ("/sockudo/auth", "post"),
+        ("/ws/auth", "post"),
         ("/api/v1/users/lookup", "post"),
         ("/api/v1/users/me", "get"),
         ("/api/v1/users/me", "patch"),
@@ -187,9 +187,42 @@ fn test_openapi_doc_validity() {
         "patch setting description missing secret validation rule notes"
     );
 
-    // Assert CapabilitiesResponse schema declares client_events_enabled property as boolean
+    // Assert CapabilitiesResponse schema declares websocket $ref and client_events_enabled property as boolean
     let caps_props = &parsed["components"]["schemas"]["CapabilitiesResponse"]["properties"];
     assert_eq!(caps_props["client_events_enabled"]["type"], "boolean");
+    assert_eq!(
+        caps_props["websocket"]["$ref"],
+        "#/components/schemas/WebSocketCapability"
+    );
+    assert!(!caps_props
+        .as_object()
+        .unwrap()
+        .contains_key("websocket_url"));
+    assert!(!caps_props
+        .as_object()
+        .unwrap()
+        .contains_key("sockudo_app_key"));
+    assert!(!caps_props
+        .as_object()
+        .unwrap()
+        .contains_key("sockudo_channel_prefix"));
+    assert!(!caps_props
+        .as_object()
+        .unwrap()
+        .contains_key("sockudo_auth_endpoint"));
+
+    // Assert WebSocketCapability schema structure
+    let ws_cap_schema = &parsed["components"]["schemas"]["WebSocketCapability"];
+    let ws_cap_req: Vec<&str> = ws_cap_schema["required"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    assert!(ws_cap_req.contains(&"url"));
+    assert!(ws_cap_req.contains(&"protocol"));
+    assert!(ws_cap_req.contains(&"app_key"));
+    assert!(ws_cap_req.contains(&"auth_endpoint"));
 
     // Assert schemas contain user and bot domain types
     let schemas = parsed["components"]["schemas"].as_object().unwrap();
@@ -197,6 +230,7 @@ fn test_openapi_doc_validity() {
         "ErrorResponse",
         "UserProfileResponse",
         "UserLimitsResponse",
+        "WebSocketCapability",
         "UserLookupRequest",
         "UserLookupResponse",
         "PatchUserProfileRequest",
@@ -421,8 +455,8 @@ fn test_openapi_doc_validity() {
         "blocklist reload description missing §8.3.2 reference"
     );
 
-    // Assert POST /sockudo/auth documents both token types in description
-    let sockudo_desc = parsed["paths"]["/sockudo/auth"]["post"]["description"]
+    // Assert POST /ws/auth documents both token types in description
+    let sockudo_desc = parsed["paths"]["/ws/auth"]["post"]["description"]
         .as_str()
         .unwrap();
     assert!(

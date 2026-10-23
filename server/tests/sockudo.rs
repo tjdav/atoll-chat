@@ -154,7 +154,7 @@ async fn test_channel_auth_endpoints() {
 
     let auth_req = Request::builder()
         .method("POST")
-        .uri("/sockudo/auth")
+        .uri("/ws/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -185,7 +185,7 @@ async fn test_channel_auth_endpoints() {
     // 6. Channel auth rejects non-members (User B) with 403
     let auth_req_b = Request::builder()
         .method("POST")
-        .uri("/sockudo/auth")
+        .uri("/ws/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_b))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -205,7 +205,7 @@ async fn test_channel_auth_endpoints() {
     // 7. Channel auth rejects unknown rooms with 403
     let auth_req_unknown = Request::builder()
         .method("POST")
-        .uri("/sockudo/auth")
+        .uri("/ws/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -225,7 +225,7 @@ async fn test_channel_auth_endpoints() {
     // 8. Channel auth rejects malformed socket_id with 400
     let auth_req_bad_socket = Request::builder()
         .method("POST")
-        .uri("/sockudo/auth")
+        .uri("/ws/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -245,7 +245,7 @@ async fn test_channel_auth_endpoints() {
     // 9. Channel auth rejects malformed channel_name with 400
     let auth_req_bad_channel = Request::builder()
         .method("POST")
-        .uri("/sockudo/auth")
+        .uri("/ws/auth")
         .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(
@@ -278,15 +278,34 @@ async fn test_channel_auth_endpoints() {
         .unwrap();
     let cap_json: Value = serde_json::from_slice(&cap_body_bytes).unwrap();
 
-    assert!(cap_json["websocket_url"]
-        .as_str()
-        .unwrap()
-        .starts_with("ws://"));
-    assert_eq!(cap_json["pusher_app_key"].as_str().unwrap(), "test-key");
-    assert_eq!(
-        cap_json["sockudo_channel_prefix"].as_str().unwrap(),
-        "private-room-"
-    );
+    let ws = &cap_json["websocket"];
+    assert!(ws["url"].as_str().unwrap().starts_with("ws://"));
+    assert_eq!(ws["protocol"].as_str().unwrap(), "pusher-v7");
+    assert_eq!(ws["app_key"].as_str().unwrap(), "test-key");
+    assert_eq!(ws["auth_endpoint"].as_str().unwrap(), "/ws/auth");
+    assert!(cap_json.get("websocket_url").is_none());
+    assert!(cap_json.get("sockudo_app_key").is_none());
+    assert!(cap_json.get("sockudo_channel_prefix").is_none());
+
+    // 13. Re-requesting old path /sockudo/auth returns 404
+    let old_path_req = Request::builder()
+        .method("POST")
+        .uri("/sockudo/auth")
+        .header(header::AUTHORIZATION, format!("Bearer {}", token_a))
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({
+                "socket_id": socket_id,
+                "channel_name": channel_name,
+            })
+            .to_string(),
+        ))
+        .unwrap();
+
+    let old_path_resp = tower::ServiceExt::oneshot(app.clone(), old_path_req)
+        .await
+        .unwrap();
+    assert_eq!(old_path_resp.status(), StatusCode::NOT_FOUND);
 
     let _ = pool;
 }

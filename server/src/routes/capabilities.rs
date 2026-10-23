@@ -7,6 +7,8 @@ use crate::models::TtsCapabilityModelView;
 use crate::sessions::SessionTypeCapView;
 use crate::AppState;
 
+pub const WEBSOCKET_PROTOCOL: &str = "pusher-v7";
+
 fn construct_base_url(app_url: Option<&str>, path_suffix: &str) -> String {
     let base = app_url
         .unwrap_or("http://localhost:8080")
@@ -19,6 +21,14 @@ pub struct AltchaCapView {
     pub enabled: bool,
     pub algorithm: String,
     pub cost: u32,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct WebSocketCapability {
+    pub url: String,
+    pub protocol: String,
+    pub app_key: String,
+    pub auth_endpoint: String,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -38,9 +48,7 @@ pub struct CapabilitiesResponse {
     pub tts_default_model: String,
     pub tts_models: Vec<TtsCapabilityModelView>,
     pub push_vapid_public_key: Option<String>,
-    pub websocket_url: String,
-    pub sockudo_app_key: String,
-    pub sockudo_channel_prefix: String,
+    pub websocket: WebSocketCapability,
     /// Reflects the server's configured client events capability (Server Spec v3.0.4 §5.19). Note: The Sockudo container's enableClientMessages setting must match for typing events to work.
     pub client_events_enabled: bool,
     pub altcha: AltchaCapView,
@@ -193,6 +201,13 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         cost: state.altcha_config.cost,
     };
 
+    let websocket = WebSocketCapability {
+        url: websocket_url,
+        protocol: WEBSOCKET_PROTOCOL.to_string(),
+        app_key: state.publisher.app_key().to_string(),
+        auth_endpoint: state.config.websocket_auth_path.clone(),
+    };
+
     Json(CapabilitiesResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         calling: state.config.calling_enabled,
@@ -209,9 +224,7 @@ pub async fn handler(State(state): State<AppState>) -> impl IntoResponse {
         tts_default_model: state.config.tts_default_model.clone(),
         tts_models,
         push_vapid_public_key,
-        websocket_url,
-        sockudo_app_key: state.publisher.app_key().to_string(),
-        sockudo_channel_prefix: "private-room-".to_string(),
+        websocket,
         client_events_enabled: state.config.websocket_enable_client_events,
         altcha,
         storage_backend: state.config.storage_backend.clone(),
