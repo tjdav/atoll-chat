@@ -6,13 +6,14 @@ use rand::Rng;
 use rand::RngCore;
 use serde::Serialize;
 use sqlx::{Row, SqlitePool};
+use utoipa::ToSchema;
 
 use crate::config::Config;
 use crate::limits::{InstanceLimits, ServerHardMax};
 
 const CROCKFORD_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct RoomInvite {
     pub id: String,
     pub code: String,
@@ -24,7 +25,7 @@ pub struct RoomInvite {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct RoomInviteView {
     pub id: String,
     pub max_uses: i64,

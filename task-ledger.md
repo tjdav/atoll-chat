@@ -43,8 +43,14 @@
 
 ## Pending Implementation Tasks
 
-- **Annotation Sweep — OpenAPI Coverage Completion (Tasks B & C)**: pending
-  - **Scope:** Annotate the remaining 42 missing router paths in OpenAPI (`ApiDoc` / `utoipa`), regenerating `docs/openapi.json`. Remove `#[ignore]` on `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs` when the sweep lands to verify 100% path matching.
+- **Task B — Annotate Rooms and Messaging Domains**: done
+  - **Delivered:** `verification/annotate-rooms-and-messaging/report.md`, `server/src/rooms.rs`, `server/src/routes/rooms.rs`, `server/src/routes/room_invites.rs`, `server/src/room_invites.rs`, `server/src/routes/pending_removes.rs`, `server/src/routes/room_messages.rs`, `server/src/routes/reactions.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Annotated all 22 handler functions across rooms (17 path keys) and messaging (5 path keys) domains in OpenAPI (`ApiDoc` / `utoipa`), expanding unique path keys in `docs/openapi.json` from 79 to 101. Derived `ToSchema` / `IntoParams` (with `parameter_in = Query`) across request/response/query DTOs. Annotated message ciphertext fields with `format = Binary` (§6.4) and retention preview `retention_days` with range `0..=365`. Documented `/transfer` three-step spec gap note and implementation-defined status for `/epoch` and `/ciphertext` endpoints. Extended `server/tests/openapi_generation.rs` test suite. Reduced ignored router-vs-OpenAPI test missing path count from 42 to 20 (leaving 20 remaining paths for Tasks C and D).
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
+- **Annotation Sweep — OpenAPI Coverage Completion (Tasks C & D — Remaining 20 Paths)**: pending
+  - **Scope:** Annotate remaining 20 missing router paths in admin, calls, keypackages, models, roles, and welcomes.
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 

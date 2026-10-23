@@ -4,19 +4,34 @@ use axum::{
     Json,
 };
 use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::{
     auth::AuthUser,
-    error::ApiError,
+    error::{ApiError, ErrorResponse},
     rooms::{self, PendingRemove},
     AppState,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ListPendingRemovesResponse {
     pub removes: Vec<PendingRemove>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}/pending-removes",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "List of pending MLS removes", body = ListPendingRemovesResponse),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found or not a member", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn list(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -28,6 +43,21 @@ pub async fn list(
     Ok((headers, Json(ListPendingRemovesResponse { removes })))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/pending-removes/{remove_id}/consume",
+    tag = "Rooms",
+    params(
+        ("id" = String, Path, description = "Room ID"),
+        ("remove_id" = String, Path, description = "Pending remove ID")
+    ),
+    responses(
+        (status = 204, description = "Pending remove consumed successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Room not found, remove not found, or not a member", body = ErrorResponse),
+    ),
+    security(("bearer_auth" = []))
+)]
 pub async fn consume(
     State(state): State<AppState>,
     auth: AuthUser,
