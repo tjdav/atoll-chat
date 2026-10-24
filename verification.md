@@ -644,10 +644,25 @@
   - **Test Verification:** Verified via `make -C server openapi-check`, `server/tests/openapi_generation.rs`, `make check-batches`, `cargo fmt --check`, and `cargo clippy`.
 - **Link to report:** [verification/openapi-complete-remaining-routes/report.md](verification/openapi-complete-remaining-routes/report.md)
 
+## Task D — Annotate Admin and Roles (and Confirm Models) Fact
+- **ID:** Task D — Annotate Admin and Roles (and Confirm Models)
+- **Date:** 2026-10-24
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Server Specification v3.0.4 (§8.3, §3.1, §8.1.3, §8.1.4, §7.3, §5.9, §5.11, §13)
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/annotate-admin-and-roles/report.md`.
+  - **OpenAPI Path Annotations:** Added `#[utoipa::path]` attributes to 8 Admin handlers and 1 Roles handler across `server/src/routes/admin.rs`, `server/src/routes/admin_backups.rs`, `server/src/routes/invites.rs`, and `server/src/routes/roles.rs`.
+  - **Models Path Confirmation:** Confirmed router and OpenAPI models paths match at root `/models/...` (`/models/manifest.json`, `/models/stt/v1/{model_id}/{version}/{filename}`, `/models/tts/v1/{model_id}/{version}/{filename}`).
+  - **OpenAPI Path Key Expansion:** `docs/openapi.json` expanded from 112 to 121 unique path keys (121 total paths).
+  - **DTO Schema Derivations:** Derived `ToSchema` / `IntoParams` across `InstanceConfig`, `LimitsResponse`, `InstanceLimits`, `ServerHardMax`, `AuditListResponse`, `AuditQuery`, `AuditEntry`, `BackupListResponse`, `BackupItemResponse`, `RotateVapidResponse`, `RotateAltchaResponse`, `CreateInviteRequest`, `CreateInviteResponse`, `InviteListItem`, `ListInvitesResponse`, `RolesResponse`, `Role`, `Permissions`.
+  - **Secret Redaction & Security:** Confirmed `InstanceConfig` schema redacts secret keys (`SECRET_KEYS`).
+  - **Test Mismatch Count Reduction:** Router-vs-OpenAPI path mismatch test (`test_router_and_openapi_paths_match_one_to_one`) missing path count reduced from 9 to 0 (all 121 paths matched 1:1).
+- **Link to report:** [verification/annotate-admin-and-roles/report.md](verification/annotate-admin-and-roles/report.md)
+
 ## Task C — Annotate Calls, Keypackages, and Welcomes Empirical Fact
 - **ID:** Task C — Annotate Calls, Keypackages, and Welcomes
 - **Date:** 2026-10-24
-- **Status:** In-Progress. Step 0 Complete.
+- **Status:** Complete. Canonical.
 - **Spec / Decision references:** Server Specification v3.0.4 (§8.7.1, §8.7.2, §8.7.3, §8.7.5, §8.7.6, §8.7.7, §8.7.8, §7.5, §6.24)
 - **Verified Facts:**
   - **Step 0 Report:** Delivered at `verification/annotate-calls-keypackages-welcomes/report.md`.

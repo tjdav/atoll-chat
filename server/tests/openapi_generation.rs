@@ -46,6 +46,7 @@ fn test_openapi_doc_validity() {
         ("/models/stt/v1/{model_id}/{version}/{filename}", "get"),
         ("/models/tts/v1/{model_id}/{version}/{filename}", "get"),
         ("/models/manifest.json", "get"),
+        ("/api/v1/roles", "get"),
     ];
 
     for (path, method) in &unauthenticated_paths {
@@ -136,6 +137,18 @@ fn test_openapi_doc_validity() {
         ("/api/v1/admin/models/reload", "post"),
         ("/api/v1/admin/session-types/reload", "post"),
         ("/api/v1/admin/extension-proxy/reload-blocklist", "post"),
+        ("/api/v1/admin/config", "get"),
+        ("/api/v1/admin/config", "patch"),
+        ("/api/v1/admin/limits", "get"),
+        ("/api/v1/admin/limits", "patch"),
+        ("/api/v1/admin/audit", "get"),
+        ("/api/v1/admin/backups", "get"),
+        ("/api/v1/admin/backups", "post"),
+        ("/api/v1/admin/vapid/rotate", "post"),
+        ("/api/v1/admin/altcha/rotate", "post"),
+        ("/api/v1/admin/invites", "get"),
+        ("/api/v1/admin/invites", "post"),
+        ("/api/v1/admin/invites/{id}", "delete"),
         ("/api/v1/calls/turn-credentials", "post"),
         ("/api/v1/rooms/{id}/calls/{call_id}/join", "post"),
         ("/api/v1/rooms/{id}/calls/{call_id}/leave", "post"),
@@ -326,6 +339,23 @@ fn test_openapi_doc_validity() {
         "SessionTypesReloadResponse",
         "SessionTypeAdminView",
         "ExtensionProxyBlocklistReloadResponse",
+        "InstanceConfig",
+        "LimitsResponse",
+        "InstanceLimits",
+        "ServerHardMax",
+        "AuditListResponse",
+        "AuditEntry",
+        "BackupListResponse",
+        "BackupItemResponse",
+        "RotateVapidResponse",
+        "RotateAltchaResponse",
+        "CreateInviteRequest",
+        "CreateInviteResponse",
+        "InviteListItem",
+        "ListInvitesResponse",
+        "RolesResponse",
+        "Role",
+        "Permissions",
         "TurnCredentialsResponse",
         "CallIceServer",
         "JoinCallRequest",
@@ -661,6 +691,37 @@ fn test_openapi_doc_validity() {
         schemas.contains_key("RoomAttachmentUploadForm"),
         "missing RoomAttachmentUploadForm in schemas"
     );
+
+    // Assert InstanceConfig schema properties exclude secret keys
+    let config_props = &schemas["InstanceConfig"]["properties"].as_object().unwrap();
+    let secret_keys = [
+        "altcha_hmac_secret",
+        "vapid_public_key",
+        "vapid_private_key",
+        "pusher_app_key",
+        "pusher_app_secret",
+    ];
+    for secret in &secret_keys {
+        assert!(
+            !config_props.contains_key(*secret),
+            "InstanceConfig schema unexpectedly exposes secret key {}",
+            secret
+        );
+    }
+
+    // Assert POST /admin/backups response declares 201 status and BackupItemResponse body
+    let backup_post_ref = parsed["paths"]["/api/v1/admin/backups"]["post"]["responses"]["201"]
+        ["content"]["application/json"]["schema"]["$ref"]
+        .as_str()
+        .unwrap();
+    assert_eq!(backup_post_ref, "#/components/schemas/BackupItemResponse");
+
+    // Assert GET /roles response 200 refers to RolesResponse
+    let roles_get_ref = parsed["paths"]["/api/v1/roles"]["get"]["responses"]["200"]["content"]
+        ["application/json"]["schema"]["$ref"]
+        .as_str()
+        .unwrap();
+    assert_eq!(roles_get_ref, "#/components/schemas/RolesResponse");
 }
 
 #[test]
@@ -748,10 +809,14 @@ fn test_router_and_openapi_paths_match_one_to_one() {
         for idx in 0..lines.len() {
             let line = lines[idx];
             if line.contains(".route(") {
-                // Search current line and next 2 lines for path string literal
+                // Search current line and next 2 lines for path string literal or dynamic auth route variable
                 for offset in 0..=2 {
                     if idx + offset < lines.len() {
                         let search_line = lines[idx + offset];
+                        if search_line.contains("websocket_auth_path") {
+                            router_paths.insert("/ws/auth".to_string());
+                            break;
+                        }
                         if let Some(first_quote) = search_line.find('"') {
                             let rest = &search_line[first_quote + 1..];
                             if let Some(second_quote) = rest.find('"') {
