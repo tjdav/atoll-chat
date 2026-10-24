@@ -83,9 +83,9 @@
   - **Dynamic Router Extraction:** Hardcoded `expected_paths` list in `server/tests/openapi_generation.rs` removed and replaced with dynamic set comparison that parses `server/src/lib.rs` to extract all router paths.
   - **OpenAPI Extraction:** Reads path items dynamically from `ApiDoc::openapi().paths`.
   - **Set Comparison & Error Format:** Computes `router_only` and `openapi_only` sets. Panic message formats a clear, multi-line list of missing paths sorted alphabetically.
-  - **Ignored Initial State:** Test `test_router_and_openapi_paths_match_one_to_one` is marked `#[ignore = "Pending OpenAPI annotation sweep (52 paths currently missing from OpenAPI)"]`.
-  - **Empirical Failure Baseline:** Manual execution (`cargo test --test openapi_generation -- --ignored`) produces expected failure showing `router_only count: 42` and `openapi_only count: 0` (reduced from 52 after Task A).
-- **Link to report:** [verification/dynamic-openapi-router-test/report.md](verification/dynamic-openapi-router-test/report.md)
+  - **Enforced Status:** Test `test_router_and_openapi_paths_match_one_to_one` is fully enabled (no longer carries `#[ignore]`).
+  - **Enforcement & Drift Detection:** Passes with 0 missing paths across 121 unique router path keys in `make -C server test-operations`. Intentionally omitting a route annotation causes test failure naming the exact missing path key.
+- **Link to report:** [verification/enable-router-openapi-test/report.md](verification/enable-router-openapi-test/report.md)
 
 ## Client Events Configuration and Capability Verification Fact
 - **ID:** Task 2 — Verify Client Events Configuration and Capability

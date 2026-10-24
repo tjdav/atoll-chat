@@ -778,7 +778,6 @@ fn test_openapi_cli_default_invocation() {
 }
 
 #[test]
-#[ignore = "Pending OpenAPI annotation sweep (9 paths currently missing from OpenAPI)"]
 fn test_router_and_openapi_paths_match_one_to_one() {
     let doc = ApiDoc::openapi();
     let json_str = serde_json::to_string_pretty(&doc).unwrap();
