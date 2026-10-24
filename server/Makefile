@@ -46,7 +46,7 @@ test-oprf:
 
 .PHONY: test-operations
 test-operations:
-	$(CARGO) test --test admin_rotate --test cleanup --test cli_migrate --test cli_models --test cli_rotate --test migration_schema --test openapi_generation
+	$(CARGO) test --test admin_rotate --test cleanup --test cli_migrate --test cli_models --test cli_rotate --test contract_test --test end_to_end_walkthrough --test migration_schema --test openapi_generation
 
 .PHONY: test-transport
 test-transport:

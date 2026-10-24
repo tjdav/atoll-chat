@@ -8,6 +8,7 @@ rust-version = "1.85"
 tempfile = "3"
 wiremock = "0.6"
 http-body-util = "0.1"
+jsonschema = "0.28"
 
 [dependencies]
 toml = "0.8"

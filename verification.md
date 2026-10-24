@@ -1,5 +1,20 @@
 # Verification Facts Log
 
+## Runtime Response vs. OpenAPI Schema Contract Test Fact
+- **ID:** Runtime Response vs. OpenAPI Schema Contract Test (Round 1 Issue 6)
+- **Date:** 2026-10-24
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Client Round 1 Issue 6, Server Spec v3.0.4 §8.1
+- **Verified Facts:**
+  - **Step 0 Report:** Delivered at `verification/contract-test-runtime-vs-schema/report.md`.
+  - **Test File:** `server/tests/contract_test.rs`.
+  - **Contract Test Purpose:** Validates runtime HTTP JSON response bodies against OpenAPI JSON Schemas generated dynamically at runtime via `ApiDoc::openapi()`. Complements Task E's path-level router-vs-OpenAPI test.
+  - **Initial Endpoints (12):** Capabilities (unauth), User profile, Sync state, Rooms list, Room detail, Members list, Messages list, Bot view, Bot settings, User KT, Bot KT, KT snapshot.
+  - **Error Validation:** Validates 4xx error response bodies against `ErrorResponse` schema.
+  - **Sanity Check:** `test_intentional_drift_sanity_check` verifies that schema validation fails when artificial response field drift is introduced into test-local OpenAPI schema.
+  - **Batch Registration:** Registered under `operations` batch in `server/tests/batch-manifest.toml`.
+- **Link to report:** [verification/contract-test-runtime-vs-schema/report.md](verification/contract-test-runtime-vs-schema/report.md)
+
 ## C2SP Header Byte Layout Empirical Verification Fact
 - **ID:** C2SP Header Byte Layout Verification
 - **Date:** 2026-10-24

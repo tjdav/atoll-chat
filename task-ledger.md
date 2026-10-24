@@ -100,6 +100,12 @@
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
+- **Contract Test (Round 1 Issue 6 - Server-side)**: done
+  - **Delivered:** `verification/contract-test-runtime-vs-schema/report.md`, `server/tests/contract_test.rs`
+  - **Summary:** Step 0 report completed. Implemented runtime response validation test suite in `server/tests/contract_test.rs` validating HTTP JSON response bodies against `ApiDoc::openapi()` JSON Schemas. Covers 12 core endpoints across authentication modes and response shapes, 3 error response paths against `ErrorResponse`, and an intentional-drift sanity check. Registered in `server/tests/batch-manifest.toml` under `operations` batch. Server-side half of Round 1 Issue 6 complete.
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
 - **P2P Signal Endpoint (`POST /api/v1/rooms/:id/p2p/signal`)**: done
   - **Scope:** Implemented P2P file transfer signaling endpoint per Round 3 Item 1, V3 Spec §6.24, §8.9, §14.6, §5.6. Relays `p2p.signal` event to `private-user-{target_user_id}` non-durably. Enforces 120/min rate limit per (user, room).
   - **Delivered:** `server/src/routes/p2p.rs`, `server/src/lib.rs`, `server/src/config.rs`, `server/src/rate_limit.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/p2p_signal.rs`, `server/tests/batch-manifest.toml`, `verification/p2p-signal-endpoint/report.md`.
