@@ -61,8 +61,9 @@
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
-- **Task E — Remove #[ignore] from Router-vs-OpenAPI Test**: pending
-  - **Scope:** Remove `#[ignore]` attribute from `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs` now that missing paths count has reached 0.
+- **Task E — Remove #[ignore] from Router-vs-OpenAPI Test**: done
+  - **Delivered:** `verification/enable-router-openapi-test/report.md`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Removed `#[ignore]` attribute from `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs`. Confirmed test runs and passes in the `operations` batch (`make -C server test-operations`) comparing Axum router registrations against `docs/openapi.json` at exactly 121 path keys with 0 missing paths. Verified intentional drift detection by temporarily removing route in test. Completes the OpenAPI annotation sweep (52 of 52 missing paths annotated and enforced).
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
