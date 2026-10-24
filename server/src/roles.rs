@@ -1,6 +1,7 @@
 use crate::permissions::{PermissionError, Permissions};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use utoipa::ToSchema;
 
 #[derive(thiserror::Error, Debug)]
 #[allow(dead_code)]
@@ -21,7 +22,7 @@ impl From<PermissionError> for RoleError {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[allow(dead_code)]
 pub struct Role {
     #[serde(skip_serializing)]

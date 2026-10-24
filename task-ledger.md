@@ -55,8 +55,14 @@
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
-- **Annotation Sweep — OpenAPI Coverage Completion (Task D — Remaining 9 Paths)**: pending
-  - **Scope:** Annotate remaining 9 missing router paths in admin, roles, and models (including models prefix mismatch).
+- **Task D — Annotate Admin and Roles (and Confirm Models)**: done
+  - **Delivered:** `verification/annotate-admin-and-roles/report.md`, `server/src/config_ops.rs`, `server/src/limits.rs`, `server/src/audit.rs`, `server/src/roles.rs`, `server/src/permissions.rs`, `server/src/routes/admin.rs`, `server/src/routes/admin_backups.rs`, `server/src/routes/invites.rs`, `server/src/routes/roles.rs`, `server/src/openapi.rs`, `docs/openapi.json`, `server/tests/openapi_generation.rs`.
+  - **Summary:** Annotated all 8 Admin path keys (`/api/v1/admin/config`, `/api/v1/admin/limits`, `/api/v1/admin/audit`, `/api/v1/admin/backups`, `/api/v1/admin/vapid/rotate`, `/api/v1/admin/altcha/rotate`, `/api/v1/admin/invites`, `/api/v1/admin/invites/{id}`) and 1 Roles path key (`/api/v1/roles`) with `utoipa` attributes, and confirmed Models root mount alignment (`/models/...`). Derived `ToSchema` and `IntoParams` across structs in `config_ops.rs`, `limits.rs`, `audit.rs`, `roles.rs`, `permissions.rs`, `routes/admin.rs`, `routes/admin_backups.rs`, `routes/invites.rs`, and `routes/roles.rs`. Derived `#[into_params(parameter_in = Query)]` on `AuditQuery` and `ListInvitesQuery`. Confirmed `InstanceConfig` schema redacts secret keys (`SECRET_KEYS`). Expanded `docs/openapi.json` from 112 to 121 paths. Extended `server/tests/openapi_generation.rs` asserting presence of all 8 admin paths, roles path, secret redaction, and backup POST status. Reduced router-only count in router-vs-OpenAPI path mismatch test from 9 to 0 (completing full endpoint coverage sweep across all 121 OpenAPI paths).
+  - **Target Version:** v3.0.5
+  - **Batch:** `operations`
+
+- **Task E — Remove #[ignore] from Router-vs-OpenAPI Test**: pending
+  - **Scope:** Remove `#[ignore]` attribute from `test_router_and_openapi_paths_match_one_to_one` in `server/tests/openapi_generation.rs` now that missing paths count has reached 0.
   - **Target Version:** v3.0.5
   - **Batch:** `operations`
 
