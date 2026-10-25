@@ -1,5 +1,23 @@
 # Verification Facts Log
 
+## Contract Test Implementation Fact
+- **ID:** Runtime Response Validation Against OpenAPI Schemas (Round 1 Issue 6)
+- **Date:** 2026-10-25
+- **Status:** Complete. Canonical.
+- **Spec / Decision references:** Client Round 1 Issue 6, Server Spec v3.0.4 §8.1
+- **Verified Facts:**
+  - **Test File:** `server/tests/contract_test.rs`
+  - **Dependency:** `jsonschema = "0.29"` (resolved as `0.29.1`).
+  - **OpenAPI Schema Origin:** Obtained dynamically via `serde_json::to_value(ApiDoc::openapi())` at test runtime (not read from disk).
+  - **Schema Resolution:** `extract_response_schema` navigates `doc["paths"][path][method]["responses"][status]` and resolves `$ref` references against `components.schemas`.
+  - **Validation Engine:** `validate()` injects schema components and uses `jsonschema::validator_for` to validate JSON response bodies.
+  - **Shared Fixture:** `setup_contract_test_fixture()` boots the app, registers user Alice and Bob, creates a room, posts a message, creates a bot and token, and populates Key Transparency entries.
+  - **Coverage:**
+    - `test_responses_match_openapi_schemas()` covers 12 endpoints (capabilities, user me/sync, room list/get/members/messages, bot get/settings, KT user/bot/snapshot).
+    - `test_error_responses_match_openapi_schemas()` covers 3 error requests (404, 401, 400) against `ErrorResponse`.
+  - **Diagnostic Pattern:** Uses `failures: Vec<String>` collection-of-failures pattern to aggregate all failures across endpoints in a single run.
+  - **Batch & Invariants:** Registered under `operations` batch in `server/tests/batch-manifest.toml` and `server/Makefile`. Verified via `make -C server test-operations`, `make -C server check-batches`, `cargo test --test test_batch_manifest`, `make -C server openapi-check`, `cargo fmt --check`, and `cargo clippy --all-targets -- -D warnings`.
+
 ## C2SP Header Byte Layout Empirical Verification Fact
 - **ID:** C2SP Header Byte Layout Verification
 - **Date:** 2026-10-24
