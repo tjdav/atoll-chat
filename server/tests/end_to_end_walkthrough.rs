@@ -266,13 +266,13 @@ async fn test_end_to_end_walkthrough() {
     assert!(caps_json.get("sockudo_app_key").is_none());
     assert!(caps_json.get("sockudo_channel_prefix").is_none());
 
-    // Sanity check OpenAPI path count against schema definition (79 documented OpenAPI paths)
+    // Sanity check OpenAPI path count against schema definition (121 documented OpenAPI paths)
     let doc = server::openapi::ApiDoc::openapi();
     let openapi_json = serde_json::to_value(&doc).expect("serialize openapi doc");
     let openapi_path_count = openapi_json["paths"].as_object().unwrap().len();
     assert_eq!(
-        openapi_path_count, 79,
-        "OpenAPI path count must match documented spec path count (79)"
+        openapi_path_count, 121,
+        "OpenAPI path count must match documented spec path count (121)"
     );
 
     // ==========================================
@@ -1142,7 +1142,7 @@ async fn test_end_to_end_walkthrough() {
 
     let final_doc = server::openapi::ApiDoc::openapi();
     let final_openapi_json = serde_json::to_value(&final_doc).unwrap();
-    assert_eq!(final_openapi_json["paths"].as_object().unwrap().len(), 79);
+    assert_eq!(final_openapi_json["paths"].as_object().unwrap().len(), 121);
 
     // Verify cleanup job registration count on scheduler
     let mut scheduler = server::cleanup::Scheduler::new(std::time::Duration::from_secs(3600));

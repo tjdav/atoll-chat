@@ -18,6 +18,10 @@
   - **Delivered:** `verification/client-contract-issues-verify/report.md`
   - **Summary:** Verified 5 contract issues filed by client team against Server Spec v3.0.4. Classified Issue 1 (register_finish response shape: session token & recovery codes) as Spec Decision Required / Genuine Gap; Issue 2 (recover_start request shape: accept lookup_token) as Genuine Gap; Issue 3 (sockudo_url in capabilities) & Issue 5 (remove sockudo_channel_prefix) as Code/Annotation Drift with Wrong Client Recommendations; Issue 4 (sockudo_auth_endpoint in capabilities) as Genuine Gap; Issue 6 (contract test) as Reasonable Suggestion (low priority). Provided formal response to client team outlining counter-proposals and v3.0.5 target patch release. Zero code or schema files modified.
 
+- **Contract Test Implementation (Round 1 Issue 6 Server-Side Half)**: done
+  - **Delivered:** `server/tests/contract_test.rs`, `server/Cargo.toml`, `server/tests/batch-manifest.toml`, `server/Makefile`, `server/tests/end_to_end_walkthrough.rs`.
+  - **Summary:** Implemented runtime response validation test suite against runtime OpenAPI document `ApiDoc::openapi()`. Uses `jsonschema = "0.29.1"` dev-dependency, `openapi_doc()`, `extract_response_schema()`, `$ref` resolution, `validate()` with schema components, shared `setup_contract_test_fixture()`, `test_responses_match_openapi_schemas()` covering 12 endpoints using collection-of-failures diagnostic pattern, and `test_error_responses_match_openapi_schemas()` covering 3 error cases against `ErrorResponse`. Registered in `operations` batch (`make -C server test-operations`).
+
 - **End-to-End Smoke Walkthrough**: done
   - **Delivered:** `server/tests/end_to_end_walkthrough.rs`, `verification/end-to-end-smoke/report.md`
   - **Scope:** Complete end-to-end continuous chain integration test exercising registration, login, bot creation, self-operator binding, room creation, grant-time operator binding, user/bot messages with KT leaf index, command submission, operator queue enqueue/list/respond, bot sync, KT inclusion proofs, timeout/retention cleanup jobs, and wiremock event captures.
